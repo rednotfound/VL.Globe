@@ -1,0 +1,25 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <LangVersion>12.0</LangVersion>
+    <AssemblyName>VL.Globe</AssemblyName>
+    <RootNamespace>VL.Globe</RootNamespace>
+    <Version>0.0.1</Version>
+    <Authors>VL.Globe Contributors</Authors>
+    <Description>Web Mercator tiles on a globe in vvvv gamma's Stride</Description>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <NoWarn>$(NoWarn);1591</NoWarn>
+    <!-- Every NuGet dependency next to the built assembly; see vl-mapsui's csproj for the silent
+         greyed-out-node failure this prevents. -->
+    <CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
+  </PropertyGroup>
+  <ItemGroup>
+    <!-- Ship inside vvvv 7.4: compile against them, never copy them. -->
+    <PackageReference Include="VL.Core" Version="2025.7.4" ExcludeAssets="runtime" />
+  </ItemGroup>
+  <ItemGroup>
+    <!-- Same version as VL.NetTopologySuite and VL.Mapsui: one identity in one vvvv process. -->
+    <PackageReference Include="NetTopologySuite" Version="2.6.0" />
+  </ItemGroup>
+</Project>

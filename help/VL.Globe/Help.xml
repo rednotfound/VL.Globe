@@ -1,0 +1,6 @@
+﻿<?xml version="1.0" encoding="utf-8" standalone="yes"?>
+<Pack>
+	<Topic title="Coordinates">
+		<VLDocument link="HowTo Place a point on the globe.vl" tags="toGlobe,fromGlobe,longitude,latitude,height,position,vector3,sphere,coordinate,point,stride,offline" />
+	</Topic>
+</Pack>

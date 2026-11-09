@@ -1,0 +1,156 @@
+<#
+.SYNOPSIS
+    Opens a help patch in vvvv with every package repository it needs.
+
+.DESCRIPTION
+    There are THREE of them and forgetting one produces an error that reads like a broken
+    package. Both failures happened within ten minutes on 2026-08-16, from typing the command by
+    hand:
+
+      dist\ only
+          "The referenced symbol source 'BruTile.dll' couldn't be found."
+          Thrown by VL's symbol loader before any window appears. deps\ was missing.
+
+      dist\ + deps\
+          "Missing package: VL.NetTopologySuite", followed by "The reference is ambiguous: Point"
+          with twenty-five candidates out of NetTopologySuite.dll. The ambiguity is a CONSEQUENCE:
+          with NTS.Geometry gone, VL matches the bare .NET members instead and finds many.
+
+    So the list lives in a script rather than in a comment, a README or anyone's memory. It is
+    the same list `Compile-HelpPatches.ps1` builds, for the same reason.
+
+      dist\                             VL.Globe itself     (.\pack.ps1 stages it)
+      deps\                             BruTile   (build.ps1 installs them)
+      <vl-nettopologysuite>\dist\       the geometry package the help patches create shapes with
+
+    Three, and it stays three: a help patch here may not need any other package - Test-VLPackage
+    refuses one that does. Cross-package patches are VL.Overworld's, and it has its own launcher
+    with six folders on it.
+
+    OPENING A DOCUMENT IN VVVV IS RUNNING IT. Read what you came for and close the window. Never
+    leave it running unattended - that is how 17,000 TCP connections happened.
+
+.EXAMPLE
+    .\tools\Open-HelpPatch.ps1 "Draw many features"
+
+.EXAMPLE
+    .\tools\Open-HelpPatch.ps1 -List
+#>
+param(
+    [Parameter(Position = 0)]
+    [string]$Patch,
+
+    [switch]$List,
+
+    # Any .vl, help patch or not - the scratchpad probes take this route.
+    [string]$Path
+)
+
+Set-StrictMode -Version Latest
+$ErrorActionPreference = 'Stop'
+
+$RepoRoot = Split-Path $PSScriptRoot -Parent
+$Vvvv     = 'C:\Program Files\vvvv\vvvv_gamma_7.4-win-x64\vvvv.exe'
+$NtsRepo  = 'D:\2026_Projects\vl-nettopologysuite'
+
+if (-not (Test-Path $Vvvv)) {
+    Write-Host "vvvv not found at $Vvvv" -ForegroundColor Red
+    exit 1
+}
+
+$helpDir = Join-Path $RepoRoot 'help'
+$patches = @(if (Test-Path $helpDir) { Get-ChildItem $helpDir -Recurse -File -Filter *.vl }) | Sort-Object Name
+
+if ($List -or (-not $Patch -and -not $Path)) {
+    Write-Host "`nhelp\"
+    $patches | ForEach-Object { Write-Host "  $($_.BaseName)" }
+    Write-Host "`nusage: .\tools\Open-HelpPatch.ps1 ""Draw many features""`n"
+    exit 0
+}
+
+if ($Path) {
+    if (-not (Test-Path $Path)) { Write-Host "no such file: $Path" -ForegroundColor Red; exit 1 }
+    $target = (Resolve-Path $Path).Path
+} else {
+    # Exactly one match or nothing. A launch that opens the wrong patch wastes a whole round,
+    # and vvvv reports nothing about which document it was handed.
+    $hits = @($patches | Where-Object { $_.BaseName -like "*$Patch*" })
+    if ($hits.Count -eq 0) {
+        Write-Host "no help patch matches '$Patch'. -List shows them." -ForegroundColor Red
+        exit 1
+    }
+    if ($hits.Count -gt 1) {
+        Write-Host "'$Patch' matches $($hits.Count) patches:" -ForegroundColor Red
+        $hits | ForEach-Object { Write-Host "  $($_.BaseName)" }
+        exit 1
+    }
+    $target = $hits[0].FullName
+}
+
+# The three folders, each checked - a repository that does not exist is silently ignored by vvvv,
+# which is how a missing one looks like a missing package.
+$wanted = @(
+    @{ Name = 'dist (VL.Globe)';        Path = (Join-Path $RepoRoot 'dist') }
+    @{ Name = 'deps (BruTile)'; Path = (Join-Path $RepoRoot 'deps') }
+    @{ Name = 'VL.NetTopologySuite';     Path = (Join-Path $NtsRepo 'dist') }
+)
+
+$missing = @($wanted | Where-Object { -not (Test-Path $_.Path) })
+if ($missing) {
+    Write-Host "`nmissing package repositories - vvvv would report this as a missing PACKAGE:" -ForegroundColor Red
+    $missing | ForEach-Object { Write-Host "  $($_.Name)  ->  $($_.Path)" -ForegroundColor Red }
+    Write-Host "`n  dist\ and deps\ come from .\pack.ps1" -ForegroundColor Yellow
+    Write-Host "  the third comes from packing $NtsRepo`n" -ForegroundColor Yellow
+    exit 1
+}
+
+$repositories = ($wanted | ForEach-Object { $_.Path }) -join ';'
+
+$pidFile = Join-Path ([IO.Path]::GetTempPath()) 'vl-mapsui-vvvv.pid'
+
+# ALREADY RUNNING: open the patch as a new tab in OUR vvvv, instead of refusing (2026-09-25).
+# vvvv gamma is single-instance unless started with -m: a second `vvvv.exe <file>` hands the file to
+# the running instance and exits within a second. Measured that day - three patches opened this
+# way, one vvvv process throughout, each a new tab, each in RecentDocuments.txt. The running
+# instance already has the package repositories, so none are passed.
+# Only when the running vvvv is the one this launcher started (its pid is in the pid file) and it
+# is the only one: a sibling session on this machine runs its own vvvv, and a file must never be
+# pushed into their window - nor could we say which of two instances would receive it.
+$running = @(Get-Process vvvv -ErrorAction SilentlyContinue)
+if ($running) {
+    $ours = $null
+    if (Test-Path $pidFile) { $ours = [int](Get-Content $pidFile -ErrorAction SilentlyContinue) }
+    if ($running.Count -eq 1 -and $running[0].Id -eq $ours) {
+        Write-Host "`nopening $(Split-Path $target -Leaf) as a new tab in the running vvvv (pid $ours)"
+        Start-Process -FilePath $Vvvv -ArgumentList @("`"$target`"") | Out-Null
+        # If forwarding ever stops working, a second vvvv would stay up - say so rather than
+        # leaving two instances fighting over one tile cache.
+        Start-Sleep -Seconds 3
+        $now = @(Get-Process vvvv -ErrorAction SilentlyContinue | Where-Object { $_.Id -ne $ours })
+        if ($now) {
+            Write-Host "a SECOND vvvv started (pid $($now.Id -join ', ')) instead of a new tab - close it; forwarding did not work" -ForegroundColor Red
+            exit 1
+        }
+        Write-Host "READ IT AND CLOSE IT. Every open tab is running.`n" -ForegroundColor Yellow
+        exit 0
+    }
+    Write-Host "`na vvvv is running that this launcher did not start (pid $($running.Id -join ', '))." -ForegroundColor Red
+    Write-Host "It may belong to another session on this machine - not opening anything into it." -ForegroundColor Red
+    Write-Host "Close it (if it is yours) and try again.`n" -ForegroundColor Red
+    exit 1
+}
+
+Write-Host "`nopening $(Split-Path $target -Leaf)"
+$wanted | ForEach-Object { Write-Host "  repo  $($_.Path)" }
+Write-Host ""
+
+# -PassThru, and the PID written to a file, so that whatever closes vvvv afterwards closes THIS
+# one and not some other. On 2026-09-24 a `Stop-Process vvvv` here killed a sibling session's
+# vvvv that had been opened in the minute between this launch and its close - the two repositories
+# are worked on at the same time on one machine, and "the vvvv that is running" is not always ours.
+$proc = Start-Process -FilePath $Vvvv -ArgumentList @("`"$target`"", '--package-repositories', "`"$repositories`"") -PassThru
+Set-Content $pidFile $proc.Id
+Write-Host "vvvv pid $($proc.Id) (written to $pidFile - stop that pid, never every vvvv)" -ForegroundColor DarkGray
+
+Write-Host "READ IT AND CLOSE IT. Opening a document in vvvv is running it." -ForegroundColor Yellow
+Write-Host "  the overlay's first line goes red on a rebuild across two frames - close immediately if it does`n" -ForegroundColor Yellow

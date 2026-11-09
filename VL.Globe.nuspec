@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="utf-8"?>
+<package xmlns="http://schemas.microsoft.com/packaging/2013/05/nuspec.xsd">
+  <metadata>
+    <id>VL.Globe</id>
+    <!-- Never published. The working version; bump before any release. -->
+    <version>0.0.1-alpha</version>
+    <title>VL.Globe — map tiles on a globe for vvvv gamma</title>
+    <authors>VL.Globe Contributors</authors>
+    <owners>VL.Globe Contributors</owners>
+    <requireLicenseAcceptance>false</requireLicenseAcceptance>
+    <license type="expression">MIT</license>
+    <description>
+      EARLY - not ready for real work yet.
+
+      Web Mercator raster tiles drawn on a sphere in vvvv gamma's Stride, requesting only the tiles
+      the camera can see, and conversion between longitude/latitude and positions on that sphere.
+      Requires vvvv gamma 7.4 or newer (.NET 8).
+    </description>
+    <summary>Map tiles on a globe for vvvv gamma.</summary>
+    <copyright>Copyright 2026 VL.Globe Contributors</copyright>
+    <tags>VL vvvv gamma globe map gis openstreetmap tiles stride 3d</tags>
+    <!-- Must match the NugetDependency lines in VL.Globe.vl. VL.Core, VL.CoreLib and VL.Stride
+         ship inside vvvv and are deliberately absent. -->
+    <dependencies>
+      <group targetFramework="net8.0">
+        <dependency id="NetTopologySuite" version="2.6.0" />
+      </group>
+    </dependencies>
+  </metadata>
+  <files>
+    <file src="VL.Globe.vl" target="" />
+    <file src="src\VL.Globe\bin\Release\net8.0\VL.Globe.dll" target="lib\net8.0\" />
+    <file src="src\VL.Globe\bin\Release\net8.0\VL.Globe.xml" target="lib\net8.0\" />
+    <file src="help\VL.Globe\**\*.vl" target="help\" />
+    <file src="help\VL.Globe\Help.xml" target="help\" />
+    <file src="README.md" target="docs\" />
+  </files>
+</package>
