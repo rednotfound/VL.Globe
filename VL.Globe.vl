@@ -2,6 +2,8 @@
 <Document xmlns:p="property" xmlns:r="reflection" Id="THKAZLJmHIUD1EpHbp87A8" LanguageVersion="2025.7.4" Version="0.128">
   <NugetDependency Id="DxC3BJiKom28UCMFDod4Xw" Location="VL.CoreLib" Version="2025.7.4" />
   <NugetDependency Id="MRu9Pphll16YsBiIfPxquf" Location="NetTopologySuite" Version="2.6.0" />
+  <NugetDependency Id="JydokupPJJGE4xasmADD6t" Location="VL.Stride" Version="2025.7.4" />
+  <NugetDependency Id="SUAeOTPJlryUSKynrWmHb6" Location="BruTile" Version="5.0.6" />
   <Patch Id="SKTxI1h5DmCeNE0Z0nE6G4">
     <Canvas Id="Roygb3bQuVqK15xRv6xKxz" DefaultCategory="Globe" CanvasType="FullCategory" />
     <Node Name="Application" Bounds="100,100" Id="TYF4mT9SFTxCHUpQ9JPwSn">

@@ -1,4 +1,4 @@
-<#
+﻿<#
 .SYNOPSIS
     Opens a help patch in vvvv with every package repository it needs.
 
@@ -37,6 +37,9 @@
     .\tools\Open-HelpPatch.ps1 -List
 #>
 param(
+    # Also pass --log: vvvv writes Documentsvvv\gammavvv_<timestamp>.log - where the Globe node's
+    # Status lines land when no person is reading the patch.
+    [switch]$Log,
     [Parameter(Position = 0)]
     [string]$Patch,
 
@@ -148,7 +151,9 @@ Write-Host ""
 # one and not some other. On 2026-09-24 a `Stop-Process vvvv` here killed a sibling session's
 # vvvv that had been opened in the minute between this launch and its close - the two repositories
 # are worked on at the same time on one machine, and "the vvvv that is running" is not always ours.
-$proc = Start-Process -FilePath $Vvvv -ArgumentList @("`"$target`"", '--package-repositories', "`"$repositories`"") -PassThru
+$vvvvArgs = @("`"$target`"", '--package-repositories', "`"$repositories`"")
+if ($Log) { $vvvvArgs += '--log'; Write-Host "  logging to $env:USERPROFILE\Documentsvvv\gammavvv_<timestamp>.log" }
+$proc = Start-Process -FilePath $Vvvv -ArgumentList $vvvvArgs -PassThru
 Set-Content $pidFile $proc.Id
 Write-Host "vvvv pid $($proc.Id) (written to $pidFile - stop that pid, never every vvvv)" -ForegroundColor DarkGray
 

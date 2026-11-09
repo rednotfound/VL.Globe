@@ -15,8 +15,15 @@ namespace VL.Globe.Engine;
 // integers and lands on identical doubles - the seam is exact, not merely close.
 internal static class TileGeometry
 {
-    public const int Segments = 8;                 // 8 x 8 cells, 9 x 9 vertices per tile
-    public const int VertsPerSide = Segments + 1;
+    // Cells per tile side. Fine tiles get 8; coarse ones more, so every level has the same angular
+    // resolution (360/64 = 5.6 degrees) and a facet never sags more than 1 - cos(2.8 deg) = 0.0012 of
+    // the radius below the sphere. With 8 at every level, a zoom-1 tile's 22.5-degree facets sagged
+    // 0.019 and a background sphere at 0.995 showed through them as dark blotches (first far-view
+    // picture, 2026-11-09). Zooms 0..3 all land on one 64-cell global grid, so their shared edges
+    // stay bit-identical too.
+    public const int Segments = 8;
+    public static int SegmentsFor(int zoom) => Math.Max(Segments, 64 >> Math.Min(zoom, 6));
+    public const int VertsPerSide = Segments + 1;    // for zoom 3 and finer
     public const double MaxLatitude = 85.05112877980659;
 
     /// <summary>Latitude in degrees of a Mercator y in 0..1 (0 = north edge of the world).</summary>
@@ -44,35 +51,39 @@ internal static class TileGeometry
     /// <summary>Positions on the unit sphere and texture coordinates, row by row from the tile's north edge.</summary>
     public static (Vector3[] positions, Vector2[] uv) Vertices(TileKey tile)
     {
-        var positions = new Vector3[VertsPerSide * VertsPerSide];
+        int seg = SegmentsFor(tile.Zoom), side = seg + 1;
+        var positions = new Vector3[side * side];
         var uv = new Vector2[positions.Length];
-        double global = (double)tile.TilesPerSide * Segments;
-        for (int j = 0; j < VertsPerSide; j++)
+        double global = (double)tile.TilesPerSide * seg;
+        for (int j = 0; j < side; j++)
         {
-            var lat = LatitudeOf((tile.Y * Segments + j) / global);
-            for (int i = 0; i < VertsPerSide; i++)
+            var lat = LatitudeOf((tile.Y * seg + j) / global);
+            for (int i = 0; i < side; i++)
             {
-                var lon = LongitudeOf((tile.X * Segments + i) / global);
+                var lon = LongitudeOf((tile.X * seg + i) / global);
                 var (x, y, z) = OnSphere(lon, lat);
-                positions[j * VertsPerSide + i] = new Vector3((float)x, (float)y, (float)z);
-                uv[j * VertsPerSide + i] = new Vector2((float)i / Segments, (float)j / Segments);
+                positions[j * side + i] = new Vector3((float)x, (float)y, (float)z);
+                uv[j * side + i] = new Vector2((float)i / seg, (float)j / seg);
             }
         }
         return (positions, uv);
     }
 
-    /// <summary>Two triangles per cell, wound counter-clockwise seen from outside the sphere.</summary>
-    public static ushort[] Indices { get; } = BuildIndices();
+    static readonly System.Collections.Concurrent.ConcurrentDictionary<int, ushort[]> _indices = new();
 
-    static ushort[] BuildIndices()
+    /// <summary>Two triangles per cell for a tile at this zoom.</summary>
+    public static ushort[] IndicesFor(int zoom) => _indices.GetOrAdd(SegmentsFor(zoom), BuildIndices);
+
+    static ushort[] BuildIndices(int seg)
     {
-        var idx = new ushort[Segments * Segments * 6];
+        int side = seg + 1;
+        var idx = new ushort[seg * seg * 6];
         int k = 0;
-        for (int j = 0; j < Segments; j++)
-            for (int i = 0; i < Segments; i++)
+        for (int j = 0; j < seg; j++)
+            for (int i = 0; i < seg; i++)
             {
-                ushort a = (ushort)(j * VertsPerSide + i), b = (ushort)(a + 1);
-                ushort c = (ushort)(a + VertsPerSide), d = (ushort)(c + 1);
+                ushort a = (ushort)(j * side + i), b = (ushort)(a + 1);
+                ushort c = (ushort)(a + side), d = (ushort)(c + 1);
                 idx[k++] = a; idx[k++] = c; idx[k++] = b;
                 idx[k++] = b; idx[k++] = c; idx[k++] = d;
             }

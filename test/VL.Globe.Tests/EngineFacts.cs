@@ -20,13 +20,38 @@ public class TileGeometryFacts
         }
     }
 
+    [Theory]
+    [InlineData(0)] [InlineData(1)] [InlineData(2)] [InlineData(3)] [InlineData(9)]
+    public void NoFacetSagsDeeperThanTheBackgroundSphere(int zoom)
+    {
+        // The midpoint of a facet's diagonal lies inside the sphere by its sag; a background sphere at
+        // 0.995 showed through zoom-1 facets that sagged 0.019.
+        var t = new TileKey(zoom, (1 << zoom) / 2, (1 << zoom) / 2 - (zoom > 0 ? 1 : 0));
+        var (p, _) = TileGeometry.Vertices(t);
+        int side = TileGeometry.SegmentsFor(zoom) + 1;
+        for (int j = 0; j < side - 1; j++)
+            for (int i = 0; i < side - 1; i++)
+                Assert.True(((p[j * side + i] + p[(j + 1) * side + i + 1]) / 2).Length() > 0.997f, $"zoom {zoom} cell {i},{j}");   // a cell's diagonal sags 1 - cos(4 deg) = 0.0024
+    }
+
+    [Fact]
+    public void CoarseLevelsShareOneGrid()
+    {
+        // a zoom-2 tile's east edge and its zoom-3 neighbour's west edge, vertex for vertex
+        var (a, _) = TileGeometry.Vertices(new TileKey(2, 1, 1));
+        var (b, _) = TileGeometry.Vertices(new TileKey(3, 4, 2));
+        int sa = TileGeometry.SegmentsFor(2) + 1, sb = TileGeometry.SegmentsFor(3) + 1;
+        for (int k = 0; k < sb; k++) Assert.Equal(a[k * sa + sa - 1], b[k * sb]);
+    }
+
     [Fact]
     public void TheDateLineCloses()
     {
         var (east, _) = TileGeometry.Vertices(new TileKey(2, 3, 1));
         var (west, _) = TileGeometry.Vertices(new TileKey(2, 0, 1));
-        for (int k = 0; k < N; k++)
-            Assert.True(Vector3.Distance(east[k * N + N - 1], west[k * N]) < 1e-6f);
+        int s = TileGeometry.SegmentsFor(2) + 1;
+        for (int k = 0; k < s; k++)
+            Assert.True(Vector3.Distance(east[k * s + s - 1], west[k * s]) < 1e-6f);
     }
 
     [Fact]

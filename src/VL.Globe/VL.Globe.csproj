@@ -17,9 +17,14 @@
   <ItemGroup>
     <!-- Ship inside vvvv 7.4: compile against them, never copy them. -->
     <PackageReference Include="VL.Core" Version="2025.7.4" ExcludeAssets="runtime" />
+    <!-- VLGame (the graphics device) and, transitively, Stride 4.2.1.2487 - the version vvvv 7.4 ships. -->
+    <PackageReference Include="VL.Stride.Runtime" Version="2025.7.4" ExcludeAssets="runtime" />
   </ItemGroup>
   <ItemGroup>
     <!-- Same version as VL.NetTopologySuite and VL.Mapsui: one identity in one vvvv process. -->
     <PackageReference Include="NetTopologySuite" Version="2.6.0" />
+    <!-- VL.Mapsui's version, deliberately: both packages load into one vvvv process, and NuGet
+         unifies to one BruTile. Move them together or not at all. -->
+    <PackageReference Include="BruTile" Version="5.0.6" />
   </ItemGroup>
 </Project>

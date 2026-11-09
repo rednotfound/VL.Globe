@@ -11,8 +11,8 @@ patches (`lab\Experiment globe*.vl` there).
 | node | status |
 |---|---|
 | `ToGlobe [Globe]`, `ToGlobe (Coordinate) [Globe]`, `FromGlobe [Globe]` | built, tested |
-| `Globe [Globe]` — the tile engine | next |
-| `OpenStreetMap [Globe]`, `XyzTiles [Globe]` | next |
+| `Globe [Globe]` — the tile engine | built, seen in vvvv |
+| `OpenStreetMap [Globe]`, `XyzTiles [Globe]` | built |
 
 Requires vvvv gamma 7.4 (.NET 8, Stride 4.2). Depends on NetTopologySuite 2.6.0; VL.Stride ships
 with vvvv.

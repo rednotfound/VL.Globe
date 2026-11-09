@@ -14,6 +14,9 @@
     <PackageReference Include="xunit" Version="2.5.3" />
     <PackageReference Include="xunit.runner.visualstudio" Version="2.5.3" />
     <PackageReference Include="VL.Core" Version="2025.7.4" />
+    <!-- Stride's build step writes a module initializer into THIS assembly that loads Stride.Engine;
+         without the runtime assets every test dies in <Module>.cctor before its first line. -->
+    <PackageReference Include="VL.Stride.Runtime" Version="2025.7.4" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\..\src\VL.Globe\VL.Globe.csproj" />
