@@ -137,6 +137,9 @@ $OurNodes = @{
     'Globe'                = 'new\s+[\w\.]*GlobeNode\('
     'OpenStreetMap'        = 'new\s+[\w\.]*OpenStreetMapNode\('
     'XyzTiles'             = 'new\s+[\w\.]*XyzTilesNode\('
+    'GlobeCamera'          = 'new\s+[\w\.]*GlobeCameraNode\('
+    'Drag'                 = 'new\s+[\w\.]*GlobeDragNode\('
+    'ZoomByWheel'          = 'new\s+[\w\.]*GlobeZoomByWheelNode\('
 }
 
 # Process nodes must be constructed in __Create__ and only updated in Update. Built per frame, the

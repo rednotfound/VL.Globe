@@ -33,3 +33,23 @@ Read before composing; append when something dies. Newest last.
 
 Measured with the fix: close-up over Gabon (60 tiles, zoom 9..10) 0.27 cores, GPU 14 %, 747 MB;
 far view 0.28 cores, 684 MB.
+
+## 2026-11-09 — the geographic camera, and an untested gesture
+
+- **Driven input can land in someone else's window.** `drive-globe.ps1` (scratchpad) sends real
+  mouse events to screen coordinates; its "is the renderer on top at this point" check refused once a
+  full-screen game (not ours) covered the screen. That check is the only thing standing between a
+  test and the user's own applications - keep it in any input-driving tool, and do not drive input
+  while the user is using the machine.
+- **Unexplained: the first driven wheel (8 notches) and drag (25 % of the width) changed nothing**,
+  with the cover check passing. No logging existed then. Candidates, untested: vvvv's `Mouse
+  [Stride.Input]` reads only the *focused* window ("only Focused Window works" in its help) and the
+  injected focus may not have counted; its `Ray` may be zero for a camera whose projection Stride has
+  not computed yet; or the `Mouse Wheel Delta` unit. `Drag` and `ZoomByWheel` now log the press and
+  release edges with the ray and the hit, and every wheel event with its delta - the next run says
+  which.
+- Web-globe numbers used (research 2026-11-09, sources in vl-overworld's GLOBE-SCOPE-PROPOSAL §9
+  work): Cesium and MapLibre (v6) grab with axis p0 x p1, angle acos(p0.p1) - as here; MapLibre steps
+  0.151 zoom levels per wheel notch, Cesium ~6.5 % of the height plus inertia - hence `Levels Per
+  Notch` 0.5; both keep dragging when the cursor leaves the globe (Cesium: trackball above 7,500 km;
+  MapLibre: the ray bent past the horizon) - here the camera simply stays, a known gap.
