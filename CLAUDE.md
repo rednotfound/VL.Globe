@@ -36,6 +36,8 @@ window. The lab's `Experiment globe view.vl` in vl-overworld has not been rebuil
   nodes live in `namespace VL` in a class `[Name("Globe")]` → category `Globe`. A process node
   will name its category explicitly, as VL.Mapsui's do.
 - **Axes are Stride's Sphere's**: y north, lon 0 / lat 0 is +z, 90°E is +x. Four tests pin it.
+- **Never an input and an output of the same name** (family rule): Drag outputs `Result`,
+  ZoomByWheel `Output`, as VL.Mapsui's do. The harness fails a Globe-typed local that reads `default`.
 - **`Mouse [Stride.Input]` must be in the scene**: wire its `Output` into `RootScene`, or Ray,
   buttons and wheel never change (vvvv's own input help does this; ours did not - NOTES.md).
 - **OrbitCamera's pose is in its CameraComponent's custom view matrix, not its transform**, which

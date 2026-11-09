@@ -92,7 +92,10 @@ public sealed class GlobeDragNode
     /// <param name="view">From GlobeCamera.</param>
     /// <param name="ray">The cursor's ray, from Mouse [Stride.Input].</param>
     /// <param name="dragging">True while the button is held.</param>
-    [return: Pin(Name = "View")]
+    // Not "View": an input and an output of one name made the patch generator wire GlobeCamera's View
+    // into Drag's OUTPUT, and Drag received null every frame (NOTES.md 2026-11-09). VL.Mapsui's Drag
+    // calls its output Result for the same reason.
+    [return: Pin(Name = "Result")]
     public GlobeView? Update(GlobeView? view, Ray ray = default, bool dragging = false)
     {
         if (view is null) return view;
@@ -132,7 +135,7 @@ public sealed class GlobeZoomByWheelNode
     /// <param name="wheelDelta">The wheel's change this frame.</param>
     /// <param name="notchSize">How much Wheel Delta one notch is.</param>
     /// <param name="levelsPerNotch">Zoom levels per notch: 1 halves the height, 0.5 divides it by 1.41.</param>
-    [return: Pin(Name = "View")]
+    [return: Pin(Name = "Output")]
     public GlobeView? Update(GlobeView? view, Ray ray = default, float wheelDelta = 0f, float notchSize = 1f, float levelsPerNotch = 0.5f)
     {
         if (view is null || wheelDelta == 0 || notchSize == 0) return view;

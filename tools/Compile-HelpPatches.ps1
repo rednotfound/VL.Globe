@@ -189,6 +189,17 @@ foreach ($p in $patches) {
     $patchXml = Get-Content $p.FullName -Raw
     $claimed  = @(Get-ClaimedNodes $patchXml)
 
+    # Rung 3, automated for this package's own types: a LOCAL of a VL.Globe type initialised to
+    # default(...) is a link the compiler dropped in silence. On 2026-11-09 Drag's View read
+    # `GlobeView View_62 = default(GlobeView)` - an input and an output both named View had sent the
+    # link to the output - and every rung but the user's hand was green. Fields set to default in
+    # Create/Dispose are `this.__p_...` and are not matched.
+    $dropped = [regex]::Matches($csharp, '(?m)^\s*n\d+\.(Globe\w*)\s+(\w+)\s*=\s*default\(n\d+\.Globe\w*\);')
+    foreach ($d in $dropped) {
+        $failures.Add("$($p.Name): $($d.Groups[2].Value) of type $($d.Groups[1].Value) reads default - a link to it was dropped")
+        Write-Host "  FAIL  $($d.Groups[2].Value) ($($d.Groups[1].Value)) reads default(...) - a dropped link" -ForegroundColor Red
+    }
+
     if ($claimed.Count -eq 0) {
         Write-Host "  ok    compiled (uses no VL.Globe node)" -ForegroundColor DarkGray
         continue

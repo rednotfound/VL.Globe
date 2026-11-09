@@ -63,3 +63,18 @@ wires `Mouse.Output` (and Keyboard's, Touch's) into `RootScene`. Ours used Ray, 
 Mouse Wheel Delta and left Output unwired, so every pin stayed at rest - no error, a working-looking
 patch. Found by tracing the shipped help's links, not by guessing at the library. **Any patch that
 uses Mouse [Stride.Input] must put its Output into the scene.**
+
+## 2026-11-09 — the real reason drag and wheel did nothing: a dropped link, and a rule we had
+
+The Mouse-in-scene fix was right but not enough. The user's run with `--log` (the GUI launcher now
+always passes it) showed Globe's status lines and **not one line from Drag** - not its first-ray
+line, not its 300-frame line - so Drag's Update returned before logging: its View was null. The
+generated C# said so plainly: `GlobeView View_62 = default(GlobeView); Drag.Update(view: View_62, ...)`.
+Cause: Drag and ZoomByWheel had an input AND an output named `View`; the patch generator keys pins
+by name, the output overwrote the input, and GlobeCamera's View was linked into Drag's OUTPUT.
+**This is a recorded family rule** (vl-overworld PATCH-GRAMMAR, Grow a town: never give an input and
+an output the same name) and VL.Mapsui's Drag/ZoomByWheel obey it with Result/Output. Fixed: Drag
+outputs Result, ZoomByWheel Output; the generator now refuses a name on both sides; and
+Compile-HelpPatches.ps1 fails any local of a Globe type that reads default(...) - proved against the
+broken output, where it finds both dropped links. Rung 3 had been run on this patch and the View
+argument was not read: the check is in the harness now so it cannot be skipped again.
