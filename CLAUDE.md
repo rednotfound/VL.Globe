@@ -22,7 +22,9 @@ They are not repeated here.
 | node | state |
 |---|---|
 | `ToGlobe [Globe]`, `ToGlobe (Coordinate) [Globe]`, `FromGlobe [Globe]` | built; 13 tests; `HowTo Place a point on the globe` passes all four rungs (`docs\rung4-toglobe-tokyo.png`: an orbit camera aimed by yaw −lon/360, pitch −lat/360 puts ToGlobe's Tokyo at the exact centre) |
-| `Globe [Globe]` — the tile engine | built; `HowTo Put OpenStreetMap on a globe` passes all four rungs (`docsung4-globe-gabon-close.png`: zoom 9–10 over Gabon, 60 tiles; `docsung4-globe-africa-far.png`: the whole face, clean). Frustum + sampled-horizon selection, screen-space error, nearest-arrived-ancestor stand-ins, coarse-first requests, LRU of 600 tiles, `Status` logged. Pure parts in `Engine\`, 37 tests |
+| `Globe [Globe]` — the tile engine | built; `HowTo Put OpenStreetMap on a globe` passes all four rungs (`docs
+ung4-globe-gabon-close.png`: zoom 9–10 over Gabon, 60 tiles; `docs
+ung4-globe-africa-far.png`: the whole face, clean). Frustum + sampled-horizon selection, screen-space error, nearest-arrived-ancestor stand-ins, coarse-first requests, LRU of 600 tiles, `Status` logged. Pure parts in `Engine\`, 37 tests |
 | `OpenStreetMap [Globe]`, `XyzTiles [Globe]` | built; disk cache shared with VL.Mapsui (same folder convention) |
 
 **Not yet:** `XyzTiles` has no help patch; no `Pick`; polar caps are open above 85°; the camera's
