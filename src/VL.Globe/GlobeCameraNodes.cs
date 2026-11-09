@@ -83,7 +83,8 @@ public sealed class GlobeCameraNode
 public sealed class GlobeDragNode
 {
     D3? _grabbed;
-    bool _was;
+    bool _was, _sawRay;
+    int _frames;
     readonly ILogger _logger;
 
     public GlobeDragNode(NodeContext nodeContext) => _logger = nodeContext.GetLogger();
@@ -95,6 +96,12 @@ public sealed class GlobeDragNode
     public GlobeView? Update(GlobeView? view, Ray ray = default, bool dragging = false)
     {
         if (view is null) return view;
+        // Proof of life: once, the first frame a ray arrives, and once after 300 frames whatever it is
+        // - so a log that shows neither says this node never ran, one that shows a zero ray says the
+        // Mouse never heard the window.
+        _frames++;
+        if (!_sawRay && ray.Direction != Vector3.Zero) { _sawRay = true; _logger.LogInformation("Globe Drag: first ray {Dir} at frame {F}", ray.Direction, _frames); }
+        if (_frames == 300) _logger.LogInformation("Globe Drag: alive, 300 frames, ray {Dir}, dragging {D}, height {H:F0} m", ray.Direction, dragging, view.Height);
         // Logged on the press and release edges only: the first rung 4 of this node showed a drag
         // doing nothing, and the log is where a patch nobody is watching can say why.
         if (dragging != _was)

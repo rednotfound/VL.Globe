@@ -1,4 +1,4 @@
-<#
+﻿<#
 .SYNOPSIS
     A double-clickable picker for the help patches - select one, vvvv opens it.
 
@@ -197,7 +197,9 @@ $openPatch = {
         Write-Log "`r`n'$($entry.Text)' is a topic heading, not a patch - pick one listed under it.`r`n"
         return
     }
-    Invoke-Tool $Launcher @('-Path', $entry.File.FullName) "opening $($entry.Text)"
+    # Always with --log: the Globe nodes write their Status and every Drag/Wheel event there, which is
+    # how a run nobody narrated can still be read afterwards (Documentsvvv\gammavvv_<time>.log).
+    Invoke-Tool $Launcher @('-Path', $entry.File.FullName, '-Log') "opening $($entry.Text)"
 }
 
 # Only the vvvv this launcher started. Another session on this machine may have its own vvvv open;
