@@ -78,3 +78,17 @@ outputs Result, ZoomByWheel Output; the generator now refuses a name on both sid
 Compile-HelpPatches.ps1 fails any local of a Globe type that reads default(...) - proved against the
 broken output, where it finds both dropped links. Rung 3 had been run on this patch and the View
 argument was not read: the check is in the harness now so it cannot be skipped again.
+
+## 2026-11-09 — vvvv closed itself on the first press: a record struct's ToString
+
+With the View link fixed, the user's run logged Drag's first ray and then vvvv vanished - no
+"Stopping" lines, the log cut mid-run. The user's "vvvv just exits" sent us to Windows' Application
+event log, which had it twice: **`System.StackOverflowException`** in vvvv.exe (WER CLR20r3, 21:51:49
+and 21:55:54). Cause: the press-edge log line formatted the grabbed point, a `D3` - a C# `record
+struct`, whose compiler-generated `ToString` prints every public property; `Normalized` is itself a
+`D3`, so printing it printed its `Normalized`, without end. The diagnostic logging added to find the
+drag bug was the crash. Reproduced first by a test that formats a D3 on a 256 KB thread - the old
+code takes the test host down with "Stack overflow" - then fixed with a hand-written ToString.
+**Never let a record type expose a property of its own type without overriding ToString** (TileKey
+has Parent and already did). And when vvvv "just exits", read the Application event log before
+anything else: a stack overflow cannot be caught, logged or flushed by the process itself.

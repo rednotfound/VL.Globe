@@ -111,3 +111,20 @@ public class GlobeViewFacts
         Assert.True(f1 > n1 * 10);
     }
 }
+
+public class D3Facts
+{
+    // A record struct prints every public property in ToString. D3's Normalized was a D3 property, so
+    // printing a D3 printed its Normalized, which printed its Normalized... - a StackOverflowException
+    // that killed vvvv the first time Drag logged a grabbed point (2026-11-09). A stack overflow cannot
+    // be caught, so this test runs the formatting on a thread with a small stack: the old D3 takes the
+    // whole test host down, the fixed one prints three numbers.
+    [Fact]
+    public void ToStringTerminates()
+    {
+        string? s = null;
+        var t = new System.Threading.Thread(() => s = new D3(1, 2, 3).ToString(), 256 * 1024);
+        t.Start(); t.Join();
+        Assert.Equal("(1, 2, 3)", s);
+    }
+}

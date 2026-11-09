@@ -188,4 +188,9 @@ internal readonly record struct D3(double X, double Y, double Z)
     public double Length => Math.Sqrt(Dot(this, this));
     public D3 Normalized => this * (1 / Length);
     public Vector3 ToVector3() => new((float)X, (float)Y, (float)Z);
+
+    // Written out by hand. The compiler's record ToString prints every public property, and
+    // Normalized is a D3: printing it printed its Normalized, and so on - a StackOverflowException,
+    // uncatchable, that closed vvvv the first time Drag logged a grabbed point (NOTES.md 2026-11-09).
+    public override string ToString() => FormattableString.Invariant($"({X}, {Y}, {Z})");
 }
