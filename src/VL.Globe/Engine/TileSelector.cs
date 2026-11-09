@@ -1,0 +1,88 @@
+using System;
+using System.Collections.Generic;
+using Stride.Core.Mathematics;
+
+namespace VL.Globe.Engine;
+
+// Which tiles the camera can see, at which zoom. Pure: a camera pose in, a tile list out, so the
+// whole policy is tested without a GPU or a network.
+//
+// A quadtree walk from zoom 0. A tile is dropped when it is outside the frustum or entirely behind
+// the horizon; it is refined while one of its texels would cover more than ScreenSpaceError pixels
+// on screen - Cesium's screen-space error, applied to imagery: the texel's size on the ground,
+// divided by its distance, scaled to pixels by the screen height and the field of view.
+internal sealed class TileSelector
+{
+    public const int TilePixels = 256;
+
+    public int MaxZoom { get; init; } = 18;
+    public double ScreenSpaceError { get; init; } = 2.0;
+    public int MaxTiles { get; init; } = 400;
+
+    /// <param name="camera">Camera position in scene units.</param>
+    /// <param name="frustum">The camera's view frustum, or null to skip frustum culling.</param>
+    /// <param name="fovY">Vertical field of view in radians.</param>
+    /// <param name="screenHeight">Viewport height in pixels.</param>
+    /// <param name="radius">The globe's radius in scene units.</param>
+    public List<TileKey> Select(Vector3 camera, BoundingFrustum? frustum, double fovY, double screenHeight, float radius)
+    {
+        var result = new List<TileKey>();
+        if (radius <= 0) return result;
+        var cn = camera / radius;                      // camera in globe radii
+        var camDist = cn.Length();
+        if (camDist <= 1.0f) return result;             // inside the globe: nothing is honest
+        var pxPerRadian = screenHeight / (2 * Math.Tan(fovY / 2));
+        var stack = new Stack<TileKey>();
+        stack.Push(new TileKey(0, 0, 0));
+        while (stack.Count > 0)
+        {
+            var t = stack.Pop();
+            var (centre, r) = TileGeometry.Bounds(t);
+
+            // horizon: a point p on the unit sphere is in view when dot(p, C) > 1. The tile's bounding
+            // sphere was too generous (a zoom-2 tile wholly behind the limb passed and was fetched),
+            // so sample the tile itself on a 5 x 5 grid, with a little slack for what lies between.
+            if (t.Zoom >= 2 && !AboveHorizon(t, cn)) continue;
+            if (frustum is { } f)
+            {
+                // Stride 4.2's frustum tests boxes only: the box around the tile's bounding sphere.
+                var c = centre * radius; var e = new Vector3(r * radius);
+                var box = new BoundingBoxExt(c - e, c + e);
+                if (!f.Contains(ref box)) continue;
+            }
+
+            if (t.Zoom < MaxZoom && result.Count + stack.Count < MaxTiles)
+            {
+                var d = Math.Max(Vector3.Distance(cn, centre) - r, 1e-6);
+                var lat = TileGeometry.LatitudeOf((t.Y + 0.5) / t.TilesPerSide) * Math.PI / 180;
+                var texel = 2 * Math.PI * Math.Cos(lat) / t.TilesPerSide / TilePixels;   // radians of globe per texel
+                var pixels = texel / d * pxPerRadian;
+                if (pixels > ScreenSpaceError)
+                {
+                    for (int i = 3; i >= 0; i--) stack.Push(t.Child(i));
+                    continue;
+                }
+            }
+            result.Add(t);
+        }
+        return result;
+    }
+
+    static bool AboveHorizon(TileKey t, Vector3 cn)
+    {
+        double n = t.TilesPerSide;
+        const int k = 4;
+        // spacing between samples, in radians of arc, bounds how far an unsampled point can rise
+        var slack = 1.0 - Math.Cos(Math.PI / n / k * 1.5);
+        for (int j = 0; j <= k; j++)
+        {
+            var lat = TileGeometry.LatitudeOf((t.Y + (double)j / k) / n);
+            for (int i = 0; i <= k; i++)
+            {
+                var (x, y, z) = TileGeometry.OnSphere(TileGeometry.LongitudeOf((t.X + (double)i / k) / n), lat);
+                if (x * cn.X + y * cn.Y + z * cn.Z > 1.0 - slack * cn.Length()) return true;
+            }
+        }
+        return false;
+    }
+}
