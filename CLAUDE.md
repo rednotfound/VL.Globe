@@ -2,66 +2,84 @@
 
 Guidance for Claude Code working in this repository.
 
+## Start here — the next session begins with ROADMAP item 1
+
+1. Read **[docs/ROADMAP.md](docs/ROADMAP.md)** — what to do next, in order. **Item 1, camera-relative
+   rendering, was decided by the user on 2026-11-09 and is the next work**; its design and its
+   verification are written there.
+2. Read **[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)** — what exists and why.
+3. Read **[NOTES.md](NOTES.md)** — every failure so far, before touching the same code.
+4. The family's rules are the siblings': `D:\2026_Projects\vl-mapsui\docs\RULES.md` and that repo's
+   CLAUDE.md (the dev loop, the four verification rungs, never leave vvvv running, close only your
+   own pid, `Enabled` off by default on anything that fetches, edit a .vl in place, NOTES.md is the
+   failure log). They are not repeated here.
+
+The shared memory (`~\.claude\projects\D--2026-Projects-vl-globe\memory`) is a junction onto the
+family's one store, as for the other four repositories — what was learned anywhere is loaded here.
+
 ## What this is
 
-**VL.Globe** — Web Mercator raster tiles on a sphere in vvvv gamma's Stride, requesting only the
-tiles the camera can see, plus longitude/latitude ↔ globe-position conversion. The fifth member of
-the VL.NetTopologySuite family (siblings: `D:\2026_Projects\vl-nettopologysuite`, `vl-mapsui`,
-`vl-geojson`, `vl-overworld`). Its scope was decided by the user on 2026-11-09 from
-`vl-overworld\docs\GLOBE-SCOPE-PROPOSAL.md`; **that document's §3–§5 and §8 are the spec** —
-read it before adding a node. The three lab patches that proved the idea are
-`vl-overworld\lab\Experiment globe*.vl` (ACT-IV-LAB experiments 5–7).
+**VL.Globe** — Web Mercator raster tiles on a sphere in vvvv gamma's Stride, fetching only the tiles
+the camera can see, a camera that moves like a map, and longitude/latitude ↔ globe-position
+conversion. The fifth member of the VL.NetTopologySuite family (siblings: `vl-nettopologysuite`,
+`vl-mapsui`, `vl-geojson`, `vl-overworld`, all under `D:\2026_Projects`). **It does not depend on
+VL.Mapsui.** Scope: `vl-overworld\docs\GLOBE-SCOPE-PROPOSAL.md` (§3–§5, §9 the camera revision);
+how it came to exist: `vl-overworld\docs\GLOBE-RESEARCH.md` and ACT-IV-LAB experiments 5–7.
 
-The rules the family runs on are the siblings': `vl-mapsui\docs\RULES.md` and its CLAUDE.md
-(the dev loop, the four verification rungs, never leave vvvv running, close only your own pid,
-`Enabled` off by default on anything that fetches, edit .vl in place, NOTES.md is the failure log).
-They are not repeated here.
+The user's standard for this package (2026-11-09): **street level, not country level.** Errors hide
+at country scale; judge every change at the lowest height.
 
-## Where it stands — 2026-11-09
+## Where it stands — end of 2026-11-09
 
 | node | state |
 |---|---|
-| `ToGlobe [Globe]`, `ToGlobe (Coordinate) [Globe]`, `FromGlobe [Globe]` | built; 13 tests; `HowTo Place a point on the globe` passes all four rungs (`docs\rung4-toglobe-tokyo.png`: an orbit camera aimed by yaw −lon/360, pitch −lat/360 puts ToGlobe's Tokyo at the exact centre) |
-| `Globe [Globe]` — the tile engine | built; `HowTo Put OpenStreetMap on a globe` passes all four rungs (`docs/rung4-globe-gabon-close.png`: zoom 9–10 over Gabon, 60 tiles; `docs/rung4-globe-africa-far.png`: the whole face, clean). Frustum + sampled-horizon selection, screen-space error, nearest-arrived-ancestor stand-ins, coarse-first requests, LRU of 600 tiles, `Status` logged. Pure parts in `Engine\`, 37 tests |
-| `GlobeCamera`, `Drag`, `ZoomByWheel [Globe]` | built 2026-11-09 by proposal revision 9 (the user found OrbitCamera unusable for GIS); 13 invariant tests (grabbed point stays under the cursor, zoom keeps the cursor's point, height clamped, off-globe does not move, heading survives, clip planes follow height). In vvvv: the camera's opening view is right and clean - near/far planes following the height removed the depth fight, the placeholder sphere is back at 0.995. **Drag and wheel are NOT yet verified in vvvv**: one driven test showed no movement before logging existed; the retry was stopped because a full-screen game covered the screen and injected input would have gone into it. Both nodes now log their press/release and wheel events - read `Open-HelpPatch.ps1 -Log` output first next time |
-| `OpenStreetMap [Globe]`, `XyzTiles [Globe]` | built; disk cache shared with VL.Mapsui (same folder convention) |
+| `Globe [Globe]` — the tile engine | built, 4 rungs: zoom 9–10 OSM over Gabon and the whole face of Africa (`docs/rung4-globe-*.png`) |
+| `OpenStreetMap`, `XyzTiles [Globe]` | built; disk cache shared with VL.Mapsui by folder convention; `XyzTiles` has no help patch |
+| `GlobeCamera`, `Drag`, `ZoomByWheel [Globe]` | built; the user confirmed in vvvv that drag and wheel work and no longer jitter. Still to confirm: vertical drag direction and wheel units (ROADMAP item 2) |
+| `ToGlobe`, `ToGlobe (Coordinate)`, `FromGlobe [Globe]` | built, 4 rungs (`docs/rung4-toglobe-tokyo.png`) |
 
-**Not yet:** `XyzTiles` has no help patch; no `Pick`; polar caps are open above 85°; the camera's
-aspect ratio is assumed 16:9 unless the camera sets one; `Screen Height` is a pin, not read from the
-window. The lab's `Experiment globe view.vl` in vl-overworld has not been rebuilt on the node yet.
+53 tests green. Not published, not pushed. **The known limit**: positions are absolute floats, so
+below ~100 m the picture steps by ~0.4 m — ROADMAP item 1 removes it.
 
-## Facts this repo paid for
+## Facts this repo paid for (details in NOTES.md)
 
-- **Category = namespace + class.** `ImportAsIs(Namespace = "VL")` strips `VL`, so the static
-  nodes live in `namespace VL` in a class `[Name("Globe")]` → category `Globe`. A process node
-  will name its category explicitly, as VL.Mapsui's do.
-- **Axes are Stride's Sphere's**: y north, lon 0 / lat 0 is +z, 90°E is +x. Four tests pin it.
-- **A record type with a property of its own type needs a hand-written ToString** - D3's
-  generated one recursed through `Normalized` and a StackOverflowException closed vvvv. When vvvv
-  just exits, read Windows' Application event log first (NOTES.md 2026-11-09).
+- **Category = namespace + class.** `ImportAsIs(Namespace = "VL")` strips `VL`: static nodes live in
+  `namespace VL`, class `[Name("Globe")]` → category `Globe`. Process nodes name their category.
+- **Axes are Stride's Sphere's**: y north, lon 0 / lat 0 is +z, 90°E is +x.
 - **Never an input and an output of the same name** (family rule): Drag outputs `Result`,
-  ZoomByWheel `Output`, as VL.Mapsui's do. The harness fails a Globe-typed local that reads `default`.
-- **`Mouse [Stride.Input]` must be in the scene**: wire its `Output` into `RootScene`, or Ray,
-  buttons and wheel never change (vvvv's own input help does this; ours did not - NOTES.md).
-- **OrbitCamera's pose is in its CameraComponent's custom view matrix, not its transform**, which
-  is identity. Read the eye from `Invert(ViewMatrix)` (NOTES.md, 2026-11-09).
-- **Coarse tiles need more segments** (`SegmentsFor`), and **a tiny near plane costs depth
-  precision**: anything drawn within ~0.005 radii of the tiles z-fights at globe distance. NOTES.md.
-- **The test project must reference VL.Stride.Runtime without `ExcludeAssets`**, or Stride's module
+  ZoomByWheel `Output`, as VL.Mapsui's do. Breaking it sent GlobeCamera's View into Drag's output and
+  Drag ran on null. `Compile-HelpPatches.ps1` now fails any Globe-typed local that reads `default`.
+- **`Mouse [Stride.Input]` must be in the scene**: wire its `Output` into `RootScene`, or none of its
+  pins ever change.
+- **Use the Mouse's `Position in Projection`, never its world `Ray`** for picking near the ground:
+  the Ray is unprojected in float and jittered by metres at 100 m.
+- **A record type with a property of its own type needs a hand-written ToString**: D3's generated one
+  recursed through `Normalized` and a StackOverflowException closed vvvv. **When vvvv just exits,
+  read Windows' Application event log first** (`Get-WinEvent`, provider "Application Error" / WER):
+  a stack overflow cannot be logged by the process itself.
+- **OrbitCamera's pose is in its CameraComponent's custom view matrix**; its transform is identity.
+- **Coarse tiles need more segments** (`SegmentsFor`); **clip planes must follow the height** or
+  anything near the tiles z-fights.
+- **The test project references VL.Stride.Runtime without `ExcludeAssets`**, or Stride's module
   initializer kills every test before it starts.
-- **A C# optional parameter cannot precede an `out` one**, so `FromGlobe`'s `Radius` pin is
-  declared last; without a default it would arrive as 0 from an unconnected pin.
+- **A C# optional parameter cannot precede an `out` one**: `FromGlobe`'s `Radius` is declared last.
+- **Drive input only when the user is not at the machine** (`tools\Drive-Renderer.ps1`).
 
 ## Commands
 
 ```powershell
 dotnet test test\VL.Globe.Tests\VL.Globe.Tests.csproj     # close vvvv first
 .\build.ps1 ; .\pack.ps1                                     # pack.ps1 is not optional: same-version cache
-.\tools\Compile-HelpPatches.ps1 -OutputDirectory <abs>       # rung 2 + the node table's rung 3
-.\tools\Open-HelpPatch.ps1 -Path <help .vl>                  # rung 4; then close YOUR pid
+.\tools\Compile-HelpPatches.ps1 -OutputDirectory <abs>       # rung 2, plus the node table and dropped-link checks of rung 3
+.\tools\Open-HelpPatch.ps1 -Path <help .vl> -Log             # rung 4; then close YOUR pid with WM_CLOSE
+Open-HelpPatch.cmd                                           # the user's GUI launcher; always passes -Log
+.\tools\Drive-Renderer.ps1 -Title <window> -Action wheel|drag ...   # real mouse input; user away only
+D:\2026_Projects\vl-overworld\tools\Capture-Renderer.ps1 -Title <window> -Out x.png
 ```
 
+vvvv's log: `%USERPROFILE%\Documents\vvvv\gamma\vvvv_<time>.log`. The Globe node writes its Status
+there; Drag and ZoomByWheel write every press, release and wheel event.
+
 `tools\` was copied from vl-mapsui on 2026-11-09 with the package name replaced; the node table in
-`Compile-HelpPatches.ps1` is VL.Globe's own. Test-VLPatch.ps1 and HelpPatchGen.ps1 still carry
-Mapsui's node lists and are not used yet. `Open-HelpPatch.ps1 -Log` passes vvvv's `--log`; the Globe
-node's Status lines land there — read them when no person is at the patch.
+`Compile-HelpPatches.ps1` is VL.Globe's own. `Test-VLPatch.ps1` and `HelpPatchGen.ps1` still carry
+VL.Mapsui's node lists (ROADMAP item 6).
