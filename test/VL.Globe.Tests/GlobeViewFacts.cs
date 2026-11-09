@@ -128,3 +128,36 @@ public class D3Facts
         Assert.Equal("(1, 2, 3)", s);
     }
 }
+
+public class ProjectionInputFacts
+{
+    [Fact]
+    public void ProjectionSpaceAgreesWithPixels()
+    {
+        // 800 x 600, 45 degrees: M22 = 1 / tan(22.5), M11 = M22 / aspect - what Stride's projection holds
+        var v = new GlobeView { Width = 800, Height_px = 600 };
+        v.ProjY = 1 / System.Math.Tan(System.Math.PI / 8); v.ProjX = v.ProjY / (800.0 / 600);
+        v.SetHeight(1e5);
+        foreach (var (x, y) in new[] { (400.0, 300.0), (100.0, 50.0), (700.0, 550.0) })
+        {
+            var a = v.CameraDirection(x, y);
+            var b = v.CameraDirectionFromProjection(2 * x / 800 - 1, 1 - 2 * y / 600);
+            Assert.True((a - b).Length < 1e-12, $"{x},{y}: {(a - b).Length}");
+        }
+    }
+
+    [Fact]
+    public void LowDragIsSteadyToACentimetre()
+    {
+        // 100 m up, a drag of 0.2 in projection space: the grabbed point stays put to 1 cm, frame after frame
+        var v = new GlobeView { Width = 800, Height_px = 600 };
+        v.SetHeight(100);
+        var grabbed = v.PickDir(v.CameraDirectionFromProjection(0, 0))!.Value;
+        for (int i = 1; i <= 20; i++)
+        {
+            var d = v.CameraDirectionFromProjection(0.01 * i, 0.005 * i);
+            v.DragTo(grabbed, d);
+            Assert.True((v.PickDir(d)!.Value - grabbed).Length * GlobeCoordinates.EarthRadius < 0.01);
+        }
+    }
+}

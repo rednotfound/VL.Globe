@@ -92,3 +92,22 @@ code takes the test host down with "Stack overflow" - then fixed with a hand-wri
 **Never let a record type expose a property of its own type without overriding ToString** (TileKey
 has Parent and already did). And when vvvv "just exits", read the Application event log before
 anything else: a stack overflow cannot be caught, logged or flushed by the process itself.
+
+## 2026-11-09 — dragging close to the ground jittered: two float limits, one fixed
+
+The user: at the lowest height a drag shook violently; a little higher it calmed; at country scale it
+looked fine - "which makes one think it works". Two causes, estimated at 100 m height on a unit globe
+(float spacing near 1.0 is 6e-8 radii = 0.38 m):
+1. **The cursor ray (dominant, fixed).** Mouse [Stride.Input]'s world Ray is unprojected in float
+   from near/far points next to an eye of magnitude ~1; the near plane 10 m away (0.1 x height) means
+   the direction carries ~4 % noise - metres on the ground, tens of pixels, different every frame. Drag
+   and ZoomByWheel now take Mouse's **Position in Projection** and build the camera-space direction in
+   doubles from the projection scale (M11, M22) GlobeCamera reads from its own CameraComponent. A test
+   holds the grabbed point to 1 cm through a 20-frame drag at 100 m. Assumed: projection-space y is up
+   (Stride's convention; vvvv's definition could not be traced) - the first-cursor log line will show it.
+2. **Rendering precision (residual, open).** The eye and the tile vertices are float positions near
+   radius 1, so the whole picture moves in ~0.4 m steps relative to the camera: ~4 px across an 800 px
+   view at 100 m, under half a pixel at 1 km. The cure is the standard one - render relative to the
+   camera (tile vertices stored relative to their tile centre, tile and camera transforms computed in
+   doubles), which also changes how anything else in the scene is placed. A design decision, not a
+   patch: until then, Min Height 100 m is where the residual shows.

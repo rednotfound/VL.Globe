@@ -64,6 +64,10 @@ public sealed class GlobeCameraNode
         else _view.SetHeight(_view.Height);   // a changed Min/Max applies at once
 
         _camera.ViewMatrix = _view.ViewMatrix();
+        // Stride computes the projection for the window's aspect each frame; keep its scale for the
+        // gestures (one frame old, which is the frame the cursor was seen in).
+        var proj = _camera.ProjectionMatrix;
+        if (proj.M11 > 0 && proj.M22 > 0) { _view.ProjX = proj.M11; _view.ProjY = proj.M22; }
         var (near, far) = _view.ClipPlanes();
         _camera.NearClipPlane = near;
         _camera.FarClipPlane = far;
@@ -78,7 +82,7 @@ public sealed class GlobeCameraNode
 }
 
 /// <summary>Grab the globe: the point under the cursor when the drag starts stays under the cursor.</summary>
-/// <remarks>Ray and Dragging come from a Mouse [Stride.Input] node wired to the GlobeCamera's Camera.</remarks>
+/// <remarks>Position and Dragging come from a Mouse [Stride.Input] node: its Position in Projection and Left Pressed.</remarks>
 [ProcessNode(Name = "Drag", Category = "Globe")]
 public sealed class GlobeDragNode
 {
@@ -90,31 +94,31 @@ public sealed class GlobeDragNode
     public GlobeDragNode(NodeContext nodeContext) => _logger = nodeContext.GetLogger();
 
     /// <param name="view">From GlobeCamera.</param>
-    /// <param name="ray">The cursor's ray, from Mouse [Stride.Input].</param>
+    /// <param name="position">The cursor in projection space, -1..1 - Mouse's Position in Projection.</param>
     /// <param name="dragging">True while the button is held.</param>
     // Not "View": an input and an output of one name made the patch generator wire GlobeCamera's View
     // into Drag's OUTPUT, and Drag received null every frame (NOTES.md 2026-11-09). VL.Mapsui's Drag
     // calls its output Result for the same reason.
     [return: Pin(Name = "Result")]
-    public GlobeView? Update(GlobeView? view, Ray ray = default, bool dragging = false)
+    public GlobeView? Update(GlobeView? view, Vector2 position = default, bool dragging = false)
     {
         if (view is null) return view;
         // Proof of life: once, the first frame a ray arrives, and once after 300 frames whatever it is
         // - so a log that shows neither says this node never ran, one that shows a zero ray says the
         // Mouse never heard the window.
         _frames++;
-        if (!_sawRay && ray.Direction != Vector3.Zero) { _sawRay = true; _logger.LogInformation("Globe Drag: first ray {Dir} at frame {F}", ray.Direction, _frames); }
-        if (_frames == 300) _logger.LogInformation("Globe Drag: alive, 300 frames, ray {Dir}, dragging {D}, height {H:F0} m", ray.Direction, dragging, view.Height);
+        if (!_sawRay && position != Vector2.Zero) { _sawRay = true; _logger.LogInformation("Globe Drag: first cursor {P} at frame {F}", position, _frames); }
+        if (_frames == 300) _logger.LogInformation("Globe Drag: alive, 300 frames, cursor {P}, dragging {D}, height {H:F0} m", position, dragging, view.Height);
+        var camDir = view.CameraDirectionFromProjection(position.X, position.Y);
         // Logged on the press and release edges only: the first rung 4 of this node showed a drag
         // doing nothing, and the log is where a patch nobody is watching can say why.
         if (dragging != _was)
         {
             _was = dragging;
-            _logger.LogInformation("Globe Drag: {State}, ray {Dir}, grabbed {Hit}", dragging ? "press" : "release", ray.Direction,
-                dragging && ray.Direction != Vector3.Zero ? view.PickDir(view.CameraDirection(new D3(ray.Direction.X, ray.Direction.Y, ray.Direction.Z)))?.ToString() ?? "space" : "-");
+            _logger.LogInformation("Globe Drag: {State}, cursor {P}, grabbed {Hit}", dragging ? "press" : "release", position,
+                dragging ? view.PickDir(camDir)?.ToString() ?? "space" : "-");
         }
-        if (!dragging || ray.Direction == Vector3.Zero) { _grabbed = null; return view; }
-        var camDir = view.CameraDirection(new D3(ray.Direction.X, ray.Direction.Y, ray.Direction.Z));
+        if (!dragging) { _grabbed = null; return view; }
         if (_grabbed is null) { _grabbed = view.PickDir(camDir); return view; }   // grabbed space: nothing to hold
         view.DragTo(_grabbed.Value, camDir);
         return view;
@@ -122,7 +126,7 @@ public sealed class GlobeDragNode
 }
 
 /// <summary>Zoom toward the cursor by a fixed fraction of a zoom level per wheel notch, never below Min Height.</summary>
-/// <remarks>Ray and Wheel Delta come from a Mouse [Stride.Input] node wired to the GlobeCamera's Camera.</remarks>
+/// <remarks>Position and Wheel Delta come from a Mouse [Stride.Input] node: its Position in Projection and Mouse Wheel Delta.</remarks>
 [ProcessNode(Name = "ZoomByWheel", Category = "Globe")]
 public sealed class GlobeZoomByWheelNode
 {
@@ -131,12 +135,12 @@ public sealed class GlobeZoomByWheelNode
     public GlobeZoomByWheelNode(NodeContext nodeContext) => _logger = nodeContext.GetLogger();
 
     /// <param name="view">From GlobeCamera.</param>
-    /// <param name="ray">The cursor's ray, from Mouse [Stride.Input].</param>
+    /// <param name="position">The cursor in projection space, -1..1 - Mouse's Position in Projection.</param>
     /// <param name="wheelDelta">The wheel's change this frame.</param>
     /// <param name="notchSize">How much Wheel Delta one notch is.</param>
     /// <param name="levelsPerNotch">Zoom levels per notch: 1 halves the height, 0.5 divides it by 1.41.</param>
     [return: Pin(Name = "Output")]
-    public GlobeView? Update(GlobeView? view, Ray ray = default, float wheelDelta = 0f, float notchSize = 1f, float levelsPerNotch = 0.5f)
+    public GlobeView? Update(GlobeView? view, Vector2 position = default, float wheelDelta = 0f, float notchSize = 1f, float levelsPerNotch = 0.5f)
     {
         if (view is null || wheelDelta == 0 || notchSize == 0) return view;
         // Measured in the web globes' source, 2026-11-09: MapLibre steps 0.151 zoom levels per wheel
@@ -144,10 +148,8 @@ public sealed class GlobeZoomByWheelNode
         // level per notch - VL.Mapsui's 2D default - felt like jumps on a globe. 0.5 sits between,
         // without inertia, and is a pin because the right value is a matter of taste and device.
         var factor = Math.Pow(0.5, levelsPerNotch * wheelDelta / notchSize);
-        _logger.LogInformation("Globe ZoomByWheel: delta {Delta}, factor {Factor:F3}, ray {Dir}, height {H:F0} m", wheelDelta, factor, ray.Direction, view.Height);
-        var camDir = ray.Direction == Vector3.Zero
-            ? new D3(0, 0, 1)
-            : view.CameraDirection(new D3(ray.Direction.X, ray.Direction.Y, ray.Direction.Z));
+        _logger.LogInformation("Globe ZoomByWheel: delta {Delta}, factor {Factor:F3}, cursor {P}, height {H:F0} m", wheelDelta, factor, position, view.Height);
+        var camDir = view.CameraDirectionFromProjection(position.X, position.Y);
         view.ZoomAt(camDir, factor);
         return view;
     }

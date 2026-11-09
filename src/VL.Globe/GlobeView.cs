@@ -41,6 +41,9 @@ public sealed class GlobeView
     internal float Radius = 1f;
     internal double FovY = Math.PI / 4;
     internal double Width = 1280, Height_px = 720;
+    // The camera's projection scale (M11, M22): projection-space x / M11 is the camera-space slope.
+    // Set by GlobeCamera each frame from the projection Stride computed for the window.
+    internal double ProjX = 1 / Math.Tan(Math.PI / 8) / (16.0 / 9), ProjY = 1 / Math.Tan(Math.PI / 8);
 
     internal double HeightScene => Height / GlobeCoordinates.EarthRadius * Radius;
 
@@ -114,6 +117,15 @@ public sealed class GlobeView
     }
 
     internal D3 CameraDirection(double x, double y) => CameraDirection(Ray(x, y).dir);
+
+    // The cursor as vvvv's Mouse gives it in projection space (-1..1, y up), turned into a camera-space
+    // direction in doubles. The Mouse node's world Ray was unprojected in float from near/far points
+    // close to an eye of magnitude ~1: 100 m above the ground the near plane is 10 m away and float
+    // spacing at 1.0 is ~0.4 m, so the ray direction carried a few percent of noise - metres on the
+    // ground, tens of pixels, a violent jitter when dragging low (the user, 2026-11-09). Projection
+    // space has no such cancellation.
+    /// <summary>A camera-space direction from a projection-space cursor position.</summary>
+    internal D3 CameraDirectionFromProjection(double px, double py) => new D3(px / ProjX, py / ProjY, 1).Normalized;
 
     /// <summary>The unit surface point along a camera-space direction, or null when it misses the globe.</summary>
     internal D3? PickDir(D3 camDir)
