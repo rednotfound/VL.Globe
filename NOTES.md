@@ -53,3 +53,13 @@ far view 0.28 cores, 684 MB.
   0.151 zoom levels per wheel notch, Cesium ~6.5 % of the height plus inertia - hence `Levels Per
   Notch` 0.5; both keep dragging when the cursor leaves the globe (Cesium: trackball above 7,500 km;
   MapLibre: the ray bent past the horizon) - here the camera simply stays, a known gap.
+
+## 2026-11-09 — why drag and wheel did nothing: the Mouse was not in the scene
+
+The user opened the help patch and confirmed it: neither gesture worked. The cause was in the help
+patch, not the library. vvvv's `Mouse [Stride.Input]` is itself an entity, and it hears the window
+only while it is part of the scene graph: vvvv's own `HowTo Get Mouse Keyboard Touch of Window`
+wires `Mouse.Output` (and Keyboard's, Touch's) into `RootScene`. Ours used Ray, Left Pressed and
+Mouse Wheel Delta and left Output unwired, so every pin stayed at rest - no error, a working-looking
+patch. Found by tracing the shipped help's links, not by guessing at the library. **Any patch that
+uses Mouse [Stride.Input] must put its Output into the scene.**
