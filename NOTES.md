@@ -111,3 +111,21 @@ looked fine - "which makes one think it works". Two causes, estimated at 100 m h
    camera (tile vertices stored relative to their tile centre, tile and camera transforms computed in
    doubles), which also changes how anything else in the scene is placed. A design decision, not a
    patch: until then, Min Height 100 m is where the residual shows.
+
+## 2026-11-20 — camera-relative rendering, and a drag that turned the map
+
+- **A Sphere placed by the patch sat on the camera.** Once GlobeCamera's view became rotation only
+  (the eye at the origin), anything positioned in absolute coordinates moved to the camera — the
+  help patch's 0.995 background sphere first of all. Globe now draws the background itself
+  (`Background` pin), placed at (0 − eye) like its tiles. Everything else a patch puts on the globe
+  needs the same treatment: ROADMAP item 1 step 5, `PlaceOnGlobe`.
+- **"拖动一下就是会拖歪掉，歪了也很难摆正" — found by the user's hand, not by a test.** BringUnderCursor
+  rotated the whole rig about grabbed × cursor; each frame exact, but along a curved path those
+  rotations compose into a turn of the heading (a sphere's holonomy): 31° for one circle dragged at
+  globe scale, 50° for ten wheel notches toward a corner. The existing `HeadingSurvivesADrag` tested
+  one short straight step with 0.1° tolerance and could not see it. Now Heading is held and
+  longitude/latitude solved by Gauss-Newton (Cesium constrains to the polar axis, MapLibre's globe
+  pan never touches the bearing). Test a gesture along a *path*, not a step.
+- **Git Bash `sed -i` rewrote a CRLF file as LF**, and Python's text-mode write on Windows turned an
+  LF file into CRLF — both showed as "whole file changed". Edit scripts read and write with
+  `newline=''`; check `git ls-files --eol` before committing.
