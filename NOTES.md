@@ -180,3 +180,11 @@ looked fine - "which makes one think it works". Two causes, estimated at 100 m h
   one-level seam; MapLibre crossfades parent↔child over 300 ms while zooming. Now: Screen Space Error
   1.41, CPU mip chain averaged in linear light (`MipChain`), trilinear + clamp. Same view after: zoom
   4 only at the edge, ≤ 1.44.
+- **Stripes on a fast drag, "like a frame out of sync" (the user) — tearing.** SceneWindow's
+  `Present Interval` is its own operation (`SetPresentInterval`) with no default, so an unwired pin
+  ran `Immediate`: no VSync. GlobeWindow and the help patch set `One`; read back from the generated
+  and decompiled code (`SetPresentInterval(... "One")`), not yet confirmed on screen.
+- Fades both ways (MapLibre's raster fade): in, a finer tile mixes from its ancestor's part; out,
+  the drawn descendants mix to the parent's parts before the parent replaces them. Fade weights are
+  keyed `ComputeFloat4`s set per frame — the same family of node as the `ComputeColor` that once drew
+  black; watch for black flashes until the user has seen it.
