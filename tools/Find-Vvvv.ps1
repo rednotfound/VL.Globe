@@ -40,6 +40,11 @@ param(
     # between the two builds but produces wrong node categories.
     [version]$MinimumVersion = '7.2',
 
+    # Highest acceptable gamma version, exclusive. 7.x is the long-term-support line and every
+    # rung so far was verified on 7.4 (user, 2026-11-20); an 8.0 preview installed beside it
+    # was being picked as "newest". Raise this on purpose, not by installing something.
+    [version]$BelowVersion = '8.0',
+
     [string]$SearchRoot = 'C:\Program Files\vvvv'
 )
 
@@ -69,11 +74,11 @@ $candidates = Get-ChildItem $SearchRoot -Directory -ErrorAction SilentlyContinue
             }
         }
     } |
-    Where-Object { $_.Version -ge $MinimumVersion } |
+    Where-Object { $_.Version -ge $MinimumVersion -and $_.Version -lt $BelowVersion } |
     Sort-Object Version -Descending
 
 if (-not $candidates) {
-    throw "No vvvv gamma >= $MinimumVersion with $relativeExe found under $SearchRoot"
+    throw "No vvvv gamma >= $MinimumVersion and < $BelowVersion with $relativeExe found under $SearchRoot"
 }
 
 $candidates[0].Path
