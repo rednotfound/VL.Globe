@@ -19,6 +19,14 @@ internal static class Fade
         return (new Vector2((float)s), new Vector2((float)ox, (float)oy));
     }
 
+    /// <summary>True when the descendants of <paramref name="t"/> together cover all of it: each covers 4^-(levels below t). Distinct descendants never overlap (DrawSet draws none over its own ancestor).</summary>
+    public static bool Covers(TileKey t, System.Collections.Generic.IEnumerable<TileKey> descendants)
+    {
+        double sum = 0;
+        foreach (var d in descendants) if (t.IsAncestorOf(d)) sum += Math.Pow(0.25, d.Zoom - t.Zoom);
+        return sum >= 1 - 1e-9;
+    }
+
     /// <summary>How far a fade started at <paramref name="start"/> has come at <paramref name="now"/>, 0..1; 1 at once when <paramref name="duration"/> is 0.</summary>
     public static float Progress(double start, double now, double duration)
         => duration <= 0 ? 1f : (float)Math.Clamp((now - start) / duration, 0, 1);

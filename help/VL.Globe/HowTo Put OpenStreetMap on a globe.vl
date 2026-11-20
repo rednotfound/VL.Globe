@@ -233,6 +233,7 @@
               <Choice Kind="NodeFlag" Name="Node" Fixed="true" />
               <CategoryReference Kind="Category" Name="Stride" NeedsToBeDirectParent="true" />
               <Choice Kind="ProcessAppFlag" Name="SceneWindow" />
+              <PinReference Kind="InputPin" Name="Present Interval" />
             </p:NodeReference>
             <Pin Id="BwHSXDRsDwLfBNnVgMILI6" Name="Bounds" Kind="InputPin" DefaultValue="926, 114, 800, 800" />
             <Pin Id="EGOCnpEMNepuM1lzcx1fKm" Name="Bound to Document" Kind="InputPin" DefaultValue="True" />
@@ -240,6 +241,7 @@
             <Pin Id="BxEUhPrYQ4NIPRRFGWMHbv" Name="Camera" Kind="InputPin" />
             <Pin Id="BG3cCV3rIKs62vxfdIJHcF" Name="Enable Default Camera" Kind="InputPin" DefaultValue="False" />
             <Pin Id="Emo58Kq3uWNw9s4MOgx5D2" Name="Enable Default Post Effects" Kind="InputPin" DefaultValue="False" />
+            <Pin Id="VRzrgrkXsnH2fUqlwXPZDI" Name="Present Interval" Kind="InputPin" DefaultValue="One" />
             <Pin Id="S3vD7AuPJjIrTjqy671TMg" Name="Title" Kind="InputPin" DefaultValue="Put OpenStreetMap on a globe" />
             <Pin Id="KwwOuusdIoggJmomsZCFZC" Name="Output" Kind="OutputPin" />
             <Pin Id="LyG5wd83vK21WEUSvEAjr1" Name="Client Bounds" Kind="OutputPin" />

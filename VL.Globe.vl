@@ -93,6 +93,7 @@
                 <Choice Kind="NodeFlag" Name="Node" Fixed="true" />
                 <CategoryReference Kind="Category" Name="Stride" NeedsToBeDirectParent="true" />
                 <Choice Kind="ProcessAppFlag" Name="SceneWindow" />
+                <PinReference Kind="InputPin" Name="Present Interval" />
                 <PinReference Kind="InputPin" Name="Bound to Document" />
                 <PinReference Kind="InputPin" Name="Bounds" />
               </p:NodeReference>
@@ -102,6 +103,7 @@
               <Pin Id="UaKsZ2eQ4LBoplN46GNEOO" Name="Camera" Kind="InputPin" />
               <Pin Id="AawSuHa32AUarFOQ50JV1I" Name="Enable Default Camera" Kind="InputPin" DefaultValue="False" />
               <Pin Id="Hs3gpzHJ7rJxB8uy1qjudt" Name="Enable Default Post Effects" Kind="InputPin" DefaultValue="False" />
+              <Pin Id="SvRpVPzBEx8Y0tUt5x7QG3" Name="Present Interval" Kind="InputPin" DefaultValue="One" />
               <Pin Id="BonOIQd827Ozif5PxXbTgx" Name="Title" Kind="InputPin" />
               <Pin Id="GEBmAnuyZ92VGqJZMuFbMX" Name="Output" Kind="OutputPin" />
               <Pin Id="GXNmRpFV6EBAqoDghzdgqn" Name="Client Bounds" Kind="OutputPin" />

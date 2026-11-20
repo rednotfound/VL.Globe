@@ -53,7 +53,8 @@ public sealed class GlobeNode : IDisposable
         public required ModelComponent Model;
         public required Material Plain;  // its own image only; a fade swaps in another and back
         public Material? Fading;         // ancestor * (1 - f) + own * f, while the fade runs
-        public TileKey FadeFrom;
+        public TileKey FadeFrom;         // the ancestor mixed in
+        public bool FadeOut;             // false: own image fades IN over the ancestor; true: fades OUT to it
         public double FadeStart;
         public int LastUsed;
         public void Dispose() { Texture.Dispose(); Vertices.Dispose(); Indices.Dispose(); }
@@ -85,7 +86,14 @@ public sealed class GlobeNode : IDisposable
     static readonly ValueParameterKey<Vector4> FadeInKey = ParameterKeys.NewValue(Vector4.One, "Globe.FadeIn");
     static readonly ValueParameterKey<Vector4> FadeOutKey = ParameterKeys.NewValue(Vector4.Zero, "Globe.FadeOut");
     readonly System.Diagnostics.Stopwatch _clock = System.Diagnostics.Stopwatch.StartNew();
-    double _fadeDuration = 0.3;   // this frame's eye when the camera is camera-relative (GlobeCamera), else null
+    double _fadeDuration = 0.3;
+
+    // Zooming out: a parent about to replace descendants that are drawn. For one fade duration the
+    // descendants stay drawn instead, each fading to its part of the parent's image; then the parent.
+    // Never two layers on one spot, so nothing to sort and nothing to z-fight. (MapLibre fades
+    // many-to-one both ways; the user, 2026-11-20: "都加呗".)
+    sealed class OutFade { public required List<TileKey> From; public double Start; public bool Done; }
+    readonly Dictionary<TileKey, OutFade> _outFades = new();   // this frame's eye when the camera is camera-relative (GlobeCamera), else null
 
     // The globe before any tile: a sphere just below the tiles, drawn by this node because only it
     // knows the eye a camera-relative camera renders from - a Sphere placed by the patch sat at the
@@ -378,8 +386,37 @@ public sealed class GlobeNode : IDisposable
 
     void Show(List<TileKey> draw)
     {
-        var next = new HashSet<TileKey>(draw);
+        var now = _clock.Elapsed.TotalSeconds;
         var before = new HashSet<TileKey>(_shown);
+        var drawn = new HashSet<TileKey>(draw);
+        foreach (var k in _outFades.Keys.Where(k => !drawn.Contains(k)).ToList()) _outFades.Remove(k);
+        var display = new List<TileKey>();
+        foreach (var t in draw)
+        {
+            _outFades.TryGetValue(t, out var of);
+            if (of is null && _fadeDuration > 0 && !before.Contains(t))
+            {
+                var under = before.Where(t.IsAncestorOf).ToList();
+                if (under.Count > 0 && Fade.Covers(t, under) && under.All(_loaded.ContainsKey))
+                    _outFades[t] = of = new OutFade { From = under, Start = now };
+            }
+            if (of is { Done: false } && Fade.Progress(of.Start, now, _fadeDuration) < 1 && of.From.All(_loaded.ContainsKey))
+            {
+                display.AddRange(of.From);
+                foreach (var d in of.From)
+                {
+                    var ds = _loaded[d];
+                    if (ds.Fading is null || !ds.FadeOut || ds.FadeFrom != t) StartFade(ds, d, t, _loaded[t], outward: true, of.Start);
+                }
+            }
+            else
+            {
+                if (of is not null) of.Done = true;
+                display.Add(t);
+            }
+        }
+        draw = display;
+        var next = new HashSet<TileKey>(draw);
         foreach (var t in _shown.Where(t => !next.Contains(t)).ToList())
         {
             if (_loaded.TryGetValue(t, out var s)) { _root.Transform.Children.Remove(s.Entity.Transform); EndFade(s); }
@@ -396,7 +433,7 @@ public sealed class GlobeNode : IDisposable
             // way (a parent replacing its children) and not over nothing - the pop that shows is the
             // one on the way in.
             if (_fadeDuration > 0 && NearestAncestorIn(t, before) is { } a && _loaded.TryGetValue(a, out var from))
-                StartFade(s, t, a, from);
+                StartFade(s, t, a, from, outward: false, now);
         }
     }
 
@@ -406,7 +443,7 @@ public sealed class GlobeNode : IDisposable
         return null;
     }
 
-    void StartFade(Slot s, TileKey t, TileKey a, Slot from)
+    void StartFade(Slot s, TileKey t, TileKey a, Slot from, bool outward, double start)
     {
         var (scale, offset) = Fade.AncestorTransform(t, a);
         IComputeColor Sampled(Texture texture, Vector2 sc, Vector2 off) => new ComputeTextureColor(texture)
@@ -430,8 +467,9 @@ public sealed class GlobeNode : IDisposable
         }
         catch (Exception e) { _logger.LogWarning(e, "Globe: fade material for {Tile} failed; drawn without a fade", t); s.Fading = null; return; }
         s.FadeFrom = a;
-        s.FadeStart = _clock.Elapsed.TotalSeconds;
-        SetFade(s.Fading, 0);
+        s.FadeOut = outward;
+        s.FadeStart = start;
+        SetFade(s.Fading, OwnWeight(s, _clock.Elapsed.TotalSeconds));
         s.Model.Materials[0] = s.Fading;
     }
 
@@ -448,11 +486,19 @@ public sealed class GlobeNode : IDisposable
         foreach (var t in _shown)
         {
             if (!_loaded.TryGetValue(t, out var s) || s.Fading is null) continue;
-            var f = Fade.Progress(s.FadeStart, now, _fadeDuration);
             // the ancestor's image must outlive the fade; if it was evicted anyway, stop at once
-            if (f >= 1 || !_loaded.ContainsKey(s.FadeFrom)) EndFade(s);
-            else SetFade(s.Fading, f);
+            if (!_loaded.ContainsKey(s.FadeFrom)) { EndFade(s); continue; }
+            // A fade in ends on its own image; a fade out holds the ancestor's until Show swaps the
+            // ancestor itself in next frame - ending it here would flash the old image for a frame.
+            if (!s.FadeOut && Fade.Progress(s.FadeStart, now, _fadeDuration) >= 1) EndFade(s);
+            else SetFade(s.Fading, OwnWeight(s, now));
         }
+    }
+
+    float OwnWeight(Slot s, double now)
+    {
+        var p = Fade.Progress(s.FadeStart, now, _fadeDuration);
+        return s.FadeOut ? 1 - p : p;
     }
 
     static void EndFade(Slot s)
@@ -481,6 +527,7 @@ public sealed class GlobeNode : IDisposable
         _loaded.Clear();
         _pending.Clear();
         _failed.Clear();
+        _outFades.Clear();
         _requests = 0;
         _failedCount = 0;
         _lastError = "";

@@ -45,4 +45,28 @@ public class FadeFacts
     [Fact]
     public void NotAnAncestorIsRefused()
         => Assert.Throws<ArgumentException>(() => Fade.AncestorTransform(new TileKey(2, 1, 1), new TileKey(3, 2, 2)));
+
+    [Fact]
+    public void FourChildrenCoverTheirParent()
+    {
+        var p = new TileKey(3, 2, 5);
+        Assert.True(Fade.Covers(p, new[] { p.Child(0), p.Child(1), p.Child(2), p.Child(3) }));
+    }
+
+    [Fact]
+    public void ThreeChildrenAndFourGrandchildrenCoverIt()
+    {
+        var p = new TileKey(3, 2, 5);
+        var c3 = p.Child(3);
+        Assert.True(Fade.Covers(p, new[] { p.Child(0), p.Child(1), p.Child(2), c3.Child(0), c3.Child(1), c3.Child(2), c3.Child(3) }));
+    }
+
+    [Fact]
+    public void AGapIsNotCovered()
+    {
+        // zooming out reveals ground that was off screen: no descendant there, so no fade - a hole
+        // of background colour for 300 ms would be worse than the pop
+        var p = new TileKey(3, 2, 5);
+        Assert.False(Fade.Covers(p, new[] { p.Child(0), p.Child(1), p.Child(2) }));
+    }
 }
