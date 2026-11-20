@@ -50,6 +50,11 @@ public sealed class GlobeNode : IDisposable
         public required Buffer Vertices;
         public required Buffer Indices;
         public required D3 Centre;       // on the unit sphere, in double: the vertices are offsets from it
+        public required ModelComponent Model;
+        public required Material Plain;  // its own image only; a fade swaps in another and back
+        public Material? Fading;         // ancestor * (1 - f) + own * f, while the fade runs
+        public TileKey FadeFrom;
+        public double FadeStart;
         public int LastUsed;
         public void Dispose() { Texture.Dispose(); Vertices.Dispose(); Indices.Dispose(); }
     }
@@ -73,7 +78,14 @@ public sealed class GlobeNode : IDisposable
     long _bytes;
     float _radius = 1f;
     Vector3 _lastEye;
-    D3? _relativeEye;   // this frame's eye when the camera is camera-relative (GlobeCamera), else null
+    D3? _relativeEye;
+
+    // The fade's two weights, keyed so the material can be told them every frame without being
+    // rebuilt: own * In + ancestor * Out. A float4 per weight, multiplied into each image.
+    static readonly ValueParameterKey<Vector4> FadeInKey = ParameterKeys.NewValue(Vector4.One, "Globe.FadeIn");
+    static readonly ValueParameterKey<Vector4> FadeOutKey = ParameterKeys.NewValue(Vector4.Zero, "Globe.FadeOut");
+    readonly System.Diagnostics.Stopwatch _clock = System.Diagnostics.Stopwatch.StartNew();
+    double _fadeDuration = 0.3;   // this frame's eye when the camera is camera-relative (GlobeCamera), else null
 
     // The globe before any tile: a sphere just below the tiles, drawn by this node because only it
     // knows the eye a camera-relative camera renders from - a Sphere placed by the patch sat at the
@@ -100,6 +112,7 @@ public sealed class GlobeNode : IDisposable
     /// <param name="maxZoom">The finest zoom ever requested.</param>
     /// <param name="screenSpaceError">Refine while a tile pixel would cover more screen pixels than this. 1.41 shows tiles at 0.71-1.41x, as MapLibre and Cesium do.</param>
     /// <param name="maxRequestsInFlight">Requests running at once.</param>
+    /// <param name="fadeDuration">Seconds a finer tile takes to fade in over the one it replaces. 0: at once.</param>
     /// <param name="screenHeight">The height of the view in pixels: SceneWindow's Client Bounds. GlobeWindow wires it.</param>
     /// <param name="tilesVisible">Tiles drawn this frame.</param>
     /// <param name="tilesLoading">Requests not yet answered.</param>
@@ -111,9 +124,10 @@ public sealed class GlobeNode : IDisposable
     public Entity Update(
         out int tilesVisible, out int tilesLoading, out int requestsSent, out long bytesReceived, out string attribution, out string status,
         GlobeTileSource? tileSource = null, Entity? camera = null, bool enabled = false, float radius = 1f, Color4 background = default,
-        int maxZoom = 18, float screenSpaceError = 1.41f, int maxRequestsInFlight = 6, float screenHeight = 1080f)
+        int maxZoom = 18, float screenSpaceError = 1.41f, int maxRequestsInFlight = 6, float screenHeight = 1080f, float fadeDuration = 0.3f)
     {
         _frame++;
+        _fadeDuration = Math.Max(0, fadeDuration);
         if (!ReferenceEquals(tileSource, _source)) { Reset(); _source = tileSource; }
         attribution = _source?.Attribution ?? "";
         status = "";
@@ -163,6 +177,7 @@ public sealed class GlobeNode : IDisposable
         // and the eye moved. Subtracted in double, then cast - the whole point of item 1.
         foreach (var t in _shown) if (_loaded.TryGetValue(t, out var s)) s.Entity.Transform.Position = TileGeometry.Translation(s.Centre, _radius, _relativeEye);
         foreach (var w in wanted) if (_loaded.TryGetValue(w, out var s)) s.LastUsed = _frame;
+        AdvanceFades();
         Evict();
 
         tilesVisible = _shown.Count;
@@ -283,10 +298,11 @@ public sealed class GlobeNode : IDisposable
         model.BoundingBox = mesh.BoundingBox;
         model.BoundingSphere = mesh.BoundingSphere;
 
-        var entity = new Entity(key.ToString()) { new ModelComponent(model) };
+        var modelComponent = new ModelComponent(model);
+        var entity = new Entity(key.ToString()) { modelComponent };
         entity.Transform.Scale = new Vector3(_radius);
         entity.Transform.Position = TileGeometry.Translation(tileCentre, _radius, _relativeEye);
-        return new Slot { Entity = entity, Texture = texture, Vertices = vb, Indices = ib, Centre = tileCentre, LastUsed = _frame };
+        return new Slot { Entity = entity, Texture = texture, Vertices = vb, Indices = ib, Centre = tileCentre, Model = modelComponent, Plain = material, LastUsed = _frame };
     }
 
     void ShowBackground(GraphicsDevice? device, Color4 color)
@@ -363,9 +379,10 @@ public sealed class GlobeNode : IDisposable
     void Show(List<TileKey> draw)
     {
         var next = new HashSet<TileKey>(draw);
+        var before = new HashSet<TileKey>(_shown);
         foreach (var t in _shown.Where(t => !next.Contains(t)).ToList())
         {
-            if (_loaded.TryGetValue(t, out var s)) _root.Transform.Children.Remove(s.Entity.Transform);
+            if (_loaded.TryGetValue(t, out var s)) { _root.Transform.Children.Remove(s.Entity.Transform); EndFade(s); }
             _shown.Remove(t);
         }
         foreach (var t in draw)
@@ -375,13 +392,81 @@ public sealed class GlobeNode : IDisposable
             _root.Transform.Children.Add(s.Entity.Transform);
             _shown.Add(t);
             s.LastUsed = _frame;
+            // A finer tile replacing the ancestor drawn here last frame fades in over it. Not the other
+            // way (a parent replacing its children) and not over nothing - the pop that shows is the
+            // one on the way in.
+            if (_fadeDuration > 0 && NearestAncestorIn(t, before) is { } a && _loaded.TryGetValue(a, out var from))
+                StartFade(s, t, a, from);
         }
+    }
+
+    static TileKey? NearestAncestorIn(TileKey t, HashSet<TileKey> set)
+    {
+        for (var a = t; a.Zoom > 0;) { a = a.Parent; if (set.Contains(a)) return a; }
+        return null;
+    }
+
+    void StartFade(Slot s, TileKey t, TileKey a, Slot from)
+    {
+        var (scale, offset) = Fade.AncestorTransform(t, a);
+        IComputeColor Sampled(Texture texture, Vector2 sc, Vector2 off) => new ComputeTextureColor(texture)
+        {
+            Filtering = TextureFilter.Linear, AddressModeU = TextureAddressMode.Clamp, AddressModeV = TextureAddressMode.Clamp,
+            Scale = sc, Offset = off,
+        };
+        try
+        {
+            s.Fading = Material.New(_device!, new MaterialDescriptor
+            {
+                Attributes =
+                {
+                    Emissive = new MaterialEmissiveMapFeature(new ComputeBinaryColor(
+                        new ComputeBinaryColor(Sampled(from.Texture, scale, offset), new ComputeFloat4(Vector4.One) { Key = FadeOutKey }, BinaryOperator.Multiply),
+                        new ComputeBinaryColor(Sampled(s.Texture, Vector2.One, Vector2.Zero), new ComputeFloat4(Vector4.Zero) { Key = FadeInKey }, BinaryOperator.Multiply),
+                        BinaryOperator.Add)),
+                    CullMode = CullMode.None,
+                },
+            });
+        }
+        catch (Exception e) { _logger.LogWarning(e, "Globe: fade material for {Tile} failed; drawn without a fade", t); s.Fading = null; return; }
+        s.FadeFrom = a;
+        s.FadeStart = _clock.Elapsed.TotalSeconds;
+        SetFade(s.Fading, 0);
+        s.Model.Materials[0] = s.Fading;
+    }
+
+    static void SetFade(Material m, float f)
+    {
+        var p = m.Passes[0].Parameters;
+        p.Set(FadeInKey, new Vector4(f));
+        p.Set(FadeOutKey, new Vector4(1 - f));
+    }
+
+    void AdvanceFades()
+    {
+        var now = _clock.Elapsed.TotalSeconds;
+        foreach (var t in _shown)
+        {
+            if (!_loaded.TryGetValue(t, out var s) || s.Fading is null) continue;
+            var f = Fade.Progress(s.FadeStart, now, _fadeDuration);
+            // the ancestor's image must outlive the fade; if it was evicted anyway, stop at once
+            if (f >= 1 || !_loaded.ContainsKey(s.FadeFrom)) EndFade(s);
+            else SetFade(s.Fading, f);
+        }
+    }
+
+    static void EndFade(Slot s)
+    {
+        if (s.Fading is null) return;
+        s.Model.Materials[0] = s.Plain;
+        s.Fading = null;
     }
 
     void Evict()
     {
         if (_loaded.Count <= MaxSlots) return;
-        foreach (var (k, s) in _loaded.Where(kv => !_shown.Contains(kv.Key)).OrderBy(kv => kv.Value.LastUsed).Take(_loaded.Count - MaxSlots).ToList())
+        var fadingFrom = _shown.Select(t => _loaded.TryGetValue(t, out var f) && f.Fading is not null ? f.FadeFrom : (TileKey?)null).Where(k => k is not null).Select(k => k!.Value).ToHashSet();
+        foreach (var (k, s) in _loaded.Where(kv => !_shown.Contains(kv.Key) && !fadingFrom.Contains(kv.Key)).OrderBy(kv => kv.Value.LastUsed).Take(_loaded.Count - MaxSlots).ToList())
         {
             s.Dispose();
             _loaded.Remove(k);
