@@ -140,6 +140,9 @@ public sealed class GlobeDragNode
 public sealed class GlobeZoomByWheelNode
 {
     readonly ILogger _logger;
+    readonly WheelSmoother _smoother = new();
+    readonly System.Diagnostics.Stopwatch _clock = System.Diagnostics.Stopwatch.StartNew();
+    double _last;
 
     public GlobeZoomByWheelNode(NodeContext nodeContext) => _logger = nodeContext.GetLogger();
 
@@ -147,19 +150,54 @@ public sealed class GlobeZoomByWheelNode
     /// <param name="position">The cursor in projection space, -1..1 - Mouse's Position in Projection.</param>
     /// <param name="wheelDelta">The wheel's change this frame.</param>
     /// <param name="notchSize">How much Wheel Delta one notch is.</param>
-    /// <param name="levelsPerNotch">Zoom levels per notch: 1 halves the height, 0.5 divides it by 1.41.</param>
+    /// <param name="levelsPerNotch">Zoom levels per notch: 1 halves the height, 0.25 divides it by 1.19.</param>
+    /// <param name="smoothing">Seconds a notch takes to play out. 0: at once.</param>
     [return: Pin(Name = "Output")]
-    public GlobeView? Update(GlobeView? view, Vector2 position = default, float wheelDelta = 0f, float notchSize = 1f, float levelsPerNotch = 0.5f)
+    public GlobeView? Update(GlobeView? view, Vector2 position = default, float wheelDelta = 0f, float notchSize = 1f, float levelsPerNotch = 0.25f, float smoothing = 0.15f)
     {
-        if (view is null || wheelDelta == 0 || notchSize == 0) return view;
+        var now = _clock.Elapsed.TotalSeconds;
+        var dt = now - _last;
+        _last = now;
+        if (view is null || notchSize == 0) return view;
         // Measured in the web globes' source, 2026-11-09: MapLibre steps 0.151 zoom levels per wheel
-        // notch, Cesium about 6.5 % of the height (~0.1 level) and then replays it with inertia. A full
-        // level per notch - VL.Mapsui's 2D default - felt like jumps on a globe. 0.5 sits between,
-        // without inertia, and is a pin because the right value is a matter of taste and device.
-        var factor = Math.Pow(0.5, levelsPerNotch * wheelDelta / notchSize);
-        _logger.LogInformation("Globe ZoomByWheel: delta {Delta}, factor {Factor:F3}, cursor {P}, height {H:F0} m", wheelDelta, factor, position, view.Height);
-        var camDir = view.CameraDirectionFromProjection(position.X, position.Y);
-        view.ZoomAt(camDir, factor);
+        // notch and eases it over ~200 ms; Cesium ~6.5 % of the height (~0.1 level), then inertia.
+        // Ours was 0.5 level applied in one frame: "滚一个就拉近了很多，没有谷歌地球啊，maplibre之类得做得顺滑"
+        // (the user, 2026-11-20; one notch is Wheel Delta 1, read from this node's log). So: a smaller
+        // step, and every notch played out over Smoothing seconds instead of in one frame.
+        if (wheelDelta != 0)
+        {
+            _smoother.Add(levelsPerNotch * wheelDelta / notchSize);
+            _logger.LogInformation("Globe ZoomByWheel: delta {Delta}, pending {Pending:F2} levels, cursor {P}, height {H:F0} m", wheelDelta, _smoother.Pending, position, view.Height);
+        }
+        var levels = _smoother.Step(dt, smoothing);
+        if (levels == 0) return view;
+        var before = view.Height;
+        view.ZoomAt(view.CameraDirectionFromProjection(position.X, position.Y), Math.Pow(0.5, levels));
+        // At Min or Max Height the rest of the wheel has nowhere to go: drop it, or it plays out later
+        // as a zoom the user did not ask for when they turn back.
+        if (view.Height == before) _smoother.Clear();
         return view;
     }
 }
+
+/// <summary>Zoom levels asked for by the wheel and not yet applied, played out exponentially over time.</summary>
+internal sealed class WheelSmoother
+{
+    public double Pending { get; private set; }
+
+    public void Add(double levels) => Pending += levels;
+
+    public void Clear() => Pending = 0;
+
+    /// <summary>The levels to apply this frame: all of them when <paramref name="seconds"/> is 0, else the share an exponential with that time constant covers in <paramref name="dt"/>.</summary>
+    public double Step(double dt, double seconds)
+    {
+        if (Pending == 0) return 0;
+        double share = seconds <= 0 ? 1 : 1 - Math.Exp(-Math.Max(0, dt) / (seconds / 3));   // ~95 % within Smoothing
+        var step = Pending * share;
+        if (Math.Abs(Pending - step) < 1e-4) step = Pending;                                // finish, do not crawl
+        Pending -= step;
+        return step;
+    }
+}
+

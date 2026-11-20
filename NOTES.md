@@ -168,3 +168,7 @@ looked fine - "which makes one think it works". Two causes, estimated at 100 m h
   1.34× wider, so it was drawn at 2.55 px per texel beside zoom-5 neighbours at ~1. Now the widest
   row decides. `TileCoverageFacts` checks every sampled pixel of the screen, not only the one below
   the camera — the test that existed (`TileScaleFacts`) looked straight down and could not see it.
+- **The wheel: one notch is `Mouse Wheel Delta` 1** (read from ZoomByWheel's log, the user's mouse,
+  2026-11-20 — ROADMAP item 2's open question, settled). The zoom felt like jumps ("滚一个就拉近了很多"):
+  0.5 level per notch in one frame. Now 0.25 level, played out over `Smoothing` (0.15 s, exponential,
+  frame-rate independent — `WheelFacts`); pending zoom is dropped at Min/Max Height.
