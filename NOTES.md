@@ -188,3 +188,9 @@ looked fine - "which makes one think it works". Two causes, estimated at 100 m h
   the drawn descendants mix to the parent's parts before the parent replaces them. Fade weights are
   keyed `ComputeFloat4`s set per frame — the same family of node as the `ComputeColor` that once drew
   black; watch for black flashes until the user has seen it.
+- **Every fade dipped dark ("所有的渐变都是建立在深色底上面").** Logged the first fade material's
+  parameters: both textures bound, ancestor scale 0.5 / offset right, weights 1 and 0 — all correct.
+  The fault was the operator: `BinaryOperator.Add` is **`ComputeColorAdd3ds`**, a 3ds Max blend that
+  weighs each side by its alpha (`BlendUtils.BasicBlend`), not `ComputeColorAdd`. Weights
+  `(f,f,f,f)` gave a half-way fade half the light. Weights are now `(f,f,f,1)`; with both alphas 1
+  the 3ds formula is a plain sum. Read the operator's shader before trusting its name.

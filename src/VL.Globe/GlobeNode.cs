@@ -459,7 +459,7 @@ public sealed class GlobeNode : IDisposable
                 {
                     Emissive = new MaterialEmissiveMapFeature(new ComputeBinaryColor(
                         new ComputeBinaryColor(Sampled(from.Texture, scale, offset), new ComputeFloat4(Vector4.One) { Key = FadeOutKey }, BinaryOperator.Multiply),
-                        new ComputeBinaryColor(Sampled(s.Texture, Vector2.One, Vector2.Zero), new ComputeFloat4(Vector4.Zero) { Key = FadeInKey }, BinaryOperator.Multiply),
+                        new ComputeBinaryColor(Sampled(s.Texture, Vector2.One, Vector2.Zero), new ComputeFloat4(new Vector4(0, 0, 0, 1)) { Key = FadeInKey }, BinaryOperator.Multiply),
                         BinaryOperator.Add)),
                     CullMode = CullMode.None,
                 },
@@ -476,8 +476,11 @@ public sealed class GlobeNode : IDisposable
     static void SetFade(Material m, float f)
     {
         var p = m.Passes[0].Parameters;
-        p.Set(FadeInKey, new Vector4(f));
-        p.Set(FadeOutKey, new Vector4(1 - f));
+        // Alpha stays 1. BinaryOperator.Add is Stride's ComputeColorAdd3ds, a 3ds Max blend that weighs
+        // each side by its ALPHA (BlendUtils.BasicBlend); weights of (f, f, f, f) made a half-way fade
+        // half as bright - every tile dipped dark as it changed (the user, 2026-11-20).
+        p.Set(FadeInKey, new Vector4(f, f, f, 1));
+        p.Set(FadeOutKey, new Vector4(1 - f, 1 - f, 1 - f, 1));
     }
 
     void AdvanceFades()
