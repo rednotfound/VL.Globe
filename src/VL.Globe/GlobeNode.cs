@@ -8,6 +8,8 @@ using BruTile;
 using Stride.Core.Mathematics;
 using Stride.Engine;
 using Stride.Graphics;
+using Stride.Graphics.GeometricPrimitives;
+using Stride.Extensions;   // ToMeshDraw
 using Stride.Rendering;
 using Stride.Rendering.Materials;
 using Stride.Rendering.Materials.ComputeColors;
@@ -73,6 +75,16 @@ public sealed class GlobeNode : IDisposable
     Vector3 _lastEye;
     D3? _relativeEye;   // this frame's eye when the camera is camera-relative (GlobeCamera), else null
 
+    // The globe before any tile: a sphere just below the tiles, drawn by this node because only it
+    // knows the eye a camera-relative camera renders from - a Sphere placed by the patch sat at the
+    // origin, which is now the camera (ROADMAP item 1). 0.995: no tile facet sags deeper than 0.997
+    // (TileGeometryFacts), so it never shows through a tile.
+    const float BackgroundRadius = 0.995f;
+    Entity? _background;
+    GeometricPrimitive? _backgroundMesh;
+    Color4 _backgroundColor;
+    bool _backgroundShown;
+
     public GlobeNode(NodeContext nodeContext)
     {
         _context = nodeContext;
@@ -83,6 +95,7 @@ public sealed class GlobeNode : IDisposable
     /// <param name="camera">The camera entity the scene is rendered with.</param>
     /// <param name="enabled">Off: nothing is drawn or requested.</param>
     /// <param name="radius">The globe's radius in scene units.</param>
+    /// <param name="background">The globe's colour where no tile has arrived. Transparent: none.</param>
     /// <param name="maxZoom">The finest zoom ever requested.</param>
     /// <param name="screenSpaceError">Refine while a tile pixel would cover more screen pixels than this.</param>
     /// <param name="maxRequestsInFlight">Requests running at once.</param>
@@ -96,7 +109,7 @@ public sealed class GlobeNode : IDisposable
     [return: Pin(Name = "Entity")]
     public Entity Update(
         out int tilesVisible, out int tilesLoading, out int requestsSent, out long bytesReceived, out string attribution, out string status,
-        GlobeTileSource? tileSource = null, Entity? camera = null, bool enabled = false, float radius = 1f,
+        GlobeTileSource? tileSource = null, Entity? camera = null, bool enabled = false, float radius = 1f, Color4 background = default,
         int maxZoom = 18, float screenSpaceError = 2f, int maxRequestsInFlight = 6, int screenHeight = 1080)
     {
         _frame++;
@@ -138,6 +151,7 @@ public sealed class GlobeNode : IDisposable
             }
         }
 
+        ShowBackground(enabled && _source is not null && camera is not null ? _device : null, background);
         Show(DrawSet.Resolve(wanted, _loaded.ContainsKey));
         // Every frame, not on change: with a camera-relative camera each tile sits at (centre - eye),
         // and the eye moved. Subtracted in double, then cast - the whole point of item 1.
@@ -264,6 +278,38 @@ public sealed class GlobeNode : IDisposable
         return new Slot { Entity = entity, Texture = texture, Vertices = vb, Indices = ib, Centre = tileCentre, LastUsed = _frame };
     }
 
+    void ShowBackground(GraphicsDevice? device, Color4 color)
+    {
+        bool want = device is not null && color.A > 0;
+        if (want && (_background is null || color != _backgroundColor))
+        {
+            _backgroundMesh ??= GeometricPrimitive.Sphere.New(device!, 1f, 64);
+            var draw = _backgroundMesh.ToMeshDraw();
+            var material = Material.New(device!, new MaterialDescriptor
+            {
+                Attributes = { Emissive = new MaterialEmissiveMapFeature(new ComputeColor(color.ToLinear())) },
+            });
+            var mesh = new Mesh { Draw = draw, MaterialIndex = 0, BoundingBox = new BoundingBox(new Vector3(-1), new Vector3(1)), BoundingSphere = new BoundingSphere(Vector3.Zero, 1) };
+            var model = new global::Stride.Rendering.Model { mesh };
+            model.Materials.Add(new MaterialInstance(material));
+            model.BoundingBox = mesh.BoundingBox;
+            model.BoundingSphere = mesh.BoundingSphere;
+            if (_background is not null && _backgroundShown) _root.Transform.Children.Remove(_background.Transform);
+            _background = new Entity("Globe background") { new ModelComponent(model) };
+            _backgroundShown = false;
+            _backgroundColor = color;
+        }
+        if (_background is null) return;
+        if (want != _backgroundShown)
+        {
+            if (want) _root.Transform.Children.Add(_background.Transform);
+            else _root.Transform.Children.Remove(_background.Transform);
+            _backgroundShown = want;
+        }
+        _background.Transform.Scale = new Vector3(_radius * BackgroundRadius);
+        _background.Transform.Position = TileGeometry.Translation(default, _radius, _relativeEye);
+    }
+
     void Show(List<TileKey> draw)
     {
         var next = new HashSet<TileKey>(draw);
@@ -306,5 +352,10 @@ public sealed class GlobeNode : IDisposable
         _bytes = 0;
     }
 
-    public void Dispose() => Reset();
+    public void Dispose()
+    {
+        Reset();
+        if (_background is not null && _backgroundShown) _root.Transform.Children.Remove(_background.Transform);
+        _backgroundMesh?.Dispose();
+    }
 }
