@@ -129,3 +129,14 @@ looked fine - "which makes one think it works". Two causes, estimated at 100 m h
 - **Git Bash `sed -i` rewrote a CRLF file as LF**, and Python's text-mode write on Windows turned an
   LF file into CRLF — both showed as "whole file changed". Edit scripts read and write with
   `newline=''`; check `git ls-files --eol` before committing.
+- **The background sphere took three rung-4 rounds, each a different fault behind the same black
+  window** (the log said "background shown" every time; only pixel sampling told them apart):
+  1. the eye was read inside `Select`, which runs only while Enabled — off, the sphere sat on the
+     camera and Stride's back-face culling hid it from inside (every pixel the clear colour, 6,6,6);
+  2. with culling off, the camera inside it saw its inner wall: every pixel 0,0,0;
+  3. placed right, it drew pure black: an emissive `ComputeColor` never reached the shader. A 1×1
+     sRGB texture through `ComputeTextureColor`, the tiles' own path, works.
+- **Colours come out darker than given** — background 0.04, 0.1, 0.22 (10, 26, 56) shows as 0, 7, 50;
+  OSM's land #f2efe9 showed as 220, 219, 217 in the 11-09 captures. Tiles and background share it, so
+  they match; the colour-space handling of the whole engine is still to be looked at.
+- vvvv sometimes sits in "Shutting Down" for over a minute after WM_CLOSE; wait, never Stop-Process.

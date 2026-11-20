@@ -82,6 +82,7 @@ public sealed class GlobeNode : IDisposable
     const float BackgroundRadius = 0.995f;
     Entity? _background;
     GeometricPrimitive? _backgroundMesh;
+    Texture? _backgroundTexture;
     Color4 _backgroundColor;
     bool _backgroundShown;
 
@@ -153,6 +154,9 @@ public sealed class GlobeNode : IDisposable
 
         // Drawn whenever there is a camera, Enabled or not: it fetches nothing, and a globe that is
         // off reads as a plain sphere rather than as nothing (the user, 2026-11-20).
+        // Read here, every frame, not in Select: Select runs only while Enabled, and the background is
+        // drawn while off too - left at null it put the sphere around the camera (2026-11-20).
+        _relativeEye = camera?.Get<GlobeCameraFrame>()?.Eye;
         ShowBackground(camera is not null ? _device : null, background);
         Show(DrawSet.Resolve(wanted, _loaded.ContainsKey));
         // Every frame, not on change: with a camera-relative camera each tile sits at (centre - eye),
@@ -191,7 +195,6 @@ public sealed class GlobeNode : IDisposable
         camera.Transform.UpdateWorldMatrix();
         var view = cc is { UseCustomViewMatrix: true } ? cc.ViewMatrix : Matrix.Invert(camera.Transform.WorldMatrix);
         var frame = camera.Get<GlobeCameraFrame>();
-        _relativeEye = frame?.Eye;
         if (frame is not null) view = Matrix.Translation(-frame.Eye.ToVector3()) * view;
         var eye = Matrix.Invert(view).TranslationVector;
         _lastEye = eye;
@@ -287,9 +290,16 @@ public sealed class GlobeNode : IDisposable
         {
             _backgroundMesh ??= GeometricPrimitive.Sphere.New(device!, 1f, 64);
             var draw = _backgroundMesh.ToMeshDraw();
+            // The colour as a 1x1 sRGB texture, the tiles' own path: a ComputeColor emissive rendered
+            // pure black in vvvv (2026-11-20). An sRGB texel also reads the colour the way the tiles'
+            // pixels are read, so the two match.
+            _backgroundTexture?.Dispose();
+            _backgroundTexture = Texture.New2D(device!, 1, 1, PixelFormat.R8G8B8A8_UNorm_SRgb, new[] { (Color)color });
             var material = Material.New(device!, new MaterialDescriptor
             {
-                Attributes = { Emissive = new MaterialEmissiveMapFeature(new ComputeColor(color.ToLinear())) },
+                // CullMode None as for the tiles. Not the cause of the black sphere, but a camera that
+                // ever ends up inside it (a bad eye) then shows it rather than hiding the fault.
+                Attributes = { Emissive = new MaterialEmissiveMapFeature(new ComputeTextureColor(_backgroundTexture)), CullMode = CullMode.None },
             });
             var mesh = new Mesh { Draw = draw, MaterialIndex = 0, BoundingBox = new BoundingBox(new Vector3(-1), new Vector3(1)), BoundingSphere = new BoundingSphere(Vector3.Zero, 1) };
             var model = new global::Stride.Rendering.Model { mesh };
@@ -301,6 +311,8 @@ public sealed class GlobeNode : IDisposable
             _backgroundShown = false;
             _backgroundColor = color;
         }
+        if (want != _backgroundShown || (want && _background is null))
+            _logger.LogInformation("Globe: background {State}, colour {Color}, device {Device}", want ? "shown" : "hidden", color, device is not null);
         if (_background is null) return;
         if (want != _backgroundShown)
         {
@@ -359,5 +371,6 @@ public sealed class GlobeNode : IDisposable
         Reset();
         if (_background is not null && _backgroundShown) _root.Transform.Children.Remove(_background.Transform);
         _backgroundMesh?.Dispose();
+        _backgroundTexture?.Dispose();
     }
 }
