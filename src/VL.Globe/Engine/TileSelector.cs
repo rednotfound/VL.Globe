@@ -53,7 +53,7 @@ internal sealed class TileSelector
 
             if (t.Zoom < MaxZoom && result.Count + stack.Count < MaxTiles)
             {
-                var d = Math.Max(Vector3.Distance(cn, centre) - r, 1e-6);
+                var d = Math.Max(DistanceToTile(t, cn), 1e-12);
                 var lat = TileGeometry.LatitudeOf((t.Y + 0.5) / t.TilesPerSide) * Math.PI / 180;
                 var texel = 2 * Math.PI * Math.Cos(lat) / t.TilesPerSide / TilePixels;   // radians of globe per texel
                 var pixels = texel / d * pxPerRadian;
@@ -66,6 +66,29 @@ internal sealed class TileSelector
             result.Add(t);
         }
         return result;
+    }
+
+    // The distance from the camera to the nearest point ON the tile, not to its bounding sphere. The
+    // sphere's near side floats above the ground by up to its radius, so for the tile below a low
+    // camera the distance came out far too short, and every tile was refined about one level too
+    // early: map text was read at 0.6-1.2x its drawn size instead of a web map's 1-2x (TileScaleFacts;
+    // the user, 2026-11-20). The camera's longitude and latitude clamped into the tile's ranges give
+    // the tile's nearest point for a camera above the globe.
+    internal static double DistanceToTile(TileKey t, Vector3 cn)
+    {
+        double n = t.TilesPerSide;
+        double camLon = Math.Atan2(cn.X, cn.Z) * 180 / Math.PI;
+        double camLat = Math.Asin(Math.Clamp(cn.Y / cn.Length(), -1, 1)) * 180 / Math.PI;
+        double west = TileGeometry.LongitudeOf(t.X / n), east = TileGeometry.LongitudeOf((t.X + 1) / n);
+        double north = TileGeometry.LatitudeOf(t.Y / n), south = TileGeometry.LatitudeOf((t.Y + 1) / n);
+        // longitude relative to the tile's middle, wrapped, so a tile at the antimeridian clamps right
+        double mid = (west + east) / 2, half = (east - west) / 2;
+        double rel = camLon - mid; rel -= 360 * Math.Round(rel / 360);
+        double lon = mid + Math.Clamp(rel, -half, half);
+        double lat = Math.Clamp(camLat, south, north);
+        var (x, y, z) = TileGeometry.OnSphere(lon, lat);
+        double dx = cn.X - x, dy = cn.Y - y, dz = cn.Z - z;
+        return Math.Sqrt(dx * dx + dy * dy + dz * dz);
     }
 
     static bool AboveHorizon(TileKey t, Vector3 cn)
