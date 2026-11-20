@@ -207,6 +207,7 @@
             <Pin Id="STyWfRCD2KnULGQUVB5G5A" Name="Enabled" Kind="InputPin" />
             <Pin Id="MPH4bl2tSaFxHrguyORvnV" Name="Radius" Kind="InputPin" />
             <Pin Id="G8OlYCeVxYDKkA08ltbUWi" Name="Background" Kind="InputPin" />
+            <Pin Id="RXYHLhAWP4J9TtYgIwW2k3" Name="Screen Height" Kind="InputPin" />
             <Pin Id="RHYIf1vd44pjdfZ7PRit4h" Name="Entity" Kind="OutputPin" />
             <Pin Id="NHZC5M1HTSZQ7nDzh21lRQ" Name="Tiles Visible" Kind="OutputPin" />
             <Pin Id="OyP4klEXDdlVHZ8FYKSfwZ" Name="Tiles Loading" Kind="OutputPin" />
@@ -238,9 +239,38 @@
             <Pin Id="PKlr2Ts4VTqR71xPErIbzY" Name="Input" Kind="InputPin" />
             <Pin Id="BxEUhPrYQ4NIPRRFGWMHbv" Name="Camera" Kind="InputPin" />
             <Pin Id="BG3cCV3rIKs62vxfdIJHcF" Name="Enable Default Camera" Kind="InputPin" DefaultValue="False" />
+            <Pin Id="Emo58Kq3uWNw9s4MOgx5D2" Name="Enable Default Post Effects" Kind="InputPin" DefaultValue="False" />
             <Pin Id="S3vD7AuPJjIrTjqy671TMg" Name="Title" Kind="InputPin" DefaultValue="Put OpenStreetMap on a globe" />
             <Pin Id="KwwOuusdIoggJmomsZCFZC" Name="Output" Kind="OutputPin" />
+            <Pin Id="LyG5wd83vK21WEUSvEAjr1" Name="Client Bounds" Kind="OutputPin" />
           </Node>
+          <Node Bounds="60,550,46,19" Id="Hq9ozk7tG92NVI4D60DBP9">
+            <p:NodeReference LastCategoryFullName="2D.Rectangle" LastDependency="VL.CoreLib.vl">
+              <Choice Kind="NodeFlag" Name="Node" Fixed="true" />
+              <Choice Kind="OperationCallFlag" Name="Height" />
+              <CategoryReference Kind="RecordType" Name="Rectangle" NeedsToBeDirectParent="true" />
+            </p:NodeReference>
+            <Pin Id="N5G2OO9u5azORphSDEDr15" Name="Input" Kind="StateInputPin" />
+            <Pin Id="OmPLrkTiIP1rNTunc1dOrH" Name="Height" Kind="OutputPin" />
+          </Node>
+          <Node Bounds="60,590,70,19" Id="BodIsLUuib2BGM0v8RZAS3">
+            <p:NodeReference LastCategoryFullName="Control" LastDependency="VL.CoreLib.vl">
+              <Choice Kind="NodeFlag" Name="Node" Fixed="true" />
+              <Choice Kind="ProcessAppFlag" Name="FrameDelay" />
+            </p:NodeReference>
+            <Pin Id="UM9BjOh75e6tOh8qh4to3B" Name="Initial Value" Kind="InputPin" DefaultValue="800" />
+            <Pin Id="AQ4Mrxz3PUKBGaEcyvak8j" Name="Value" Kind="InputPin" />
+            <Pin Id="MXEikTxDJNorWMoCi7v5Nc" Name="Value" Kind="OutputPin" />
+          </Node>
+          <Pad Id="OJi6ndkoXYm9SkJP7zRtiq" Bounds="140,585,150,48" ShowValueBox="true" isIOBox="true" Value="&lt; the window's real height back into Globe's Screen Height, one frame late">
+            <p:TypeAnnotation LastCategoryFullName="Primitive" LastDependency="VL.CoreLib.vl">
+              <Choice Kind="TypeFlag" Name="String" />
+            </p:TypeAnnotation>
+            <p:ValueBoxSettings>
+              <p:fontsize p:Type="Int32">9</p:fontsize>
+              <p:stringtype p:Assembly="VL.Core" p:Type="VL.Core.StringType">Comment</p:stringtype>
+            </p:ValueBoxSettings>
+          </Pad>
 
         </Canvas>
         <Patch Id="V7NvhD9eski8s0Vr5aEOia" Name="Create" />
@@ -272,6 +302,9 @@
         <Link Id="RTWtVbyegIg1kW13sfw9eF" Ids="PfBI1UyvvVclXBoBFrbgdG,EU1sXXtCUXbSCJO5YcvFUC" />
         <Link Id="HCcZZBlULZxOsXkONfxijf" Ids="SBuwNxsKgRyBTMtggeQUD5,PKlr2Ts4VTqR71xPErIbzY" />
         <Link Id="PrTphcTMIxP5JODwA4O7iL" Ids="Tr1X3pEUFnMVSRT2xfteft,BxEUhPrYQ4NIPRRFGWMHbv" />
+        <Link Id="IPY1AQKlGNBeMF5A7hzVm9" Ids="LyG5wd83vK21WEUSvEAjr1,N5G2OO9u5azORphSDEDr15" />
+        <Link Id="PxAaW9b1IfYXZG7tNdTa7r" Ids="OmPLrkTiIP1rNTunc1dOrH,AQ4Mrxz3PUKBGaEcyvak8j" />
+        <Link Id="BnIOfiqo3lDFzI0Efr4PGh" Ids="MXEikTxDJNorWMoCi7v5Nc,RXYHLhAWP4J9TtYgIwW2k3" />
 
       </Patch>
     </Node>

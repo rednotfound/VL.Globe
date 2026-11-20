@@ -154,3 +154,11 @@ looked fine - "which makes one think it works". Two causes, estimated at 100 m h
   with `--tool-path` into the scratchpad) and reading the Update body. Do this for every patched
   definition until the check does it itself.
 - Screen Height became `float` — the window's height is a float in VL.
+- **"糊糊的" — the user, 2026-11-20: map and text blurred and dull, "像是有什么叠加模式".** SceneWindow's
+  `Enable Default Post Effects` defaults to true: tone mapping and anti-aliasing over the whole
+  frame. Measured on the background sphere, no network: 0.04, 0.1, 0.22 (10, 26, 56) showed as
+  0, 7, 50 with them, 10, 25, 56 without; the clear colour 6 → 24. This was the "colours come out
+  darker" above, not the engine's colour space. Map imagery is finished pixels: both GlobeWindow and
+  the help patch's SceneWindow switch the post effects off.
+- `Put OpenStreetMap on a globe` now wires `Client Bounds → Height → FrameDelay → Screen Height`
+  itself, the way any patch using the separate nodes must; read back from the generated C#.
