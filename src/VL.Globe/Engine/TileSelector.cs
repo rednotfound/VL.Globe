@@ -54,8 +54,13 @@ internal sealed class TileSelector
             if (t.Zoom < MaxZoom && result.Count + stack.Count < MaxTiles)
             {
                 var d = Math.Max(DistanceToTile(t, cn), 1e-12);
-                var lat = TileGeometry.LatitudeOf((t.Y + 0.5) / t.TilesPerSide) * Math.PI / 180;
-                var texel = 2 * Math.PI * Math.Cos(lat) / t.TilesPerSide / TilePixels;   // radians of globe per texel
+                // A texel's width shrinks with cos(latitude) inside one tile. Taken at the tile's middle,
+                // a tile spanning 66-41 N was judged by cos 56 while its near edge at 41 N is 1.34x wider:
+                // drawn at 2.55 px per texel, its text visibly stretched beside a sharp neighbour
+                // (TileCoverageFacts; the user over Central Asia, 2026-11-20). Use the widest row.
+                double north = TileGeometry.LatitudeOf((double)t.Y / t.TilesPerSide), south = TileGeometry.LatitudeOf((t.Y + 1.0) / t.TilesPerSide);
+                var widest = north >= 0 && south <= 0 ? 0 : Math.Min(Math.Abs(north), Math.Abs(south)) * Math.PI / 180;
+                var texel = 2 * Math.PI * Math.Cos(widest) / t.TilesPerSide / TilePixels;   // radians of globe per texel
                 var pixels = texel / d * pxPerRadian;
                 if (pixels > ScreenSpaceError)
                 {

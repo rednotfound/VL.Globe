@@ -162,3 +162,9 @@ looked fine - "which makes one think it works". Two causes, estimated at 100 m h
   the help patch's SceneWindow switch the post effects off.
 - `Put OpenStreetMap on a globe` now wires `Client Bounds → Height → FrameDelay → Screen Height`
   itself, the way any patch using the separate nodes must; read back from the generated C#.
+- **Half the view sharp, half stretched — the user over Central Asia (screenshot), log "25 wanted, zoom
+  2..4, 0 loading": not a loading fault, the selector's.** A tile's texel width was taken at the
+  tile's middle latitude; tile 3/6/2 spans 66–41 N, judged by cos 56° while its near edge at 41° is
+  1.34× wider, so it was drawn at 2.55 px per texel beside zoom-5 neighbours at ~1. Now the widest
+  row decides. `TileCoverageFacts` checks every sampled pixel of the screen, not only the one below
+  the camera — the test that existed (`TileScaleFacts`) looked straight down and could not see it.

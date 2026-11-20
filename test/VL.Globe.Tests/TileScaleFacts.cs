@@ -37,7 +37,10 @@ public class TileScaleFacts(ITestOutputHelper output)
         // level too fine (distance taken to the bounding sphere's near side, not to the ground).
         var (zoom, px) = Centre(h, 808, 808);
         output.WriteLine($"{h} m: z{zoom}, {px:F2} px per texel");
-        Assert.InRange(px, 1.0, 2.0);
+        // 0.9, not 1: a tile is judged by its widest texel row (TileSelector, 2026-11-20), so below a
+        // coarse tile the middle can come out a little under 1x - 0.97 at 1000 km over Tokyo. Above
+        // 2x is what the user saw as stretched text; a hair under 1x is not visible.
+        Assert.InRange(px, 0.9, 2.0);
     }
 
     [Fact]
