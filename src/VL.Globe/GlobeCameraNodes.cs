@@ -29,9 +29,14 @@ public sealed class GlobeCameraNode
     readonly GlobeView _view = new();
     readonly Entity _entity = new("GlobeCamera");
     readonly CameraComponent _camera = new() { UseCustomViewMatrix = true, UseCustomAspectRatio = false };
+    readonly Engine.GlobeCameraFrame _frame = new();
     bool _initialised;
 
-    public GlobeCameraNode() => _entity.Add(_camera);
+    public GlobeCameraNode()
+    {
+        _entity.Add(_camera);
+        _entity.Add(_frame);
+    }
 
     /// <param name="initialLongitude">Degrees east to look at, applied once on open.</param>
     /// <param name="initialLatitude">Degrees north to look at, applied once on open.</param>
@@ -63,7 +68,11 @@ public sealed class GlobeCameraNode
         }
         else _view.SetHeight(_view.Height);   // a changed Min/Max applies at once
 
-        _camera.ViewMatrix = _view.ViewMatrix();
+        // Camera-relative (ROADMAP item 1): the eye stays in double in the frame component, the view
+        // is rotation only. An absolute view put the eye at ~1.0 in float - a 0.4 m lattice.
+        var (eye, fwd, up) = _view.Pose();
+        _frame.Eye = eye;
+        _camera.ViewMatrix = GlobeView.ViewRotation(fwd, up);
         // Stride computes the projection for the window's aspect each frame; keep its scale for the
         // gestures (one frame old, which is the frame the cursor was seen in).
         var proj = _camera.ProjectionMatrix;

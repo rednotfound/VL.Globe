@@ -69,6 +69,53 @@ internal static class TileGeometry
         return (positions, uv);
     }
 
+    // Camera-relative rendering (ROADMAP item 1, Cesium's "RTC"): the absolute positions above are
+    // ~1 in size, and float spacing there is 6e-8 radii = 0.38 m, so every vertex snapped to a 0.4 m
+    // lattice. Here each vertex is stored as its offset from the tile's own centre, subtracted in
+    // double: a zoom-19 tile is ~1e-5 radii across, so its offsets carry float error of ~1e-12 radii
+    // (micrometres). The centre stays in double and goes to the GPU only as (centre * R - eye), also
+    // subtracted in double (Translation below) - small wherever the camera is close. The price: two
+    // neighbours no longer produce bit-identical shared edges (each adds its own float offset to its
+    // own float translation), but the difference scales with the distance to the eye and stays
+    // far below a pixel.
+
+    /// <summary>The tile's centre on the unit sphere, in double: the midpoint of its Mercator square.</summary>
+    public static D3 Centre(TileKey tile)
+    {
+        double n = tile.TilesPerSide;
+        var (x, y, z) = OnSphere(LongitudeOf((tile.X + 0.5) / n), LatitudeOf((tile.Y + 0.5) / n));
+        return new D3(x, y, z);
+    }
+
+    /// <summary>The tile's vertices as offsets from <see cref="Centre"/> on the unit sphere, their unit normals and texture coordinates.</summary>
+    public static (D3 centre, Vector3[] offsets, Vector3[] normals, Vector2[] uv) RelativeVertices(TileKey tile)
+    {
+        int seg = SegmentsFor(tile.Zoom), side = seg + 1;
+        var centre = Centre(tile);
+        var offsets = new Vector3[side * side];
+        var normals = new Vector3[offsets.Length];
+        var uv = new Vector2[offsets.Length];
+        double global = (double)tile.TilesPerSide * seg;
+        for (int j = 0; j < side; j++)
+        {
+            var lat = LatitudeOf((tile.Y * seg + j) / global);
+            for (int i = 0; i < side; i++)
+            {
+                var lon = LongitudeOf((tile.X * seg + i) / global);
+                var (x, y, z) = OnSphere(lon, lat);
+                var p = new D3(x, y, z);
+                offsets[j * side + i] = (p - centre).ToVector3();
+                normals[j * side + i] = p.ToVector3();
+                uv[j * side + i] = new Vector2((float)i / seg, (float)j / seg);
+            }
+        }
+        return (centre, offsets, normals, uv);
+    }
+
+    /// <summary>Where a tile entity goes, scaled by <paramref name="radius"/>: relative to <paramref name="eye"/> when given, absolute otherwise.</summary>
+    public static Vector3 Translation(D3 centre, float radius, D3? eye)
+        => (eye is { } e ? centre * radius - e : centre * radius).ToVector3();
+
     static readonly System.Collections.Concurrent.ConcurrentDictionary<int, ushort[]> _indices = new();
 
     /// <summary>Two triangles per cell for a tile at this zoom.</summary>

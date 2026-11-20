@@ -82,6 +82,13 @@ public sealed class GlobeView
         return Matrix.LookAtRH(eye.ToVector3(), (eye + fwd).ToVector3(), up.ToVector3());
     }
 
+    // Camera-relative rendering (ROADMAP item 1): the view with the eye at the origin - rotation only,
+    // no large numbers. Everything drawn with it must be placed at (its position - eye), the
+    // subtraction done in double; GlobeCamera hands that eye to Globe through GlobeCameraFrame.
+    /// <summary>The view matrix of a camera at the origin with this pose's orientation.</summary>
+    internal static Matrix ViewRotation(D3 forward, D3 up)
+        => Matrix.LookAtRH(Vector3.Zero, forward.ToVector3(), up.ToVector3());
+
     /// <summary>Near and far planes that follow the height: near a tenth of the way down, far past the horizon.</summary>
     internal (float near, float far) ClipPlanes()
     {

@@ -47,6 +47,7 @@ public sealed class GlobeNode : IDisposable
         public required Texture Texture;
         public required Buffer Vertices;
         public required Buffer Indices;
+        public required D3 Centre;       // on the unit sphere, in double: the vertices are offsets from it
         public int LastUsed;
         public void Dispose() { Texture.Dispose(); Vertices.Dispose(); Indices.Dispose(); }
     }
@@ -70,6 +71,7 @@ public sealed class GlobeNode : IDisposable
     long _bytes;
     float _radius = 1f;
     Vector3 _lastEye;
+    D3? _relativeEye;   // this frame's eye when the camera is camera-relative (GlobeCamera), else null
 
     public GlobeNode(NodeContext nodeContext)
     {
@@ -137,6 +139,9 @@ public sealed class GlobeNode : IDisposable
         }
 
         Show(DrawSet.Resolve(wanted, _loaded.ContainsKey));
+        // Every frame, not on change: with a camera-relative camera each tile sits at (centre - eye),
+        // and the eye moved. Subtracted in double, then cast - the whole point of item 1.
+        foreach (var t in _shown) if (_loaded.TryGetValue(t, out var s)) s.Entity.Transform.Position = TileGeometry.Translation(s.Centre, _radius, _relativeEye);
         foreach (var w in wanted) if (_loaded.TryGetValue(w, out var s)) s.LastUsed = _frame;
         Evict();
 
@@ -162,9 +167,16 @@ public sealed class GlobeNode : IDisposable
         // true). Reading only the transform put the camera at the globe's centre - "camera sees no
         // tile", found by this node's own Status on its first run. So: the view matrix when the camera
         // uses one, the transform otherwise; the eye is the view's inverse either way.
+        //
+        // A GlobeCamera renders camera-relative: its view is rotation only and the eye is in its
+        // GlobeCameraFrame. Selection stays absolute (put the eye back into the view): culling and the
+        // zoom choice tolerate float's 0.4 m, only drawing does not.
         var cc = camera.Get<CameraComponent>();
         camera.Transform.UpdateWorldMatrix();
         var view = cc is { UseCustomViewMatrix: true } ? cc.ViewMatrix : Matrix.Invert(camera.Transform.WorldMatrix);
+        var frame = camera.Get<GlobeCameraFrame>();
+        _relativeEye = frame?.Eye;
+        if (frame is not null) view = Matrix.Translation(-frame.Eye.ToVector3()) * view;
         var eye = Matrix.Invert(view).TranslationVector;
         _lastEye = eye;
         var fov = MathUtil.DegreesToRadians(cc?.VerticalFieldOfView ?? 45f);
@@ -209,14 +221,15 @@ public sealed class GlobeNode : IDisposable
         using var stream = new MemoryStream(bytes);
         var texture = Texture.Load(device, stream, TextureFlags.ShaderResource, GraphicsResourceUsage.Immutable, loadAsSRGB: true);
 
-        var (positions, uv) = TileGeometry.Vertices(key);
-        var vertices = new VertexPositionNormalTexture[positions.Length];
-        for (int i = 0; i < positions.Length; i++) vertices[i] = new VertexPositionNormalTexture(positions[i], positions[i], uv[i]);
+        var (tileCentre, offsets, normals, uv) = TileGeometry.RelativeVertices(key);
+        var vertices = new VertexPositionNormalTexture[offsets.Length];
+        for (int i = 0; i < offsets.Length; i++) vertices[i] = new VertexPositionNormalTexture(offsets[i], normals[i], uv[i]);
         var vb = Buffer.Vertex.New(device, vertices, GraphicsResourceUsage.Immutable);
         var indices = TileGeometry.IndicesFor(key.Zoom);
         var ib = Buffer.Index.New(device, indices, GraphicsResourceUsage.Immutable);
 
-        var (centre, r) = TileGeometry.Bounds(key);
+        var (boundsCentre, r) = TileGeometry.Bounds(key);
+        var centre = (new D3(boundsCentre.X, boundsCentre.Y, boundsCentre.Z) - tileCentre).ToVector3();   // in the mesh's own space
         var mesh = new Mesh
         {
             Draw = new MeshDraw
@@ -247,7 +260,8 @@ public sealed class GlobeNode : IDisposable
 
         var entity = new Entity(key.ToString()) { new ModelComponent(model) };
         entity.Transform.Scale = new Vector3(_radius);
-        return new Slot { Entity = entity, Texture = texture, Vertices = vb, Indices = ib, LastUsed = _frame };
+        entity.Transform.Position = TileGeometry.Translation(tileCentre, _radius, _relativeEye);
+        return new Slot { Entity = entity, Texture = texture, Vertices = vb, Indices = ib, Centre = tileCentre, LastUsed = _frame };
     }
 
     void Show(List<TileKey> draw)
