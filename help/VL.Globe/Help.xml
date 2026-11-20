@@ -1,6 +1,7 @@
 ﻿<?xml version="1.0" encoding="utf-8" standalone="yes"?>
 <Pack>
 	<Topic title="A globe on screen">
+		<VLDocument link="HowTo Open a globe window.vl" tags="globeWindow,window,globe,openstreetmap,osm,tiles,enabled,drag,zoom,stride,3d,earth,screen,text,size" />
 		<VLDocument link="HowTo Put OpenStreetMap on a globe.vl" tags="globe,openstreetmap,osm,tiles,enabled,camera,orbitCamera,zoom,stride,3d,earth,sphere,attribution" />
 	</Topic>
 	<Topic title="Coordinates">

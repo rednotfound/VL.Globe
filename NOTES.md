@@ -140,3 +140,17 @@ looked fine - "which makes one think it works". Two causes, estimated at 100 m h
   OSM's land #f2efe9 showed as 220, 219, 217 in the 11-09 captures. Tiles and background share it, so
   they match; the colour-space handling of the whole engine is still to be looked at.
 - vvvv sometimes sits in "Shutting Down" for over a minute after WM_CLOSE; wait, never Stop-Process.
+
+## 2026-11-20 — GlobeWindow: a link dropped inside a patched definition, invisible to every check
+
+- `GlobeWindow` (patched in `VL.Globe.vl`, like VL.Mapsui's MapWindow) wires SceneWindow's
+  `Client Bounds` → `Height` → `FrameDelay` → Globe's `Screen Height`. The first version used the
+  `Height` of **`Stride.Core.Mathematics.Rectangle`** (copied from VL.ImGui.Stride, where it reads a
+  RenderWindow); SceneWindow's `Client Bounds` is VL's **`2D.Rectangle`** (RectangleF). The compiler
+  dropped the node without a word: `ClientBounds(out var _); int value2 = 0; SetValue(value2)` —
+  Globe would have been told the window is 0 px tall. vvvvc PASS, no red node, the window drew.
+- **The help-patch compile check cannot see inside a patched definition**: the package's own `.vl`
+  compiles to `VL.Globe.vl.dll` with no source kept. Found by decompiling it (`ilspycmd`, installed
+  with `--tool-path` into the scratchpad) and reading the Update body. Do this for every patched
+  definition until the check does it itself.
+- Screen Height became `float` — the window's height is a float in VL.

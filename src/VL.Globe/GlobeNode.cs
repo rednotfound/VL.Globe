@@ -100,7 +100,7 @@ public sealed class GlobeNode : IDisposable
     /// <param name="maxZoom">The finest zoom ever requested.</param>
     /// <param name="screenSpaceError">Refine while a tile pixel would cover more screen pixels than this.</param>
     /// <param name="maxRequestsInFlight">Requests running at once.</param>
-    /// <param name="screenHeight">The height of the view in pixels.</param>
+    /// <param name="screenHeight">The height of the view in pixels: SceneWindow's Client Bounds. GlobeWindow wires it.</param>
     /// <param name="tilesVisible">Tiles drawn this frame.</param>
     /// <param name="tilesLoading">Requests not yet answered.</param>
     /// <param name="requestsSent">Requests made since the source changed - cached tiles are not requests.</param>
@@ -111,7 +111,7 @@ public sealed class GlobeNode : IDisposable
     public Entity Update(
         out int tilesVisible, out int tilesLoading, out int requestsSent, out long bytesReceived, out string attribution, out string status,
         GlobeTileSource? tileSource = null, Entity? camera = null, bool enabled = false, float radius = 1f, Color4 background = default,
-        int maxZoom = 18, float screenSpaceError = 2f, int maxRequestsInFlight = 6, int screenHeight = 1080)
+        int maxZoom = 18, float screenSpaceError = 2f, int maxRequestsInFlight = 6, float screenHeight = 1080f)
     {
         _frame++;
         if (!ReferenceEquals(tileSource, _source)) { Reset(); _source = tileSource; }
@@ -180,7 +180,7 @@ public sealed class GlobeNode : IDisposable
         return game?.GraphicsDevice;
     }
 
-    List<TileKey> Select(Entity camera, int maxZoom, float sse, int screenHeight)
+    List<TileKey> Select(Entity camera, int maxZoom, float sse, float screenHeight)
     {
         // vvvv's OrbitCamera leaves its entity's transform at identity and drives the camera through
         // CameraComponent's custom view matrix (the Camera node's "Use Custom View Matrix" defaults to
@@ -205,7 +205,7 @@ public sealed class GlobeNode : IDisposable
         var vp = view * Matrix.PerspectiveFovRH(fov, aspect, near, far);
         var frustum = new BoundingFrustum(ref vp);
         var selector = new TileSelector { MaxZoom = maxZoom, ScreenSpaceError = Math.Max(0.25f, sse) };
-        return selector.Select(eye, frustum, fov, Math.Max(1, screenHeight), _radius);
+        return selector.Select(eye, frustum, fov, Math.Max(1f, screenHeight), _radius);
     }
 
     void Request(TileKey t, GlobeTileSource source)
