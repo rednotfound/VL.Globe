@@ -98,7 +98,7 @@ public sealed class GlobeNode : IDisposable
     /// <param name="radius">The globe's radius in scene units.</param>
     /// <param name="background">The globe's colour where no tile has arrived, also while off. Transparent: none.</param>
     /// <param name="maxZoom">The finest zoom ever requested.</param>
-    /// <param name="screenSpaceError">Refine while a tile pixel would cover more screen pixels than this.</param>
+    /// <param name="screenSpaceError">Refine while a tile pixel would cover more screen pixels than this. 1.41 shows tiles at 0.71-1.41x, as MapLibre and Cesium do.</param>
     /// <param name="maxRequestsInFlight">Requests running at once.</param>
     /// <param name="screenHeight">The height of the view in pixels: SceneWindow's Client Bounds. GlobeWindow wires it.</param>
     /// <param name="tilesVisible">Tiles drawn this frame.</param>
@@ -111,7 +111,7 @@ public sealed class GlobeNode : IDisposable
     public Entity Update(
         out int tilesVisible, out int tilesLoading, out int requestsSent, out long bytesReceived, out string attribution, out string status,
         GlobeTileSource? tileSource = null, Entity? camera = null, bool enabled = false, float radius = 1f, Color4 background = default,
-        int maxZoom = 18, float screenSpaceError = 2f, int maxRequestsInFlight = 6, float screenHeight = 1080f)
+        int maxZoom = 18, float screenSpaceError = 1.41f, int maxRequestsInFlight = 6, float screenHeight = 1080f)
     {
         _frame++;
         if (!ReferenceEquals(tileSource, _source)) { Reset(); _source = tileSource; }
@@ -237,8 +237,7 @@ public sealed class GlobeNode : IDisposable
 
     Slot Build(GraphicsDevice device, TileKey key, byte[] bytes)
     {
-        using var stream = new MemoryStream(bytes);
-        var texture = Texture.Load(device, stream, TextureFlags.ShaderResource, GraphicsResourceUsage.Immutable, loadAsSRGB: true);
+        var texture = LoadMipmapped(device, bytes);
 
         var (tileCentre, offsets, normals, uv) = TileGeometry.RelativeVertices(key);
         var vertices = new VertexPositionNormalTexture[offsets.Length];
@@ -268,7 +267,14 @@ public sealed class GlobeNode : IDisposable
         {
             Attributes =
             {
-                Emissive = new MaterialEmissiveMapFeature(new ComputeTextureColor(texture)),
+                // Trilinear between the mip levels (MipChain), clamped at the tile's edge: wrapping
+                // blended a tile's opposite edge into its border once mips were sampled.
+                Emissive = new MaterialEmissiveMapFeature(new ComputeTextureColor(texture)
+                {
+                    Filtering = TextureFilter.Linear,
+                    AddressModeU = TextureAddressMode.Clamp,
+                    AddressModeV = TextureAddressMode.Clamp,
+                }),
                 CullMode = CullMode.None,
             },
         });
@@ -322,6 +328,36 @@ public sealed class GlobeNode : IDisposable
         }
         _background.Transform.Scale = new Vector3(_radius * BackgroundRadius);
         _background.Transform.Position = TileGeometry.Translation(default, _radius, _relativeEye);
+    }
+
+    // A tile's image with its whole mip chain (MipChain). Formats other than 4-byte RGBA/BGRA load
+    // as before, without mips - an unknown format draws soft or shimmering, never not at all.
+    static Texture LoadMipmapped(GraphicsDevice device, byte[] bytes)
+    {
+        using var stream = new MemoryStream(bytes);
+        using var source = Image.Load(stream, loadAsSRGB: true);
+        var pb = source.PixelBuffer[0];
+        var format = pb.Format;
+        bool fourBytes = format is PixelFormat.R8G8B8A8_UNorm_SRgb or PixelFormat.R8G8B8A8_UNorm or PixelFormat.B8G8R8A8_UNorm_SRgb or PixelFormat.B8G8R8A8_UNorm;
+        if (!fourBytes || pb.Width < 2)
+            return Texture.New(device, source, TextureFlags.ShaderResource, GraphicsResourceUsage.Immutable);
+
+        int w = pb.Width, h = pb.Height;
+        var level0 = new byte[w * h * 4];
+        for (int y = 0; y < h; y++)
+            System.Runtime.InteropServices.Marshal.Copy(pb.DataPointer + y * pb.RowStride, level0, y * w * 4, w * 4);
+        bool srgb = format is PixelFormat.R8G8B8A8_UNorm_SRgb or PixelFormat.B8G8R8A8_UNorm_SRgb;
+        var levels = MipChain.Build(level0, w, h, srgb);
+
+        using var image = Image.New2D(w, h, MipMapCount.Auto, format);
+        for (int m = 0; m < levels.Count && m < image.Description.MipLevels; m++)
+        {
+            var dst = image.GetPixelBuffer(0, 0, m);
+            var (pixels, lw, lh) = levels[m];
+            for (int y = 0; y < lh; y++)
+                System.Runtime.InteropServices.Marshal.Copy(pixels, y * lw * 4, dst.DataPointer + y * dst.RowStride, lw * 4);
+        }
+        return Texture.New(device, image, TextureFlags.ShaderResource, GraphicsResourceUsage.Immutable);
     }
 
     void Show(List<TileKey> draw)

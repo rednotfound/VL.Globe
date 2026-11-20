@@ -12,7 +12,7 @@ public class TileScaleFacts(ITestOutputHelper output)
     const double FovY = Math.PI / 4;
 
     // Pixels per texel at the screen centre for the tile Select chose there, looking straight down.
-    static (int zoom, double pxPerTexel) Centre(double heightMetres, double selectorScreenHeight, double realScreenHeight, double sse = 2)
+    static (int zoom, double pxPerTexel) Centre(double heightMetres, double selectorScreenHeight, double realScreenHeight, double sse = 1.41)
     {
         var v = new GlobeView { MinHeight = 1, Longitude = 139.7671, Latitude = 35.6812 };
         v.SetHeight(heightMetres);
@@ -37,10 +37,9 @@ public class TileScaleFacts(ITestOutputHelper output)
         // level too fine (distance taken to the bounding sphere's near side, not to the ground).
         var (zoom, px) = Centre(h, 808, 808);
         output.WriteLine($"{h} m: z{zoom}, {px:F2} px per texel");
-        // 0.9, not 1: a tile is judged by its widest texel row (TileSelector, 2026-11-20), so below a
-        // coarse tile the middle can come out a little under 1x - 0.97 at 1000 km over Tokyo. Above
-        // 2x is what the user saw as stretched text; a hair under 1x is not visible.
-        Assert.InRange(px, 0.9, 2.0);
+        // Rounded, as MapLibre and Cesium choose imagery levels: 0.71-1.41x, and a little under 0.71
+        // below a coarse tile, which is judged by its widest texel row (TileSelector, 2026-11-20).
+        Assert.InRange(px, 0.6, 1.42);
     }
 
     [Fact]
@@ -48,7 +47,9 @@ public class TileScaleFacts(ITestOutputHelper output)
     {
         // The contrast: Globe's Screen Height pin defaults to 1080; told 1080 while the window is 808,
         // the text is drawn below its size again.
-        var (_, px) = Centre(5000, 1080, 808);
-        Assert.True(px < 1.0, $"{px:F2}");
+        var pairs = new[] { 200.0, 500, 1000, 5000, 20000, 100000 }.Select(h => (h, wrong: Centre(h, 1080, 808).pxPerTexel, right: Centre(h, 808, 808).pxPerTexel)).ToList();
+        foreach (var (h, wrong, right) in pairs) output.WriteLine($"{h} m: told 1080 -> {wrong:F2}, told 808 -> {right:F2}");
+        Assert.All(pairs, p => Assert.True(p.wrong <= p.right + 1e-9));
+        Assert.Contains(pairs, p => p.wrong < p.right * 0.6);
     }
 }

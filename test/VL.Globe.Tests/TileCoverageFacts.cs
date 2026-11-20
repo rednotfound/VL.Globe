@@ -24,7 +24,7 @@ public class TileCoverageFacts(ITestOutputHelper output)
         var (near, far) = v.ClipPlanes();
         var view = v.ViewMatrix();
         var vp = view * Matrix.PerspectiveFovRH((float)FovY, (float)(W / H), near, far);
-        var tiles = new TileSelector { MaxZoom = 19, ScreenSpaceError = 2 }.Select(eye.ToVector3(), new BoundingFrustum(ref vp), FovY, H, 1f);
+        var tiles = new TileSelector { MaxZoom = 19 }.Select(eye.ToVector3(), new BoundingFrustum(ref vp), FovY, H, 1f);
         output.WriteLine($"{tiles.Count} tiles, zoom {tiles.Min(t => t.Zoom)}..{tiles.Max(t => t.Zoom)}");
 
         var result = new List<(double, double, TileKey, double)>();
@@ -60,12 +60,16 @@ public class TileCoverageFacts(ITestOutputHelper output)
     [InlineData(60, 42, 1_500_000)]
     [InlineData(139.7, 35.7, 500_000)]
     [InlineData(10, 60, 4_000_000)]
+    [InlineData(115, 45, 3_570_000)]   // the user's second view, 2026-11-20: a seam at ~41 N
     [InlineData(-70, -45, 2_000_000)]
     public void EveryPixelIsDrawnFineEnough(double lon, double lat, double h)
     {
         var s = Survey(lon, lat, h);
         var worst = s.OrderByDescending(r => r.pixels).Take(5).ToList();
         foreach (var r in worst) output.WriteLine($"pixel {r.px},{r.py}: tile {r.tile} -> {r.pixels:F2} px per texel");
-        Assert.All(s, r => Assert.True(r.pixels <= 2.0, $"pixel {r.px},{r.py} drawn by {r.tile} at {r.pixels:F2} px per texel"));
+        foreach (var g in s.GroupBy(r => r.tile.Zoom).OrderBy(g => g.Key))
+            output.WriteLine($"zoom {g.Key}: {g.Count()} samples, {g.Min(r => r.pixels):F2}-{g.Max(r => r.pixels):F2} px per texel");
+        Assert.All(s, r => Assert.True(r.pixels <= 1.5,   // 1.41 asked; the selector estimates at the tile's nearest point, a sampled pixel can read ~2 % more
+             $"pixel {r.px},{r.py} drawn by {r.tile} at {r.pixels:F2} px per texel"));
     }
 }

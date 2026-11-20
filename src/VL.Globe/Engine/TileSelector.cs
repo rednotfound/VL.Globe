@@ -16,7 +16,10 @@ internal sealed class TileSelector
     public const int TilePixels = 256;
 
     public int MaxZoom { get; init; } = 18;
-    public double ScreenSpaceError { get; init; } = 2.0;
+    // 1.41 = sqrt 2: a level is chosen by ROUNDING the ideal zoom, so tiles show at 0.71-1.41x - what
+    // MapLibre (raster roundZoom) and Cesium (imagery level Math.round) do. 2.0 floored it: 1-2x, and a
+    // one-level seam read as 2x-stretched text beside 1x (the user over northern China, 2026-11-20).
+    public double ScreenSpaceError { get; init; } = 1.41;
     public int MaxTiles { get; init; } = 400;
 
     /// <param name="camera">Camera position in scene units.</param>

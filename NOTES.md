@@ -172,3 +172,11 @@ looked fine - "which makes one think it works". Two causes, estimated at 100 m h
   2026-11-20 — ROADMAP item 2's open question, settled). The zoom felt like jumps ("滚一个就拉近了很多"):
   0.5 level per notch in one frame. Now 0.25 level, played out over `Smoothing` (0.15 s, exponential,
   frame-rate independent — `WheelFacts`); pending zoom is dropped at Min/Max Height.
+- **The seam stayed after the widest-row fix — and it was within the rule.** Over northern China
+  (3570 km) zoom 4 read 1.23–1.84 px per texel and zoom 5 0.68–1.09: both inside "refine while
+  > 2", 1.7× apart at one latitude line. Researched (MapLibre `covering_tiles.ts`,
+  `raster_tile_source.ts` `roundZoom = true`; Cesium `ImageryLayer.getLevelWithMaximumTexelSpacing`
+  `Math.round`): both ROUND the imagery level, 0.71–1.41×, and both mipmap. Neither blends a static
+  one-level seam; MapLibre crossfades parent↔child over 300 ms while zooming. Now: Screen Space Error
+  1.41, CPU mip chain averaged in linear light (`MipChain`), trilinear + clamp. Same view after: zoom
+  4 only at the edge, ≤ 1.44.
