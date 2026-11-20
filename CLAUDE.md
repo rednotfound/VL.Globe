@@ -2,11 +2,12 @@
 
 Guidance for Claude Code working in this repository.
 
-## Start here — the next session begins with ROADMAP item 1
+## Start here — the next session begins with ROADMAP item 1, step 5
 
-1. Read **[docs/ROADMAP.md](docs/ROADMAP.md)** — what to do next, in order. **Item 1, camera-relative
-   rendering, was decided by the user on 2026-11-09 and is the next work**; its design and its
-   verification are written there.
+1. Read **[docs/ROADMAP.md](docs/ROADMAP.md)** — what to do next, in order. Camera-relative
+   rendering (item 1) is built; **next is step 5, `PlaceOnGlobe`** (anything a patch places is drawn
+   wrong under GlobeCamera until it exists), then step 6, the 20 m floor. Its table "Done 2026-11-20"
+   lists the session that got here.
 2. Read **[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)** — what exists and why.
 3. Read **[NOTES.md](NOTES.md)** — every failure so far, before touching the same code.
 4. The family's rules are the siblings': `D:\2026_Projects\vl-mapsui\docs\RULES.md` and that repo's
@@ -29,17 +30,18 @@ how it came to exist: `vl-overworld\docs\GLOBE-RESEARCH.md` and ACT-IV-LAB exper
 The user's standard for this package (2026-11-09): **street level, not country level.** Errors hide
 at country scale; judge every change at the lowest height.
 
-## Where it stands — end of 2026-11-09
+## Where it stands — end of 2026-11-20
 
 | node | state |
 |---|---|
-| `Globe [Globe]` — the tile engine | built, 4 rungs: zoom 9–10 OSM over Gabon and the whole face of Africa (`docs/rung4-globe-*.png`) |
+| `GlobeWindow [Globe]` — patched in `VL.Globe.vl` | built; the front door (`HowTo Open a globe window`); the user judged it on screen |
+| `Globe [Globe]` — the tile engine | camera-relative, rounded levels, mipmaps, fades both ways, background sphere; user-judged |
 | `OpenStreetMap`, `XyzTiles [Globe]` | built; disk cache shared with VL.Mapsui by folder convention; `XyzTiles` has no help patch |
-| `GlobeCamera`, `Drag`, `ZoomByWheel [Globe]` | built; the user confirmed in vvvv that drag and wheel work and no longer jitter. Still to confirm: vertical drag direction and wheel units (ROADMAP item 2) |
-| `ToGlobe`, `ToGlobe (Coordinate)`, `FromGlobe [Globe]` | built, 4 rungs (`docs/rung4-toglobe-tokyo.png`) |
+| `GlobeCamera`, `Drag`, `ZoomByWheel [Globe]` | north stays up; wheel eased (one notch = Wheel Delta 1); vertical drag direction never asked (ROADMAP item 2) |
+| `ToGlobe`, `ToGlobe (Coordinate)`, `FromGlobe [Globe]` | built, 4 rungs, **absolute** — right under OrbitCamera, wrong under GlobeCamera until `PlaceOnGlobe` |
 
-53 tests green. Not published, not pushed. **The known limit**: positions are absolute floats, so
-below ~100 m the picture steps by ~0.4 m — ROADMAP item 1 removes it.
+94 tests green. Branch `feature/camera-relative`, pushed to `github.com/rednotfound/VL.Globe`
+(public); not merged, not published. Verified on vvvv **7.4 (LTS)**; `Find-Vvvv.ps1` stays below 8.0.
 
 ## Facts this repo paid for (details in NOTES.md)
 
@@ -63,7 +65,23 @@ below ~100 m the picture steps by ~0.4 m — ROADMAP item 1 removes it.
 - **The test project references VL.Stride.Runtime without `ExcludeAssets`**, or Stride's module
   initializer kills every test before it starts.
 - **A C# optional parameter cannot precede an `out` one**: `FromGlobe`'s `Radius` is declared last.
-- **Drive input only when the user is not at the machine** (`tools\Drive-Renderer.ps1`).
+- **Drive input only when the user is not at the machine** (`tools\Drive-Renderer.ps1`). And before
+  closing a vvvv this session opened, read its log for presses/wheel: on 2026-11-20 the user was
+  using the window I closed.
+- **Camera-relative**: GlobeCamera's view is rotation only; the eye (double) rides in an internal
+  `GlobeCameraFrame` component. Anything placed absolutely lands on the camera.
+- **SceneWindow's defaults are wrong for a map**: `Enable Default Post Effects` (on) darkens and
+  blurs; `Present Interval` has no default and runs `Immediate` (tearing). Set False / One.
+- **SceneWindow's `Client Bounds` is `2D.Rectangle`** (RectangleF). Stride's `Rectangle` Height was
+  dropped by the compiler in silence. **The help-patch compile check cannot see inside a patched
+  definition**: decompile `VL.Globe.vl.dll` (`ilspycmd`) and read `GlobeWindow_P.Update`.
+- **Stride's `BinaryOperator.Add` is `ComputeColorAdd3ds`**, alpha-weighted; an emissive
+  `ComputeColor` drew black. Read the shader a material node maps to (`.sdsl` in the Stride.Rendering
+  nuget) before trusting its name; colours go through 1 × 1 textures.
+- **Test the whole screen, not the point below**: a stretched row of tiles passed the tile-below
+  test; `TileCoverageFacts` samples every pixel.
+- **Edit scripts read and write with `newline=''`**: Git Bash `sed -i` turned a CRLF file into LF, and
+  Python's text mode turned LF into CRLF — each a "whole file changed" diff.
 
 ## Commands
 
