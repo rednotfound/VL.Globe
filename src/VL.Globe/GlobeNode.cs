@@ -95,7 +95,7 @@ public sealed class GlobeNode : IDisposable
     /// <param name="camera">The camera entity the scene is rendered with.</param>
     /// <param name="enabled">Off: nothing is drawn or requested.</param>
     /// <param name="radius">The globe's radius in scene units.</param>
-    /// <param name="background">The globe's colour where no tile has arrived. Transparent: none.</param>
+    /// <param name="background">The globe's colour where no tile has arrived, also while off. Transparent: none.</param>
     /// <param name="maxZoom">The finest zoom ever requested.</param>
     /// <param name="screenSpaceError">Refine while a tile pixel would cover more screen pixels than this.</param>
     /// <param name="maxRequestsInFlight">Requests running at once.</param>
@@ -151,7 +151,9 @@ public sealed class GlobeNode : IDisposable
             }
         }
 
-        ShowBackground(enabled && _source is not null && camera is not null ? _device : null, background);
+        // Drawn whenever there is a camera, Enabled or not: it fetches nothing, and a globe that is
+        // off reads as a plain sphere rather than as nothing (the user, 2026-11-20).
+        ShowBackground(camera is not null ? _device : null, background);
         Show(DrawSet.Resolve(wanted, _loaded.ContainsKey));
         // Every frame, not on change: with a camera-relative camera each tile sits at (centre - eye),
         // and the eye moved. Subtracted in double, then cast - the whole point of item 1.

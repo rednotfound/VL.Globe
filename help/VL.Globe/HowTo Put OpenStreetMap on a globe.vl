@@ -118,7 +118,7 @@
               <p:stringtype p:Assembly="VL.Core" p:Type="VL.Core.StringType">Comment</p:stringtype>
             </p:ValueBoxSettings>
           </Pad>
-          <Pad Id="KajG1653JCjB6IUqvwRd7p" Comment="Background" Bounds="330,226,90,15" ShowValueBox="true" isIOBox="true" Value="0.12, 0.13, 0.15, 1">
+          <Pad Id="KajG1653JCjB6IUqvwRd7p" Comment="Background" Bounds="330,226,90,15" ShowValueBox="true" isIOBox="true" Value="0.04, 0.1, 0.22, 1">
             <p:TypeAnnotation LastCategoryFullName="Color" LastDependency="VL.CoreLib.vl">
               <Choice Kind="TypeFlag" Name="RGBA" />
             </p:TypeAnnotation>

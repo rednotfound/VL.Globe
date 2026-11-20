@@ -102,6 +102,33 @@ public class GlobeViewFacts
         Assert.InRange(v.Heading, 39.9, 40.1);
     }
 
+    [Theory]
+    [InlineData(1e7)] [InlineData(1e5)] [InlineData(20)]
+    public void ALoopedDragLeavesNorthUp(double h)
+    {
+        // The user, 2026-11-20: "拖动一下就是会拖歪掉，歪了也很难摆正". A drag that rotated the rig about
+        // grabbed x cursor turned the heading a little on every curved path (a sphere's holonomy) and
+        // nothing turned it back. Drag a circle with the button held: north must still be up.
+        var v = View(10, 45, h);
+        var grabbed = v.Pick(400, 300)!.Value;
+        for (int i = 1; i <= 72; i++)
+        {
+            double a = i * System.Math.PI / 36;
+            double x = 400 + 150 * System.Math.Sin(a), y = 300 - 150 * (1 - System.Math.Cos(a));
+            v.DragTo(grabbed, x, y);
+            Same(grabbed, v.Pick(x, y)!.Value, System.Math.Max(0.01, h * 1e-6));
+        }
+        Assert.InRange(v.Heading, -1e-6, 1e-6);
+    }
+
+    [Fact]
+    public void ZoomLeavesNorthUp()
+    {
+        var v = View(10, 45, 1e7, heading: 0);
+        for (int i = 0; i < 10; i++) v.ZoomAt(700, 100, 0.7);
+        Assert.InRange(v.Heading, -1e-6, 1e-6);
+    }
+
     [Fact]
     public void ClipPlanesFollowTheHeight()
     {

@@ -14,8 +14,8 @@ namespace VL.Globe;
 // converted to Stride floats only for the view matrix. Tilt is phase 2: always 0 (looking straight
 // down) until a Tilt node exists.
 //
-// The two gestures share one primitive, BringUnderCursor: rotate the whole camera rig about the
-// globe's centre by the rotation that takes the point currently under a pixel to a wanted point.
+// The two gestures share one primitive, BringUnderCursor: move the camera, heading unchanged, so
+// that the point currently under a pixel becomes a wanted point.
 // Drag uses it with the point grabbed at press; ZoomByWheel uses it with the point that was under
 // the cursor before the height changed. Both invariants ("the grabbed point stays under the
 // cursor", "zoom does not move the point under the cursor") are this one rotation, tested once.
@@ -153,9 +153,57 @@ public sealed class GlobeView
     /// <summary>The unit surface point under a pixel, or null when the pixel is off the globe.</summary>
     internal D3? Pick(double x, double y) => PickDir(CameraDirection(x, y));
 
-    /// <summary>Rotate the rig about the centre so that the point now along <paramref name="camDir"/> becomes <paramref name="wanted"/>.</summary>
+    // North stays up (the user, 2026-11-20: "拖动一下就是会拖歪掉，歪了也很难摆正"). The rigid rotation
+    // about now x wanted is the shortest move, but along a curved path those rotations add up to a
+    // turn of the heading - 31 degrees for one circle dragged at globe scale, 50 for ten wheel notches
+    // toward a corner (GlobeViewFacts) - and no gesture turns it back. Cesium constrains its globe
+    // rotation to the polar axis by default and MapLibre's globe pans without touching the bearing,
+    // so: the rigid rotation only as a first guess, then Heading restored and Longitude/Latitude
+    // refined by Gauss-Newton until the wanted point is under the cursor again.
+    /// <summary>Move the camera, keeping its heading, so that the point now along <paramref name="camDir"/> becomes <paramref name="wanted"/>.</summary>
     /// <returns>False when the direction misses the globe; the view is then unchanged.</returns>
     internal bool BringUnderCursor(D3 wanted, D3 camDir)
+    {
+        double lon0 = Longitude, lat0 = Latitude, heading = Heading;
+        if (!RotateRig(wanted, camDir)) return false;
+        Heading = heading;
+        if (!Refine(wanted, camDir)) { Longitude = lon0; Latitude = lat0; return false; }
+        return true;
+    }
+
+    /// <summary>Newton steps on (Longitude, Latitude) with the heading fixed; false when the cursor leaves the globe on the way.</summary>
+    bool Refine(D3 wanted, D3 camDir)
+    {
+        var (east, north) = Frame(wanted);
+        (double, double)? Residual()
+        {
+            if (PickDir(camDir) is not { } p) return null;
+            var r = p - wanted;
+            return (D3.Dot(r, east), D3.Dot(r, north));
+        }
+        // A step of 1e-7 degrees is 1.1 cm on the ground: small against any frame's move, large
+        // against double's 1e-16 - the difference quotient keeps ~9 digits, and the residual itself
+        // is computed exactly, so the iteration converges to the true point regardless.
+        const double d = 1e-7;
+        for (int it = 0; it < 12; it++)
+        {
+            if (Residual() is not var (rx, ry)) return false;
+            if (rx * rx + ry * ry < 1e-28) return true;        // 1e-14 radii: 0.06 mm
+            double lon = Longitude, lat = Latitude;
+            Longitude = lon + d; var ex = Residual(); Longitude = lon;
+            Latitude = lat + d; var ey = Residual(); Latitude = lat;
+            if (ex is not var (ax, ay) || ey is not var (bx, by)) return false;
+            double j11 = (ax - rx) / d, j21 = (ay - ry) / d, j12 = (bx - rx) / d, j22 = (by - ry) / d;
+            double det = j11 * j22 - j12 * j21;
+            if (Math.Abs(det) < 1e-30) return false;
+            Longitude = lon - (j22 * rx - j12 * ry) / det;
+            Latitude = Math.Clamp(lat - (-j21 * rx + j11 * ry) / det, -89.9, 89.9);
+        }
+        return Residual() is not null;
+    }
+
+    /// <summary>The shortest move: rotate the whole rig about the centre by the rotation taking the point under the cursor to the wanted one.</summary>
+    bool RotateRig(D3 wanted, D3 camDir)
     {
         if (PickDir(camDir) is not { } now) return false;
         var axis = D3.Cross(now, wanted);
