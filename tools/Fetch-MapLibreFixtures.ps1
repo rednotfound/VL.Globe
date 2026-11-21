@@ -26,7 +26,11 @@ param(
         # 4c: filters, geometry types, zoom ranges, tile schemes, overscaling
         'extent', 'fill-outside-tile', 'filter', 'geojson', 'geometry-type', 'line-miter-limit',
         'line-overlap', 'line-round-limit', 'line-triangulation', 'overscale', 'tms', 'visibility',
-        'zoom-visibility', 'zoomed-fill'),
+        'zoom-visibility', 'zoomed-fill',
+        # 4e, labels, milestone 1: point labels - glyphs, shaping, size, colour, halo, anchor, offset
+        'text-field', 'text-font', 'text-size', 'text-color', 'text-opacity', 'text-halo-color',
+        'text-halo-width', 'text-halo-blur', 'text-anchor', 'text-offset', 'text-justify',
+        'text-max-width', 'text-letter-spacing', 'text-transform', 'text-rotate'),
     # Files under test/integration/assets that the fixtures load as local://<path> (the Berlin
     # tiles of the line-* vector fixtures). Saved under <tag>\_assets.
     [string[]]$Assets = @(
@@ -34,7 +38,18 @@ param(
         'tiles/extent1024-14-8802-5374.mvt', 'tiles/0-0-0.mvt', 'tiles/extent65536-0-0-0.mvt',
         'tiles/outside_ring.mvt', 'tiles/2-1-1.tms.mvt', 'tiles/2-1-2.tms.mvt', 'tiles/2-2-1.tms.mvt', 'tiles/2-2-2.tms.mvt',
         'data/feature.geojson', 'data/invalid.geojson', 'data/malformed.geojson', 'data/places.geojson',
-        'data/winding.geojson'),
+        'data/winding.geojson',
+        # the labels' SDF glyphs (local://glyphs/{fontstack}/{range}.pbf)
+        'glyphs/Open Sans Semibold,Arial Unicode MS Bold/0-255.pbf',
+        'glyphs/Open Sans Semibold,Arial Unicode MS Bold/256-511.pbf',
+        'glyphs/Open Sans Semibold,Arial Unicode MS Bold/1536-1791.pbf',
+        'glyphs/Open Sans Semibold,Arial Unicode MS Bold/5888-6143.pbf',
+        'glyphs/Open Sans Semibold,Arial Unicode MS Bold/8192-8447.pbf',
+        'glyphs/Open Sans Semibold,Arial Unicode MS Bold/12288-12543.pbf',
+        'glyphs/Open Sans Semibold,Arial Unicode MS Bold/64256-64511.pbf',
+        'glyphs/Open Sans Semibold,Arial Unicode MS Bold/65024-65279.pbf',
+        # the glyph metrics MapLibre's symbol-shaping tests shape with (test/integration/symbol-shaping)
+        'glyphs/fontstack-glyphs.json'),
     [string]$Destination = (Join-Path $PSScriptRoot '..\test\fixtures\maplibre'),
     [switch]$Force
 )
@@ -74,8 +89,10 @@ foreach ($a in $Assets) {
     $target = Join-Path $dest ('_assets\' + ($a -replace '/', '\'))
     if ((Test-Path $target) -and -not $Force) { continue }
     New-Item -ItemType Directory -Force (Split-Path $target) | Out-Null
+    # each segment escaped: font stacks are named with spaces and commas
+    $escaped = (($a -split '/') | ForEach-Object { [Uri]::EscapeDataString($_) }) -join '/'
     Invoke-WebRequest -UseBasicParsing -Headers @{ 'User-Agent' = $headers['User-Agent'] } `
-        "https://raw.githubusercontent.com/$repo/$Tag/test/integration/assets/$a" -OutFile $target
+        "https://raw.githubusercontent.com/$repo/$Tag/test/integration/assets/$escaped" -OutFile $target
     $fetched++
 }
 Invoke-WebRequest -UseBasicParsing "https://raw.githubusercontent.com/$repo/$Tag/LICENSE.txt" `
