@@ -2,6 +2,8 @@ using System;
 using NetTopologySuite.Geometries;
 using Stride.Core.Mathematics;
 using VL.Core.Import;
+using VL.Globe;
+using VL.Globe.Engine;
 
 namespace VL;
 
@@ -53,6 +55,29 @@ public static class GlobeCoordinates
         if (coordinate is null) return Vector3.Zero;
         var z = coordinate.Z;
         return ToGlobe(coordinate.X, coordinate.Y, double.IsNaN(z) ? 0 : z, radius);
+    }
+
+    // The placement GlobePositionComponent applies at draw time (GlobePosition.cs): a model in metres
+    // scaled to scene units, turned east-north-up - local +X east, +Y up, -Z north (Stride's forward)
+    // - and moved to the place, relative to the eye when there is one (camera-relative rendering),
+    // the subtraction in double. A public node taking the Camera was tried first and dropped: in
+    // GlobeWindow it formed a cycle (2026-11-21). Height is above sea level.
+    internal static Matrix Place(Matrix input, D3? eye, double longitude, double latitude, double height, float radius)
+    {
+        // An unwired Matrix pin is all zeros, not identity (C# has no Matrix default), and would
+        // collapse the model to a point. No real transformation is all zeros.
+        if (input == default) input = Matrix.Identity;
+        var up = GlobeView.Unit(longitude, latitude);
+        var (east, north) = GlobeView.Frame(up);
+        double s = radius / EarthRadius;
+        var position = up * (radius * (1.0 + height / EarthRadius));
+        var t = eye is { } e ? position - e : position;
+        var place = new Matrix(
+            (float)(east.X * s), (float)(east.Y * s), (float)(east.Z * s), 0,
+            (float)(up.X * s), (float)(up.Y * s), (float)(up.Z * s), 0,
+            (float)(-north.X * s), (float)(-north.Y * s), (float)(-north.Z * s), 0,
+            (float)t.X, (float)t.Y, (float)t.Z, 1);
+        return input * place;
     }
 
     /// <summary>A position on the globe as longitude, latitude and height.</summary>

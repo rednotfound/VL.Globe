@@ -141,6 +141,7 @@ $OurNodes = @{
     'Drag'                 = 'new\s+[\w\.]*GlobeDragNode\('
     'ZoomByWheel'          = 'new\s+[\w\.]*GlobeZoomByWheelNode\('
     'GlobeWindow'          = 'GlobeWindow_P\.Create\('     # patched in VL.Globe.vl, not C#
+    'GlobePositionComponent' = 'new\s+[\w\.]*GlobePositionComponentNode\('
 }
 
 # Process nodes must be constructed in __Create__ and only updated in Update. Built per frame, the
