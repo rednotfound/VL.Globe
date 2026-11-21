@@ -126,12 +126,31 @@ Each frame, on vvvv's main thread:
    stand-in may still sample it. Layers change by content, not identity.
    **A MapLibre style subset** is drawn by a second, newer painter (`MapStyle.cs`,
    `MapStylePainter.cs`, `LineTessellator.cs`, `VectorTile.cs` for MVT), measured against MapLibre's
-   render tests (ROADMAP 4b, 4c) and not yet wired to a node. Geometry is in Web Mercator world
+   render tests (ROADMAP 4b, 4c), wired to `VectorTiles` with `Rendering` Draped. Geometry is in Web Mercator world
    coordinates; a vector layer is drawn tile by tile, clipped to each tile's square; fills are
    aliased with GL's one-pixel `gl.LINES` outline reproduced pixel by pixel; lines are triangulated as GL JS's `line_bucket.ts` does and drawn
    with `DrawVertices`, every triangle blending on its own, so translucent overlaps darken as in
    MapLibre; the shader's 1-pixel edge ramp is reproduced by cutting each triangle where its alpha
    bends and colouring the vertices.
+7b. **VectorTiles on the GPU** (`Rendering` GPU, the default; ROADMAP 4d, docs/DESIGN-GPU-VECTOR.md) —
+   MapLibre's architecture, *geometry cached, pixels drawn every frame*:
+   - `VectorBucket.cs` builds one vector tile into vertices on the unit sphere relative to the tile's
+     centre (fills ear-clipped here or by NTS for rings with holes; lines by the same
+     `LineTessellator`, unextruded; fill outlines a line list, GL's `gl.LINES`), every style layer a
+     range of one index buffer; paint that depends on the feature in the vertices, the rest uniforms
+     per frame at the camera's zoom. Edges are cut to an eighth of a tile up to zoom 10 so chords
+     stay above the globe under the shader's lift.
+   - `GpuVectorTiles.cs` picks the vector tile for each wanted globe tile (zoom − 1 for 512-px tiles,
+     overscaled past maxzoom), builds on MapLibre's worker count (half the cores, at most 6, threads
+     below normal priority), uploads at most 8 MB a frame from pooled arrays, stands in built
+     descendants (zooming out) or the nearest built ancestor, draws a data-free background grid on
+     every needed tile at once, and keeps 768 MB of GPU buffers, least recently used out.
+   - `VectorRenderer.cs` is an `IGraphicsRendererBase` in VL.Stride's `EntityRendererComponent`
+     (transparent stage, after the opaque tiles): one draw per layer per tile with
+     `shaders\GlobeVector.sdsl` — lines extruded in pixels in the vertex shader, GL's edge ramp in
+     the pixel shader, clipping to the tile's square by discard (rectangles overlapping by 2e-4),
+     vertices lifted 0.0015 of their distance towards the eye, depth tested and not written.
+     Outlines are hardware-antialiased lines blended straight (the coverage goes into alpha only).
 8. **Every tile's translation** is set from this frame's eye; the **background sphere** (radius
    0.995, `Background` colour, a 1 × 1 sRGB texture — an emissive `ComputeColor` drew black) too,
    and it is drawn whenever there is a camera, Enabled or not.
@@ -172,7 +191,11 @@ it too — rounding makes its two sides 0.71× and 1.41× instead of 1× and 2×
 
 Process nodes only (a static node runs 60×/s). Network work runs on the thread pool and only
 enqueues bytes; every GPU resource is created and every entity added or removed in `Update`, on the
-main thread. A tile from a source that has since been replaced is dropped on arrival.
+main thread. A tile from a source that has since been replaced is dropped on arrival. Draped
+overlays render on pool threads; GPU vector buckets on VL.Globe's own worker threads (below normal
+priority). **Measured in the log** while GPU vectors draw: a `Globe perf` line each second (longest
+frame, frames over 33 ms, the node's longest Update, MB uploaded, GC gen0/gen2), and for an Update
+over 50 ms its stages, the GC pause inside it and the GPU path's own stages.
 
 ## Verification
 

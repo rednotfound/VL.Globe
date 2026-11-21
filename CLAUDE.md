@@ -2,7 +2,7 @@
 
 Guidance for Claude Code working in this repository.
 
-## Start here — the next session begins with ROADMAP 0.1 item 4c, the `VectorTiles` source
+## Start here — the next session continues ROADMAP 0.1 item 4d, `VectorTiles` on the GPU
 
 1. Read **[docs/ROADMAP.md](docs/ROADMAP.md)** — planned by release: **0.1 = VL.Mapsui's basics on a smooth
    globe plus draped vector tiles, 0.2 = terrain** (the user's decisions). Items 1, 1b, 2 are done and
@@ -11,9 +11,10 @@ Guidance for Claude Code working in this repository.
    the fixtures first with `tools\Fetch-MapLibreFixtures.ps1`). **4c** step 1 is done — the painter
    reads MVT (98/164 fixtures pass, 90 counted); step 2, the node `VectorTiles [Globe.Layers]`, is
    built and seen in vvvv; the user found the drape "不太行" and chose the GPU (ROADMAP **4d**,
-   [docs/DESIGN-GPU-VECTOR.md](docs/DESIGN-GPU-VECTOR.md)): built 2026-11-21 night, 170 tests green,
-   seen in vvvv standing still (Osaka, the shader compiled first time) — **the user's judgement
-   while moving is next**.
+   [docs/DESIGN-GPU-VECTOR.md](docs/DESIGN-GPU-VECTOR.md), its "As built" and "Next"): built and
+   judged by the user the same night ("大方向完全没有问题", "我觉得还行"), 178 tests green.
+   **Next: `fill-extrusion` drawn flat (buildings vanish past z14), the 200-330 ms Updates its
+   log names, then 3D buildings.**
    Research: [docs/RESEARCH-0.1.md](docs/RESEARCH-0.1.md), [docs/RESEARCH-VECTOR.md](docs/RESEARCH-VECTOR.md).
 2. Read **[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)** — what exists and why.
 3. Read **[NOTES.md](NOTES.md)** — every failure so far, before touching the same code.
@@ -48,10 +49,10 @@ at country scale; judge every change at the lowest height.
 | `GlobePositionComponent [Globe]` | stands an entity on the globe, placed at draw time; user-judged |
 | `ScreenToGlobe`, `GlobeToScreen`, `GlobeViewInfo [Globe]` | built; user-judged |
 | `Geometry`, `FeatureLayer [Globe.Layers]`, `VectorStyle [Globe.Styles]` | built, draped into the tiles; seen in vvvv |
-| `VectorTiles [Globe.Layers]` | built 2026-11-21: a MapLibre style's fills/lines/background from vector tiles, with or without a Tile Source; `Rendering` GPU (default, seen standing still) or Draped (seen standing still, "不太行") |
+| `VectorTiles [Globe.Layers]` | built 2026-11-21: a MapLibre style's fills/lines/background from vector tiles, with or without a Tile Source; `Rendering` GPU (default, judged by the user moving) or Draped (seen standing still, "不太行") |
 | `ToGlobe`, `ToGlobe (Coordinate)`, `FromGlobe [Globe]` | built, 4 rungs, **absolute** — right under OrbitCamera; under GlobeCamera use GlobePositionComponent |
 
-170 tests green (incl. MapLibre v6.19.0's render tests — 164 fixtures, fetched by script). Branch `feature/camera-relative`, pushed to `github.com/rednotfound/VL.Globe`
+178 tests green (incl. MapLibre v6.19.0's render tests — 164 fixtures, fetched by script). Branch `feature/camera-relative`, pushed to `github.com/rednotfound/VL.Globe`
 (public); not merged, not published. Verified on vvvv **7.4 (LTS)**; `Find-Vvvv.ps1` stays below 8.0.
 
 ## Facts this repo paid for (details in NOTES.md)
@@ -94,6 +95,12 @@ at country scale; judge every change at the lowest height.
 - **Custom GPU drawing goes through VL.Stride's `EntityRendererComponent`** (an `IGraphicsRendererBase`,
   called in the stage asked for with the scene's RenderView); a package's `shaders\` folder is put on
   Stride's effect path by VLGame, so `DynamicEffectInstance("GlobeVector")` finds `shaders\GlobeVector.sdsl`.
+- **A sag bound is relative to the view distance of the zoom**: GPU geometry is lifted 0.0015 of its
+  distance towards the eye, so its chords must sag less than that at the distance the zoom is seen
+  from — an eighth of a tile up to z10. An absolute 2° bound made discs of background in the sea.
+- **D3D line antialiasing puts coverage into alpha only**: blend such lines straight, never premultiplied.
+- **Measure before fixing a hitch**: the `Globe perf` lines in vvvv's log, with `GC.GetTotalPauseDuration`;
+  a gen-2 count in the same second was not the cause.
 - **Draped overlays render on worker threads**; only wanted tiles fetch vector tiles, and an overlay
   is redrawn only when a tile it lacked has come. SkSL shaders crash SkiaSharp 2.88's CPU backend.
 - **Edit scripts read and write with `newline=''`**: Git Bash `sed -i` turned a CRLF file into LF, and

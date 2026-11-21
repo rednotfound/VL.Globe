@@ -61,6 +61,14 @@ internal sealed class GpuVectorTiles : IDisposable
     long _gpuBytes;
     double _buildMs;
 
+    // where this frame's Update went (ms): finish+upload, tiles+jobs, resolve, backgrounds, draw list,
+    // evict - logged by the node when an Update is long (two of 200 and 330 ms on 2026-11-21, all here)
+    readonly System.Diagnostics.Stopwatch _timer = new();
+    readonly double[] _ms = new double[6];
+    double _lapAt;
+    void Lap(int stage) { double t = _timer.Elapsed.TotalMilliseconds; if (stage == 0) _lapAt = 0; _ms[stage] += t - _lapAt; _lapAt = t; }
+    public string Breakdown => $"finish+upload {_ms[0]:F0}, tiles+jobs {_ms[1]:F0}, resolve {_ms[2]:F0}, backgrounds {_ms[3]:F0}, draw list {_ms[4]:F0}, evict {_ms[5]:F0}";
+
     /// <summary>Bytes uploaded in this frame's Update, and buckets: for the node's measurements.</summary>
     public long UploadedBytes { get; private set; }
     public int Uploads { get; private set; }
@@ -115,10 +123,13 @@ internal sealed class GpuVectorTiles : IDisposable
         IReadOnlyList<VectorTileService> services, float radius, D3? eye, double zoom, int frame)
     {
         _frame = frame;
+        _timer.Restart();
+        Array.Clear(_ms);
         var result = new VectorRenderer.Frame { Radius = radius };
         long budget = UploadBytesPerFrame;
         UploadedBytes = 0; Uploads = 0;
         foreach (var e in _entries.Values) Finish(device, e, ref budget);
+        Lap(0);
 
         foreach (var service in services.Distinct())
         {
@@ -160,7 +171,9 @@ internal sealed class GpuVectorTiles : IDisposable
                         }
                     }
                 }
+                Lap(1);
                 draws[sourceId] = Resolve(service, sourceId, needed);
+                Lap(2);
                 // the background is drawn on every needed tile from the first frame, built or not:
                 // the style's ground colour, not the globe's dark one, while the data comes
                 if (sourceId == info.BackgroundSource)
@@ -172,6 +185,7 @@ internal sealed class GpuVectorTiles : IDisposable
                     }
             }
 
+            Lap(3);
             var ctx = new StyleContext { Zoom = zoom, GlobalState = doc.GlobalState };
             foreach (var layer in info.Layers)
             {
@@ -204,8 +218,10 @@ internal sealed class GpuVectorTiles : IDisposable
                 }
             }
         }
+        Lap(4);
         _renderer.Current = result;
         if (_frame % 30 == 0) Evict();
+        Lap(5);
     }
 
     StyleInfo? Analyse(VectorTileService service)

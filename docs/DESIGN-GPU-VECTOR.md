@@ -67,3 +67,28 @@ kept for comparison and as the fallback).
 
 Not in this step: labels and icons (stage 4), dashes, patterns, composite interpolation, fill
 extrusion.
+
+## As built, 2026-11-21 night — what changed after the user looked
+
+The design held ("大方向完全没有问题"); these are the corrections, each from something seen:
+
+| seen | cause | now |
+|---|---|---|
+| dark globe while tiles load | the style's background lived in the data buckets | a data-free background grid per needed tile, at once; zooming out, built descendants stand in before an ancestor |
+| a chequerboard from afar | 8 background cells at zoom 1 are 22°, sagging 1.8% under the globe | cells, fills and lines cut to ≤ 2° |
+| then discs of background in the sea at zoom 8 | an absolute 2° bound: an ocean square was two flat triangles 1 km deep, seen from 300 km where the lift is 450 m | cut to an eighth of a tile up to zoom 10 — **the sag bound is relative to the distance the zoom is seen from** |
+| dotted cracks at tile borders | two tiles clipping one edge each discarded some pixels | clip rectangles overlap by 2e-4; the background grid reaches past its square |
+| buildings vanish past z14 | Liberty's `building` stops at 14, `building-3d` (fill-extrusion) takes over and is not drawn | next: fill-extrusion flat, then 3D |
+| white dashed outlines, then jagged ones | D3D line antialiasing puts coverage into alpha only; under premultiplied blending that brightens | outlines blended straight with hardware AA |
+| "偶尔…会卡一下" while loading | builds on ProcessorCount − 2 pool threads; 4 tiles of 15 MB uploaded in a frame; MB arrays dropped per tile | MapLibre's worker count below normal priority; 8 MB a frame; pooled arrays; outlines as a line list (385k → 201k vertices a tile) |
+
+Measured after: a second of 80 tiles / 170 MB uploaded kept every frame under 27 ms. Two Updates of
+200 and 330 ms remained, all inside the GPU path with no GC — its stages are logged now; not yet
+found. Build time single-threaded, Liberty around Kyoto Station: 118 → 66 ms a tile.
+
+## Next
+
+1. `fill-extrusion` drawn flat, so buildings stay past z14.
+2. The 200–330 ms Updates (logged by stage); then a smaller vertex (40 bytes; GL JS packs ~half).
+3. 3D buildings: walls, roofs, light, depth written.
+4. MapLibre's fixtures rendered by the GPU path offscreen, the same harness as the drape's.

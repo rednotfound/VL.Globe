@@ -359,4 +359,17 @@ looked fine - "which makes one think it works". Two causes, estimated at 100 m h
   latitude was at its 89.9 limit, and the refinement found the point under the cursor again 180
   degrees round. Frames alternated between the two sides. Not damped: the solve now starts from
   the camera's own pose, keeps the answer on this side of the pole, and at the limit fits only the
-  longitude, so the camera stops. `DraggingThePoleIntoViewStopsAtItWithoutShaking`.
+  longitude, so the camera stops. `DraggingThePoleIntoViewStopsAtItWithoutShaking`. The user,
+  mid-fix: "请用合理的方式来解决，而不是一味设延时" — fix the solve, never damp the symptom.
+- **White dashed outlines, then jagged ones.** Hardware line antialiasing (D3D's
+  AntialiasedLineEnable, Stride's `MultisampleAntiAliasLine`) multiplies coverage into alpha only.
+  With premultiplied blending (Stride's `BlendStates.AlphaBlend`) the colour is not weighed by it and
+  the edge comes out lighter than both sides. Off, a 1-px line is a staircase. Both seen by the user.
+  Now the line list blends `NonPremultiplied` and the shader writes straight colour for it.
+- **"偶尔在运动加载的时候会卡一下" — measured before fixing.** The node logs a `Globe perf` line a
+  second. After MapLibre's worker count (half the cores, ≤ 6, threads below normal priority),
+  8 MB uploads a frame, pooled bucket arrays and line-list outlines: frames ≤ 27 ms while 80 tiles
+  and 170 MB arrived in one second. A 580 ms Update with a gen-2 collection in the same second was
+  *not* the GC: two later ones (200, 330 ms) had 2-3 ms of GC pause, all inside GpuVectorTiles.Update
+  — its stages are logged now (`gpu vectors: finish+upload …`). Measure the pause
+  (`GC.GetTotalPauseDuration`), do not infer it from a collection count.

@@ -263,7 +263,7 @@ costs CPU drawing, and a line's width is baked at one zoom. Asked why MapLibre d
 caches *geometry* and draws pixels on the GPU every frame. Decided the same evening: **move to
 RESEARCH-VECTOR stage 3, the GPU** ("同意，开始做吧，stride也是有强大的shader系统的").
 
-### 4d. `VectorTiles` on the GPU — built 2026-11-21, seen in vvvv standing still
+### 4d. `VectorTiles` on the GPU — built 2026-11-21, the user judged it ("我觉得还行")
 
 Design: [DESIGN-GPU-VECTOR.md](DESIGN-GPU-VECTOR.md). Built the same night:
 - `Engine/VectorBucket.cs`: a vector tile's fills (NTS `PolygonTriangulator`) and lines (the same
@@ -290,10 +290,11 @@ dotted cracks at tile borders, the globe shaking with the pole dragged into view
 **Next, in this order:**
 1. **`fill-extrusion` drawn flat** (its colour and opacity on the ground): Liberty's `building` fill
    stops at z14 and `building-3d` takes over, so buildings vanish past z14 (the user asked why).
-2. **"有的时候还是会稍微有点卡"** — measure first (frame time max per second, MB uploaded per frame, GC
-   counts in Status), then the suspects: up to 4 × 15 MB uploads in one frame; each bucket's
-   arrays on the large-object heap (gen-2 collections pause the main thread); a 40-byte vertex
-   where GL JS packs ~half; per-frame LINQ over every entry in GpuVectorTiles.Update and Evict.
+2. **"有的时候还是会稍微有点卡"** — measured and largely done the same night (DESIGN-GPU-VECTOR.md,
+   "As built"): MapLibre's worker count below normal priority, 8 MB uploads a frame, pooled arrays,
+   outlines as a line list; frames stay under 27 ms while 170 MB a second load. **Left:** two
+   Updates of 200 and 330 ms inside the GPU path with no GC (its stages are logged now), frames of
+   60–140 ms outside the node after heavy uploads (a smaller vertex should help).
 3. **3D buildings** (`fill-extrusion` for real: walls, roofs, light, depth written).
 
 ### 5. Navigation

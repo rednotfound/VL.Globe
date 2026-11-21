@@ -223,8 +223,8 @@ public sealed class GlobeNode : IDisposable
             double prev = updateStart;
             foreach (var (stage, at) in _stages) { parts.Add($"{stage} {at - prev:F0}"); prev = at; }
             parts.Add($"rest {now - prev:F0}");
-            _logger.LogWarning("Globe perf: an Update of {Ms:F0} ms - {Stages} ms; GC paused {Pause:F0} ms in it",
-                now - updateStart, string.Join(", ", parts), (GC.GetTotalPauseDuration() - _gcPauseAtStart).TotalMilliseconds);
+            _logger.LogWarning("Globe perf: an Update of {Ms:F0} ms - {Stages} ms; GC paused {Pause:F0} ms in it; gpu vectors: {Gpu} ms",
+                now - updateStart, string.Join(", ", parts), (GC.GetTotalPauseDuration() - _gcPauseAtStart).TotalMilliseconds, _gpu.Breakdown);
         }
         if (_lastUpdateAt >= 0)
         {
