@@ -96,7 +96,16 @@ sink by the camera's height z-fought at the horizon). **Still open:** if the 400
 the depth-first walk stops refining wherever it happens to be (make it priority-ordered then); depth
 precision toward the horizon has not been measured on screen; a Compass widget.
 
-### 2. Coordinates and reading the view
+### 2. Coordinates and reading the view — built 2026-11-21, the user's look pending
+
+`ScreenToGlobe` (Success), `GlobeToScreen` (Visible), `GlobeViewInfo` (centre, height, heading, tilt,
+ground resolution, web-map zoom by GeoLibre's ground-resolution formula), static nodes in Mapsui's
+shape taking the View and a projection-space position. GlobeCamera gained `Screen Height` (GlobeWindow
+wires the window's height into it too) and GlobeWindow a `Cursor` output, the mouse in projection
+space, since it hides its Mouse. Help patch `HowTo Read the place under the cursor`. 11 tests.
+
+The plan as written:
+
 
 - **`ScreenToGlobe`**: the cursor in projection space → longitude/latitude, plus `Success`, because
   the cursor can miss the globe.

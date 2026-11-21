@@ -5,6 +5,7 @@
 		<VLDocument link="HowTo Put OpenStreetMap on a globe.vl" tags="globe,openstreetmap,osm,tiles,enabled,camera,orbitCamera,zoom,stride,3d,earth,sphere,attribution" />
 	</Topic>
 	<Topic title="Coordinates">
+		<VLDocument link="HowTo Read the place under the cursor.vl" tags="screenToGlobe,globeToScreen,globeViewInfo,cursor,mouse,pick,longitude,latitude,resolution,zoom,height,heading,tilt" />
 		<VLDocument link="HowTo Stand a model on the globe.vl" tags="globePositionComponent,place,model,entity,sphere,stand,metres,longitude,latitude,height,camera-relative,input" />
 		<VLDocument link="HowTo Place a point on the globe.vl" tags="toGlobe,fromGlobe,longitude,latitude,height,position,vector3,sphere,coordinate,point,stride,offline" />
 	</Topic>

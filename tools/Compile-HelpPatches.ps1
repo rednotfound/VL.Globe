@@ -141,6 +141,9 @@ $OurNodes = @{
     'Drag'                 = 'new\s+[\w\.]*GlobeDragNode\('
     'ZoomByWheel'          = 'new\s+[\w\.]*GlobeZoomByWheelNode\('
     'DragRotate'           = 'new\s+[\w\.]*GlobeDragRotateNode\('
+    'ScreenToGlobe'        = 'GlobeViewNodes\.ScreenToGlobe\('
+    'GlobeToScreen'        = 'GlobeViewNodes\.GlobeToScreen\('
+    'GlobeViewInfo'        = 'GlobeViewNodes\.GlobeViewInfo\('
     'GlobeWindow'          = 'GlobeWindow_P\.Create\('     # patched in VL.Globe.vl, not C#
     'GlobePositionComponent' = 'new\s+[\w\.]*GlobePositionComponentNode\('
 }

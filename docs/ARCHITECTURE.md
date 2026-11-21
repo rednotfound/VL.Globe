@@ -33,6 +33,7 @@ the LTS line** (user, 2026-11-20); `tools\Find-Vvvv.ps1` stays below 8.0.
 | `DragRotate [Globe]` | process | `GlobeCameraNodes.cs` | right button: turn (sideways) and tilt (up/down) about the view's centre, MapLibre's handler (input `View`, output `Result`) |
 | `GlobePositionComponent [Globe]` | process → component | `GlobePosition.cs` | stands an entity on the globe: into its `Components`; its own Transformation is then in metres (+X east, +Y up, −Z north); placed camera-relative at draw time |
 | `ToGlobe`, `ToGlobe (Coordinate)`, `FromGlobe [Globe]` | static | `GlobeCoordinates.cs` | lon/lat/height ↔ Vector3, absolute scene coordinates |
+| `ScreenToGlobe`, `GlobeToScreen`, `GlobeViewInfo [Globe]` | static | `GlobeViewNodes.cs` | projection-space position ↔ lon/lat (Success: hit the globe; Visible: not on the far side or behind); the view's centre, height, heading, tilt, ground m/px and web-map zoom (Mapsui's) |
 
 Help patches: `HowTo Open a globe window` (OpenStreetMap → GlobeWindow, the front door),
 `HowTo Put OpenStreetMap on a globe` (the separate nodes, for a window shared with other things) and

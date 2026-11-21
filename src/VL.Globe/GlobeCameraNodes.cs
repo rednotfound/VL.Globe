@@ -52,17 +52,19 @@ public sealed class GlobeCameraNode
     /// <param name="heading">Degrees clockwise from north that the top of the view points to.</param>
     /// <param name="tilt">Degrees the view is tilted from straight down.</param>
     /// <param name="maxTilt">The most the view can be tilted, in degrees.</param>
+    /// <param name="screenHeight">The height of the view in pixels: SceneWindow's Client Bounds. GlobeWindow wires it.</param>
     [return: Pin(Name = "Camera")]
     public Entity Update(
         out GlobeView view, out double longitude, out double latitude, out double height, out double heading, out double tilt,
         double initialLongitude = 0, double initialLatitude = 20, double initialHeight = 1.5e7,
-        double minHeight = 20, double maxHeight = 2.5e7, float radius = 1f, float fieldOfView = 45f, double maxTilt = 60)
+        double minHeight = 20, double maxHeight = 2.5e7, float radius = 1f, float fieldOfView = 45f, double maxTilt = 60, float screenHeight = 1080f)
     {
         _view.MinHeight = Math.Max(1, minHeight);
         _view.MaxHeight = Math.Max(_view.MinHeight, maxHeight);
         _view.Radius = radius > 0 ? radius : 1f;
         _view.FovY = MathUtil.DegreesToRadians(Math.Clamp(fieldOfView, 1f, 170f));
         _view.MaxTilt = Math.Clamp(maxTilt, 0, 85);
+        _view.Height_px = Math.Max(1, screenHeight);   // for GlobeViewInfo's resolution and zoom
         if (_view.Tilt > _view.MaxTilt) _view.RotateBy(0, 0);   // a lowered limit applies at once
         if (!_initialised)
         {

@@ -6,7 +6,7 @@
   <NugetDependency Id="SUAeOTPJlryUSKynrWmHb6" Location="BruTile" Version="5.0.6" />
   <Patch Id="SKTxI1h5DmCeNE0Z0nE6G4">
     <Canvas Id="Roygb3bQuVqK15xRv6xKxz" DefaultCategory="Globe" CanvasType="FullCategory">
-      <Node Name="GlobeWindow" Bounds="100,220" Id="VBrh8tKkQ1kPaTaEgq0sJb" Summary="A window that shows a globe. The mouse moves it." Remarks="Connect a tile source and switch Enabled on: left drag moves the globe, the wheel zooms, right drag turns and tilts.&#xD;&#xA;It tells the tiles how tall the window really is, so map text is drawn at its size.&#xD;&#xA;To share the window with other scenes, use GlobeCamera, Globe, Drag and ZoomByWheel instead." Tags="renderer,window,globe,map">
+      <Node Name="GlobeWindow" Bounds="100,220" Id="VBrh8tKkQ1kPaTaEgq0sJb" Summary="A window that shows a globe. The mouse moves it." Remarks="Connect a tile source and switch Enabled on: left drag moves the globe, the wheel zooms, right drag turns and tilts.&#xD;&#xA;Cursor is the mouse in projection space, for ScreenToGlobe.&#xD;&#xA;It tells the tiles how tall the window really is, so map text is drawn at its size.&#xD;&#xA;To share the window with other scenes, use GlobeCamera, Globe, Drag and ZoomByWheel instead." Tags="renderer,window,globe,map">
         <p:NodeReference>
           <Choice Kind="ContainerDefinition" Name="Process" />
           <FullNameCategoryReference ID="Primitive" />
@@ -22,6 +22,7 @@
               <Pin Id="MOlZ9WN2bSncm6QVYhvk5v" Name="Initial Latitude" Kind="InputPin" />
               <Pin Id="T8qcwqSti5VTnNyEnIvO5X" Name="Initial Height" Kind="InputPin" />
               <Pin Id="MNUWmkcyIPMITu2J2AtQzH" Name="Min Height" Kind="InputPin" />
+              <Pin Id="Fz2GmHvnXZtZGvhmrUfEM1" Name="Screen Height" Kind="InputPin" />
               <Pin Id="M4TkM41hHkU4fU6wAVbsKy" Name="Camera" Kind="OutputPin" />
               <Pin Id="H5AkJHbOLw97UJZDOHM05M" Name="View" Kind="OutputPin" />
               <Pin Id="OS9MpCZ531P0fE5iLmuqAl" Name="Longitude" Kind="OutputPin" />
@@ -210,6 +211,7 @@
                 <Choice Kind="TypeFlag" Name="String" />
               </p:TypeAnnotation>
             </Pin>
+            <Pin Id="Ig5kbhJ0wgt6M6W2O2Lhd5" Name="Cursor" Kind="OutputPin" />
             <Pin Id="VPSiiTNpgkx92QakAhcqf3" Name="Status" Kind="OutputPin">
               <p:TypeAnnotation LastCategoryFullName="Primitive" LastDependency="VL.CoreLib.vl">
                 <Choice Kind="TypeFlag" Name="String" />
@@ -220,6 +222,8 @@
             <Fragment Id="UXQ4mQlWlHEgcHYWFQbhEg" Patch="LrkrQdbiH9FsxIoydgqNhj" Enabled="true" />
             <Fragment Id="D7jrXh4ifrUcJSsv5lMw1x" Patch="AJmjIfRzBxd6Di2uELJOAG" Enabled="true" />
           </ProcessDefinition>
+          <Link Id="NRxIhHzLcxGendEYxV3HvH" Ids="UzrLQcOB6dtIXlF1Cbsa42,Ig5kbhJ0wgt6M6W2O2Lhd5" IsHidden="true" />
+          <Link Id="HezOyEVlui8yhVIkFDbkSr" Ids="FIurQ7sf9vJPmBbyuZXsCv,Fz2GmHvnXZtZGvhmrUfEM1" />
           <Link Id="EIXtaWUkxgTGJLbyKlRVIq" Ids="E3ZPLWWNmlB5GS07XCHNg1,LfQ8QxKyPGWuadKnYUDhjg" />
           <Link Id="OCkLvjzRITZfB3m1R1laJ2" Ids="UzrLQcOB6dtIXlF1Cbsa42,DtWh0xMPTJBxrEl4LPhtqd" />
           <Link Id="AVet3BMgAZb4s9hMmHA53h" Ids="RR2pfVn2TelKCMwPy6ank5,GAwN4hhJVErvR2Ndv4wUf5" />

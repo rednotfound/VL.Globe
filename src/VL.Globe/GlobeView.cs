@@ -65,6 +65,19 @@ public sealed class GlobeView
         Height = Math.Clamp(metres, floor, Math.Max(floor, MaxHeight));
     }
 
+    // Ground resolution and web-map zoom (ROADMAP 0.1 item 2): GeoLibre's camera sync
+    // (cesium-camera.ts groundResolution) - a 256-px tile at zoom z spans cos(lat) x 2 pi R / 2^z metres
+    // of ground, so a zoom IS a resolution at a latitude, and VL.Mapsui shows the same ground at the same
+    // zoom. Measured at the centre of the view, along the line of sight (tilt included).
+    internal const double MetresPerPixelAtZoom0 = 2 * Math.PI * GlobeCoordinates.EarthRadius / 256;   // 156543.03
+
+    /// <summary>Ground metres one pixel covers at the centre of the view; Height_px is the window's height.</summary>
+    internal double GroundResolution() => Height * 2 * Math.Tan(FovY / 2) / Math.Max(1, Height_px);
+
+    /// <summary>The web-map zoom whose 256-px tiles have this ground resolution at this latitude.</summary>
+    internal static double ZoomOf(double metresPerPixel, double latitude)
+        => Math.Log2(MetresPerPixelAtZoom0 * Math.Cos(latitude * Math.PI / 180) / Math.Max(metresPerPixel, 1e-9));
+
     /// <summary>The eye's height above the surface, in metres.</summary>
     internal double EyeAltitude => (Pose().eye.Length / Radius - 1) * GlobeCoordinates.EarthRadius;
 
