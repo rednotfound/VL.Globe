@@ -10,8 +10,9 @@ Guidance for Claude Code working in this repository.
    (item 4); **4b** is done — MapLibre's render tests run in `dotnet test` (48/48 supported pass; fetch
    the fixtures first with `tools\Fetch-MapLibreFixtures.ps1`). **4c** step 1 is done — the painter
    reads MVT (98/164 fixtures pass, 90 counted); step 2, the node `VectorTiles [Globe.Layers]`, is
-   built and seen in vvvv (rung 4, no input driven); the user's two bugs (no vector without raster,
-   endless reloading) fixed — **the user's judgement while moving is next**.
+   built and seen in vvvv; the user found the drape "不太行" and chose the GPU (ROADMAP **4d**,
+   [docs/DESIGN-GPU-VECTOR.md](docs/DESIGN-GPU-VECTOR.md)): built 2026-11-21 night, 170 tests green,
+   **never yet run in vvvv — rung 4 (does GlobeVector.sdsl compile and draw) is next**.
    Research: [docs/RESEARCH-0.1.md](docs/RESEARCH-0.1.md), [docs/RESEARCH-VECTOR.md](docs/RESEARCH-VECTOR.md).
 2. Read **[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)** — what exists and why.
 3. Read **[NOTES.md](NOTES.md)** — every failure so far, before touching the same code.
@@ -46,10 +47,10 @@ at country scale; judge every change at the lowest height.
 | `GlobePositionComponent [Globe]` | stands an entity on the globe, placed at draw time; user-judged |
 | `ScreenToGlobe`, `GlobeToScreen`, `GlobeViewInfo [Globe]` | built; user-judged |
 | `Geometry`, `FeatureLayer [Globe.Layers]`, `VectorStyle [Globe.Styles]` | built, draped into the tiles; seen in vvvv |
-| `VectorTiles [Globe.Layers]` | built 2026-11-21: a MapLibre style's fills/lines/background draped from vector tiles, with or without a Tile Source; seen in vvvv standing still |
+| `VectorTiles [Globe.Layers]` | built 2026-11-21: a MapLibre style's fills/lines/background from vector tiles, with or without a Tile Source; `Rendering` GPU (default, **not yet seen**) or Draped (seen standing still, "不太行") |
 | `ToGlobe`, `ToGlobe (Coordinate)`, `FromGlobe [Globe]` | built, 4 rungs, **absolute** — right under OrbitCamera; under GlobeCamera use GlobePositionComponent |
 
-161 tests green (incl. MapLibre v6.19.0's render tests — 164 fixtures, fetched by script). Branch `feature/camera-relative`, pushed to `github.com/rednotfound/VL.Globe`
+170 tests green (incl. MapLibre v6.19.0's render tests — 164 fixtures, fetched by script). Branch `feature/camera-relative`, pushed to `github.com/rednotfound/VL.Globe`
 (public); not merged, not published. Verified on vvvv **7.4 (LTS)**; `Find-Vvvv.ps1` stays below 8.0.
 
 ## Facts this repo paid for (details in NOTES.md)
@@ -89,6 +90,9 @@ at country scale; judge every change at the lowest height.
   nuget) before trusting its name; colours go through 1 × 1 textures.
 - **Test the whole screen, not the point below**: a stretched row of tiles passed the tile-below
   test; `TileCoverageFacts` samples every pixel.
+- **Custom GPU drawing goes through VL.Stride's `EntityRendererComponent`** (an `IGraphicsRendererBase`,
+  called in the stage asked for with the scene's RenderView); a package's `shaders\` folder is put on
+  Stride's effect path by VLGame, so `DynamicEffectInstance("GlobeVector")` finds `shaders\GlobeVector.sdsl`.
 - **Draped overlays render on worker threads**; only wanted tiles fetch vector tiles, and an overlay
   is redrawn only when a tile it lacked has come. SkSL shaders crash SkiaSharp 2.88's CPU backend.
 - **Edit scripts read and write with `newline=''`**: Git Bash `sed -i` turned a CRLF file into LF, and

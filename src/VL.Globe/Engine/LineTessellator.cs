@@ -22,18 +22,25 @@ namespace VL.Globe.Engine;
 // within each piece alpha is affine in position and per-vertex colours reproduce it exactly.
 internal readonly record struct LineVertex(SKPoint P, float N);
 
+// The same vertex before it is extruded: the point on the line (X, Y), the extrusion (QX, QY) in
+// units of the outset, and N. GL JS's vertex buffer holds exactly this, and its vertex shader
+// extrudes by the width in pixels - the GPU path (VectorBucket) does the same.
+internal readonly record struct ExtrudedVertex(double X, double Y, double QX, double QY, float N);
+
 internal sealed class LineTessellator
 {
     const double CosHalfSharpCorner = 0.79335334029123516;   // cos(75° / 2)
     const double DegPerTriangle = 20;
     const double ExtrudeScale = 63;                          // GL JS stores extrusions as bytes of 1/63
 
-    readonly List<LineVertex> _triangles;
+    readonly List<ExtrudedVertex> _triangles;
     readonly double _outset;
-    readonly List<(LineVertex v, bool round)> _strip = new();
+    readonly List<(ExtrudedVertex v, bool round)> _strip = new();
     int _e1 = -1, _e2 = -1;
 
-    LineTessellator(List<LineVertex> into, double outset) { _triangles = into; _outset = outset; }
+    LineTessellator(List<ExtrudedVertex> into, double outset) { _triangles = into; _outset = outset; }
+
+    [ThreadStatic] static List<ExtrudedVertex>? _scratch;
 
     readonly record struct V(double X, double Y)
     {
@@ -56,7 +63,20 @@ internal sealed class LineTessellator
     {
         var vertices = new V[line.Count];
         for (int i = 0; i < line.Count; i++) vertices[i] = new V(line[i].X, line[i].Y);
-        new LineTessellator(into, outset).AddLine(vertices, isPolygon, join, cap, miterLimit, roundLimit, sharpCornerOffset);
+        var raw = _scratch ??= new List<ExtrudedVertex>();
+        raw.Clear();
+        new LineTessellator(raw, outset).AddLine(vertices, isPolygon, join, cap, miterLimit, roundLimit, sharpCornerOffset);
+        into.Capacity = Math.Max(into.Capacity, into.Count + raw.Count);
+        foreach (var r in raw) into.Add(new LineVertex(new SKPoint((float)(r.X + r.QX * outset), (float)(r.Y + r.QY * outset)), r.N));
+    }
+
+    /// <summary>Appends the triangles of one line to <paramref name="into"/> unextruded, three vertices each; <paramref name="nominalOutset"/> only sets how finely round caps and joins are sliced.</summary>
+    public static void TessellateExtruded(IReadOnlyList<(double X, double Y)> line, bool isPolygon, string join, string cap,
+        double miterLimit, double roundLimit, double nominalOutset, double sharpCornerOffset, List<ExtrudedVertex> into)
+    {
+        var vertices = new V[line.Count];
+        for (int i = 0; i < line.Count; i++) vertices[i] = new V(line[i].X, line[i].Y);
+        new LineTessellator(into, nominalOutset).AddLine(vertices, isPolygon, join, cap, miterLimit, roundLimit, sharpCornerOffset);
     }
 
     /// <summary>Cuts the triangles where GL JS's shader alpha bends and gives every vertex its colour: <paramref name="color"/> (straight) times that alpha.</summary>
@@ -286,8 +306,7 @@ internal sealed class LineTessellator
         // stored as GL JS stores it: Math.round(63 x) + 128 in a Uint8Array, which wraps - a miter
         // longer than about twice the width folds back (line-miter-limit fixtures show the fold)
         static double Byte(double x) => ((((int)Math.Floor(ExtrudeScale * x + 0.5) + 128) & 0xFF) - 128) / ExtrudeScale;
-        var q = new V(Byte(extrude.X), Byte(extrude.Y));
-        var at = new LineVertex((p + q * _outset).ToSk(), up ? 1 : -1);
+        var at = new ExtrudedVertex(p.X, p.Y, Byte(extrude.X), Byte(extrude.Y), up ? 1 : -1);
         int e = _strip.Count;
         _strip.Add((at, round));
         if (_e1 >= 0 && _e2 >= 0)
@@ -308,11 +327,11 @@ internal sealed class LineTessellator
         // ~10 for 20 px (a fixed 16 made the round caps of minor roads most of an overlay's triangles)
         double step = 2 * Math.Acos(Math.Max(-1, 1 - 0.25 / Math.Max(_outset, 0.25)));
         int steps = Math.Clamp((int)Math.Ceiling(Math.PI / step), 2, 16);
-        var center = new LineVertex(p.ToSk(), 0);
+        var center = new ExtrudedVertex(p.X, p.Y, 0, 0, 0);
         for (int k = 0; k < steps; k++)
         {
             double a0 = Math.PI * k / steps, a1 = Math.PI * (k + 1) / steps;
-            LineVertex At(double a) => new((p + (normal * Math.Cos(a) + forward * Math.Sin(a)) * _outset).ToSk(), 1);
+            ExtrudedVertex At(double a) { var q = normal * Math.Cos(a) + forward * Math.Sin(a); return new(p.X, p.Y, q.X, q.Y, 1); }
             _triangles.Add(center); _triangles.Add(At(a0)); _triangles.Add(At(a1));
         }
     }

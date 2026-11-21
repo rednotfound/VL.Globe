@@ -204,7 +204,7 @@ stated threshold, and an ignore list of known failures.
 a symbol layer, terrain, operations. FeatureLayer still drapes with `TileOverlay`'s Skia stroke;
 moving it onto the painter is part of 4c.
 
-### 4c. `VectorTiles` — a draped vector-tile source — next
+### 4c. `VectorTiles` — a draped vector-tile source — built, judged "不太行"
 
 MVT via NetTopologySuite.IO.VectorTiles, drawn per tile into the overlay from a MapLibre Style JSON
 *subset* (fill, line, background; filters; zoom stops) — stage 1 of RESEARCH-VECTOR's path, the same
@@ -258,7 +258,28 @@ already here (`Peek`). Cold cache at Osaka afterwards: **4 tiles, 2.8 MB**, all 
    172 → 60 ms an overlay single-threaded; 229 ms in vvvv with the threads contending. Status
    reports it.
 
-**Next:** the user's judgement while moving, then country scale.
+**The user's judgement (2026-11-21): "我感觉不太行"** — a texture caches pixels, so every new view
+costs CPU drawing, and a line's width is baked at one zoom. Asked why MapLibre does it well: it
+caches *geometry* and draws pixels on the GPU every frame. Decided the same evening: **move to
+RESEARCH-VECTOR stage 3, the GPU** ("同意，开始做吧，stride也是有强大的shader系统的").
+
+### 4d. `VectorTiles` on the GPU — built 2026-11-21, not yet seen in vvvv
+
+Design: [DESIGN-GPU-VECTOR.md](DESIGN-GPU-VECTOR.md). Built the same night:
+- `Engine/VectorBucket.cs`: a vector tile's fills (NTS `PolygonTriangulator`) and lines (the same
+  `LineTessellator`, now emitting the unextruded vertex) as vertices on the unit sphere relative to
+  the tile's centre; one range per layer; paint that depends on the feature in the vertices.
+- `shaders/GlobeVector.sdsl`: lines extruded in pixels in the vertex shader, GL JS's edge ramp in
+  the pixel shader, clipping to the tile's square by discard, lifted towards the eye over the tiles.
+- `Engine/VectorRenderer.cs` (an `IGraphicsRendererBase` in VL.Stride's `EntityRendererComponent`,
+  transparent stage) and `Engine/GpuVectorTiles.cs` (which tiles, built on workers, uploaded 4 a
+  frame, stand-ins by the nearest built ancestor).
+- `VectorTiles` gained `Rendering`: GPU (default) or Draped.
+- 9 xUnit facts (GpuVectorFacts), 170 green. The shader has never compiled yet: **rung 4 is next**
+  (the user's vvvv was open on the help patch, so dist was not rebuilt).
+
+**Next:** build, then rung 4 — does GlobeVector compile, does it draw where the drape drew, frame
+time; then the user's judgement while moving, then country scale.
 
 ### 5. Navigation
 

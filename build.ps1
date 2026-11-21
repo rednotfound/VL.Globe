@@ -193,6 +193,17 @@ foreach ($pkg in $Packages) {
             Write-Host "      edits made after F1 will land in dist\ and the next build refuses until they are copied back" -ForegroundColor Yellow
         }
     }
+
+    # Shaders: a package folder with shaders\ is made visible to Stride's effect system by VL.Stride
+    # (VLGame.UpdateShaderPaths), as VL.Audio's is. VectorTiles' GPU path compiles GlobeVector.sdsl
+    # from there at run time (docs/DESIGN-GPU-VECTOR.md).
+    $shaderSrc = Join-Path $RepoRoot 'shaders'
+    if (Test-Path $shaderSrc) {
+        $shaderDst = Join-Path $pkg.PkgDir 'shaders'
+        New-Item -ItemType Directory -Force -Path $shaderDst | Out-Null
+        Copy-Item (Join-Path $shaderSrc '*.sdsl') -Destination $shaderDst
+        Write-Host "      shaders\ ($(@(Get-ChildItem $shaderDst -Filter *.sdsl).Count) .sdsl)"
+    }
 }
 
 Write-Host "`n== 3/5 upstream packages ==" -ForegroundColor Cyan

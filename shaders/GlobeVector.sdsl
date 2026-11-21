@@ -1,0 +1,68 @@
+// VL.Globe's vector tiles on the GPU (docs/DESIGN-GPU-VECTOR.md), drawn by Engine/VectorRenderer.cs.
+// GL JS's line and fill shaders on a globe: a line vertex is extruded here, in pixels at its own
+// depth, so a line keeps its width on screen at every zoom; its edge is antialiased in the pixel
+// shader with GL JS's ramp, alpha = clamp(outset * (1 - |N|)), outset = half width + 0.5 px.
+shader GlobeVector : ShaderBase
+{
+    cbuffer PerDraw
+    {
+        stage float4x4 GvWorldView;     // scale (radius) and the tile's camera-relative translation, then the view
+        stage float4x4 GvProjection;
+        stage float4 GvColor;           // linear, straight alpha; times the vertex colour
+        stage float4 GvClip;            // u0 v0 u1 v1 in the tile's square: the rest is discarded
+        stage float3 GvCentre;          // the tile's centre on the unit sphere (for the tangent frame)
+        stage float GvRadius;
+        stage float GvHalfWidth;        // px; 0 draws a fill
+        stage float GvPixel;            // view units per pixel at depth 1: 2 / (projection._22 * viewport height)
+        stage float GvLift;             // fraction of the distance moved towards the eye, over the tiles
+        stage float GvIsLine;
+    }
+
+    stage stream float3 GvPosition : POSITION;
+    stage stream float2 GvExtrude : TEXCOORD0;
+    stage stream float2 GvUvIn : TEXCOORD1;
+    stage stream float2 GvEdgeIn : TEXCOORD2;  // N, the feature's width scale
+    stage stream float4 GvColorIn : COLOR0;
+
+    stage stream float2 GvUv;
+    stage stream float GvEdge;
+    stage stream float GvOutset;
+    stage stream float4 GvTint;
+
+    float3 ToLinear(float3 c)
+    {
+        return c <= 0.04045 ? c / 12.92 : pow((c + 0.055) / 1.055, 2.4);
+    }
+
+    stage override void VSMain()
+    {
+        float4 v = mul(float4(streams.GvPosition, 1), GvWorldView);
+        float outset = 0;
+        if (GvIsLine > 0.5)
+        {
+            float3 p = normalize(GvCentre + streams.GvPosition);
+            float3 east = normalize(float3(p.z, 0, -p.x));
+            float3 north = cross(p, east);
+            float3 dir = streams.GvExtrude.x * east - streams.GvExtrude.y * north;
+            float3 dirView = mul(float4(dir, 0), GvWorldView).xyz / GvRadius;
+            outset = GvHalfWidth * streams.GvEdgeIn.y + 0.5;
+            float depth = max(-v.z, 1e-9);
+            v.xyz += dirView * (outset * GvPixel * depth);
+        }
+        v.xyz *= (1 - GvLift);
+        streams.ShadingPosition = mul(v, GvProjection);
+        streams.GvUv = streams.GvUvIn;
+        streams.GvEdge = streams.GvEdgeIn.x;
+        streams.GvOutset = outset;
+        streams.GvTint = float4(ToLinear(streams.GvColorIn.rgb), streams.GvColorIn.a) * GvColor;
+    }
+
+    stage override void PSMain()
+    {
+        float2 uv = streams.GvUv;
+        if (uv.x < GvClip.x || uv.y < GvClip.y || uv.x > GvClip.z || uv.y > GvClip.w) discard;
+        float alpha = streams.GvTint.a;
+        if (GvIsLine > 0.5) alpha *= saturate(streams.GvOutset * (1 - abs(streams.GvEdge)));
+        streams.ColorTarget = float4(streams.GvTint.rgb * alpha, alpha);
+    }
+};

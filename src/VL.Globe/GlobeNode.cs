@@ -152,10 +152,19 @@ public sealed class GlobeNode : IDisposable
     Color4 _backgroundColor;
     bool _backgroundShown;
 
+    // VectorTiles drawn by the GPU (docs/DESIGN-GPU-VECTOR.md): their own entity under the root, drawn
+    // after the tiles; the camera's zoom (MapLibre's, 512-px tiles) for their zoom-dependent paint
+    readonly GpuVectorTiles _gpu = new();
+    double _cameraZoom;
+    string _gpuError = "";
+    int _gpuBuiltLogged = -1;
+    double _gpuLoggedAt = -10;
+
     public GlobeNode(NodeContext nodeContext)
     {
         _context = nodeContext;
         _logger = nodeContext.GetLogger();
+        _root.Transform.Children.Add(_gpu.Entity.Transform);
     }
 
     /// <param name="tileSource">From OpenStreetMap or XyzTiles.</param>
@@ -215,7 +224,8 @@ public sealed class GlobeNode : IDisposable
             : $"{wanted.Count} wanted, zoom {wanted.Min(t => t.Zoom)}..{wanted.Max(t => t.Zoom)}; {_loaded.Count} loaded, {_pending.Count} loading, {_failedCount} failed"
               + (_lastError.Length > 0 ? " - last error: " + _lastError : "")
               + (layersOnly ? "; no Tile Source: layers on plain tiles" : "")
-              + (_overlaysDrawn > 0 ? $"; overlays {_overlayMs:F0} ms each" : "");
+              + (_overlaysDrawn > 0 ? $"; overlays {_overlayMs:F0} ms each" : "")
+              + (_gpu.Status.Length > 0 ? "; " + _gpu.Status : "");
         var head = _status.Split(';')[0];
         if (head != _lastLogged) { _logger.LogInformation("Globe: {Status}", _status); _lastLogged = head; }
 
@@ -262,6 +272,19 @@ public sealed class GlobeNode : IDisposable
         foreach (var w in wanted) if (_loaded.TryGetValue(w, out var s)) s.LastUsed = _frame;
         AdvanceFades();
         UpdateOverlays(layers);
+        // the GPU's vector tiles follow the wanted tiles, not the ones shown: they need no imagery,
+        // and the wanted set covers the view at the right zoom even while the raster loads
+        var gpuServices = enabled && layers is not null
+            ? layers.Where(l => l is { Enabled: true, Gpu: true, Vector: not null }).Select(l => l.Vector!).ToList()
+            : new List<VectorTileService>();
+        if (_device is not null) _gpu.Update(_device, wanted, _wantedSet, gpuServices, _radius, _relativeEye, _cameraZoom, _frame);
+        // into the log: the renderer's error once, and how far the building is, once a second at most
+        if (_gpu.Error != _gpuError) { _gpuError = _gpu.Error; if (_gpuError.Length > 0) _logger.LogError("Globe: {Error}", _gpuError); }
+        if (gpuServices.Count > 0 && _gpu.TilesBuilt != _gpuBuiltLogged && _clock.Elapsed.TotalSeconds - _gpuLoggedAt > 1)
+        {
+            _gpuBuiltLogged = _gpu.TilesBuilt; _gpuLoggedAt = _clock.Elapsed.TotalSeconds;
+            _logger.LogInformation("Globe: {Status} (zoom {Zoom:F2})", _gpu.Status, _cameraZoom);
+        }
         Evict();
 
         tilesVisible = _shown.Count;
@@ -307,6 +330,11 @@ public sealed class GlobeNode : IDisposable
         var far = Math.Max(cc?.FarClipPlane ?? 1000f, near * 2);
         var vp = view * Matrix.PerspectiveFovRH(fov, aspect, near, far);
         var frustum = new BoundingFrustum(ref vp);
+        // the camera's zoom as MapLibre counts it (512-px tiles): metres per pixel straight below the eye
+        double height = Math.Max(eye.Length() - _radius, 1e-9);
+        double metresPerPixel = height * 2 * Math.Tan(fov / 2) / Math.Max(1f, screenHeight) * GlobeCoordinates.EarthRadius / _radius;
+        double latitude = Math.Asin(Math.Clamp(eye.Y / Math.Max(eye.Length(), 1e-9), -1, 1)) * 180 / Math.PI;
+        _cameraZoom = GlobeView.ZoomOf(metresPerPixel, Math.Clamp(latitude, -85, 85)) - 1;
         var selector = new TileSelector { MaxZoom = maxZoom, ScreenSpaceError = Math.Max(0.25f, sse) };
         return selector.Select(eye, frustum, fov, Math.Max(1f, screenHeight), _radius);
     }
@@ -376,7 +404,8 @@ public sealed class GlobeNode : IDisposable
     void UpdateOverlays(IEnumerable<GlobeLayer>? layers)
     {
         foreach (var r in _retired.Where(r => _frame - r.frame > 60).ToList()) { r.texture.Dispose(); _retired.Remove(r); }
-        var list = layers?.Where(l => l is { Enabled: true } && l.HasContent).Select(l => l!).ToList() ?? new List<GlobeLayer>();
+        // VectorTiles drawn by the GPU are not draped
+        var list = layers?.Where(l => l is { Enabled: true } && l.HasContent && !(l.Vector != null && l.Gpu)).Select(l => l!).ToList() ?? new List<GlobeLayer>();
         var h = new HashCode();
         h.Add(list.Count);
         foreach (var l in list) h.Add(l.Signature());
@@ -795,6 +824,7 @@ public sealed class GlobeNode : IDisposable
 
     public void Dispose()
     {
+        _gpu.Dispose();
         Reset();
         if (_background is not null && _backgroundShown) _root.Transform.Children.Remove(_background.Transform);
         _backgroundMesh?.Dispose();
