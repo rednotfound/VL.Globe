@@ -124,6 +124,8 @@ internal sealed class MapStyleDocument
     public Dictionary<string, StyleSource> Sources = new();
     public Dictionary<string, JsonElement> GlobalState = new();
     public double CenterLon, CenterLat, Zoom;
+    /// <summary>The style's glyph URL template ({fontstack}/{range}.pbf), or null: labels need it.</summary>
+    public string? Glyphs;
     public bool Lenient;
 
     /// <summary>What a lenient parse or draw left out, and why: "layer id: reason".</summary>
@@ -239,12 +241,19 @@ internal sealed class MapStyleDocument
         ["line"] = new() { "line-color", "line-opacity", "line-width" },
         // lenient parses only (see Parse): drawn by the GPU path
         ["fill-extrusion"] = new() { "fill-extrusion-color", "fill-extrusion-opacity", "fill-extrusion-height", "fill-extrusion-base" },
+        // labels, milestone 1 (ROADMAP 4e): point text, drawn by the GPU path
+        ["symbol"] = new() { "text-color", "text-opacity", "text-halo-color", "text-halo-width", "text-halo-blur" },
     };
     static readonly Dictionary<string, HashSet<string>> LayoutKeys = new()
     {
         ["background"] = new() { "visibility" },
         ["fill"] = new() { "visibility" },
         ["fill-extrusion"] = new() { "visibility" },
+        // what the layout checks for itself: symbol-placement point only, the alignments viewport/auto
+        ["symbol"] = new() { "visibility", "symbol-placement", "text-field", "text-font", "text-size", "text-max-width",
+            "text-line-height", "text-letter-spacing", "text-justify", "text-anchor", "text-offset", "text-transform", "text-rotate",
+            "text-allow-overlap", "text-ignore-placement", "text-padding", "text-optional", "text-keep-upright",
+            "text-rotation-alignment", "text-pitch-alignment" },
         ["line"] = new() { "visibility", "line-cap", "line-join", "line-miter-limit", "line-round-limit" },
     };
 
@@ -266,6 +275,7 @@ internal sealed class MapStyleDocument
         }
         if (root.TryGetProperty("center", out var c) && c.ValueKind == JsonValueKind.Array) { doc.CenterLon = c[0].GetDouble(); doc.CenterLat = c[1].GetDouble(); }
         if (root.TryGetProperty("zoom", out var z) && z.ValueKind == JsonValueKind.Number) doc.Zoom = z.GetDouble();
+        if (root.TryGetProperty("glyphs", out var glyphs) && glyphs.ValueKind == JsonValueKind.String) doc.Glyphs = glyphs.GetString();
         if (root.TryGetProperty("state", out var state))
             foreach (var s in state.EnumerateObject())
                 if (s.Value.TryGetProperty("default", out var d)) doc.GlobalState[s.Name] = d.Clone();
@@ -409,6 +419,12 @@ internal static class MapStylePainter
         if ((layer.MinZoom > 0 && view.Zoom < layer.MinZoom) || view.Zoom >= layer.MaxZoom) return;
         if (Expression.String(Get(layer.Layout, "visibility"), ctx, "visible") == "none") return;
         if (layer.Type == "fill-extrusion") return;   // the GPU path draws it; the drape does not
+        if (layer.Type == "symbol")
+        {
+            // labels are the GPU path's: the drape has none, and says so to the render tests
+            if (!style.Lenient) throw new StyleUnsupportedException("symbol layer");
+            return;
+        }
         if (layer.Type == "background")
         {
             var color = Expression.Color(Get(layer.Paint, "background-color"), ctx, StyleColor.Black)

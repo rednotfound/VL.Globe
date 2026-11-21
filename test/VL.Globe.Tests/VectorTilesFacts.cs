@@ -44,8 +44,8 @@ public class VectorTilesFacts
         using var json = JsonDocument.Parse(BerlinStyle(tiles));
         Assert.Throws<StyleUnsupportedException>(() => MapStyleDocument.Parse(json.RootElement));
         var doc = MapStyleDocument.Parse(json.RootElement, lenient: true);
-        Assert.Equal(new[] { "water", "roads", "dashed" }, doc.Layers.Select(l => l.Id));
-        Assert.Contains(doc.Skipped, s => s.StartsWith("labels:") && s.Contains("symbol"));
+        // labels are read since 4e (the GPU path draws them); the dashes are still drawn solid
+        Assert.Equal(new[] { "water", "roads", "labels", "dashed" }, doc.Layers.Select(l => l.Id));
         Assert.Contains(doc.Skipped, s => s.StartsWith("dashed:") && s.Contains("line-dasharray"));
     }
 
@@ -129,7 +129,7 @@ public class VectorTilesFacts
             var until = DateTime.UtcNow.AddSeconds(10);
             while (service.Document is null && DateTime.UtcNow < until) Thread.Sleep(20);
             Assert.True(service.Document != null, service.Status);
-            Assert.StartsWith("3 layers drawn", service.Status);
+            Assert.StartsWith("4 layers drawn", service.Status);   // water, roads, labels (4e) and the dashed line drawn solid
             var bytes = OverlayRenderer.Render(Inside, new OverlayLayer[] { new StyleOverlay(service.Document!) }, 256, out bool complete);
             Assert.True(complete);
             Assert.NotNull(bytes);

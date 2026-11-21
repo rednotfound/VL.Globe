@@ -1,0 +1,115 @@
+// VL.Globe's labels (ROADMAP 4e), drawn by Engine/VectorRenderer.cs: GL JS's symbol_sdf shaders for
+// point labels in the viewport (text-pitch-alignment and text-rotation-alignment viewport, GL JS's
+// defaults for point placement). The anchor is projected from its place on the globe (or the
+// Mercator plane, in MapLibre's render tests); each glyph's quad is laid out in screen pixels from
+// there, so text stays upright and its size on screen fixed. Antialiasing and the halo as
+// symbol_sdf.fragment.glsl: smoothstep on the signed-distance field.
+shader GlobeSymbol : ShaderBase
+{
+    cbuffer PerDraw
+    {
+        stage float4x4 GsWorldView;     // the tile's camera-relative translation (and scale), then the view
+        stage float4x4 GsProjection;
+        stage float3 GsCentre;          // the tile's centre on the unit sphere (its up)
+        stage float2 GsViewport;        // the target in pixels
+        stage float2 GsTexSize;         // the atlas in pixels
+        stage float4 GsColor;           // text-color, premultiplied; times the vertex colour
+        stage float4 GsHaloColor;       // text-halo-color, premultiplied
+        stage float GsSize;             // text-size in px, when it does not depend on the feature
+        stage float GsSizeFromVertex;   // 1: the size is per vertex
+        stage float GsOpacity;          // text-opacity when it does not depend on the feature (else 1)
+        stage float GsHaloWidth;
+        stage float GsHaloBlur;
+        stage float GsIsHalo;           // GL JS's u_is_halo and u_is_plain
+        stage float GsIsPlain;
+        stage float GsCameraToCenter;   // the distance from the eye to the view's centre, for GL JS's perspective ratio
+        stage float GsLift;
+        stage float GsFlat;             // 1: on the Mercator plane (no far side to hide)
+        stage float GsLinearize;        // 1: vvvv's linear pipeline; 0: sRGB, as GL JS
+        stage float GsDevicePixelRatio;
+    }
+
+    stage Texture2D GsAtlas;
+    stage SamplerState GsSampler
+    {
+        Filter = MIN_MAG_MIP_LINEAR;
+        AddressU = Clamp;
+        AddressV = Clamp;
+    };
+
+    stage stream float3 GsAnchor : POSITION;      // on the unit sphere (or the plane), relative to the tile's centre
+    stage stream int4 GsOffsetTex : TEXCOORD0;    // xy: the corner's offset x 32 at 24 px (GL JS's a_offset); zw: the atlas pixel
+    stage stream float2 GsSizeOpacity : TEXCOORD1; // the feature's size and opacity where they depend on it
+    stage stream float4 GsColorIn : COLOR0;       // the feature's colour (sRGB, straight) where it depends on it, else white
+
+    stage stream float2 GsTex;
+    stage stream float3 GsData;                   // GL JS's v_data1: gamma scale, size, opacity
+    stage stream float4 GsFill;
+
+    float3 ToLinear(float3 c)
+    {
+        if (GsLinearize < 0.5) return c;
+        c = saturate(c);
+        return c <= 0.04045 ? c / 12.92 : pow((c + 0.055) / 1.055, 2.4);
+    }
+
+    stage override void VSMain()
+    {
+        float4 v = mul(float4(streams.GsAnchor, 1), GsWorldView);
+        v.xyz *= (1 - GsLift);
+        float4 clip = mul(v, GsProjection);
+        // the far side of the globe: an anchor whose up looks away from the eye is not drawn
+        if (GsFlat < 0.5)
+        {
+            float3 up = mul(float4(normalize(GsCentre + streams.GsAnchor), 0), GsWorldView).xyz;
+            if (dot(up, -v.xyz) <= 0) { streams.ShadingPosition = float4(-2, -2, -2, 1); return; }
+        }
+        // GL JS moves the vertex out of clip space when the label is all but transparent
+        float opacity = streams.GsSizeOpacity.y * GsOpacity;
+        if (opacity < 0.1) { streams.ShadingPosition = float4(-2, -2, -2, 1); return; }
+        float size = GsSizeFromVertex > 0.5 ? streams.GsSizeOpacity.x : GsSize;
+        // GL JS: labels in the viewport are scaled by 0.5 + 0.5 x (camera to centre / camera to anchor)
+        float perspective = clamp(0.5 + 0.5 * GsCameraToCenter / max(clip.w, 1e-9), 0, 4);
+        size *= perspective;
+        float fontScale = size / 24.0;
+        float2 offset = float2(streams.GsOffsetTex.xy) / 32.0 * fontScale;
+        // pixels, y down, to clip space at the anchor's depth
+        clip.xy += float2(2 * offset.x / GsViewport.x, -2 * offset.y / GsViewport.y) * clip.w;
+        streams.ShadingPosition = clip;
+        streams.GsTex = float2(streams.GsOffsetTex.zw) / GsTexSize;
+        streams.GsData = float3(1, size, opacity);   // gamma scale 1: not pitched with the map
+        streams.GsFill = float4(ToLinear(streams.GsColorIn.rgb) * streams.GsColorIn.a, streams.GsColorIn.a);
+    }
+
+    stage override void PSMain()
+    {
+        float EDGE_GAMMA = 0.105 / GsDevicePixelRatio;
+        float gammaScale = streams.GsData.x, size = streams.GsData.y, opacity = streams.GsData.z;
+        float fontScale = size / 24.0;
+        float gamma = EDGE_GAMMA / fontScale;
+        float innerEdge = (256.0 - 64.0) / 256.0;
+        float dist = GsAtlas.Sample(GsSampler, streams.GsTex).r;
+        float4 fill = streams.GsFill * GsColor;
+        float4 text = 0, halo = 0;
+        if (GsIsPlain > 0.5)
+        {
+            float gammaScaled = gamma * gammaScale;
+            float alpha = smoothstep(innerEdge - gammaScaled, innerEdge + gammaScaled, dist);
+            text = opacity * alpha * fill;
+        }
+        if (GsIsHalo > 0.5)
+        {
+            float gammaHalo = (GsHaloBlur * 1.19 / 8.0 + EDGE_GAMMA) / fontScale;
+            float innerEdgeHalo = innerEdge + gammaHalo * gammaScale;
+            float gammaScaledHalo = gammaHalo * gammaScale;
+            float alphaHalo = smoothstep(innerEdgeHalo - gammaScaledHalo, innerEdgeHalo + gammaScaledHalo, dist);
+            // the inside of the halo is empty too, in case the fill is transparent
+            float haloEdge = (6.0 - GsHaloWidth / fontScale) / 8.0;
+            alphaHalo = min(smoothstep(haloEdge - gammaScaledHalo, haloEdge + gammaScaledHalo, dist), 1.0 - alphaHalo);
+            halo = opacity * alphaHalo * GsHaloColor;
+        }
+        if (GsIsPlain > 0.5 && GsIsHalo > 0.5) streams.ColorTarget = text + (1 - text.a) * halo;
+        else if (GsIsHalo > 0.5) streams.ColorTarget = halo;
+        else streams.ColorTarget = text;
+    }
+};

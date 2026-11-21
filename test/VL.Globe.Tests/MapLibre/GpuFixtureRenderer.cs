@@ -62,6 +62,8 @@ internal static class GpuFixtureRenderer
 
     static byte[] RenderCore(MapStyleDocument style, int width, int height, double pixelRatio)
     {
+        // TEMPORARY until the GPU path draws labels (4e): a symbol layer is still unsupported here
+        if (style.Layers.Any(l => l.Type == "symbol")) throw new StyleUnsupportedException("symbol layer");
         var gpu = Shared.Value;
         int w = (int)Math.Floor(width * pixelRatio), h = (int)Math.Floor(height * pixelRatio);
         double zoom = style.Zoom;
