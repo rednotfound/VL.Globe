@@ -160,6 +160,14 @@ public sealed class GlobeNode : IDisposable
     int _gpuBuiltLogged = -1;
     double _gpuLoggedAt = -10;
 
+    // Measured, once a second into the log while vector tiles are drawn by the GPU (the user,
+    // 2026-11-21: "偶尔在运动加载的时候会卡一下"): the longest frame (time between two Updates) and
+    // how many passed 33 ms, the longest this node's own Update took, bytes uploaded and the most in
+    // one frame, and garbage collections by generation - a gen-2 one pauses every thread.
+    double _perfFrom = -1, _lastUpdateAt = -1, _frameMax, _updateMax;
+    int _slowFrames, _perfUploads, _gen0, _gen2;
+    long _perfBytes, _perfBytesMax;
+
     public GlobeNode(NodeContext nodeContext)
     {
         _context = nodeContext;
@@ -190,6 +198,42 @@ public sealed class GlobeNode : IDisposable
         GlobeTileSource? tileSource = null, Entity? camera = null, bool enabled = false, float radius = 1f, Color4 background = default,
         int maxZoom = 19, float screenSpaceError = 1.41f, int maxRequestsInFlight = 6, float screenHeight = 1080f, float fadeDuration = 0.3f,
         IEnumerable<GlobeLayer>? layers = null)
+    {
+        double updateStart = _clock.Elapsed.TotalMilliseconds;
+        try { return UpdateCore(out tilesVisible, out tilesLoading, out requestsSent, out bytesReceived, out attribution, out status,
+            tileSource, camera, enabled, radius, background, maxZoom, screenSpaceError, maxRequestsInFlight, screenHeight, fadeDuration, layers); }
+        finally { Measure(updateStart); }
+    }
+
+    void Measure(double updateStart)
+    {
+        double now = _clock.Elapsed.TotalMilliseconds;
+        _updateMax = Math.Max(_updateMax, now - updateStart);
+        if (_lastUpdateAt >= 0)
+        {
+            double frame = updateStart - _lastUpdateAt;
+            _frameMax = Math.Max(_frameMax, frame);
+            if (frame > 33) _slowFrames++;
+        }
+        _lastUpdateAt = updateStart;
+        _perfBytes += _gpu.UploadedBytes;
+        _perfBytesMax = Math.Max(_perfBytesMax, _gpu.UploadedBytes);
+        _perfUploads += _gpu.Uploads;
+        if (_perfFrom < 0) { _perfFrom = now; _gen0 = GC.CollectionCount(0); _gen2 = GC.CollectionCount(2); return; }
+        if (now - _perfFrom < 1000) return;
+        int gen0 = GC.CollectionCount(0), gen2 = GC.CollectionCount(2);
+        if (_gpu.TilesBuilt > 0 && (_slowFrames > 0 || _perfUploads > 0 || gen2 > _gen2))
+            _logger.LogInformation("Globe perf: frame max {FrameMax:F0} ms, {Slow} over 33 ms; Update max {UpdateMax:F1} ms; uploaded {Uploads} tiles {MB:F1} MB, most {MaxMB:F1} MB in a frame; GC gen0 +{Gen0}, gen2 +{Gen2}",
+                _frameMax, _slowFrames, _updateMax, _perfUploads, _perfBytes / 1048576.0, _perfBytesMax / 1048576.0, gen0 - _gen0, gen2 - _gen2);
+        _perfFrom = now; _frameMax = 0; _updateMax = 0; _slowFrames = 0; _perfUploads = 0; _perfBytes = 0; _perfBytesMax = 0;
+        _gen0 = gen0; _gen2 = gen2;
+    }
+
+    Entity UpdateCore(
+        out int tilesVisible, out int tilesLoading, out int requestsSent, out long bytesReceived, out string attribution, out string status,
+        GlobeTileSource? tileSource, Entity? camera, bool enabled, float radius, Color4 background,
+        int maxZoom, float screenSpaceError, int maxRequestsInFlight, float screenHeight, float fadeDuration,
+        IEnumerable<GlobeLayer>? layers)
     {
         _frame++;
         _fadeDuration = Math.Max(0, fadeDuration);

@@ -1,4 +1,5 @@
 using System;
+using System.Buffers;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
@@ -36,6 +37,7 @@ internal struct VectorVertex
         new VertexElement("COLOR", 0, PixelFormat.R8G8B8A8_UNorm, 36));
 }
 
+// Outline is a line list (GL JS's gl.LINES, one device pixel); the rest are triangle lists
 internal enum RangeKind { Fill, Outline, Line, Background }
 
 /// <summary>A layer's part of a bucket: <see cref="Count"/> indices from <see cref="Start"/>.</summary>
@@ -45,10 +47,26 @@ internal sealed class VectorBucket
 {
     public TileKey Key;
     public D3 Centre;
+    // rented from the shared pool, longer than the counts: a street-level tile's arrays are megabytes,
+    // and dropped after each upload they were large-object-heap garbage, collected in gen 2 - a pause
+    // on vvvv's main thread (2026-11-21, "偶尔在运动加载的时候会卡一下")
     public VectorVertex[] Vertices = Array.Empty<VectorVertex>();
     public uint[] Indices = Array.Empty<uint>();
+    public int VertexCount, IndexCount;
     public List<VectorRange> Ranges = new();
     public double Ms;
+
+    public ReadOnlySpan<VectorVertex> VertexSpan => Vertices.AsSpan(0, VertexCount);
+    public ReadOnlySpan<uint> IndexSpan => Indices.AsSpan(0, IndexCount);
+
+    /// <summary>The arrays go back to the pool (once uploaded); the ranges stay.</summary>
+    public void Release()
+    {
+        if (Vertices.Length > 0) ArrayPool<VectorVertex>.Shared.Return(Vertices);
+        if (Indices.Length > 0) ArrayPool<uint>.Shared.Return(Indices);
+        Vertices = Array.Empty<VectorVertex>();
+        Indices = Array.Empty<uint>();
+    }
 }
 
 /// <summary>A style layer the GPU draws, with which of its paint properties depend on the feature.</summary>
@@ -148,8 +166,12 @@ internal static class VectorBucketBuilder
         readonly int _n;
         readonly D3 _centre;
         readonly double _maxSegment;   // tile-local; long edges are cut so their chords follow the sphere
-        readonly List<VectorVertex> _vertices = new();
-        readonly List<uint> _indices = new();
+        // one pair of lists per worker thread, kept with their capacity: growing new ones for every
+        // tile reallocated megabytes several times per build
+        [ThreadStatic] static List<VectorVertex>? t_vertices;
+        [ThreadStatic] static List<uint>? t_indices;
+        readonly List<VectorVertex> _vertices = t_vertices ??= new();
+        readonly List<uint> _indices = t_indices ??= new();
         readonly List<VectorRange> _ranges = new();
         int _layerVertexStart, _layerIndexStart, _layerRangeStart;
         readonly GeometryFactory _factory = new();
@@ -159,6 +181,8 @@ internal static class VectorBucketBuilder
         public Builder(TileKey key)
         {
             _key = key;
+            _vertices.Clear();
+            _indices.Clear();
             _n = 1 << key.Zoom;
             _centre = TileGeometry.Centre(key);
             // An edge's chord must sag less than the shader's lift (0.0015 of the distance to the eye)
@@ -177,10 +201,18 @@ internal static class VectorBucketBuilder
             _ranges.RemoveRange(_layerRangeStart, _ranges.Count - _layerRangeStart);
         }
 
-        public VectorBucket Finish() => new()
+        public VectorBucket Finish()
         {
-            Key = _key, Centre = _centre, Vertices = _vertices.ToArray(), Indices = _indices.ToArray(), Ranges = _ranges.ToList(),
-        };
+            var vertices = _vertices.Count == 0 ? Array.Empty<VectorVertex>() : ArrayPool<VectorVertex>.Shared.Rent(_vertices.Count);
+            var indices = _indices.Count == 0 ? Array.Empty<uint>() : ArrayPool<uint>.Shared.Rent(_indices.Count);
+            System.Runtime.InteropServices.CollectionsMarshal.AsSpan(_vertices).CopyTo(vertices);
+            System.Runtime.InteropServices.CollectionsMarshal.AsSpan(_indices).CopyTo(indices);
+            return new()
+            {
+                Key = _key, Centre = _centre, Vertices = vertices, Indices = indices,
+                VertexCount = _vertices.Count, IndexCount = _indices.Count, Ranges = _ranges.ToList(),
+            };
+        }
 
         // the whole square, a grid so it bends with the sphere; the background layers draw it. Cells of
         // 2 degrees at most, as every other edge here: 8 cells at zoom 1 are 22 degrees, whose middles
@@ -400,9 +432,9 @@ internal static class VectorBucketBuilder
             static Coordinate Mid(Coordinate p, Coordinate q) => new((p.X + q.X) / 2, (p.Y + q.Y) / 2);
         }
 
-        // GL JS's fill outline is gl.LINES: one device pixel along each edge, no joins. Here a quad
-        // per edge, extruded half a pixel each side (+0.5 ramp); each corner projected once. Through
-        // the full line path it was 42 of a tile's 56 ms of buildings (2026-11-21).
+        // GL JS's fill outline is gl.LINES: one device pixel along each edge, no joins - a line list
+        // here too, one vertex per corner. As quads it was 4 vertices an edge, 385k a street-level
+        // tile; through the full line path, 42 of a tile's 56 ms of buildings (2026-11-21).
         void Outline(StyleFeature f, uint color)
         {
             foreach (var polygon in f.Parts)
@@ -417,30 +449,16 @@ internal static class VectorBucketBuilder
                         {
                             var q = pts[^1];
                             double len = Math.Sqrt((p.Item1 - q.X) * (p.Item1 - q.X) + (p.Item2 - q.Y) * (p.Item2 - q.Y));
+                            if (len == 0) continue;
                             int cuts = (int)Math.Min(64, Math.Ceiling(len / _maxSegment));
                             for (int c = 1; c < cuts; c++) pts.Add((q.X + (p.Item1 - q.X) * c / cuts, q.Y + (p.Item2 - q.Y) * c / cuts));
                         }
                         pts.Add(p);
                     }
                     if (pts.Count < 2) continue;
-                    VectorVertex prev = Vertex(pts[0].X, pts[0].Y, 0, 0, 0, 1, color);
-                    for (int k = 1; k < pts.Count; k++)
-                    {
-                        var cur = Vertex(pts[k].X, pts[k].Y, 0, 0, 0, 1, color);
-                        double dx = pts[k].X - pts[k - 1].X, dy = pts[k].Y - pts[k - 1].Y, len = Math.Sqrt(dx * dx + dy * dy);
-                        if (len > 0)
-                        {
-                            var nrm = new Vector2((float)(-dy / len), (float)(dx / len));
-                            uint i0 = (uint)_vertices.Count;
-                            _vertices.Add(prev with { Extrude = nrm, N = 1 });
-                            _vertices.Add(prev with { Extrude = -nrm, N = -1 });
-                            _vertices.Add(cur with { Extrude = nrm, N = 1 });
-                            _vertices.Add(cur with { Extrude = -nrm, N = -1 });
-                            _indices.Add(i0); _indices.Add(i0 + 1); _indices.Add(i0 + 2);
-                            _indices.Add(i0 + 1); _indices.Add(i0 + 3); _indices.Add(i0 + 2);
-                        }
-                        prev = cur;
-                    }
+                    uint first = (uint)_vertices.Count;
+                    foreach (var (x, y) in pts) _vertices.Add(Vertex(x, y, 0, 0, 0, 1, color));
+                    for (int k = 1; k < pts.Count; k++) { _indices.Add(first + (uint)(k - 1)); _indices.Add(first + (uint)k); }
                 }
         }
 

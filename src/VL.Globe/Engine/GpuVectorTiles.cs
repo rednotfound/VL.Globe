@@ -1,6 +1,9 @@
 using System;
 using System.Collections.Generic;
+using System.Collections.Concurrent;
 using System.Linq;
+using System.Runtime.InteropServices;
+using System.Threading;
 using System.Threading.Tasks;
 using Stride.Core.Mathematics;
 using Stride.Engine;
@@ -48,13 +51,46 @@ internal sealed class GpuVectorTiles : IDisposable
     readonly Dictionary<VectorTileService, StyleInfo> _styles = new();
     // the background grids, by tile: no data in them, built at once on this thread
     readonly Dictionary<TileKey, (Built built, int lastUsed)> _backgrounds = new();
-    static readonly int MaxJobs = Math.Max(2, Environment.ProcessorCount - 2);
-    const int UploadsPerFrame = 4;
+    // Uploads by bytes, not by tiles: four street-level tiles arriving together were tens of MB in one
+    // frame. At least one tile a frame goes up whatever its size.
+    const long UploadBytesPerFrame = 8L << 20;
     const int KeepFrames = 600, KeepTiles = 160;
-    // a street-level Liberty tile is ~380k vertices, 15 MB: kept by bytes, the least recently used out
+    // kept by bytes, the least recently used out
     const long GpuBudget = 768L << 20;
-    int _frame, _built;
+    int _frame, _built, _tilesBuilt, _running;
+    long _gpuBytes;
     double _buildMs;
+
+    /// <summary>Bytes uploaded in this frame's Update, and buckets: for the node's measurements.</summary>
+    public long UploadedBytes { get; private set; }
+    public int Uploads { get; private set; }
+
+    // MapLibre's workers: half the cores, at most 6 (maplibre-gl's default workerCount), as threads of
+    // their own below normal priority - on the thread pool at normal priority, ProcessorCount - 2 of
+    // them, the builds competed with vvvv's main thread for the cores
+    static class Workers
+    {
+        public static readonly int Count = Math.Clamp(Environment.ProcessorCount / 2, 1, 6);
+        static readonly BlockingCollection<Action> Queue = new();
+
+        static Workers()
+        {
+            for (int i = 0; i < Count; i++)
+                new Thread(() => { foreach (var job in Queue.GetConsumingEnumerable()) job(); })
+                { IsBackground = true, Priority = ThreadPriority.BelowNormal, Name = $"VL.Globe vector tiles {i}" }.Start();
+        }
+
+        public static Task<T> Run<T>(Func<T> work)
+        {
+            var done = new TaskCompletionSource<T>(TaskCreationOptions.RunContinuationsAsynchronously);
+            Queue.Add(() =>
+            {
+                try { done.SetResult(work()); }
+                catch (Exception e) { done.SetException(e); }
+            });
+            return done.Task;
+        }
+    }
 
     public GpuVectorTiles()
     {
@@ -65,11 +101,12 @@ internal sealed class GpuVectorTiles : IDisposable
     }
 
     public string Error => _renderer.Error;
-    public int TilesBuilt => _entries.Values.Count(e => e.Built != null);
+    public int TilesBuilt => _tilesBuilt;
 
+    // counted as they change, not summed every frame
     public string Status => _styles.Count == 0 ? "" :
-        $"GPU vectors: {_entries.Values.Count(e => e.Built != null)} tiles built ({_buildMs:F0} ms each), " +
-        $"{_entries.Values.Count(e => e.Job != null)} building, {_entries.Values.Sum(e => e.Built?.Bytes ?? 0) >> 20} MB, {_renderer.ItemsDrawn} draws" +
+        $"GPU vectors: {_tilesBuilt} tiles built ({_buildMs:F0} ms each on {Workers.Count} workers), " +
+        $"{_running} building, {_gpuBytes >> 20} MB, {_renderer.ItemsDrawn} draws" +
         (_renderer.Error.Length > 0 ? " - " + _renderer.Error : "");
 
     // shown: the globe tiles whose area is drawn; wanted: those that fetch vector tiles; zoom: the
@@ -79,9 +116,9 @@ internal sealed class GpuVectorTiles : IDisposable
     {
         _frame = frame;
         var result = new VectorRenderer.Frame { Radius = radius };
-        int uploads = UploadsPerFrame;
-        foreach (var e in _entries.Values) Finish(device, e, ref uploads);
-        int running = _entries.Values.Count(e => e.Job != null);
+        long budget = UploadBytesPerFrame;
+        UploadedBytes = 0; Uploads = 0;
+        foreach (var e in _entries.Values) Finish(device, e, ref budget);
 
         foreach (var service in services.Distinct())
         {
@@ -105,7 +142,7 @@ internal sealed class GpuVectorTiles : IDisposable
                 foreach (var (vk, served) in needed.OrderByDescending(n => n.Value.Any(wanted.Contains)))
                 {
                     var e = Ensure(service, sourceId, vk);
-                    if (e.Built is null && e.Job is null && running < MaxJobs)
+                    if (e.Built is null && e.Job is null && _running < Workers.Count)
                     {
                         bool fetch = served.Any(wanted.Contains);
                         bool retry = e.Missing.Length == 0 || e.Missing.Any(service.IsHere) || (fetch && !e.Fetched);
@@ -113,13 +150,13 @@ internal sealed class GpuVectorTiles : IDisposable
                         {
                             e.Fetched |= fetch;
                             var key = vk;
-                            e.Job = Task.Run(() =>
+                            e.Job = Workers.Run(() =>
                             {
                                 var missing = new List<string>();
                                 var bucket = VectorBucketBuilder.Build(doc, source, layers, false, key, fetch, missing, out bool complete);
                                 return (bucket, complete, missing.ToArray());
                             });
-                            running++;
+                            _running++;
                         }
                     }
                 }
@@ -157,18 +194,18 @@ internal sealed class GpuVectorTiles : IDisposable
                         var (c, half, line) = r.Kind switch
                         {
                             RangeKind.Line => (color, width / 2, true),
-                            RangeKind.Outline => (outline, 0.5, true),
+                            RangeKind.Outline => (outline, 0.0, false),
                             _ => (color, 0.0, false),
                         };
                         if (c.A <= 0) continue;
                         result.Items.Add(new VectorRenderer.Item(built.Vertices, built.Indices!, r.Start, r.Count, world, centre,
-                            Linear(c), (float)half, line, Widen(clip)));
+                            Linear(c), (float)half, line, Widen(clip), r.Kind == RangeKind.Outline));
                     }
                 }
             }
         }
         _renderer.Current = result;
-        Evict();
+        if (_frame % 30 == 0) Evict();
     }
 
     StyleInfo? Analyse(VectorTileService service)
@@ -177,7 +214,7 @@ internal sealed class GpuVectorTiles : IDisposable
         if (doc is null) return null;
         if (_styles.TryGetValue(service, out var info) && ReferenceEquals(info.Document, doc)) return info;
         // a new style: what was built for the old one goes
-        foreach (var k in _entries.Keys.Where(k => k.service == service).ToList()) { _entries[k].Built?.Dispose(); _entries.Remove(k); }
+        foreach (var k in _entries.Keys.Where(k => k.service == service).ToList()) Drop(k);
         var layers = Enumerable.Range(0, doc.Layers.Count).Select(i => GpuStyleLayer.Of(doc, i)).Where(l => l != null).Select(l => l!).ToList();
         var bySource = new Dictionary<string, List<GpuStyleLayer>>();
         foreach (var l in layers)
@@ -202,19 +239,23 @@ internal sealed class GpuVectorTiles : IDisposable
         return e;
     }
 
-    void Finish(GraphicsDevice device, Entry e, ref int uploads)
+    void Finish(GraphicsDevice device, Entry e, ref long budget)
     {
-        if (e.Job is not { IsCompleted: true } job || uploads == 0) return;
+        if (e.Job is not { IsCompleted: true } job) return;
+        var bucket0 = job.IsCompletedSuccessfully ? job.Result.bucket : null;
+        long size = bucket0 is null ? 0 : (long)bucket0.VertexCount * VectorVertex.Size + bucket0.IndexCount * 4L;
+        if (size > 0 && budget <= 0) return;   // next frame
         e.Job = null;
-        if (job.IsFaulted) { e.Missing = Array.Empty<string>(); e.Built = Empty(new VectorBucket()); return; }   // not retried in a loop
+        _running--;
+        if (job.IsFaulted) { e.Missing = Array.Empty<string>(); Set(e, Empty(new VectorBucket())); return; }   // not retried in a loop
         var (bucket, complete, missing) = job.Result;
         if (bucket is null)
         {
             if (!complete) { e.Missing = missing; return; }
-            e.Built = Empty(new VectorBucket());   // nothing there
+            Set(e, Empty(new VectorBucket()));   // nothing there
             return;
         }
-        uploads--;
+        budget -= size;
         _built++;
         _buildMs += (bucket.Ms - _buildMs) / Math.Min(_built, 50);
         var byLayer = new Dictionary<int, List<VectorRange>>();
@@ -223,19 +264,42 @@ internal sealed class GpuVectorTiles : IDisposable
             if (!byLayer.TryGetValue(r.Layer, out var list)) byLayer[r.Layer] = list = new List<VectorRange>();
             list.Add(r);
         }
-        if (bucket.Indices.Length == 0) { e.Built = Empty(bucket); return; }
-        e.Built = new Built
+        if (bucket.IndexCount == 0) { bucket.Release(); Set(e, Empty(bucket)); return; }
+        Set(e, Upload(device, bucket, byLayer));
+
+        static Built Empty(VectorBucket b) => new() { Bucket = b, ByLayer = new() };
+    }
+
+    Built Upload(GraphicsDevice device, VectorBucket bucket, Dictionary<int, List<VectorRange>> byLayer)
+    {
+        var vertices = MemoryMarshal.AsBytes(bucket.VertexSpan);
+        var indices = MemoryMarshal.AsBytes(bucket.IndexSpan);
+        var built = new Built
         {
             Bucket = bucket,
             ByLayer = byLayer,
-            Vertices = Buffer.Vertex.New(device, bucket.Vertices, GraphicsResourceUsage.Immutable),
-            Indices = Buffer.Index.New(device, bucket.Indices, GraphicsResourceUsage.Immutable),
+            Vertices = Buffer.New(device, vertices, VectorVertex.Size, BufferFlags.VertexBuffer, PixelFormat.None, GraphicsResourceUsage.Immutable),
+            Indices = Buffer.New(device, indices, sizeof(uint), BufferFlags.IndexBuffer, PixelFormat.None, GraphicsResourceUsage.Immutable),
         };
-        // the arrays are on the GPU now; the bucket keeps only its ranges
-        bucket.Vertices = Array.Empty<VectorVertex>();
-        bucket.Indices = Array.Empty<uint>();
+        UploadedBytes += vertices.Length + indices.Length;
+        Uploads++;
+        bucket.Release();   // the arrays back to the pool: on the GPU now
+        return built;
+    }
 
-        static Built Empty(VectorBucket b) => new() { Bucket = b, ByLayer = new() };
+    void Set(Entry e, Built built)
+    {
+        e.Built = built;
+        _tilesBuilt++;
+        _gpuBytes += built.Bytes;
+    }
+
+    void Drop((VectorTileService, string, TileKey) k)
+    {
+        var e = _entries[k];
+        if (e.Built is { } b) { _tilesBuilt--; _gpuBytes -= b.Bytes; b.Dispose(); }
+        if (e.Job != null) _running--;   // it finishes unseen; its arrays go to the collector
+        _entries.Remove(k);
     }
 
     // what is drawn for one source: each needed tile that is built, clipped to its square - or to the
@@ -307,15 +371,7 @@ internal sealed class GpuVectorTiles : IDisposable
     {
         if (_backgrounds.TryGetValue(key, out var b)) { _backgrounds[key] = (b.built, _frame); return b.built; }
         var bucket = VectorBucketBuilder.BackgroundBucket(key);
-        var built = new Built
-        {
-            Bucket = bucket,
-            ByLayer = new() { [-1] = bucket.Ranges },
-            Vertices = Buffer.Vertex.New(device, bucket.Vertices, GraphicsResourceUsage.Immutable),
-            Indices = Buffer.Index.New(device, bucket.Indices, GraphicsResourceUsage.Immutable),
-        };
-        bucket.Vertices = Array.Empty<VectorVertex>();
-        bucket.Indices = Array.Empty<uint>();
+        var built = Upload(device, bucket, new() { [-1] = bucket.Ranges });
         _backgrounds[key] = (built, _frame);
         return built;
     }
@@ -348,23 +404,20 @@ internal sealed class GpuVectorTiles : IDisposable
     {
         if (_backgrounds.Count > KeepTiles)
             foreach (var (k, b) in _backgrounds.Where(kv => _frame - kv.Value.lastUsed > KeepFrames).ToList()) { b.built.Dispose(); _backgrounds.Remove(k); }
-        long bytes = _entries.Values.Sum(e => e.Built?.Bytes ?? 0);
+        if (_gpuBytes <= GpuBudget && _entries.Count <= KeepTiles) return;
         // never what this frame draws; the oldest first
         foreach (var (k, e) in _entries.Where(kv => kv.Value.LastUsed < _frame && kv.Value.Job is null).OrderBy(kv => kv.Value.LastUsed).ToList())
         {
             bool stale = _frame - e.LastUsed > KeepFrames && _entries.Count > KeepTiles;
-            if (bytes <= GpuBudget && !stale) break;
-            bytes -= e.Built?.Bytes ?? 0;
-            e.Built?.Dispose();
-            _entries.Remove(k);
+            if (_gpuBytes <= GpuBudget && !stale) break;
+            Drop(k);
         }
     }
 
     public void Dispose()
     {
         _renderer.Current = null;
-        foreach (var e in _entries.Values) e.Built?.Dispose();
-        _entries.Clear();
+        foreach (var k in _entries.Keys.ToList()) Drop(k);
         foreach (var b in _backgrounds.Values) b.built.Dispose();
         _backgrounds.Clear();
     }

@@ -16,8 +16,9 @@ namespace VL.Globe.Engine;
 // one after the other, but the swap is a single reference anyway.
 internal sealed class VectorRenderer : IGraphicsRendererBase
 {
+    // LineList: GL JS's fill outline, gl.LINES - one device pixel, the hardware's own line
     internal readonly record struct Item(Buffer Vertices, Buffer Indices, int Start, int Count, Matrix World, Vector3 Centre,
-        Vector4 Color, float HalfWidth, bool IsLine, Vector4 Clip);
+        Vector4 Color, float HalfWidth, bool IsLine, Vector4 Clip, bool LineList = false);
 
     internal sealed class Frame
     {
@@ -37,7 +38,7 @@ internal sealed class VectorRenderer : IGraphicsRendererBase
     public float Lift = 0.0015f;
 
     DynamicEffectInstance? _effect;
-    MutablePipelineState? _pipeline;
+    MutablePipelineState? _pipeline, _linePipeline;
     bool _broken;
     readonly Dictionary<string, ParameterKey> _keys = new();
 
@@ -62,6 +63,15 @@ internal sealed class VectorRenderer : IGraphicsRendererBase
                 s.DepthStencilState = DepthStencilStates.DepthRead;
                 s.RasterizerState = RasterizerStates.CullNone;
                 s.PrimitiveType = PrimitiveType.TriangleList;
+                _linePipeline = new MutablePipelineState(device);
+                var l = _linePipeline.State;
+                l.SetDefaults();
+                l.InputElements = s.InputElements;
+                l.BlendState = BlendStates.AlphaBlend;
+                l.DepthStencilState = DepthStencilStates.DepthRead;
+                l.RasterizerState = RasterizerStates.CullNone;
+                l.RasterizerState.MultisampleAntiAliasLine = true;
+                l.PrimitiveType = PrimitiveType.LineList;
             }
             _effect.UpdateEffect(device);
             if (_effect.Effect is null) return;   // still compiling
@@ -76,12 +86,14 @@ internal sealed class VectorRenderer : IGraphicsRendererBase
             }
 
             var view = context.RenderContext.RenderView;
-            var p = _pipeline!;
-            p.State.RootSignature = _effect.RootSignature;
-            p.State.EffectBytecode = _effect.Effect.Bytecode;
-            p.State.Output.CaptureState(commandList);
-            p.Update();
-            commandList.SetPipelineState(p.CurrentState);
+            foreach (var p in new[] { _pipeline!, _linePipeline! })
+            {
+                p.State.RootSignature = _effect.RootSignature;
+                p.State.EffectBytecode = _effect.Effect.Bytecode;
+                p.State.Output.CaptureState(commandList);
+                p.Update();
+            }
+            bool? lineList = null;
 
             var parameters = _effect.Parameters;
             float pixel = 2f / (view.Projection.M22 * Math.Max(1f, view.ViewSize.Y));
@@ -97,6 +109,11 @@ internal sealed class VectorRenderer : IGraphicsRendererBase
                     commandList.SetVertexBuffer(0, item.Vertices, 0, VectorVertex.Size);
                     commandList.SetIndexBuffer(item.Indices, 0, true);
                     boundVertices = item.Vertices;
+                }
+                if (lineList != item.LineList)
+                {
+                    commandList.SetPipelineState(item.LineList ? _linePipeline!.CurrentState : _pipeline!.CurrentState);
+                    lineList = item.LineList;
                 }
                 Set(parameters, "GvWorldView", item.World * view.View);
                 Set(parameters, "GvColor", item.Color);

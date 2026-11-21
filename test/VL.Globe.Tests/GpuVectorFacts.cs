@@ -61,12 +61,12 @@ public class GpuVectorFacts
         Assert.Contains(b.Ranges, r => r.Kind == RangeKind.Line && r.Layer == 2);
         // the ranges tile the index buffer, in order, and every index names a vertex
         int at = 0;
-        foreach (var r in b.Ranges) { Assert.Equal(at, r.Start); Assert.Equal(0, r.Count % 3); at += r.Count; }
-        Assert.Equal(b.Indices.Length, at);
-        Assert.All(b.Indices, i => Assert.True(i < b.Vertices.Length));
+        foreach (var r in b.Ranges) { Assert.Equal(at, r.Start); Assert.Equal(0, r.Count % (r.Kind == RangeKind.Outline ? 2 : 3)); at += r.Count; }
+        Assert.Equal(b.IndexCount, at);
+        foreach (var i in b.IndexSpan) Assert.True(i < b.VertexCount);
 
         // on the unit sphere, relative to the tile's centre (float: a z14 tile is 0.0004 radii wide)
-        foreach (var v in b.Vertices)
+        foreach (var v in b.VertexSpan)
         {
             var p = new D3(b.Centre.X + v.Position.X, b.Centre.Y + v.Position.Y, b.Centre.Z + v.Position.Z);
             Assert.InRange(p.Length, 1 - 1e-6, 1 + 1e-6);
@@ -127,7 +127,7 @@ public class GpuVectorFacts
         var b = VectorBucketBuilder.BackgroundBucket(key);
         double tile = 2 * Math.PI / (1 << zoom);
         double worst = 0;
-        for (int t = 0; t < b.Indices.Length; t += 3)
+        for (int t = 0; t < b.IndexCount; t += 3)
         {
             D3 P(int k) { var v = b.Vertices[b.Indices[t + k]].Position; return new D3(b.Centre.X + v.X, b.Centre.Y + v.Y, b.Centre.Z + v.Z); }
             var mid = (P(0) + P(1) + P(2)) * (1.0 / 3);
