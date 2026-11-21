@@ -119,18 +119,22 @@ internal static class GpuFixtureRenderer
             atlas = Texture.New2D(gpu.Device, GlyphAtlas.Width, atlasHeight, PixelFormat.R8_UNorm, pixels);
         }
 
-        var frame = new VectorRenderer.Frame { Radius = 1 };
+        var frame = new VectorRenderer.Frame { Radius = 1, CameraToCenter = (float)distance };
         foreach (var layer in layers)
         {
             if (layer.IsSymbol)
             {
                 if (!layer.SymbolUniforms(ctx, out var paint) || !bySource.TryGetValue(layer.Layer.Source!, out var labelled)) continue;
+                var placing = new List<(GpuTile, Matrix)>();
                 foreach (var (tile, shift) in labelled)
                 {
                     var at = Matrix.Translation((float)(tile.Bucket.Centre.X + shift - cx), (float)(tile.Bucket.Centre.Y + cy), (float)(tile.Bucket.Centre.Z - distance));
                     VectorDrawList.AddSymbolLayer(frame.Items, layer, paint, new[] { (tile, new Vector4(0, 0, 1, 1)) }, _ => at,
                         linearize: false, atlas!, distance, pixelRatio);
+                    placing.Add((tile, at));
                 }
+                // placed from the top of the style down
+                frame.Labels.Insert(0, new LabelPlacement.Layer(layer.Index, placing));
                 continue;
             }
             if (!layer.Uniforms(ctx, out var color, out var lineWidth, out var outline)) continue;

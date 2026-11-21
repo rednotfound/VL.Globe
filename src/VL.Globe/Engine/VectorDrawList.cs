@@ -12,9 +12,15 @@ internal sealed class GpuTile
     public required VectorBucket Bucket;
     public Buffer? Vertices, Indices;   // null: a tile with nothing in it
     public Buffer? SymbolVertices, SymbolIndices;   // the labels' glyph quads, null when it has none
+    // labels, milestone 2: each label's collision data, and per symbol vertex whether it is placed
+    // (LabelPlacement writes Placed every frame, the renderer uploads it to PlacedBuffer when dirty)
+    public IReadOnlyList<LabelInfo> Labels = Array.Empty<LabelInfo>();
+    public float[]? Placed;
+    public Buffer? PlacedBuffer;
+    public bool PlacedDirty;
     public required Dictionary<int, List<VectorRange>> ByLayer;   // -1: the background grid
     public long Bytes => (Vertices?.SizeInBytes ?? 0) + (Indices?.SizeInBytes ?? 0) + (SymbolVertices?.SizeInBytes ?? 0) + (SymbolIndices?.SizeInBytes ?? 0);
-    public void Dispose() { Vertices?.Dispose(); Indices?.Dispose(); SymbolVertices?.Dispose(); SymbolIndices?.Dispose(); }
+    public void Dispose() { Vertices?.Dispose(); Indices?.Dispose(); SymbolVertices?.Dispose(); SymbolIndices?.Dispose(); PlacedBuffer?.Dispose(); }
 
     public static GpuTile Empty(VectorBucket bucket) => new() { Bucket = bucket, ByLayer = new() };
 
@@ -27,9 +33,14 @@ internal sealed class GpuTile
             if (!byLayer.TryGetValue(r.Layer, out var list)) byLayer[r.Layer] = list = new List<VectorRange>();
             list.Add(r);
         }
-        Buffer? symbolVertices = null, symbolIndices = null;
+        Buffer? symbolVertices = null, symbolIndices = null, placedBuffer = null;
+        float[]? placed = null;
         if (bucket.SymbolIndices.Length > 0)
         {
+            // every label shown until the first placement
+            placed = new float[bucket.SymbolVertices.Length];
+            Array.Fill(placed, 1f);
+            placedBuffer = Buffer.New(device, System.Runtime.InteropServices.MemoryMarshal.AsBytes(placed.AsSpan()), sizeof(float), BufferFlags.VertexBuffer, PixelFormat.None, GraphicsResourceUsage.Default);
             symbolVertices = Buffer.New(device, System.Runtime.InteropServices.MemoryMarshal.AsBytes(bucket.SymbolVertices.AsSpan()), SymbolVertex.Size, BufferFlags.VertexBuffer, PixelFormat.None, GraphicsResourceUsage.Immutable);
             symbolIndices = Buffer.New(device, System.Runtime.InteropServices.MemoryMarshal.AsBytes(bucket.SymbolIndices.AsSpan()), sizeof(uint), BufferFlags.IndexBuffer, PixelFormat.None, GraphicsResourceUsage.Immutable);
             bucket.SymbolVertices = Array.Empty<SymbolVertex>();
@@ -38,7 +49,8 @@ internal sealed class GpuTile
         if (bucket.IndexCount == 0)
         {
             bucket.Release();
-            return new GpuTile { Bucket = bucket, ByLayer = byLayer, SymbolVertices = symbolVertices, SymbolIndices = symbolIndices };
+            return new GpuTile { Bucket = bucket, ByLayer = byLayer, SymbolVertices = symbolVertices, SymbolIndices = symbolIndices,
+                Labels = bucket.Labels, Placed = placed, PlacedBuffer = placedBuffer };
         }
         var vertices = System.Runtime.InteropServices.MemoryMarshal.AsBytes(bucket.VertexSpan);
         var indices = System.Runtime.InteropServices.MemoryMarshal.AsBytes(bucket.IndexSpan);
@@ -50,6 +62,9 @@ internal sealed class GpuTile
             Indices = Buffer.New(device, indices, sizeof(uint), BufferFlags.IndexBuffer, PixelFormat.None, GraphicsResourceUsage.Immutable),
             SymbolVertices = symbolVertices,
             SymbolIndices = symbolIndices,
+            Labels = bucket.Labels,
+            Placed = placed,
+            PlacedBuffer = placedBuffer,
         };
         bucket.Release();   // the arrays back to the pool: on the GPU now
         return tile;
@@ -122,7 +137,7 @@ internal static class VectorDrawList
                 var w = world(tile);
                 var text = new VectorRenderer.TextDraw(atlas, Premultiplied(paint.Color), Premultiplied(paint.HaloColor), (float)paint.Size,
                     paint.SizePerFeature, (float)paint.Opacity, (float)paint.HaloWidth, (float)paint.HaloBlur, halo, plain,
-                    (float)cameraToCenter, (float)pixelRatio);
+                    (float)cameraToCenter, (float)pixelRatio, tile.PlacedBuffer!);
                 foreach (var r in ranges)
                     if (r.Kind == RangeKind.Text)
                         items.Add(new VectorRenderer.Item(tile.SymbolVertices, tile.SymbolIndices!, r.Start, r.Count, w,

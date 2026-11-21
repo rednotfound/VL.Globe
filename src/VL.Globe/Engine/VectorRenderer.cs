@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using Stride.Core.Mathematics;
 using Stride.Graphics;
 using Stride.Rendering;
@@ -25,7 +26,7 @@ internal sealed class VectorRenderer : IGraphicsRendererBase
 
     // what a Text item draws with besides its buffers: the atlas and the layer's paint this frame
     internal sealed record TextDraw(Texture Atlas, Vector4 Color, Vector4 HaloColor, float Size, bool SizePerFeature, float Opacity,
-        float HaloWidth, float HaloBlur, bool IsHalo, bool IsPlain, float CameraToCenter, float PixelRatio);
+        float HaloWidth, float HaloBlur, bool IsHalo, bool IsPlain, float CameraToCenter, float PixelRatio, Buffer Placed);
 
     internal readonly record struct Item(Buffer Vertices, Buffer Indices, int Start, int Count, Matrix World, Vector3 Centre,
         Vector4 Color, float HalfWidth, bool IsLine, Vector4 Clip, Pass Pass = Pass.Triangles, float Tiles = 1, TextDraw? Text = null);
@@ -34,6 +35,9 @@ internal sealed class VectorRenderer : IGraphicsRendererBase
     {
         public readonly List<Item> Items = new();
         public float Radius = 1;
+        // labels to place before drawing (top of the style first), and the distance to the view's centre
+        public readonly List<LabelPlacement.Layer> Labels = new();
+        public float CameraToCenter = 1;
     }
 
     public volatile Frame? Current;
@@ -55,6 +59,7 @@ internal sealed class VectorRenderer : IGraphicsRendererBase
     DynamicEffectInstance? _effect, _symbolEffect;
     MutablePipelineState? _pipeline, _linePipeline, _depthPipeline, _extrusionPipeline, _textPipeline;
     readonly Dictionary<string, ParameterKey> _symbolKeys = new();
+    readonly LabelPlacement _placement = new();
     bool _broken;
     readonly Dictionary<string, ParameterKey> _keys = new();
 
@@ -126,6 +131,18 @@ internal sealed class VectorRenderer : IGraphicsRendererBase
             p.State.Output.CaptureState(commandList);
             p.Update();
         }
+        // labels: placed from this camera, then the changed placements uploaded
+        if (frame.Labels.Count > 0)
+        {
+            _placement.Place(frame.Labels, view, projection, commandList.Viewport.Width, commandList.Viewport.Height, frame.CameraToCenter, flat);
+            foreach (var layer in frame.Labels)
+                foreach (var (tile, _) in layer.Tiles)
+                    if (tile.PlacedDirty && tile.PlacedBuffer is { } placedBuffer && tile.Placed is { } placed)
+                    {
+                        placedBuffer.SetData(commandList, (ReadOnlySpan<float>)placed);
+                        tile.PlacedDirty = false;
+                    }
+        }
         var symbolParameters = symbolEffect.Parameters;
         SetText(symbolParameters, "GsProjection", projection);
         SetText(symbolParameters, "GsLift", lift);
@@ -166,6 +183,7 @@ internal sealed class VectorRenderer : IGraphicsRendererBase
                 }
                 if (item.Text is { } t)
                 {
+                    commandList.SetVertexBuffer(1, t.Placed, 0, sizeof(float));
                     SetText(symbolParameters, "GsWorldView", item.World * view);
                     SetText(symbolParameters, "GsCentre", item.Centre);
                     SetText(symbolParameters, "GsViewport", new Vector2(commandList.Viewport.Width, commandList.Viewport.Height));
@@ -251,7 +269,13 @@ internal sealed class VectorRenderer : IGraphicsRendererBase
         _textPipeline = new MutablePipelineState(device);
         var t = _textPipeline.State;
         t.SetDefaults();
-        t.InputElements = SymbolVertex.Layout.CreateInputElements();
+        // the glyph quads in slot 0, whether each is placed in slot 1 (LabelPlacement, every frame)
+        var placedElement = new InputElementDescription
+        {
+            SemanticName = "TEXCOORD", SemanticIndex = 2, Format = PixelFormat.R32_Float, InputSlot = 1,
+            AlignedByteOffset = 0, InputSlotClass = InputClassification.Vertex, InstanceDataStepRate = 0,
+        };
+        t.InputElements = SymbolVertex.Layout.CreateInputElements().Append(placedElement).ToArray();
         t.BlendState = BlendStates.AlphaBlend;
         t.DepthStencilState = DepthStencilStates.None;
         t.RasterizerState = RasterizerStates.CullNone;

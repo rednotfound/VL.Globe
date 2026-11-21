@@ -125,6 +125,7 @@ internal sealed class GpuVectorTiles : IDisposable
         // after Update on the same thread, so the other frame is free here.
         var result = _frames[_frame & 1];
         result.Items.Clear();
+        result.Labels.Clear();
         result.Radius = radius;
         long budget = UploadBytesPerFrame;
         UploadedBytes = 0; Uploads = 0;

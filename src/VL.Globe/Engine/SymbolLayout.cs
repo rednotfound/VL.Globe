@@ -91,14 +91,15 @@ internal static partial class VectorBucketBuilder
     {
         readonly List<SymbolVertex> _symbolVertices = new();
         readonly List<uint> _symbolIndices = new();
-        int _layerSymbolVertexStart, _layerSymbolIndexStart;
+        readonly List<LabelInfo> _labels = new();
+        int _layerSymbolVertexStart, _layerSymbolIndexStart, _layerLabelStart;
 
         // GL JS symbol_layout.ts performSymbolLayout + addFeature, for point placement
         public void Symbol(GpuStyleLayer layer, List<StyleFeature> features, StyleContext ctx, MapStyleDocument style,
             bool fetch, ICollection<string>? missing, ref bool complete)
         {
             _layerVertexStart = _vertices.Count; _layerIndexStart = _indices.Count; _layerRangeStart = _ranges.Count;
-            _layerSymbolVertexStart = _symbolVertices.Count; _layerSymbolIndexStart = _symbolIndices.Count;
+            _layerSymbolVertexStart = _symbolVertices.Count; _layerSymbolIndexStart = _symbolIndices.Count; _layerLabelStart = _labels.Count;
             var l = layer.Layer;
             string placement = Expression.String(GpuStyleLayer.Get(l.Layout, "symbol-placement"), ctx, "point");
             if (placement != "point") throw new StyleUnsupportedException($"symbol-placement {placement}");
@@ -107,6 +108,8 @@ internal static partial class VectorBucketBuilder
                     throw new StyleUnsupportedException($"{alignment} map");
             var store = style.GlyphStore;
             int start = _symbolIndices.Count;
+            bool alwaysOverlap = Flag("text-allow-overlap"), ignorePlacement = Flag("text-ignore-placement");
+            bool Flag(string name) => GpuStyleLayer.Get(l.Layout, name) is { } v && Expression.Evaluate(v, ctx, Expression.Kind.Any) is true;
             double tileZoom = ctx.Zoom;
             foreach (var f in features)
             {
@@ -139,15 +142,39 @@ internal static partial class VectorBucketBuilder
                 double opacity = layer.OpacityPerFeature ? Expression.Number(layer.Opacity, ctx, 1) : 1;
                 double size = layer.SizePerFeature ? layoutTextSizeThisZoom : 0;
                 uint color = layer.ColorPerFeature ? Pack(Expression.Color(layer.Color, ctx, StyleColor.Black)) : uint.MaxValue;
+                var box = CollisionBox(shaping, layoutTextSize / Shaping.OneEm,
+                    Expression.Number(GpuStyleLayer.Get(l.Layout, "text-padding"), ctx, 2), rotate);
                 foreach (var (ax, ay) in Anchors(f))
                 {
                     // GL JS draws a label from the one tile its anchor is in, not from a neighbour's buffer
                     if (ax < 0 || ax >= Extent || ay < 0 || ay >= Extent) continue;
-                    GlyphQuads(Vertex(ax, ay, 0, 0, 0, 1, 0).Position, shaping, offset, rotate, (float)size, (float)opacity, color);
+                    var anchorPosition = Vertex(ax, ay, 0, 0, 0, 1, 0).Position;
+                    int first = _symbolVertices.Count;
+                    GlyphQuads(anchorPosition, shaping, offset, rotate, (float)size, (float)opacity, color);
+                    if (_symbolVertices.Count > first)
+                        _labels.Add(new LabelInfo(layer.Index, anchorPosition, box.X1, box.Y1, box.X2, box.Y2,
+                            alwaysOverlap, ignorePlacement, first, _symbolVertices.Count - first));
                 }
             }
             ctx.Zoom = tileZoom;
             if (_symbolIndices.Count > start) _ranges.Add(new VectorRange(layer.Index, RangeKind.Text, start, _symbolIndices.Count - start));
+        }
+
+        // GL JS collision_feature.ts, for a label in the viewport: the shaping's box at the layout's text
+        // size (textBoxScale, then textPixelRatio: pixels), text-padding round it, rotated with the text
+        static (float X1, float Y1, float X2, float Y2) CollisionBox(Shaping shaping, double scale, double padding, double rotate)
+        {
+            double x1 = shaping.Left * scale - padding, y1 = shaping.Top * scale - padding;
+            double x2 = shaping.Right * scale + padding, y2 = shaping.Bottom * scale + padding;
+            if (rotate != 0)
+            {
+                double sin = Math.Sin(rotate), cos = Math.Cos(rotate);
+                // Point._rotate: (cos x - sin y, sin x + cos y), the four corners' bounds
+                var xs = new[] { cos * x1 - sin * y1, cos * x2 - sin * y1, cos * x1 - sin * y2, cos * x2 - sin * y2 };
+                var ys = new[] { sin * x1 + cos * y1, sin * x2 + cos * y1, sin * x1 + cos * y2, sin * x2 + cos * y2 };
+                (x1, x2, y1, y2) = (xs.Min(), xs.Max(), ys.Min(), ys.Max());
+            }
+            return ((float)x1, (float)y1, (float)x2, (float)y2);
         }
 
         // GL JS quads.ts getGlyphQuads, for horizontal labels not along a line; symbol_bucket.ts addSymbols
