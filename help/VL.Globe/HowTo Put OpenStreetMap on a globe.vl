@@ -156,7 +156,7 @@
             <Pin Id="DNjxtWVjb6GlLrB30E0AXA" Name="Initial Longitude" Kind="InputPin" DefaultValue="10.6" />
             <Pin Id="FX70o2XBrLvcbvCSsXROsp" Name="Initial Latitude" Kind="InputPin" DefaultValue="-1.6" />
             <Pin Id="SqjixlQJ1c0R1wMIincnAo" Name="Initial Height" Kind="InputPin" DefaultValue="12000000" />
-            <Pin Id="Neu2PRUbEgmkO5ZtoG0JGq" Name="Min Height" Kind="InputPin" DefaultValue="100" />
+            <Pin Id="Neu2PRUbEgmkO5ZtoG0JGq" Name="Min Height" Kind="InputPin" DefaultValue="20" />
             <Pin Id="Tr1X3pEUFnMVSRT2xfteft" Name="Camera" Kind="OutputPin" />
             <Pin Id="KZ4MbYDrBKufVj5MpLu9XY" Name="View" Kind="OutputPin" />
             <Pin Id="NAc2UfWqDqBxHbd4rz5RML" Name="Longitude" Kind="OutputPin" />

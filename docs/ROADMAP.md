@@ -49,7 +49,14 @@ Each was found or confirmed on the user's screen. Details and numbers are in NOT
 
 ## 0.1 — Mapsui's basics on a smooth globe
 
-### 1. PlaceOnGlobe, then the 20 m floor
+### 1. PlaceOnGlobe, then the 20 m floor — built 2026-11-21, the user's look pending
+
+**Built as `GlobePositionComponent`**, not a transformation node: the Camera-taking node formed a
+cycle in GlobeWindow (see ARCHITECTURE "Coordinates"). `HowTo Stand a model on the globe`: a 100 m
+ball at Tokyo Station, seen at its computed size (67 px) in vvvv 7.4. Floor 20 m, Max Zoom 19.
+
+The plan as written before building:
+
 
 1. **`PlaceOnGlobe [Globe]`**. It gives the **transformation relative to the camera's frame** for a
    longitude, latitude and height, oriented east-north-up so that a model stands on the surface.

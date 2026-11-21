@@ -37,7 +37,7 @@ public sealed class GlobeView
     /// <summary>Degrees clockwise from north that the top of the view points to.</summary>
     public double Heading { get; internal set; }
 
-    internal double MinHeight = 100, MaxHeight = 4 * GlobeCoordinates.EarthRadius;
+    internal double MinHeight = 20, MaxHeight = 4 * GlobeCoordinates.EarthRadius;
     internal float Radius = 1f;
     internal double FovY = Math.PI / 4;
     internal double Width = 1280, Height_px = 720;

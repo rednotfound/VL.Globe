@@ -205,3 +205,18 @@ looked fine - "which makes one think it works". Two causes, estimated at 100 m h
 - Now a missing wanted tile is first stood in for by its loaded descendants, up to 3 levels down,
   when they cover it entirely (MapLibre's `_retainLoadedChildren`); only then an ancestor. Zoom ≤ 3
   (≤ 85 tiles) is never evicted. Four `DrawSetFacts` reproduce it; the two that failed before pass.
+
+## 2026-11-21 — placing your own things: a node that needed the camera made a cycle
+
+- `PlaceOnGlobe` was built as a VL-shaped transformation node (Input → Output, plus Camera). With
+  the separate nodes it is fine. In GlobeWindow the camera comes out of the node that the placed
+  entities must go into — a cycle only FrameDelay breaks, one frame late, i.e. jitter while
+  dragging. Replaced before anyone wired it by **`GlobePositionComponent`**: double lon/lat/height on
+  the entity; its processor sets a Stride `TransformLink`, asked in `TransformProcessor.Draw` (after
+  the patch), which finds GlobeCamera's `GlobeCameraFrame` in the scene. Seen in vvvv: Stride did
+  attach our `[DefaultEntityComponentProcessor]` to a component made in a VL patch, and the ball's
+  67 px is the size the maths says.
+- VL.Stride passes one component into `Components` through **`FromValue (Spread)`** — 18 of 20 shipped
+  help patches do.
+- An unwired `Matrix` pin of a C# node is all zeros, not identity; the placement treats zero as
+  identity.

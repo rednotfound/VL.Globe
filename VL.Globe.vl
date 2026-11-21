@@ -162,7 +162,7 @@
                 <Choice Kind="TypeFlag" Name="Float64" />
               </p:TypeAnnotation>
             </Pin>
-            <Pin Id="CXudassJVNlBMJyq70ULKd" Name="Min Height" Kind="InputPin" DefaultValue="100" Visibility="Optional">
+            <Pin Id="CXudassJVNlBMJyq70ULKd" Name="Min Height" Kind="InputPin" DefaultValue="20" Visibility="Optional">
               <p:TypeAnnotation LastCategoryFullName="Primitive" LastDependency="VL.CoreLib.vl">
                 <Choice Kind="TypeFlag" Name="Float64" />
               </p:TypeAnnotation>

@@ -30,6 +30,7 @@ the LTS line** (user, 2026-11-20); `tools\Find-Vvvv.ps1` stays below 8.0.
 | `GlobeCamera [Globe]` | process | `GlobeCameraNodes.cs` | a geographic camera state and the Stride camera entity it drives, camera-relative |
 | `Drag [Globe]` | process | `GlobeCameraNodes.cs` | grab the globe (input `View`, output `Result`) |
 | `ZoomByWheel [Globe]` | process | `GlobeCameraNodes.cs` | zoom toward the cursor, eased (input `View`, output `Output`) |
+| `GlobePositionComponent [Globe]` | process → component | `GlobePosition.cs` | stands an entity on the globe: into its `Components`; its own Transformation is then in metres (+X east, +Y up, −Z north); placed camera-relative at draw time |
 | `ToGlobe`, `ToGlobe (Coordinate)`, `FromGlobe [Globe]` | static | `GlobeCoordinates.cs` | lon/lat/height ↔ Vector3, absolute scene coordinates |
 
 Help patches: `HowTo Open a globe window` (OpenStreetMap → GlobeWindow, the front door),
@@ -74,8 +75,11 @@ SceneWindow: Enable Default Post Effects = False, Present Interval = One, Enable
   tile's vertices are offsets from its own centre (`TileGeometry.RelativeVertices`). At street level
   a vertex lands within 0.008 mm of the truth; the absolute path was 0.54 m off
   (`CameraRelativeFacts`). **A camera without the component (OrbitCamera) is drawn absolutely**, as
-  before. `ToGlobe` stays absolute: anything a patch places itself is wrong under GlobeCamera until
-  `PlaceOnGlobe` exists (ROADMAP item 1 step 5).
+  before. `ToGlobe` stays absolute (right under OrbitCamera). **Your own entities** carry a
+  `GlobePosition` component instead: its processor sets a `TransformLink`, which Stride asks for the
+  parent matrix in `TransformProcessor.Draw` — after the patch ran — and which finds GlobeCamera's
+  frame in the scene, so no pin carries the camera and GlobeWindow's `Input` has no cycle (a
+  Camera-taking transformation node was built first and dropped for that cycle).
 
 ## The engine (`Globe`, `Engine\`)
 

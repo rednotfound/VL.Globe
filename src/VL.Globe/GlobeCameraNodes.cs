@@ -53,7 +53,7 @@ public sealed class GlobeCameraNode
     public Entity Update(
         out GlobeView view, out double longitude, out double latitude, out double height,
         double initialLongitude = 0, double initialLatitude = 20, double initialHeight = 1.5e7,
-        double minHeight = 100, double maxHeight = 2.5e7, float radius = 1f, float fieldOfView = 45f)
+        double minHeight = 20, double maxHeight = 2.5e7, float radius = 1f, float fieldOfView = 45f)
     {
         _view.MinHeight = Math.Max(1, minHeight);
         _view.MaxHeight = Math.Max(_view.MinHeight, maxHeight);
