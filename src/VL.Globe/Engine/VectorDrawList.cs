@@ -11,9 +11,10 @@ internal sealed class GpuTile
 {
     public required VectorBucket Bucket;
     public Buffer? Vertices, Indices;   // null: a tile with nothing in it
+    public Buffer? SymbolVertices, SymbolIndices;   // the labels' glyph quads, null when it has none
     public required Dictionary<int, List<VectorRange>> ByLayer;   // -1: the background grid
-    public long Bytes => (Vertices?.SizeInBytes ?? 0) + (Indices?.SizeInBytes ?? 0);
-    public void Dispose() { Vertices?.Dispose(); Indices?.Dispose(); }
+    public long Bytes => (Vertices?.SizeInBytes ?? 0) + (Indices?.SizeInBytes ?? 0) + (SymbolVertices?.SizeInBytes ?? 0) + (SymbolIndices?.SizeInBytes ?? 0);
+    public void Dispose() { Vertices?.Dispose(); Indices?.Dispose(); SymbolVertices?.Dispose(); SymbolIndices?.Dispose(); }
 
     public static GpuTile Empty(VectorBucket bucket) => new() { Bucket = bucket, ByLayer = new() };
 
@@ -26,7 +27,19 @@ internal sealed class GpuTile
             if (!byLayer.TryGetValue(r.Layer, out var list)) byLayer[r.Layer] = list = new List<VectorRange>();
             list.Add(r);
         }
-        if (bucket.IndexCount == 0) { bucket.Release(); return new GpuTile { Bucket = bucket, ByLayer = byLayer }; }
+        Buffer? symbolVertices = null, symbolIndices = null;
+        if (bucket.SymbolIndices.Length > 0)
+        {
+            symbolVertices = Buffer.New(device, System.Runtime.InteropServices.MemoryMarshal.AsBytes(bucket.SymbolVertices.AsSpan()), SymbolVertex.Size, BufferFlags.VertexBuffer, PixelFormat.None, GraphicsResourceUsage.Immutable);
+            symbolIndices = Buffer.New(device, System.Runtime.InteropServices.MemoryMarshal.AsBytes(bucket.SymbolIndices.AsSpan()), sizeof(uint), BufferFlags.IndexBuffer, PixelFormat.None, GraphicsResourceUsage.Immutable);
+            bucket.SymbolVertices = Array.Empty<SymbolVertex>();
+            bucket.SymbolIndices = Array.Empty<uint>();
+        }
+        if (bucket.IndexCount == 0)
+        {
+            bucket.Release();
+            return new GpuTile { Bucket = bucket, ByLayer = byLayer, SymbolVertices = symbolVertices, SymbolIndices = symbolIndices };
+        }
         var vertices = System.Runtime.InteropServices.MemoryMarshal.AsBytes(bucket.VertexSpan);
         var indices = System.Runtime.InteropServices.MemoryMarshal.AsBytes(bucket.IndexSpan);
         var tile = new GpuTile
@@ -35,6 +48,8 @@ internal sealed class GpuTile
             ByLayer = byLayer,
             Vertices = Buffer.New(device, vertices, VectorVertex.Size, BufferFlags.VertexBuffer, PixelFormat.None, GraphicsResourceUsage.Immutable),
             Indices = Buffer.New(device, indices, sizeof(uint), BufferFlags.IndexBuffer, PixelFormat.None, GraphicsResourceUsage.Immutable),
+            SymbolVertices = symbolVertices,
+            SymbolIndices = symbolIndices,
         };
         bucket.Release();   // the arrays back to the pool: on the GPU now
         return tile;
@@ -61,6 +76,7 @@ internal static class VectorDrawList
                 var centre = tile.Bucket.Centre.ToVector3();
                 foreach (var r in ranges)
                 {
+                    if (r.Kind == RangeKind.Text) continue;   // AddSymbolLayer's
                     var (c, half, line) = r.Kind switch
                     {
                         RangeKind.Line => (color, width / 2, true),
@@ -79,6 +95,38 @@ internal static class VectorDrawList
                     items.Add(new VectorRenderer.Item(tile.Vertices, tile.Indices!, r.Start, r.Count, w, centre,
                         tint, (float)half, line, Widen(clip), kind, 1 << tile.Bucket.Key.Zoom));
                 }
+            }
+    }
+
+    // A symbol layer's draw items (labels, 4e): GL JS's draw_symbol.ts - the halo and the text in one
+    // pass, or in two (halo, then text) where glyphs overlap: letter spacing below 0 or a halo wider
+    // than 1 px. Colours premultiplied, as GL JS's uniforms are.
+    public static void AddSymbolLayer(List<VectorRenderer.Item> items, GpuStyleLayer layer, SymbolPaint paint,
+        IReadOnlyList<(GpuTile tile, Vector4 clip)> tiles, Func<GpuTile, Matrix> world, bool linearize,
+        Texture atlas, double cameraToCenter, double pixelRatio)
+    {
+        Vector4 Premultiplied(StyleColor c)
+        {
+            var v = linearize ? Linear(c) : new Vector4((float)c.R, (float)c.G, (float)c.B, (float)c.A);
+            return new Vector4(v.X * v.W, v.Y * v.W, v.Z * v.W, v.W);
+        }
+        bool hasHalo = paint.HaloWidth != 0;
+        bool twoPass = paint.LetterSpacing * Shaping.OneEm < 0 || paint.HaloWidth > 1;
+        var passes = !hasHalo ? new[] { (halo: false, plain: true) }
+            : twoPass ? new[] { (halo: true, plain: false), (halo: false, plain: true) }
+            : new[] { (halo: true, plain: true) };
+        foreach (var (halo, plain) in passes)
+            foreach (var (tile, clip) in tiles)
+            {
+                if (tile.SymbolVertices is null || !tile.ByLayer.TryGetValue(layer.Index, out var ranges)) continue;
+                var w = world(tile);
+                var text = new VectorRenderer.TextDraw(atlas, Premultiplied(paint.Color), Premultiplied(paint.HaloColor), (float)paint.Size,
+                    paint.SizePerFeature, (float)paint.Opacity, (float)paint.HaloWidth, (float)paint.HaloBlur, halo, plain,
+                    (float)cameraToCenter, (float)pixelRatio);
+                foreach (var r in ranges)
+                    if (r.Kind == RangeKind.Text)
+                        items.Add(new VectorRenderer.Item(tile.SymbolVertices, tile.SymbolIndices!, r.Start, r.Count, w,
+                            tile.Bucket.Centre.ToVector3(), default, 0, false, Widen(clip), VectorRenderer.Pass.Text, 1 << tile.Bucket.Key.Zoom, text));
             }
     }
 

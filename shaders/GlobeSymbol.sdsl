@@ -58,15 +58,17 @@ shader GlobeSymbol : ShaderBase
         float4 v = mul(float4(streams.GsAnchor, 1), GsWorldView);
         v.xyz *= (1 - GsLift);
         float4 clip = mul(v, GsProjection);
-        // the far side of the globe: an anchor whose up looks away from the eye is not drawn
+        // not drawn (moved out of clip space, as GL JS does): an anchor whose up looks away from the
+        // eye - the far side of the globe - or a label all but transparent. Stride's VSMain must not
+        // return early (X3080), so a flag
+        bool hidden = false;
         if (GsFlat < 0.5)
         {
             float3 up = mul(float4(normalize(GsCentre + streams.GsAnchor), 0), GsWorldView).xyz;
-            if (dot(up, -v.xyz) <= 0) { streams.ShadingPosition = float4(-2, -2, -2, 1); return; }
+            hidden = dot(up, -v.xyz) <= 0;
         }
-        // GL JS moves the vertex out of clip space when the label is all but transparent
         float opacity = streams.GsSizeOpacity.y * GsOpacity;
-        if (opacity < 0.1) { streams.ShadingPosition = float4(-2, -2, -2, 1); return; }
+        hidden = hidden || opacity < 0.1;
         float size = GsSizeFromVertex > 0.5 ? streams.GsSizeOpacity.x : GsSize;
         // GL JS: labels in the viewport are scaled by 0.5 + 0.5 x (camera to centre / camera to anchor)
         float perspective = clamp(0.5 + 0.5 * GsCameraToCenter / max(clip.w, 1e-9), 0, 4);
@@ -75,7 +77,7 @@ shader GlobeSymbol : ShaderBase
         float2 offset = float2(streams.GsOffsetTex.xy) / 32.0 * fontScale;
         // pixels, y down, to clip space at the anchor's depth
         clip.xy += float2(2 * offset.x / GsViewport.x, -2 * offset.y / GsViewport.y) * clip.w;
-        streams.ShadingPosition = clip;
+        streams.ShadingPosition = hidden ? float4(-2, -2, -2, 1) : clip;
         streams.GsTex = float2(streams.GsOffsetTex.zw) / GsTexSize;
         streams.GsData = float3(1, size, opacity);   // gamma scale 1: not pitched with the map
         streams.GsFill = float4(ToLinear(streams.GsColorIn.rgb) * streams.GsColorIn.a, streams.GsColorIn.a);

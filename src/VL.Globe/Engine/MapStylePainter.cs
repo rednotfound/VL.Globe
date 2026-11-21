@@ -126,6 +126,10 @@ internal sealed class MapStyleDocument
     public double CenterLon, CenterLat, Zoom;
     /// <summary>The style's glyph URL template ({fontstack}/{range}.pbf), or null: labels need it.</summary>
     public string? Glyphs;
+
+    /// <summary>The style's glyph ranges and their atlas (labels), made on first use.</summary>
+    public GlyphStore GlyphStore => System.Threading.LazyInitializer.EnsureInitialized(ref _glyphStore, () => new GlyphStore(this))!;
+    GlyphStore? _glyphStore;
     public bool Lenient;
 
     /// <summary>What a lenient parse or draw left out, and why: "layer id: reason".</summary>

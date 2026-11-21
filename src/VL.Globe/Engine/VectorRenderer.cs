@@ -20,10 +20,15 @@ internal sealed class VectorRenderer : IGraphicsRendererBase
     // ExtrusionDepth then ExtrusionColor: GL JS draws a fill-extrusion layer's depth first, then its
     // colour where the depth is equal, so a translucent layer is one even layer, its buildings not
     // showing through each other
-    internal enum Pass { Triangles, LineList, ExtrusionDepth, ExtrusionColor }
+    // Text: a symbol layer's glyph quads, drawn by GlobeSymbol.sdsl over everything, no depth (GL JS)
+    internal enum Pass { Triangles, LineList, ExtrusionDepth, ExtrusionColor, Text }
+
+    // what a Text item draws with besides its buffers: the atlas and the layer's paint this frame
+    internal sealed record TextDraw(Texture Atlas, Vector4 Color, Vector4 HaloColor, float Size, bool SizePerFeature, float Opacity,
+        float HaloWidth, float HaloBlur, bool IsHalo, bool IsPlain, float CameraToCenter, float PixelRatio);
 
     internal readonly record struct Item(Buffer Vertices, Buffer Indices, int Start, int Count, Matrix World, Vector3 Centre,
-        Vector4 Color, float HalfWidth, bool IsLine, Vector4 Clip, Pass Pass = Pass.Triangles, float Tiles = 1);
+        Vector4 Color, float HalfWidth, bool IsLine, Vector4 Clip, Pass Pass = Pass.Triangles, float Tiles = 1, TextDraw? Text = null);
 
     internal sealed class Frame
     {
@@ -47,8 +52,9 @@ internal sealed class VectorRenderer : IGraphicsRendererBase
     // antialiased line (blended straight) is drawn: the user judged that one on screen, 2026-11-21.
     public bool GlOutlines;
 
-    DynamicEffectInstance? _effect;
-    MutablePipelineState? _pipeline, _linePipeline, _depthPipeline, _extrusionPipeline;
+    DynamicEffectInstance? _effect, _symbolEffect;
+    MutablePipelineState? _pipeline, _linePipeline, _depthPipeline, _extrusionPipeline, _textPipeline;
+    readonly Dictionary<string, ParameterKey> _symbolKeys = new();
     bool _broken;
     readonly Dictionary<string, ParameterKey> _keys = new();
 
@@ -63,11 +69,14 @@ internal sealed class VectorRenderer : IGraphicsRendererBase
             {
                 _effect = new DynamicEffectInstance("GlobeVector");
                 _effect.Initialize(context.RenderContext.Services);
+                _symbolEffect = new DynamicEffectInstance("GlobeSymbol");
+                _symbolEffect.Initialize(context.RenderContext.Services);
             }
             _effect.UpdateEffect(context.GraphicsDevice);
-            if (_effect.Effect is null) return;   // still compiling
+            _symbolEffect!.UpdateEffect(context.GraphicsDevice);
+            if (_effect.Effect is null || _symbolEffect.Effect is null) return;   // still compiling
             var view = context.RenderContext.RenderView;
-            DrawFrame(context.CommandList, context.GraphicsContext, _effect, view.View, view.Projection, view.ViewSize.Y, frame,
+            DrawFrame(context.CommandList, context.GraphicsContext, _effect, _symbolEffect, view.View, view.Projection, view.ViewSize.Y, frame,
                 Lift, linearize: true, flat: false);
         }
         catch (Exception e)
@@ -85,11 +94,19 @@ internal sealed class VectorRenderer : IGraphicsRendererBase
     /// </summary>
     // linearize: The colours are sRGB and the target linear (vvvv); false draws in sRGB space, as GL JS blends.
     // flat: The buckets are on the Mercator plane (x east, y north, z up), not the sphere.
-    internal void DrawFrame(CommandList commandList, GraphicsContext graphicsContext, EffectInstance effect, Matrix view, Matrix projection,
-        float viewHeight, Frame frame, float lift, bool linearize, bool flat)
+    internal void DrawFrame(CommandList commandList, GraphicsContext graphicsContext, EffectInstance effect, EffectInstance symbolEffect,
+        Matrix view, Matrix projection, float viewHeight, Frame frame, float lift, bool linearize, bool flat)
     {
         ItemsDrawn = 0;
         EnsurePipelines(commandList.GraphicsDevice);
+        if (_symbolKeys.Count == 0)
+        {
+            foreach (var cb in symbolEffect.Effect.Bytecode.Reflection.ConstantBuffers)
+                foreach (var m in cb.Members)
+                    if (m.KeyInfo.Key is { } key) _symbolKeys[m.KeyInfo.KeyName] = key;
+            foreach (var r in symbolEffect.Effect.Bytecode.Reflection.ResourceBindings)
+                if (r.KeyInfo.Key is { } key) _symbolKeys[r.KeyInfo.KeyName] = key;
+        }
         if (_keys.Count == 0)
         {
             foreach (var cb in effect.Effect.Bytecode.Reflection.ConstantBuffers)
@@ -100,14 +117,20 @@ internal sealed class VectorRenderer : IGraphicsRendererBase
                 throw new InvalidOperationException("GlobeVector's parameters not found; the effect has: " + string.Join(", ", _keys.Keys));
         }
 
-        var pipelines = new[] { _pipeline!, _linePipeline!, _depthPipeline!, _extrusionPipeline! };
+        var pipelines = new[] { _pipeline!, _linePipeline!, _depthPipeline!, _extrusionPipeline!, _textPipeline! };
         foreach (var p in pipelines)
         {
-            p.State.RootSignature = effect.RootSignature;
-            p.State.EffectBytecode = effect.Effect.Bytecode;
+            var e = p == _textPipeline ? symbolEffect : effect;
+            p.State.RootSignature = e.RootSignature;
+            p.State.EffectBytecode = e.Effect.Bytecode;
             p.State.Output.CaptureState(commandList);
             p.Update();
         }
+        var symbolParameters = symbolEffect.Parameters;
+        SetText(symbolParameters, "GsProjection", projection);
+        SetText(symbolParameters, "GsLift", lift);
+        SetText(symbolParameters, "GsFlat", flat ? 1f : 0f);
+        SetText(symbolParameters, "GsLinearize", linearize ? 1f : 0f);
         Pass? pass = null;
 
         var parameters = effect.Parameters;
@@ -132,7 +155,7 @@ internal sealed class VectorRenderer : IGraphicsRendererBase
                 else if (!extrusion && sceneDepth is not null) { RestoreDepth(commandList, sceneDepth); sceneDepth = null; }
                 if (!ReferenceEquals(item.Vertices, boundVertices))
                 {
-                    commandList.SetVertexBuffer(0, item.Vertices, 0, VectorVertex.Size);
+                    commandList.SetVertexBuffer(0, item.Vertices, 0, item.Pass == Pass.Text ? SymbolVertex.Size : VectorVertex.Size);
                     commandList.SetIndexBuffer(item.Indices, 0, true);
                     boundVertices = item.Vertices;
                 }
@@ -140,6 +163,29 @@ internal sealed class VectorRenderer : IGraphicsRendererBase
                 {
                     commandList.SetPipelineState(pipelines[(int)item.Pass].CurrentState);
                     pass = item.Pass;
+                }
+                if (item.Text is { } t)
+                {
+                    SetText(symbolParameters, "GsWorldView", item.World * view);
+                    SetText(symbolParameters, "GsCentre", item.Centre);
+                    SetText(symbolParameters, "GsViewport", new Vector2(commandList.Viewport.Width, commandList.Viewport.Height));
+                    SetText(symbolParameters, "GsTexSize", new Vector2(t.Atlas.Width, t.Atlas.Height));
+                    SetText(symbolParameters, "GsColor", t.Color);
+                    SetText(symbolParameters, "GsHaloColor", t.HaloColor);
+                    SetText(symbolParameters, "GsSize", t.Size);
+                    SetText(symbolParameters, "GsSizeFromVertex", t.SizePerFeature ? 1f : 0f);
+                    SetText(symbolParameters, "GsOpacity", t.Opacity);
+                    SetText(symbolParameters, "GsHaloWidth", t.HaloWidth);
+                    SetText(symbolParameters, "GsHaloBlur", t.HaloBlur);
+                    SetText(symbolParameters, "GsIsHalo", t.IsHalo ? 1f : 0f);
+                    SetText(symbolParameters, "GsIsPlain", t.IsPlain ? 1f : 0f);
+                    SetText(symbolParameters, "GsCameraToCenter", t.CameraToCenter);
+                    SetText(symbolParameters, "GsDevicePixelRatio", t.PixelRatio);
+                    if (_symbolKeys.TryGetValue("GlobeSymbol.GsAtlas", out var atlasKey)) symbolParameters.Set((ObjectParameterKey<Texture>)atlasKey, t.Atlas);
+                    symbolEffect.Apply(graphicsContext);
+                    commandList.DrawIndexed(item.Count, item.Start);
+                    ItemsDrawn++;
+                    continue;
                 }
                 Set(parameters, "GvWorldView", item.World * view);
                 Set(parameters, "GvColor", item.Color);
@@ -201,6 +247,15 @@ internal sealed class VectorRenderer : IGraphicsRendererBase
         x.DepthStencilState = DepthStencilStates.DepthRead;
         x.RasterizerState = RasterizerStates.CullNone;
         x.PrimitiveType = PrimitiveType.TriangleList;
+        // labels: over everything, no depth, as GL JS draws symbols without terrain
+        _textPipeline = new MutablePipelineState(device);
+        var t = _textPipeline.State;
+        t.SetDefaults();
+        t.InputElements = SymbolVertex.Layout.CreateInputElements();
+        t.BlendState = BlendStates.AlphaBlend;
+        t.DepthStencilState = DepthStencilStates.None;
+        t.RasterizerState = RasterizerStates.CullNone;
+        t.PrimitiveType = PrimitiveType.TriangleList;
     }
 
     // fill-extrusion needs to write depth, and vvvv's forward renderer binds the scene's depth
@@ -235,6 +290,13 @@ internal sealed class VectorRenderer : IGraphicsRendererBase
     }
 
     void RestoreDepth(CommandList commandList, Texture scene) => commandList.SetRenderTargets(scene, _targetCount, _targets);
+
+    void SetText<T>(ParameterCollection parameters, string name, T value) where T : struct
+    {
+        if (!_symbolKeys.TryGetValue("GlobeSymbol." + name, out var key)) return;   // compiled away: unused
+        if (key is ValueParameterKey<T> typed) parameters.Set(typed, value);
+        else throw new InvalidOperationException($"GlobeSymbol.{name} is a {key.GetType().Name}, set as {typeof(T).Name}");
+    }
 
     void Set<T>(ParameterCollection parameters, string name, T value) where T : struct
     {

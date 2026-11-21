@@ -69,8 +69,9 @@ internal struct VectorVertex
 }
 
 // Outline is a line list (GL JS's gl.LINES, one device pixel); the rest are triangle lists. Extrusion
-// is fill-extrusion: roofs and walls in 3D, drawn in two passes (depth, then colour)
-internal enum RangeKind { Fill, Outline, Line, Background, Extrusion }
+// is fill-extrusion: roofs and walls in 3D, drawn in two passes (depth, then colour). Text is a
+// symbol layer's glyph quads, in the bucket's symbol arrays (SymbolLayout.cs)
+internal enum RangeKind { Fill, Outline, Line, Background, Extrusion, Text }
 
 /// <summary>A layer's part of a bucket: <see cref="Count"/> indices from <see cref="Start"/>.</summary>
 internal readonly record struct VectorRange(int Layer, RangeKind Kind, int Start, int Count);
@@ -89,6 +90,9 @@ internal sealed class VectorBucket
     public uint[] Indices = Array.Empty<uint>();
     public int VertexCount, IndexCount;
     public List<VectorRange> Ranges = new();
+    // labels: few beside the lines and fills, so plain arrays
+    public SymbolVertex[] SymbolVertices = Array.Empty<SymbolVertex>();
+    public uint[] SymbolIndices = Array.Empty<uint>();
     public double Ms;
 
     public ReadOnlySpan<VectorVertex> VertexSpan => Vertices.AsSpan(0, VertexCount);
@@ -105,7 +109,7 @@ internal sealed class VectorBucket
 }
 
 /// <summary>A style layer the GPU draws, with which of its paint properties depend on the feature.</summary>
-internal sealed class GpuStyleLayer
+internal sealed partial class GpuStyleLayer
 {
     public required int Index;           // in the style's layer order
     public required MapStyleDocument.Layer Layer;
@@ -121,8 +125,9 @@ internal sealed class GpuStyleLayer
     public static GpuStyleLayer? Of(MapStyleDocument style, int index)
     {
         var l = style.Layers[index];
-        if (l.Type is not ("fill" or "line" or "background" or "fill-extrusion")) return null;
+        if (l.Type is not ("fill" or "line" or "background" or "fill-extrusion" or "symbol")) return null;
         if (style.Lenient && style.IsDropped(l.Id)) return null;
+        if (l.Type == "symbol") return SymbolOf(index, l);
         var g = new GpuStyleLayer { Index = index, Layer = l };
         string p = l.Type;
         g.Color = Get(l.Paint, p + "-color");
@@ -158,7 +163,7 @@ internal sealed class GpuStyleLayer
     internal static JsonElement? Get(JsonElement obj, string name) => obj.ValueKind == JsonValueKind.Object && obj.TryGetProperty(name, out var v) ? v : null;
 }
 
-internal static class VectorBucketBuilder
+internal static partial class VectorBucketBuilder
 {
     /// <summary>Tile-local units per tile side: GL JS's tile seen at its own zoom, 512 px.</summary>
     public const double Extent = 512;
@@ -197,7 +202,11 @@ internal static class VectorBucketBuilder
             if (layer.Type == "background") continue;
             List<StyleFeature>? features = geo;
             if (features is null && (data is null || layer.Layer.SourceLayer is not { } sl || !data.TryGetValue(sl, out features))) continue;
-            try { b.Layer(layer, features, ctx); }
+            try
+            {
+                if (layer.IsSymbol) b.Symbol(layer, features, ctx, style, fetch, missing, ref complete);
+                else b.Layer(layer, features, ctx);
+            }
             catch (StyleUnsupportedException e) when (style.Lenient) { style.Drop(layer.Layer.Id, e.Message); b.Rewind(); }
         }
         var bucket = b.Finish();
@@ -221,7 +230,7 @@ internal static class VectorBucketBuilder
         return b.Finish();
     }
 
-    sealed class Builder
+    sealed partial class Builder
     {
         readonly TileKey _key;
         readonly int _n;
@@ -251,6 +260,8 @@ internal static class VectorBucketBuilder
             _grid = grid;
             _vertices.Clear();
             _indices.Clear();
+            _symbolVertices.Clear();
+            _symbolIndices.Clear();
             _n = 1 << key.Zoom;
             // the plane: x east, y north (minus Mercator's y), in world units (the world is 1 wide)
             _centre = _flat ? new D3((key.X + 0.5) / _n, -(key.Y + 0.5) / _n, 0) : TileGeometry.Centre(key);
@@ -268,6 +279,8 @@ internal static class VectorBucketBuilder
             _vertices.RemoveRange(_layerVertexStart, _vertices.Count - _layerVertexStart);
             _indices.RemoveRange(_layerIndexStart, _indices.Count - _layerIndexStart);
             _ranges.RemoveRange(_layerRangeStart, _ranges.Count - _layerRangeStart);
+            _symbolVertices.RemoveRange(_layerSymbolVertexStart, _symbolVertices.Count - _layerSymbolVertexStart);
+            _symbolIndices.RemoveRange(_layerSymbolIndexStart, _symbolIndices.Count - _layerSymbolIndexStart);
         }
 
         public VectorBucket Finish()
@@ -280,6 +293,7 @@ internal static class VectorBucketBuilder
             {
                 Key = _key, Centre = _centre, Vertices = vertices, Indices = indices,
                 VertexCount = _vertices.Count, IndexCount = _indices.Count, Ranges = _ranges.ToList(),
+                SymbolVertices = _symbolVertices.ToArray(), SymbolIndices = _symbolIndices.ToArray(),
             };
         }
 
@@ -311,6 +325,7 @@ internal static class VectorBucketBuilder
         public void Layer(GpuStyleLayer layer, List<StyleFeature> features, StyleContext ctx)
         {
             _layerVertexStart = _vertices.Count; _layerIndexStart = _indices.Count; _layerRangeStart = _ranges.Count;
+            _layerSymbolVertexStart = _symbolVertices.Count; _layerSymbolIndexStart = _symbolIndices.Count;
             var l = layer.Layer;
             // GL JS builds a bucket at the tile's zoom: filters and layout at it. Not the layer's zoom
             // range: one bucket serves every zoom the tile is overscaled to (z14 data at z19), so

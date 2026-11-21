@@ -58,6 +58,7 @@ internal static class RenderHarness
         int drawn = passed.Count(r => !r.Vacuous);
         var failed = all.Where(r => r.Outcome == Outcome.Failed).ToList();
         var unsupported = all.Where(r => r.Outcome == Outcome.Unsupported).ToList();
+        Directory.CreateDirectory(results);   // no fixture drew (all threw): the report says why
         File.WriteAllText(Path.Combine(results, "report.md"), Report(title, manifest, all));
         output.WriteLine($"MapLibre {manifest.Tag} on {title}: {passed.Count} passed ({drawn} that an empty image would fail), {failed.Count} failed, {unsupported.Count} unsupported of {all.Count}");
         foreach (var g in unsupported.GroupBy(r => r.Reason).OrderByDescending(g => g.Count()))
