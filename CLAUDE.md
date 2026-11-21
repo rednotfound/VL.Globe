@@ -12,7 +12,8 @@ Guidance for Claude Code working in this repository.
    reads MVT (98/164 fixtures pass, 90 counted); step 2, the node `VectorTiles [Globe.Layers]`, is
    built and seen in vvvv; the user found the drape "不太行" and chose the GPU (ROADMAP **4d**,
    [docs/DESIGN-GPU-VECTOR.md](docs/DESIGN-GPU-VECTOR.md)): built 2026-11-21 night, 170 tests green,
-   **never yet run in vvvv — rung 4 (does GlobeVector.sdsl compile and draw) is next**.
+   seen in vvvv standing still (Osaka, the shader compiled first time) — **the user's judgement
+   while moving is next**.
    Research: [docs/RESEARCH-0.1.md](docs/RESEARCH-0.1.md), [docs/RESEARCH-VECTOR.md](docs/RESEARCH-VECTOR.md).
 2. Read **[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)** — what exists and why.
 3. Read **[NOTES.md](NOTES.md)** — every failure so far, before touching the same code.
@@ -47,7 +48,7 @@ at country scale; judge every change at the lowest height.
 | `GlobePositionComponent [Globe]` | stands an entity on the globe, placed at draw time; user-judged |
 | `ScreenToGlobe`, `GlobeToScreen`, `GlobeViewInfo [Globe]` | built; user-judged |
 | `Geometry`, `FeatureLayer [Globe.Layers]`, `VectorStyle [Globe.Styles]` | built, draped into the tiles; seen in vvvv |
-| `VectorTiles [Globe.Layers]` | built 2026-11-21: a MapLibre style's fills/lines/background from vector tiles, with or without a Tile Source; `Rendering` GPU (default, **not yet seen**) or Draped (seen standing still, "不太行") |
+| `VectorTiles [Globe.Layers]` | built 2026-11-21: a MapLibre style's fills/lines/background from vector tiles, with or without a Tile Source; `Rendering` GPU (default, seen standing still) or Draped (seen standing still, "不太行") |
 | `ToGlobe`, `ToGlobe (Coordinate)`, `FromGlobe [Globe]` | built, 4 rungs, **absolute** — right under OrbitCamera; under GlobeCamera use GlobePositionComponent |
 
 170 tests green (incl. MapLibre v6.19.0's render tests — 164 fixtures, fetched by script). Branch `feature/camera-relative`, pushed to `github.com/rednotfound/VL.Globe`

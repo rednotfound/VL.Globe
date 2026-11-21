@@ -263,7 +263,7 @@ costs CPU drawing, and a line's width is baked at one zoom. Asked why MapLibre d
 caches *geometry* and draws pixels on the GPU every frame. Decided the same evening: **move to
 RESEARCH-VECTOR stage 3, the GPU** ("同意，开始做吧，stride也是有强大的shader系统的").
 
-### 4d. `VectorTiles` on the GPU — built 2026-11-21, not yet seen in vvvv
+### 4d. `VectorTiles` on the GPU — built 2026-11-21, seen in vvvv standing still
 
 Design: [DESIGN-GPU-VECTOR.md](DESIGN-GPU-VECTOR.md). Built the same night:
 - `Engine/VectorBucket.cs`: a vector tile's fills (NTS `PolygonTriangulator`) and lines (the same
@@ -278,8 +278,12 @@ Design: [DESIGN-GPU-VECTOR.md](DESIGN-GPU-VECTOR.md). Built the same night:
 - 9 xUnit facts (GpuVectorFacts), 170 green. The shader has never compiled yet: **rung 4 is next**
   (the user's vvvv was open on the help patch, so dist was not rebuilt).
 
-**Next:** build, then rung 4 — does GlobeVector compile, does it draw where the drape drew, frame
-time; then the user's judgement while moving, then country scale.
+**Rung 4 (22:37, Osaka Station, with OpenStreetMap, no input driven):** GlobeVector compiled on
+the first run (one warning: `pow` of a negative); 4 vector tiles, 229 draws; roads, rail, water,
+parks and buildings where they belong, colours right. A bucket takes ~1 s to build on a worker
+(NTS triangulation, not yet measured by stage).
+
+**Next:** the user's judgement while moving; then the build time per tile, then country scale.
 
 ### 5. Navigation
 
