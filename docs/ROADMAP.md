@@ -96,7 +96,7 @@ sink by the camera's height z-fought at the horizon). **Still open:** if the 400
 the depth-first walk stops refining wherever it happens to be (make it priority-ordered then); depth
 precision toward the horizon has not been measured on screen; a Compass widget.
 
-### 2. Coordinates and reading the view — built 2026-11-21, the user's look pending
+### 2. Coordinates and reading the view — done 2026-11-21, the user judged it ("看起来不错")
 
 `ScreenToGlobe` (Success), `GlobeToScreen` (Visible), `GlobeViewInfo` (centre, height, heading, tilt,
 ground resolution, web-map zoom by GeoLibre's ground-resolution formula), static nodes in Mapsui's
