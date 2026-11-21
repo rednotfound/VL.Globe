@@ -297,6 +297,15 @@ internal static class Expression
             case "string": case "number": case "boolean": case "to-number": case "to-string": case "to-boolean":
                 for (int i = 1; i < n; i++) { var v = Arg(i, want); if (v != null) return Coerce(op, v); }
                 return null;
+            // labels (4e): Liberty's text-field joins the Latin and the local name with concat
+            case "concat":
+            {
+                var sb = new System.Text.StringBuilder();
+                for (int i = 1; i < n; i++) { var v = Arg(i, Kind.Any); if (v != null) sb.Append((string)Coerce("to-string", v)!); }
+                return sb.ToString();
+            }
+            case "upcase": return Arg(1, Kind.String) is string up ? up.ToUpperInvariant() : null;
+            case "downcase": return Arg(1, Kind.String) is string down ? down.ToLowerInvariant() : null;
             case "to-color":
             case "coalesce":
                 for (int i = 1; i < n; i++)
@@ -451,7 +460,8 @@ internal static class Expression
     static object? Coerce(string op, object v) => op switch
     {
         "to-number" => v is string s ? double.Parse(s, CultureInfo.InvariantCulture) : v is bool b ? (b ? 1.0 : 0.0) : v,
-        "to-string" => v is double d ? d.ToString(CultureInfo.InvariantCulture) : v.ToString(),
+        // JavaScript's String(): "true", not .NET's "True"
+        "to-string" => v switch { double d => d.ToString(CultureInfo.InvariantCulture), bool b => b ? "true" : "false", _ => v.ToString() },
         "to-boolean" => v switch { bool b => b, double d => d != 0 && !double.IsNaN(d), string s => s.Length > 0, _ => true },
         _ => v,
     };

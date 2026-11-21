@@ -343,7 +343,9 @@ public sealed class GlobeNode : IDisposable
         var gpuServices = enabled && layers is not null
             ? layers.Where(l => l is { Enabled: true, Gpu: true, Vector: not null }).Select(l => l.Vector!).ToList()
             : new List<VectorTileService>();
-        if (_device is not null) _gpu.Update(_device, wanted, _wantedSet, gpuServices, _radius, _relativeEye, _cameraZoom, _frame);
+        // the distance to the view's centre, for the labels' perspective ratio: the eye's height above the ground
+        if (_device is not null) _gpu.Update(_device, wanted, _wantedSet, gpuServices, _radius, _relativeEye, _cameraZoom, _frame,
+            Math.Max(_lastEye.Length() - _radius, 1e-9));
         Stage("gpu vectors");
         // into the log: the renderer's error once, and how far the building is, once a second at most
         if (_gpu.Error != _gpuError) { _gpuError = _gpu.Error; if (_gpuError.Length > 0) _logger.LogError("Globe: {Error}", _gpuError); }

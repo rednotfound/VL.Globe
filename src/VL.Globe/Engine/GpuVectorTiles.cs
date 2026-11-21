@@ -27,6 +27,7 @@ internal sealed class GpuVectorTiles : IDisposable
         public Task<(VectorBucket? bucket, bool complete, string[] missing)>? Job;
         public Built? Built;
         public string[] Missing = Array.Empty<string>();   // the tile was not here: built again once it is
+        public bool Incomplete;   // built while some of it (a label's glyph range) was on its way: built again once it is
         public bool Fetched;   // asked for with fetch (a wanted globe tile) at least once
         public int LastUsed;
     }
@@ -37,6 +38,8 @@ internal sealed class GpuVectorTiles : IDisposable
         public required List<GpuStyleLayer> Layers;                         // style order
         public required Dictionary<string, List<GpuStyleLayer>> BySource;   // vector sources only
         public string? BackgroundSource;                                   // whose tiles carry the background grid
+        public Texture? Atlas;                                             // the labels' glyphs on the GPU, and the atlas version it shows
+        public int AtlasVersion = -1;
     }
 
     readonly Dictionary<(VectorTileService service, string source, TileKey key), Entry> _entries = new();
@@ -113,7 +116,7 @@ internal sealed class GpuVectorTiles : IDisposable
     // shown: the globe tiles whose area is drawn; wanted: those that fetch vector tiles; zoom: the
     // camera's, MapLibre's (512-px tiles), at which the zoom-dependent paint is evaluated
     public void Update(GraphicsDevice device, IReadOnlyCollection<TileKey> shown, IReadOnlySet<TileKey> wanted,
-        IReadOnlyList<VectorTileService> services, float radius, D3? eye, double zoom, int frame)
+        IReadOnlyList<VectorTileService> services, float radius, D3? eye, double zoom, int frame, double cameraToCenter = 1)
     {
         _frame = frame;
         _timer.Restart();
@@ -126,6 +129,7 @@ internal sealed class GpuVectorTiles : IDisposable
         var result = _frames[_frame & 1];
         result.Items.Clear();
         result.Labels.Clear();
+        result.CameraToCenter = (float)cameraToCenter;
         result.Radius = radius;
         long budget = UploadBytesPerFrame;
         UploadedBytes = 0; Uploads = 0;
@@ -163,10 +167,11 @@ internal sealed class GpuVectorTiles : IDisposable
                 foreach (var (vk, served) in needed.OrderByDescending(n => n.Value.Any(wanted.Contains)))
                 {
                     var e = Ensure(service, sourceId, vk);
-                    if (e.Built is null && e.Job is null && _running < Workers.Count)
+                    // not built, or built without a glyph range that has come since
+                    if ((e.Built is null || e.Incomplete && e.Missing.Any(service.IsHere)) && e.Job is null && _running < Workers.Count)
                     {
                         bool fetch = served.Any(wanted.Contains);
-                        bool retry = e.Missing.Length == 0 || e.Missing.Any(service.IsHere) || (fetch && !e.Fetched);
+                        bool retry = e.Built != null || e.Missing.Length == 0 || e.Missing.Any(service.IsHere) || (fetch && !e.Fetched);
                         if (retry)
                         {
                             e.Fetched |= fetch;
@@ -196,10 +201,35 @@ internal sealed class GpuVectorTiles : IDisposable
             }
 
             Lap(3);
+            // the labels' glyphs: uploaded again when the atlas has grown
+            if (info.Layers.Any(l => l.IsSymbol) && doc.Glyphs != null && doc.GlyphStore.Atlas.Version != info.AtlasVersion)
+            {
+                var (pixels, atlasHeight, version) = doc.GlyphStore.Atlas.Snapshot();
+                info.Atlas?.Dispose();
+                info.Atlas = Texture.New2D(device, GlyphAtlas.Width, atlasHeight, PixelFormat.R8_UNorm, pixels);
+                info.AtlasVersion = version;
+            }
             var ctx = new StyleContext { Zoom = zoom, GlobalState = doc.GlobalState };
+            Matrix World(Built tile) => Matrix.Scaling(radius) * Matrix.Translation(TileGeometry.Translation(tile.Bucket.Centre, radius, eye));
             foreach (var layer in info.Layers)
             {
                 if (doc.Lenient && doc.IsDropped(layer.Layer.Id)) continue;
+                if (layer.IsSymbol)
+                {
+                    SymbolPaint? paint = null;
+                    try { if (!layer.SymbolUniforms(ctx, out paint)) continue; }
+                    catch (StyleUnsupportedException e) when (doc.Lenient) { doc.Drop(layer.Layer.Id, e.Message); continue; }
+                    if (info.Atlas is null || layer.Layer.Source is not { } labelSource || !draws.TryGetValue(labelSource, out var drawn)) continue;
+                    // labels only from tiles drawn whole, each once: the symbol shader does not clip, and a
+                    // tile standing in for finer ones is drawn once per square - its labels drawn several
+                    // times, colliding with themselves. A stand-in shows no labels; the finer tile will.
+                    var full = new Vector4(0, 0, 1, 1);
+                    var labelled = drawn.Where(d => d.clip == full && d.built.PlacedBuffer != null).DistinctBy(d => d.built).ToList();
+                    VectorDrawList.AddSymbolLayer(result.Items, layer, paint!, labelled, World, linearize: true, info.Atlas, cameraToCenter, 1);
+                    // placed from the top of the style down
+                    result.Labels.Insert(0, new LabelPlacement.Layer(layer.Index, labelled.Select(d => (d.built, World(d.built))).ToList()));
+                    continue;
+                }
                 bool visible;
                 StyleColor color, outline; double width;
                 try { visible = layer.Uniforms(ctx, out color, out width, out outline); }
@@ -207,8 +237,7 @@ internal sealed class GpuVectorTiles : IDisposable
                 if (!visible) continue;
                 List<(Built built, Vector4 clip)>? list = backgroundDraws;
                 if (layer.Type != "background" && (layer.Layer.Source is not { } source || !draws.TryGetValue(source, out list))) continue;
-                VectorDrawList.AddLayer(result.Items, layer, color, width, outline, list,
-                    tile => Matrix.Scaling(radius) * Matrix.Translation(TileGeometry.Translation(tile.Bucket.Centre, radius, eye)), linearize: true);
+                VectorDrawList.AddLayer(result.Items, layer, color, width, outline, list, World, linearize: true);
             }
         }
         Lap(4);
@@ -267,6 +296,8 @@ internal sealed class GpuVectorTiles : IDisposable
         budget -= size;
         _built++;
         _buildMs += (bucket.Ms - _buildMs) / Math.Min(_built, 50);
+        e.Incomplete = !complete;
+        e.Missing = complete ? Array.Empty<string>() : missing;
         Set(e, Upload(device, bucket));
     }
 
@@ -282,6 +313,8 @@ internal sealed class GpuVectorTiles : IDisposable
 
     void Set(Entry e, Built built)
     {
+        // a tile built again (a glyph range came) replaces the old one, drawn last frame and no more
+        if (e.Built is { } old) { _tilesBuilt--; _gpuBytes -= old.Bytes; old.Dispose(); }
         e.Built = built;
         _tilesBuilt++;
         _gpuBytes += built.Bytes;
