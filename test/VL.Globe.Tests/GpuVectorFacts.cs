@@ -113,12 +113,19 @@ public class GpuVectorFacts
     [Theory]
     [InlineData(1)]
     [InlineData(3)]
+    [InlineData(8)]
+    [InlineData(10)]
     [InlineData(14)]
     public void TheBackgroundGridBendsWithTheSphereAtEveryZoom(int zoom)
     {
         // a chequerboard from afar (the user, 2026-11-21): 8 cells at zoom 1 sank 1.8% of the radius
-        // under the globe in their middles; cells of 2 degrees at most sag 0.00015
-        var b = VectorBucketBuilder.BackgroundBucket(new TileKey(zoom, 0, (1 << zoom) / 2));
+        // under the globe in their middles. Then discs at zoom 8: a cell must sag less than the
+        // shader's lift, 0.0015 of the distance, from where a tile of that zoom is seen - about its
+        // own size (a tile 256 px tall in a 45-degree view is ~ a fifth of the distance), so a
+        // thousandth of a tile here
+        var key = new TileKey(zoom, 0, (1 << zoom) / 2);
+        var b = VectorBucketBuilder.BackgroundBucket(key);
+        double tile = 2 * Math.PI / (1 << zoom);
         double worst = 0;
         for (int t = 0; t < b.Indices.Length; t += 3)
         {
@@ -126,7 +133,7 @@ public class GpuVectorFacts
             var mid = (P(0) + P(1) + P(2)) * (1.0 / 3);
             worst = Math.Max(worst, 1 - mid.Length);
         }
-        Assert.InRange(worst, 0, 0.0003);   // under the 0.0015 the shader lifts by, seen from two radii
+        Assert.InRange(worst, 0, Math.Min(0.0003, tile * 0.001));
     }
 
     [Theory]

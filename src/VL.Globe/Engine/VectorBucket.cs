@@ -161,8 +161,13 @@ internal static class VectorBucketBuilder
             _key = key;
             _n = 1 << key.Zoom;
             _centre = TileGeometry.Centre(key);
-            // 2 degrees of longitude in tile units: nothing is cut from zoom 8 on (a tile is 1.4 degrees)
-            _maxSegment = 2 * Extent * _n / 360.0;
+            // An edge's chord must sag less than the shader's lift (0.0015 of the distance to the eye)
+            // at the distance a tile of this zoom is seen from: an eighth of a tile, as the globe's own
+            // tiles are cut, and 2 degrees at most for the coarsest. Cut by 2 degrees only, a zoom-8
+            // ocean square was two flat triangles sagging 1 km, seen from 300 km where the lift is
+            // 450 m: discs of background in the sea (the user, 2026-11-21). From zoom 11 on a whole
+            // tile sags under 2 m and nothing is cut.
+            _maxSegment = key.Zoom > 10 ? double.PositiveInfinity : Math.Min(Extent / 8, 2 * Extent * _n / 360.0);
         }
 
         public void Rewind()
@@ -184,11 +189,14 @@ internal static class VectorBucketBuilder
         {
             int start = _indices.Count;
             uint first = (uint)_vertices.Count;
+            // a little past the square on every side: the clip rectangle, not the mesh's edge, decides
+            // where it ends, so neighbours meet without a crack (two meshes' edges are not bit-equal)
             int cells = Math.Max(8, (int)Math.Ceiling(Extent / _maxSegment));
             int side = cells + 1;
+            double pad = Extent * 0.01, span = Extent + 2 * pad;
             for (int j = 0; j < side; j++)
                 for (int i = 0; i < side; i++)
-                    _vertices.Add(Vertex(Extent * i / cells, Extent * j / cells, 0, 0, 0, 1, uint.MaxValue));
+                    _vertices.Add(Vertex(span * i / cells - pad, span * j / cells - pad, 0, 0, 0, 1, uint.MaxValue));
             for (int j = 0; j < cells; j++)
                 for (int i = 0; i < cells; i++)
                 {

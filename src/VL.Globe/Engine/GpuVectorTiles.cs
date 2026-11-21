@@ -162,7 +162,7 @@ internal sealed class GpuVectorTiles : IDisposable
                         };
                         if (c.A <= 0) continue;
                         result.Items.Add(new VectorRenderer.Item(built.Vertices, built.Indices!, r.Start, r.Count, world, centre,
-                            Linear(c), (float)half, line, clip));
+                            Linear(c), (float)half, line, Widen(clip)));
                     }
                 }
             }
@@ -328,6 +328,14 @@ internal sealed class GpuVectorTiles : IDisposable
         double s = Math.Pow(2, d.Zoom - a.Zoom);
         double u0 = d.X / s - a.X, v0 = d.Y / s - a.Y;
         return new Vector4((float)u0, (float)v0, (float)(u0 + 1 / s), (float)(v0 + 1 / s));
+    }
+
+    // neighbours clipped to the same edge each discarded some pixels on it (interpolated in float): a
+    // dotted crack along tile borders (2026-11-21). A sliver of overlap instead.
+    static Vector4 Widen(Vector4 r)
+    {
+        float e = (r.Z - r.X) * 2e-4f;
+        return new Vector4(r.X - e, r.Y - e, r.Z + e, r.W + e);
     }
 
     static Vector4 Linear(StyleColor c)
