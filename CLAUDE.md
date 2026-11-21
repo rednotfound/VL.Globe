@@ -2,12 +2,13 @@
 
 Guidance for Claude Code working in this repository.
 
-## Start here — the next session begins with ROADMAP item 1, step 5
+## Start here — the next session begins with ROADMAP 0.1 item 1, `PlaceOnGlobe`
 
-1. Read **[docs/ROADMAP.md](docs/ROADMAP.md)** — what to do next, in order. Camera-relative
-   rendering (item 1) is built; **next is step 5, `PlaceOnGlobe`** (anything a patch places is drawn
-   wrong under GlobeCamera until it exists), then step 6, the 20 m floor. Its table "Done 2026-11-20"
-   lists the session that got here.
+1. Read **[docs/ROADMAP.md](docs/ROADMAP.md)** — planned by release since 2026-11-21: **0.1 = VL.Mapsui's
+   basics on a smooth globe, 0.2 = terrain** (both the user's decisions). Next is 0.1 item 1,
+   `PlaceOnGlobe` (anything a patch places is drawn wrong under GlobeCamera until it exists). How
+   lines and polygons are drawn is decided by the user from an experiment (item 3), not up front.
+   The research behind the plan is [docs/RESEARCH-0.1.md](docs/RESEARCH-0.1.md).
 2. Read **[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)** — what exists and why.
 3. Read **[NOTES.md](NOTES.md)** — every failure so far, before touching the same code.
 4. The family's rules are the siblings': `D:\2026_Projects\vl-mapsui\docs\RULES.md` and that repo's
