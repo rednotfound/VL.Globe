@@ -283,7 +283,18 @@ the first run (one warning: `pow` of a negative); 4 vector tiles, 229 draws; roa
 parks and buildings where they belong, colours right. A bucket takes ~1 s to build on a worker
 (NTS triangulation, not yet measured by stage).
 
-**Next:** the user's judgement while moving; then the build time per tile, then country scale.
+**The user's judgement while moving (2026-11-21 night): "大方向完全没有问题", "我已经很满意了".** Fixed
+the same night: dark gaps while loading, a chequerboard and then discs of background from afar,
+dotted cracks at tile borders, the globe shaking with the pole dragged into view (NOTES).
+
+**Next, in this order:**
+1. **`fill-extrusion` drawn flat** (its colour and opacity on the ground): Liberty's `building` fill
+   stops at z14 and `building-3d` takes over, so buildings vanish past z14 (the user asked why).
+2. **"有的时候还是会稍微有点卡"** — measure first (frame time max per second, MB uploaded per frame, GC
+   counts in Status), then the suspects: up to 4 × 15 MB uploads in one frame; each bucket's
+   arrays on the large-object heap (gen-2 collections pause the main thread); a 40-byte vertex
+   where GL JS packs ~half; per-frame LINQ over every entry in GpuVectorTiles.Update and Evict.
+3. **3D buildings** (`fill-extrusion` for real: walls, roofs, light, depth written).
 
 ### 5. Navigation
 
