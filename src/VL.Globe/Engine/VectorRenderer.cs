@@ -70,7 +70,10 @@ internal sealed class VectorRenderer : IGraphicsRendererBase
                 l.BlendState = BlendStates.AlphaBlend;
                 l.DepthStencilState = DepthStencilStates.DepthRead;
                 l.RasterizerState = RasterizerStates.CullNone;
-                l.RasterizerState.MultisampleAntiAliasLine = true;
+                // no hardware line antialiasing: D3D multiplies its coverage into alpha only, which under
+                // premultiplied blending brightened the edge - a white dashed outline round every
+                // building and lake (the user, 2026-11-21). GL's gl.LINES are aliased too.
+                l.RasterizerState.MultisampleAntiAliasLine = false;
                 l.PrimitiveType = PrimitiveType.LineList;
             }
             _effect.UpdateEffect(device);
