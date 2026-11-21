@@ -238,7 +238,15 @@ chose: a layer into Layers, the style by URL):
   when tiles have arrived. FeatureLayer still draws with TileOverlay.
 - Help patch `HowTo Draw vector tiles` (Tokyo Station, 1500 m); rungs 1-3 pass.
 
-**Next:** rung 4 in vvvv (frame time inside the patch, street level), then the user's judgement.
+**Rung 4, 2026-11-21 (a copy of the help patch with Enabled on, no input driven):** Tokyo Station and
+Osaka Station at 1500 m drawn in Liberty's colours - moats, parks, roads by class, rail - with no
+seam at tile edges and nothing in the log. Status: 81 layers drawn, 49 parts skipped. The first
+run fetched **118 tiles, 31 MB** for one view: the ancestors shown while the raster loads asked for
+low-zoom vector tiles (up to 1.3 MB). Now only the wanted tiles fetch; a stand-in draws what is
+already here (`Peek`). Cold cache at Osaka afterwards: **4 tiles, 2.8 MB**, all z14.
+
+**Next:** the user's judgement while moving (frame time, the flash of raster under a stand-in),
+then country scale.
 
 ### 5. Navigation
 

@@ -92,6 +92,27 @@ public class VectorTilesFacts
     }
 
     [Fact]
+    public void AStandInTileNeverFetchesButDrawsWhatIsHere()
+    {
+        var tiles = Fixtures();
+        using var json = JsonDocument.Parse(BerlinStyle(tiles));
+        var doc = MapStyleDocument.Parse(json.RootElement, lenient: true);
+        int loads = 0;
+        bool cached = false;
+        doc.Load = url => { Interlocked.Increment(ref loads); return null; };
+        doc.Pending = _ => true;
+        doc.Peek = url => cached ? File.ReadAllBytes(url) : null;
+        var layers = new OverlayLayer[] { new StyleOverlay(doc) };
+        Assert.Null(OverlayRenderer.Render(Inside, layers, 256, out bool complete, fetch: false));
+        Assert.False(complete);
+        Assert.Equal(0, loads);   // nothing fetched for a stand-in
+        cached = true;            // the tile came for a wanted neighbour
+        Assert.NotNull(OverlayRenderer.Render(Inside, layers, 256, out complete, fetch: false));
+        Assert.True(complete);
+        Assert.Equal(0, loads);
+    }
+
+    [Fact]
     public void TheServiceReadsAStyleAndItsTilesFromFiles()
     {
         var tiles = Fixtures();

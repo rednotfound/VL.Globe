@@ -66,6 +66,7 @@ public sealed class GlobeNode : IDisposable
         public int OverlayArrivals;      // the vector tiles' arrival count it was drawn with
         public Task<(byte[]? bytes, bool complete)>? OverlayJob;
         public int OverlayJobVersion, OverlayJobArrivals;
+        public bool OverlayJobFetch, OverlayFetched;   // drawn as a wanted tile (fetching vector tiles) or as a stand-in (only what was here)
         public void Dispose() { Texture.Dispose(); Overlay?.Dispose(); Vertices.Dispose(); Indices.Dispose(); }
     }
 
@@ -82,6 +83,10 @@ public sealed class GlobeNode : IDisposable
     readonly HashSet<TileKey> _pending = new();
     readonly HashSet<TileKey> _failed = new();
     readonly HashSet<TileKey> _shown = new();
+    // this frame's wanted tiles: only they fetch vector tiles for their overlays; an ancestor shown
+    // while they load draws what is already here (on 2026-11-21 stand-ins fetched 118 tiles, 31 MB,
+    // for one street-level view: low-zoom vector tiles reach 1.3 MB)
+    HashSet<TileKey> _wantedSet = new();
     readonly ConcurrentQueue<(TileKey key, byte[]? bytes, GlobeTileSource source)> _arrived = new();
     GraphicsDevice? _device;
     GlobeTileSource? _source;
@@ -194,6 +199,7 @@ public sealed class GlobeNode : IDisposable
         var wanted = enabled && _source is not null && camera is not null && _device is not null
             ? Select(camera, Math.Clamp(maxZoom, 0, 22), screenSpaceError, screenHeight)
             : new List<TileKey>();
+        _wantedSet = new HashSet<TileKey>(wanted);
 
         // Status says WHY the globe is empty before it says anything else: every silent failure in
         // this family looked like a working node with nothing to show.
@@ -392,6 +398,7 @@ public sealed class GlobeNode : IDisposable
             s.OverlayVersion = s.OverlayJobVersion;
             s.OverlayIncomplete = !complete;
             s.OverlayArrivals = s.OverlayJobArrivals;
+            s.OverlayFetched = s.OverlayJobFetch;
         }
 
         // new jobs, nearest first
@@ -400,7 +407,9 @@ public sealed class GlobeNode : IDisposable
             if (running >= OverlayJobs) break;
             var s = _loaded[t];
             if (s.OverlayJob != null) continue;
-            bool stale = s.OverlayVersion != _overlayVersion || (s.OverlayIncomplete && s.OverlayArrivals != arrivals);
+            bool fetch = _wantedSet.Contains(t);
+            bool stale = s.OverlayVersion != _overlayVersion
+                || (s.OverlayIncomplete && (s.OverlayArrivals != arrivals || (fetch && !s.OverlayFetched)));
             if (!stale) continue;
             if (_layers.Count == 0)
             {
@@ -412,9 +421,10 @@ public sealed class GlobeNode : IDisposable
             var key = t;
             s.OverlayJobVersion = _overlayVersion;
             s.OverlayJobArrivals = arrivals;
+            s.OverlayJobFetch = fetch;
             s.OverlayJob = Task.Run(() =>
             {
-                var bytes = OverlayRenderer.Render(key, snapshot, 256, out bool complete);
+                var bytes = OverlayRenderer.Render(key, snapshot, 256, out bool complete, fetch);
                 return (bytes, complete);
             });
             running++;

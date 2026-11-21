@@ -108,12 +108,18 @@ internal sealed class MapStyleDocument
     /// <summary>What a lenient parse or draw left out, and why: "layer id: reason".</summary>
     public IReadOnlyCollection<string> Skipped { get { lock (_skipped) return _skipped.ToList(); } }
     readonly HashSet<string> _skipped = new();
+
+    /// <summary>Vector tiles decoded so far, by zoom level: what drawing the globe has asked for.</summary>
+    public IReadOnlyDictionary<int, int> DecodedByZoom { get { lock (_decoded) return new SortedDictionary<int, int>(_decoded); } }
+    readonly Dictionary<int, int> _decoded = new();
     readonly HashSet<string> _dropped = new();   // layers that threw while drawing
 
     /// <summary>Fetches a resource (a vector tile, GeoJSON data) by URL; null when it does not exist or is not here yet. Set by the host.</summary>
     public Func<string, byte[]?>? Load;
     /// <summary>True while a resource Load returned null for is still on its way. Set by the host.</summary>
     public Func<string, bool>? Pending;
+    /// <summary>A resource's bytes only if they are already here (memory or disk), never a fetch; Load when unset. Set by the host.</summary>
+    public Func<string, byte[]?>? Peek;
 
     // decoded tiles, the most recently used last; a miss that is pending is not remembered
     const int TileCacheSize = 256;
@@ -121,7 +127,7 @@ internal sealed class MapStyleDocument
     readonly LinkedList<((string, TileKey) key, Dictionary<string, List<StyleFeature>>? layers)> _lru = new();
 
     /// <summary>A vector tile's layers, decoded once; null when it cannot be had, and <paramref name="complete"/> false when it may still come.</summary>
-    public Dictionary<string, List<StyleFeature>>? Tile(VectorSource source, TileKey key, ref bool complete)
+    public Dictionary<string, List<StyleFeature>>? Tile(VectorSource source, TileKey key, ref bool complete, bool fetch = true)
     {
         var url = source.Url(key);
         var k = (url, key);   // keyed by tile too: a template without {z}/{x}/{y} serves one file for every tile
@@ -129,11 +135,14 @@ internal sealed class MapStyleDocument
         {
             if (_tiles.TryGetValue(k, out var node)) { _lru.Remove(node); _lru.AddLast(node); return node.Value.layers; }
         }
-        var bytes = Load?.Invoke(url);
-        if (bytes is null && Pending?.Invoke(url) == true) { complete = false; return null; }
+        // without fetch (a stand-in tile on the globe) only what is already here is drawn; a miss
+        // leaves it incomplete, so it is drawn again once the tile has come for another reason
+        var bytes = fetch || Peek is null ? Load?.Invoke(url) : Peek(url);
+        if (bytes is null && (!fetch && Peek != null || Pending?.Invoke(url) == true)) { complete = false; return null; }
         Dictionary<string, List<StyleFeature>>? layers = null;
         if (bytes != null)
         {
+            lock (_decoded) _decoded[key.Zoom] = _decoded.GetValueOrDefault(key.Zoom) + 1;
             try { layers = VectorTile.Decode(bytes, key); }
             catch (Exception e) when (e is System.IO.InvalidDataException or ArgumentException or IndexOutOfRangeException)
             {
@@ -322,7 +331,8 @@ internal static class MapStylePainter
 {
     /// <summary>Draws <paramref name="style"/> on <paramref name="canvas"/> (Premul) at the viewport's zoom.</summary>
     /// <returns>False when a tile or data it needs is still on its way: draw again when it has come.</returns>
-    public static bool Draw(SKCanvas canvas, MapStyleDocument style, MapViewport view)
+    /// <param name="fetch">False: draw only from tiles already here, never start a fetch.</param>
+    public static bool Draw(SKCanvas canvas, MapStyleDocument style, MapViewport view, bool fetch = true)
     {
         bool complete = true;
         var ctx = new StyleContext { Zoom = view.Zoom, GlobalState = style.GlobalState };
@@ -330,14 +340,14 @@ internal static class MapStylePainter
         {
             if (style.Lenient && style.IsDropped(layer.Id)) continue;
             int save = canvas.Save();
-            try { DrawLayer(canvas, style, layer, view, ctx, ref complete); }
+            try { DrawLayer(canvas, style, layer, view, ctx, ref complete, fetch); }
             catch (StyleUnsupportedException e) when (style.Lenient) { style.Drop(layer.Id, e.Message); }
             finally { canvas.RestoreToCount(save); }
         }
         return complete;
     }
 
-    static void DrawLayer(SKCanvas canvas, MapStyleDocument style, MapStyleDocument.Layer layer, MapViewport view, StyleContext ctx, ref bool complete)
+    static void DrawLayer(SKCanvas canvas, MapStyleDocument style, MapStyleDocument.Layer layer, MapViewport view, StyleContext ctx, ref bool complete, bool fetch)
     {
         ctx.Properties = null; ctx.GeometryType = null; ctx.Id = null;
         // GL JS: `if (this.minzoom && zoom < this.minzoom)` - an unset minzoom hides nothing, not even below zoom 0
@@ -378,7 +388,7 @@ internal static class MapStylePainter
                     for (int tx = x0; tx <= x1; tx++)
                     {
                         var key = new TileKey(z, ((tx % n) + n) % n, ty);
-                        var layers = style.Tile(v, key, ref complete);
+                        var layers = style.Tile(v, key, ref complete, fetch);
                         if (layers is null || !layers.TryGetValue(layer.SourceLayer!, out var features)) continue;
                         // GL JS clips each tile's drawing to its square with the stencil buffer;
                         // a wrapped copy of the world is shifted by whole worlds

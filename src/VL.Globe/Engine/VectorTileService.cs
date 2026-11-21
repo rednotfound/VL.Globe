@@ -45,7 +45,7 @@ internal sealed class VectorTileService : IDisposable
     readonly ConcurrentDictionary<string, bool> _failed = new();
     readonly ConcurrentQueue<string> _queue = new();
     readonly ConcurrentDictionary<string, bool> _queued = new();
-    int _arrivals, _fetched, _version, _started;
+    int _arrivals, _fetched, _fromDisk, _version, _started;
     volatile MapStyleDocument? _document;
     volatile string _styleStatus = "off - switch Enabled on to fetch";
     volatile string _lastError = "";
@@ -73,7 +73,8 @@ internal sealed class VectorTileService : IDisposable
             var doc = _document;
             if (doc is null) return _styleStatus;
             var skipped = doc.Skipped;
-            return $"{doc.Layers.Count} layers drawn, {skipped.Count} parts skipped; tiles: {_inFlight.Count + _queue.Count} loading, {_fetched} fetched, {_failed.Count} failed"
+            var byZoom = string.Join(" ", doc.DecodedByZoom.Select(kv => $"z{kv.Key}:{kv.Value}"));
+            return $"{doc.Layers.Count} layers drawn, {skipped.Count} parts skipped; tiles: {_inFlight.Count + _queue.Count} loading, {_fetched} fetched, {_fromDisk} from disk, {_failed.Count} failed; decoded {byZoom}"
                 + (_lastError.Length > 0 ? " - last error: " + _lastError : "");
         }
     }
@@ -106,6 +107,7 @@ internal sealed class VectorTileService : IDisposable
             var doc = MapStyleDocument.Parse(root, lenient: true, url => tileJsons.TryGetValue(url, out var e) ? e : null);
             doc.Load = Load;
             doc.Pending = Pending;
+            doc.Peek = Peek;
             Attribution = string.Join(" ", doc.Sources.Values.OfType<VectorSource>().Select(v => PlainText(v.Attribution)).Where(a => a.Length > 0).Distinct());
             _document = doc;
             Interlocked.Increment(ref _version);
@@ -126,11 +128,22 @@ internal sealed class VectorTileService : IDisposable
         var file = CacheFile(url);
         if (File.Exists(file) && DateTime.UtcNow - File.GetLastWriteTimeUtc(file) < CacheAge)
         {
-            try { return File.ReadAllBytes(file); } catch (IOException) { }
+            try { var cached = File.ReadAllBytes(file); Interlocked.Increment(ref _fromDisk); return cached; } catch (IOException) { }
         }
         if (_queued.TryAdd(url, true)) _queue.Enqueue(url);
         Pump();
         return null;
+    }
+
+    /// <summary>A resource's bytes if they are already in memory or on disk; never fetches.</summary>
+    public byte[]? Peek(string url)
+    {
+        url = Resolve(url);
+        if (_arrived.TryRemove(url, out var bytes)) return bytes;
+        if (!IsWeb(url)) return File.Exists(url) ? File.ReadAllBytes(url) : null;
+        var file = CacheFile(url);
+        if (!File.Exists(file) || DateTime.UtcNow - File.GetLastWriteTimeUtc(file) >= CacheAge) return null;
+        try { var cached = File.ReadAllBytes(file); Interlocked.Increment(ref _fromDisk); return cached; } catch (IOException) { return null; }
     }
 
     /// <summary>True while a resource that Load returned null for may still come.</summary>

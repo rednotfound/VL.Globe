@@ -324,3 +324,10 @@ looked fine - "which makes one think it works". Two causes, estimated at 100 m h
 - **Ignoring a property can draw a different layer.** A lenient parse that only drops `fill-pattern`
   draws the layer in the default black; one that drops `line-gap-width` draws a road casing as a
   solid line. Those properties leave the whole layer out.
+- **Stand-ins fetched 31 MB for one view.** Every shown tile rendered its overlay, including the
+  ancestors the globe shows while the raster tiles load; each asked for its low-zoom vector tile
+  (z5-z10 tiles of the planet are up to 1.3 MB). 118 tiles for a street-level view at Tokyo
+  Station. Only this frame's wanted tiles fetch now; the others draw from memory/disk or not at all.
+- **"0 fetched" with a full map**: vvvv built the node twice on open; the first instance fetched,
+  the second read the disk cache, which Status did not count. It now says `from disk` too, and
+  which zoom levels were decoded.
