@@ -94,6 +94,8 @@ its normal outward (by the ring's winding, flipped for holes). The light is GL J
 vertex on the CPU), lit in sRGB and then linearised. A layer is drawn in two passes, depth written
 then colour where equal, so a translucent layer of buildings is one even layer. Only lenient parses
 keep it: the harness renders with the drape. Cost: a street-level Liberty tile is ~22 MB now.
+The depth pass writes to a copy of the scene's depth: in vvvv's transparent stage the scene's depth
+is bound read-only, and the first build's buildings showed their far walls (the user).
 
 ## Next
 

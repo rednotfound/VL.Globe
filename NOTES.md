@@ -380,3 +380,9 @@ looked fine - "which makes one think it works". Two causes, estimated at 100 m h
   count. A probe first ruled out the guess (a layer's expression throwing for the first time: none
   of Liberty's 82 layers throws at any zoom, all evaluate in 0.3 ms). Two frames are reused in turn
   now. **Nothing above 85 KB may be allocated per frame.**
+- **3D buildings showed their insides** ("所有的建筑都看到了其内部，是透明的", the user). Not the
+  normals: the depth pass wrote nothing. vvvv's `VLForwardRenderer.BindDepthAsResourceDuringTransparentRendering`
+  (true by default) binds the scene's depth READ-ONLY in the transparent stage, where the
+  EntityRendererComponent draws; writes to it are dropped without a word. An extrusion layer now
+  draws on a depth buffer of our own, a copy of the scene's (so the globe still hides what is
+  behind it), with the scene's colour targets, and the scene's depth is bound back after.

@@ -99,6 +99,8 @@ at country scale; judge every change at the lowest height.
   distance towards the eye, so its chords must sag less than that at the distance the zoom is seen
   from — an eighth of a tile up to z10. An absolute 2° bound made discs of background in the sea.
 - **D3D line antialiasing puts coverage into alpha only**: blend such lines straight, never premultiplied.
+- **The transparent stage's depth is read-only in vvvv** (`BindDepthAsResourceDuringTransparentRendering`):
+  depth writes there are dropped in silence; 3D buildings draw on their own copy of the scene's depth.
 - **Measure before fixing a hitch**: the `Globe perf` lines in vvvv's log, with `GC.GetTotalPauseDuration`;
   a gen-2 count in the same second was not the cause.
 - **Draped overlays render on worker threads**; only wanted tiles fetch vector tiles, and an overlay

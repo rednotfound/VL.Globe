@@ -130,8 +130,15 @@ internal sealed class VectorRenderer : IGraphicsRendererBase
             Set(parameters, "GvPixel", pixel);
             Set(parameters, "GvLift", Lift);
             Buffer? boundVertices = null;
+            Texture? sceneDepth = null;
+            try
+            {
             foreach (var item in frame.Items)
             {
+                bool extrusion = item.Pass is Pass.ExtrusionDepth or Pass.ExtrusionColor;
+                if (extrusion && sceneDepth is null) sceneDepth = UseOwnDepth(commandList);
+                else if (item.Pass == Pass.ExtrusionDepth && pass == Pass.ExtrusionColor) { RestoreDepth(commandList, sceneDepth!); sceneDepth = UseOwnDepth(commandList); }
+                else if (!extrusion && sceneDepth is not null) { RestoreDepth(commandList, sceneDepth); sceneDepth = null; }
                 if (!ReferenceEquals(item.Vertices, boundVertices))
                 {
                     commandList.SetVertexBuffer(0, item.Vertices, 0, VectorVertex.Size);
@@ -155,6 +162,8 @@ internal sealed class VectorRenderer : IGraphicsRendererBase
                 commandList.DrawIndexed(item.Count, item.Start);
                 ItemsDrawn++;
             }
+            }
+            finally { if (sceneDepth is not null) RestoreDepth(commandList, sceneDepth); }
         }
         catch (Exception e)
         {
@@ -164,6 +173,39 @@ internal sealed class VectorRenderer : IGraphicsRendererBase
             throw;
         }
     }
+
+    // fill-extrusion needs to write depth, and vvvv's forward renderer binds the scene's depth
+    // READ-ONLY in the transparent stage (VLForwardRenderer.BindDepthAsResourceDuringTransparentRendering,
+    // true by default): the writes were dropped in silence and every building showed its far walls
+    // through its near ones (the user, 2026-11-21: "所有的建筑都看到了其内部"). So an extrusion layer is
+    // drawn on a depth buffer of our own, a copy of the scene's - the globe still hides what is behind
+    // it - with the scene's colour targets; the scene's depth goes back after.
+    Texture? _ownDepth;
+    readonly Texture[] _targets = new Texture[8];
+    int _targetCount;
+
+    Texture UseOwnDepth(CommandList commandList)
+    {
+        var scene = commandList.DepthStencilBuffer ?? throw new InvalidOperationException("no depth buffer bound for the vector tiles");
+        var texture = scene;   // a read-only view shares its texture's resource: copying it copies that
+        var d = texture.Description;
+        if (_ownDepth is null || _ownDepth.Width != d.Width || _ownDepth.Height != d.Height || _ownDepth.Format != d.Format
+            || _ownDepth.Description.MultisampleCount != d.MultisampleCount)
+        {
+            _ownDepth?.Dispose();
+            var own = d;
+            own.Flags = (d.Flags & ~TextureFlags.DepthStencilReadOnly) | TextureFlags.DepthStencil;
+            _ownDepth = Texture.New(commandList.GraphicsDevice, own);
+        }
+        _targetCount = commandList.RenderTargetCount;
+        for (int i = 0; i < _targetCount; i++) _targets[i] = commandList.RenderTargets[i];
+        commandList.UnsetRenderTargets();
+        commandList.Copy(texture, _ownDepth);
+        commandList.SetRenderTargets(_ownDepth, _targetCount, _targets);
+        return scene;
+    }
+
+    void RestoreDepth(CommandList commandList, Texture scene) => commandList.SetRenderTargets(scene, _targetCount, _targets);
 
     void Set<T>(ParameterCollection parameters, string name, T value) where T : struct
     {
