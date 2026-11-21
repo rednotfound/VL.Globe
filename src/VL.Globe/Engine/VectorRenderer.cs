@@ -67,13 +67,15 @@ internal sealed class VectorRenderer : IGraphicsRendererBase
                 var l = _linePipeline.State;
                 l.SetDefaults();
                 l.InputElements = s.InputElements;
-                l.BlendState = BlendStates.AlphaBlend;
+                // Hardware line antialiasing multiplies its coverage into alpha only: under premultiplied
+                // blending that brightened the edge into a white dashed outline round every building
+                // and lake; without it the outline was jagged (the user, 2026-11-21, both). So these
+                // lines blend straight (SrcAlpha, InvSrcAlpha) and the shader writes straight colour
+                // for them: the coverage then weighs the colour as it should.
+                l.BlendState = BlendStates.NonPremultiplied;
                 l.DepthStencilState = DepthStencilStates.DepthRead;
                 l.RasterizerState = RasterizerStates.CullNone;
-                // no hardware line antialiasing: D3D multiplies its coverage into alpha only, which under
-                // premultiplied blending brightened the edge - a white dashed outline round every
-                // building and lake (the user, 2026-11-21). GL's gl.LINES are aliased too.
-                l.RasterizerState.MultisampleAntiAliasLine = false;
+                l.RasterizerState.MultisampleAntiAliasLine = true;
                 l.PrimitiveType = PrimitiveType.LineList;
             }
             _effect.UpdateEffect(device);
@@ -124,6 +126,7 @@ internal sealed class VectorRenderer : IGraphicsRendererBase
                 Set(parameters, "GvCentre", item.Centre);
                 Set(parameters, "GvHalfWidth", item.HalfWidth);
                 Set(parameters, "GvIsLine", item.IsLine ? 1f : 0f);
+                Set(parameters, "GvStraight", item.LineList ? 1f : 0f);
                 _effect.Apply(context.GraphicsContext);
                 commandList.DrawIndexed(item.Count, item.Start);
                 ItemsDrawn++;

@@ -16,6 +16,7 @@ shader GlobeVector : ShaderBase
         stage float GvPixel;            // view units per pixel at depth 1: 2 / (projection._22 * viewport height)
         stage float GvLift;             // fraction of the distance moved towards the eye, over the tiles
         stage float GvIsLine;
+        stage float GvStraight;         // 1: straight colour out, for the hardware-antialiased line list
     }
 
     stage stream float3 GvPosition : POSITION;
@@ -63,6 +64,6 @@ shader GlobeVector : ShaderBase
         if (uv.x < GvClip.x || uv.y < GvClip.y || uv.x > GvClip.z || uv.y > GvClip.w) discard;
         float alpha = streams.GvTint.a;
         if (GvIsLine > 0.5) alpha *= saturate(streams.GvOutset * (1 - abs(streams.GvEdge)));
-        streams.ColorTarget = float4(streams.GvTint.rgb * alpha, alpha);
+        streams.ColorTarget = GvStraight > 0.5 ? float4(streams.GvTint.rgb, alpha) : float4(streams.GvTint.rgb * alpha, alpha);
     }
 };
