@@ -62,6 +62,7 @@ public sealed class GlobeNode : IDisposable
 
     const int MaxCreatedPerFrame = 8;
     const int MaxSlots = 600;
+    const int KeepZoom = 3;
 
     readonly NodeContext _context;
     readonly ILogger _logger;
@@ -515,7 +516,10 @@ public sealed class GlobeNode : IDisposable
     {
         if (_loaded.Count <= MaxSlots) return;
         var fadingFrom = _shown.Select(t => _loaded.TryGetValue(t, out var f) && f.Fading is not null ? f.FadeFrom : (TileKey?)null).Where(k => k is not null).Select(k => k!.Value).ToHashSet();
-        foreach (var (k, s) in _loaded.Where(kv => !_shown.Contains(kv.Key) && !fadingFrom.Contains(kv.Key)).OrderBy(kv => kv.Value.LastUsed).Take(_loaded.Count - MaxSlots).ToList())
+        // Zoom 3 and coarser are never evicted: at most 85 tiles, and the stand-ins of last resort.
+        // Least-recently-used evicted them first while the camera sat low, and a fast zoom out then
+        // found nothing but the zoom-2 fallback still loading (the user, 2026-11-21).
+        foreach (var (k, s) in _loaded.Where(kv => kv.Key.Zoom > KeepZoom && !_shown.Contains(kv.Key) && !fadingFrom.Contains(kv.Key)).OrderBy(kv => kv.Value.LastUsed).Take(_loaded.Count - MaxSlots).ToList())
         {
             s.Dispose();
             _loaded.Remove(k);

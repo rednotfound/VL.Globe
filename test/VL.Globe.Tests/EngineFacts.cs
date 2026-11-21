@@ -195,6 +195,49 @@ public class DrawSetFacts
     [Fact]
     public void NothingArrivedDrawsNothing() => Assert.Empty(DrawSet.Resolve(Kids, _ => false));
 
+    // Zooming out fast (the user, 2026-11-21: "最root的那层tiles会跑出来，然后画面变白，变糊变花"): the
+    // coarser tiles now wanted were evicted while the camera sat low, so the only stand-in found by
+    // climbing was the zoom-2 fallback. The finer tiles just drawn are still loaded - draw them, as
+    // MapLibre's _retainLoadedChildren does, before reaching for a coarse ancestor.
+    static readonly TileKey W = new(5, 10, 6);
+    static readonly TileKey Coarse = W.AncestorAt(2);
+
+    [Fact]
+    public void ZoomingOutDrawsTheLoadedChildrenNotACoarseAncestor()
+    {
+        var kids = Enumerable.Range(0, 4).Select(W.Child).ToHashSet();
+        var drawn = DrawSet.Resolve(new[] { W }, t => t == Coarse || kids.Contains(t));
+        Assert.Equal(kids.OrderBy(k => k.Y).ThenBy(k => k.X), drawn.OrderBy(k => k.Y).ThenBy(k => k.X));
+    }
+
+    [Fact]
+    public void ChildrenAndGrandchildrenTogetherStandIn()
+    {
+        var k3 = W.Child(3);
+        var loaded = new[] { W.Child(0), W.Child(1), W.Child(2), k3.Child(0), k3.Child(1), k3.Child(2), k3.Child(3) }.ToHashSet();
+        var drawn = DrawSet.Resolve(new[] { W }, t => t == Coarse || loaded.Contains(t));
+        Assert.Equal(7, drawn.Count);
+        Assert.DoesNotContain(Coarse, drawn);
+    }
+
+    [Fact]
+    public void ChildrenWithAHoleFallBackToTheAncestor()
+    {
+        // a hole would show the background; a coarse but whole stand-in is the lesser evil
+        var loaded = new[] { W.Child(0), W.Child(1), W.Child(2) }.ToHashSet();
+        Assert.Equal(new[] { Coarse }, DrawSet.Resolve(new[] { W }, t => t == Coarse || loaded.Contains(t)));
+    }
+
+    [Fact]
+    public void DescendantsAreSearchedOnlyAFewLevelsDown()
+    {
+        // four levels down is 256 tiles for one: not a stand-in, a different view
+        var deep = new HashSet<TileKey>();
+        void Add(TileKey t, int depth) { if (depth == 0) deep.Add(t); else for (int i = 0; i < 4; i++) Add(t.Child(i), depth - 1); }
+        Add(W, 4);
+        Assert.Equal(new[] { Coarse }, DrawSet.Resolve(new[] { W }, t => t == Coarse || deep.Contains(t)));
+    }
+
     [Fact]
     public void RequestsAreCoarseFirst()
     {

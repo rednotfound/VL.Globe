@@ -194,3 +194,14 @@ looked fine - "which makes one think it works". Two causes, estimated at 100 m h
   weighs each side by its alpha (`BlendUtils.BasicBlend`), not `ComputeColorAdd`. Weights
   `(f,f,f,f)` gave a half-way fade half the light. Weights are now `(f,f,f,1)`; with both alphas 1
   the 3ds formula is a plain sum. Read the operator's shader before trusting its name.
+
+## 2026-11-21 — a fast zoom out showed the coarsest tiles, white and blurred
+
+- **"最root的那层tiles会跑出来，然后画面变白，变糊变花" (the user).** The log: `600 loaded` — eviction
+  was running. Least-recently-used evicted the coarse levels (zoom 2–6) while the camera sat at
+  zoom 8–9; a fast zoom out then wanted zoom 4–6 tiles that were gone, and `DrawSet.Resolve` only
+  climbed **up** for a stand-in — to the zoom-2 fallback, re-requested first. The zoom 7–9 tiles just
+  drawn were still loaded and unused.
+- Now a missing wanted tile is first stood in for by its loaded descendants, up to 3 levels down,
+  when they cover it entirely (MapLibre's `_retainLoadedChildren`); only then an ancestor. Zoom ≤ 3
+  (≤ 85 tiles) is never evicted. Four `DrawSetFacts` reproduce it; the two that failed before pass.
