@@ -373,3 +373,10 @@ looked fine - "which makes one think it works". Two causes, estimated at 100 m h
   *not* the GC: two later ones (200, 330 ms) had 2-3 ms of GC pause, all inside GpuVectorTiles.Update
   — its stages are logged now (`gpu vectors: finish+upload …`). Measure the pause
   (`GC.GetTotalPauseDuration`), do not infer it from a collection count.
+- **Found by the stages: "draw list 214 ms", 2 ms of GC pause, a gen-2 collection in that second —
+  as in every long Update.** The draw list was a new `List<Item>` each frame: thousands of ~140-byte
+  items, a large-object-heap array dropped 60 times a second. That both fed gen-2 collections and,
+  allocating while a background one ran, waited for it — a wait `GetTotalPauseDuration` does not
+  count. A probe first ruled out the guess (a layer's expression throwing for the first time: none
+  of Liberty's 82 layers throws at any zoom, all evaluate in 0.3 ms). Two frames are reused in turn
+  now. **Nothing above 85 KB may be allocated per frame.**

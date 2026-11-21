@@ -292,9 +292,9 @@ dotted cracks at tile borders, the globe shaking with the pole dragged into view
    stops at z14 and `building-3d` takes over, so buildings vanish past z14 (the user asked why).
 2. **"有的时候还是会稍微有点卡"** — measured and largely done the same night (DESIGN-GPU-VECTOR.md,
    "As built"): MapLibre's worker count below normal priority, 8 MB uploads a frame, pooled arrays,
-   outlines as a line list; frames stay under 27 ms while 170 MB a second load. **Left:** two
-   Updates of 200 and 330 ms inside the GPU path with no GC (its stages are logged now), frames of
-   60–140 ms outside the node after heavy uploads (a smaller vertex should help).
+   outlines as a line list; frames stay under 27 ms while 170 MB a second load. The 200-330 ms
+   Updates were the draw list, a new large-object-heap list every frame (fixed, two frames reused).
+   **Left:** frames of 60–140 ms outside the node after heavy uploads (a smaller vertex should help).
 3. **3D buildings** (`fill-extrusion` for real: walls, roofs, light, depth written).
 
 ### 5. Navigation

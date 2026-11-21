@@ -49,6 +49,7 @@ internal sealed class GpuVectorTiles : IDisposable
 
     readonly Dictionary<(VectorTileService service, string source, TileKey key), Entry> _entries = new();
     readonly Dictionary<VectorTileService, StyleInfo> _styles = new();
+    readonly VectorRenderer.Frame[] _frames = { new(), new() };
     // the background grids, by tile: no data in them, built at once on this thread
     readonly Dictionary<TileKey, (Built built, int lastUsed)> _backgrounds = new();
     // Uploads by bytes, not by tiles: four street-level tiles arriving together were tens of MB in one
@@ -125,7 +126,14 @@ internal sealed class GpuVectorTiles : IDisposable
         _frame = frame;
         _timer.Restart();
         Array.Clear(_ms);
-        var result = new VectorRenderer.Frame { Radius = radius };
+        // two frames, reused in turn: the draw list of a globe view is thousands of items (~140 bytes
+        // each), a new list every frame was large-object-heap garbage - gen-2 collections, and an
+        // allocation that waited ~200 ms for one in the background (2026-11-21: Updates of 200-330 ms
+        // with 2 ms of counted GC pause, every one in a second with a gen-2 collection). Draw runs
+        // after Update on the same thread, so the other frame is free here.
+        var result = _frames[_frame & 1];
+        result.Items.Clear();
+        result.Radius = radius;
         long budget = UploadBytesPerFrame;
         UploadedBytes = 0; Uploads = 0;
         foreach (var e in _entries.Values) Finish(device, e, ref budget);

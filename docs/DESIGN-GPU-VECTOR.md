@@ -82,9 +82,10 @@ The design held ("大方向完全没有问题"); these are the corrections, each
 | white dashed outlines, then jagged ones | D3D line antialiasing puts coverage into alpha only; under premultiplied blending that brightens | outlines blended straight with hardware AA |
 | "偶尔…会卡一下" while loading | builds on ProcessorCount − 2 pool threads; 4 tiles of 15 MB uploaded in a frame; MB arrays dropped per tile | MapLibre's worker count below normal priority; 8 MB a frame; pooled arrays; outlines as a line list (385k → 201k vertices a tile) |
 
-Measured after: a second of 80 tiles / 170 MB uploaded kept every frame under 27 ms. Two Updates of
-200 and 330 ms remained, all inside the GPU path with no GC — its stages are logged now; not yet
-found. Build time single-threaded, Liberty around Kyoto Station: 118 → 66 ms a tile.
+Measured after: a second of 80 tiles / 170 MB uploaded kept every frame under 27 ms. Updates of
+200-330 ms remained, each in a second with a gen-2 collection but with 2 ms of counted pause: the
+stages named the draw list - a new large-object-heap list every frame, which waited on the
+background collection it fed. Two frames are reused in turn now. Build time single-threaded, Liberty around Kyoto Station: 118 → 66 ms a tile.
 
 ## Next
 
