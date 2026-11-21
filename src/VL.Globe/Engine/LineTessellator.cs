@@ -62,53 +62,67 @@ internal sealed class LineTessellator
     /// <summary>Cuts the triangles where GL JS's shader alpha bends and gives every vertex its colour: <paramref name="color"/> (straight) times that alpha.</summary>
     public static void Shade(List<LineVertex> triangles, double outset, SKColorF color, List<SKPoint> positions, List<SKColor> colors)
     {
-        // alpha(n) = clamp(outset * (1 - |n|), 0, 1): it bends at n = 0 and where it reaches 1
-        double plateau = 1 - 1 / outset;
-        var cuts = plateau > 0 ? new[] { -plateau, 0, plateau } : new[] { 0.0 };
-        var pieces = new List<List<LineVertex>>();
-        var next = new List<List<LineVertex>>();
+        // alpha(n) = clamp(outset * (1 - |n|), 0, 1): affine between the bends at -p, 0 and p (p
+        // where it reaches 1), so each triangle is cut into the bands between them, without
+        // allocating: a street-level tile has tens of thousands of these (2026-11-21: the List per
+        // piece made the minor-road layers most of a 100 ms overlay)
+        float p = (float)(1 - 1 / outset);
+        // the colour's bytes once; per vertex only its alpha
+        float o = (float)outset, ca = color.Alpha;
+        byte cr = (byte)(Math.Clamp(color.Red, 0f, 1f) * 255 + 0.5f), cg = (byte)(Math.Clamp(color.Green, 0f, 1f) * 255 + 0.5f), cb = (byte)(Math.Clamp(color.Blue, 0f, 1f) * 255 + 0.5f);
+        positions.Capacity = Math.Max(positions.Capacity, positions.Count + triangles.Count * 4);
+        colors.Capacity = Math.Max(colors.Capacity, colors.Count + triangles.Count * 4);
+        Span<float> bounds = stackalloc float[5];
+        int nb;
+        if (p > 0) { bounds[0] = float.NegativeInfinity; bounds[1] = -p; bounds[2] = 0; bounds[3] = p; bounds[4] = float.PositiveInfinity; nb = 4; }
+        else { bounds[0] = float.NegativeInfinity; bounds[1] = 0; bounds[2] = float.PositiveInfinity; nb = 2; }
+        Span<LineVertex> tri = stackalloc LineVertex[3];
+        Span<LineVertex> a = stackalloc LineVertex[8];
+        Span<LineVertex> b = stackalloc LineVertex[8];
         for (int t = 0; t + 2 < triangles.Count; t += 3)
         {
-            pieces.Clear();
-            pieces.Add(new List<LineVertex> { triangles[t], triangles[t + 1], triangles[t + 2] });
-            foreach (var c in cuts)
+            tri[0] = triangles[t]; tri[1] = triangles[t + 1]; tri[2] = triangles[t + 2];
+            float lo = Math.Min(tri[0].N, Math.Min(tri[1].N, tri[2].N)), hi = Math.Max(tri[0].N, Math.Max(tri[1].N, tri[2].N));
+            for (int band = 0; band < nb; band++)
             {
-                next.Clear();
-                foreach (var poly in pieces) Split(poly, (float)c, next);
-                (pieces, next) = (next, pieces);
+                float b0 = bounds[band], b1 = bounds[band + 1];
+                if (hi <= b0 || lo >= b1) continue;   // the triangle lies outside this band
+                int n = Clip(tri, 3, b0, above: true, a);
+                n = Clip(a, n, b1, above: false, b);
+                for (int k = 1; k + 1 < n; k++)
+                {
+                    Emit(b[0]); Emit(b[k]); Emit(b[k + 1]);
+                }
             }
-            foreach (var poly in pieces)
-                for (int k = 1; k + 1 < poly.Count; k++)
-                    foreach (var v in new[] { poly[0], poly[k], poly[k + 1] })
-                    {
-                        double a = Math.Clamp(outset * (1 - Math.Abs(v.N)), 0, 1) * color.Alpha;
-                        positions.Add(v.P);
-                        colors.Add((SKColor)new SKColorF(color.Red, color.Green, color.Blue, (float)a));
-                    }
+        }
+
+        void Emit(LineVertex v)
+        {
+            float alpha = Math.Clamp(o * (1 - Math.Abs(v.N)), 0f, 1f) * ca;
+            positions.Add(v.P);
+            colors.Add(new SKColor(cr, cg, cb, (byte)(alpha * 255 + 0.5f)));
         }
     }
 
-    // Sutherland-Hodgman against N = c, both sides kept
-    static void Split(List<LineVertex> poly, float c, List<List<LineVertex>> into)
+    // Sutherland-Hodgman against N = c, keeping N >= c (above) or N <= c; at most n + 1 vertices out
+    static int Clip(ReadOnlySpan<LineVertex> poly, int n, float c, bool above, Span<LineVertex> into)
     {
-        var below = new List<LineVertex>();
-        var above = new List<LineVertex>();
-        for (int i = 0; i < poly.Count; i++)
+        if (float.IsInfinity(c)) { poly[..n].CopyTo(into); return n; }
+        int m = 0;
+        for (int i = 0; i < n; i++)
         {
             var a = poly[i];
-            var b = poly[(i + 1) % poly.Count];
-            if (a.N <= c) below.Add(a);
-            if (a.N >= c) above.Add(a);
-            if ((a.N < c && b.N > c) || (a.N > c && b.N < c))
+            var b = poly[(i + 1) % n];
+            bool ina = above ? a.N >= c : a.N <= c, inb = above ? b.N >= c : b.N <= c;
+            if (ina) into[m++] = a;
+            if (ina != inb && a.N != b.N)
             {
                 float t = (c - a.N) / (b.N - a.N);
-                var x = new LineVertex(new SKPoint(a.P.X + (b.P.X - a.P.X) * t, a.P.Y + (b.P.Y - a.P.Y) * t), c);
-                below.Add(x);
-                above.Add(x);
+                if (t > 0 && t < 1)
+                    into[m++] = new LineVertex(new SKPoint(a.P.X + (b.P.X - a.P.X) * t, a.P.Y + (b.P.Y - a.P.Y) * t), c);
             }
         }
-        if (below.Count >= 3) into.Add(below);
-        if (above.Count >= 3) into.Add(above);
+        return m;
     }
 
     void AddLine(V[] vertices, bool isPolygon, string join, string cap, double miterLimit, double roundLimit, double sharpCornerOffset)
@@ -290,7 +304,10 @@ internal sealed class LineTessellator
     // the half disc of radius outset at p, on the side `forward` points to
     void HalfDisc(V p, V forward, V normal)
     {
-        const int steps = 16;
+        // as many slices as keep the chord within a quarter pixel of the circle: 4 for a 3 px radius,
+        // ~10 for 20 px (a fixed 16 made the round caps of minor roads most of an overlay's triangles)
+        double step = 2 * Math.Acos(Math.Max(-1, 1 - 0.25 / Math.Max(_outset, 0.25)));
+        int steps = Math.Clamp((int)Math.Ceiling(Math.PI / step), 2, 16);
         var center = new LineVertex(p.ToSk(), 0);
         for (int k = 0; k < steps; k++)
         {

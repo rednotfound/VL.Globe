@@ -63,9 +63,9 @@ public sealed class GlobeNode : IDisposable
         public int OverlayVersion = -1;  // the layers' version the overlay shows
         public int OverlayStamp;         // bumped on every new overlay image, for the stand-ins borrowing it
         public bool OverlayIncomplete;   // drawn while a vector tile it needs was still on its way
-        public int OverlayArrivals;      // the vector tiles' arrival count it was drawn with
-        public Task<(byte[]? bytes, bool complete)>? OverlayJob;
-        public int OverlayJobVersion, OverlayJobArrivals;
+        public string[] OverlayMissing = Array.Empty<string>();   // the vector tiles it was drawn without
+        public Task<(byte[]? bytes, bool complete, string[] missing, double ms)>? OverlayJob;
+        public int OverlayJobVersion;
         public bool OverlayJobFetch, OverlayFetched;   // drawn as a wanted tile (fetching vector tiles) or as a stand-in (only what was here)
         public void Dispose() { Texture.Dispose(); Overlay?.Dispose(); Vertices.Dispose(); Indices.Dispose(); }
     }
@@ -135,7 +135,8 @@ public sealed class GlobeNode : IDisposable
     List<GlobeLayer> _vectorLayers = new();
     int _overlayVersion;
     const int OverlaysPerFrame = 6;
-    const int OverlayJobs = 4;
+    static readonly int OverlayJobs = Math.Max(2, Environment.ProcessorCount - 2);
+    double _overlayMs; int _overlaysDrawn;   // the mean time an overlay takes, for Status
     // A replaced overlay texture may still be sampled by a fade or a stand-in's material for a while;
     // it is disposed this many frames later instead of at once.
     readonly List<(Texture texture, int frame)> _retired = new();
@@ -196,7 +197,10 @@ public sealed class GlobeNode : IDisposable
             foreach (var s in _loaded.Values) s.Entity.Transform.Scale = new Vector3(radius);
         }
 
-        var wanted = enabled && _source is not null && camera is not null && _device is not null
+        // a globe with layers and no Tile Source still has tiles: plain ones in the background colour,
+        // the layers draped on them (the user, 2026-11-21: vector tiles must not need the raster)
+        bool layersOnly = _source is null && layers is not null && layers.Any(l => l is { Enabled: true } && l.HasContent);
+        var wanted = enabled && (_source is not null || layersOnly) && camera is not null && _device is not null
             ? Select(camera, Math.Clamp(maxZoom, 0, 22), screenSpaceError, screenHeight)
             : new List<TileKey>();
         _wantedSet = new HashSet<TileKey>(wanted);
@@ -204,21 +208,32 @@ public sealed class GlobeNode : IDisposable
         // Status says WHY the globe is empty before it says anything else: every silent failure in
         // this family looked like a working node with nothing to show.
         _status = !enabled ? "off - switch Enabled on to fetch"
-            : _source is null ? "no Tile Source"
+            : _source is null && !layersOnly ? "no Tile Source and no layer to draw"
             : camera is null ? "no Camera"
             : _device is null ? "no Stride graphics device (is this patch rendering a Stride scene?)"
             : wanted.Count == 0 ? $"camera sees no tile (camera at {_lastEye.Length() / _radius:F3} radii)"
             : $"{wanted.Count} wanted, zoom {wanted.Min(t => t.Zoom)}..{wanted.Max(t => t.Zoom)}; {_loaded.Count} loaded, {_pending.Count} loading, {_failedCount} failed"
-              + (_lastError.Length > 0 ? " - last error: " + _lastError : "");
+              + (_lastError.Length > 0 ? " - last error: " + _lastError : "")
+              + (layersOnly ? "; no Tile Source: layers on plain tiles" : "")
+              + (_overlaysDrawn > 0 ? $"; overlays {_overlayMs:F0} ms each" : "");
         var head = _status.Split(';')[0];
         if (head != _lastLogged) { _logger.LogInformation("Globe: {Status}", _status); _lastLogged = head; }
 
+        _created = 0;
         if (wanted.Count > 0)
         {
             // nearest first: a tilted view wants a hundred tiles at once, and the ground in front of the
             // camera should sharpen before the horizon does (MapLibre sorts by distance to the centre)
             foreach (var t in DrawSet.Requests(DrawSet.NearestFirst(wanted, _lastEye, _radius), k => _loaded.ContainsKey(k) || _pending.Contains(k) || _failed.Contains(k)))
             {
+                if (_source is null)
+                {
+                    // no imagery to wait for: the tile is built at once, a few a frame
+                    if (_created++ >= MaxCreatedPerFrame) break;
+                    try { _loaded[t] = Build(_device!, t, null, background); }
+                    catch (Exception e) { _failed.Add(t); _failedCount++; _lastError = $"{t}: {e.GetType().Name} {e.Message}"; }
+                    continue;
+                }
                 if (_pending.Count >= Math.Max(1, maxRequestsInFlight)) break;
                 Request(t, _source!);
             }
@@ -323,9 +338,14 @@ public sealed class GlobeNode : IDisposable
         }
     }
 
-    Slot Build(GraphicsDevice device, TileKey key, byte[] bytes)
+    int _created;
+
+    // bytes null: a tile without imagery, one pixel of the plain colour
+    Slot Build(GraphicsDevice device, TileKey key, byte[]? bytes, Color4 plain = default)
     {
-        var texture = LoadMipmapped(device, bytes);
+        var texture = bytes is null
+            ? Texture.New2D(device, 1, 1, PixelFormat.R8G8B8A8_UNorm_SRgb, new[] { (Color)plain })
+            : LoadMipmapped(device, bytes);
         var (vb, ib, mesh, tileCentre) = BuildMesh(device, key);
 
         // Emissive only, as in the lab: the map is the light, so the globe reads the same in any scene.
@@ -371,13 +391,14 @@ public sealed class GlobeNode : IDisposable
             _overlayVersion++;
         }
         if (_device is null) return;
-        int arrivals = 0;
-        foreach (var l in _vectorLayers) arrivals += l.Vector!.Arrivals;
+        bool Came(string url) => _vectorLayers.Any(l => l.Vector!.IsHere(url));
 
         // finished jobs: upload, nearest first, a few a frame
         int budget = OverlaysPerFrame;
         int running = 0;
-        var order = DrawSet.NearestFirst(_shown.ToList(), _lastEye, _radius);
+        // the wanted tiles first, then the stand-ins shown while they load; each nearest first
+        var nearest = DrawSet.NearestFirst(_shown.ToList(), _lastEye, _radius);
+        var order = nearest.Where(_wantedSet.Contains).Concat(nearest.Where(t => !_wantedSet.Contains(t))).ToList();
         foreach (var t in order)
         {
             var s = _loaded[t];
@@ -393,11 +414,13 @@ public sealed class GlobeNode : IDisposable
             }
             if (s.OverlayJobVersion != _overlayVersion) continue;   // the layers changed meanwhile
             budget--;
-            var (bytes, complete) = job.Result;
+            var (bytes, complete, missing, ms) = job.Result;
             SetOverlay(s, bytes);
+            _overlaysDrawn++;
+            _overlayMs += (ms - _overlayMs) / Math.Min(_overlaysDrawn, 50);   // a running mean of the last ~50
             s.OverlayVersion = s.OverlayJobVersion;
             s.OverlayIncomplete = !complete;
-            s.OverlayArrivals = s.OverlayJobArrivals;
+            s.OverlayMissing = missing;
             s.OverlayFetched = s.OverlayJobFetch;
         }
 
@@ -408,8 +431,10 @@ public sealed class GlobeNode : IDisposable
             var s = _loaded[t];
             if (s.OverlayJob != null) continue;
             bool fetch = _wantedSet.Contains(t);
+            // drawn again only when it can come out different: the layers changed, a stand-in became
+            // wanted (now it may fetch), or a vector tile it was drawn without has come since
             bool stale = s.OverlayVersion != _overlayVersion
-                || (s.OverlayIncomplete && (s.OverlayArrivals != arrivals || (fetch && !s.OverlayFetched)));
+                || (s.OverlayIncomplete && ((fetch && !s.OverlayFetched) || s.OverlayMissing.Any(Came)));
             if (!stale) continue;
             if (_layers.Count == 0)
             {
@@ -420,12 +445,13 @@ public sealed class GlobeNode : IDisposable
             var snapshot = _layers;
             var key = t;
             s.OverlayJobVersion = _overlayVersion;
-            s.OverlayJobArrivals = arrivals;
             s.OverlayJobFetch = fetch;
             s.OverlayJob = Task.Run(() =>
             {
-                var bytes = OverlayRenderer.Render(key, snapshot, 256, out bool complete, fetch);
-                return (bytes, complete);
+                var clock = System.Diagnostics.Stopwatch.StartNew();
+                var missing = new List<string>();
+                var bytes = OverlayRenderer.Render(key, snapshot, 256, out bool complete, fetch, missing);
+                return (bytes, complete, missing.Distinct().ToArray(), clock.Elapsed.TotalMilliseconds);
             });
             running++;
         }

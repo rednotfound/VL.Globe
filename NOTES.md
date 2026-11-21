@@ -331,3 +331,13 @@ looked fine - "which makes one think it works". Two causes, estimated at 100 m h
 - **"0 fetched" with a full map**: vvvv built the node twice on open; the first instance fetched,
   the second read the disk cache, which Status did not count. It now says `from disk` too, and
   which zoom levels were decoded.
+- **Vector tiles needed the raster** ("这个事情非常奇怪！", the user): a globe tile existed only once its
+  raster image had arrived, and the overlay lies on the tile. No Tile Source, no tile, no vector.
+  Plain tiles in the background colour are built when there are layers and no source.
+- **631 ms an overlay.** A z14 vector tile covers 16 z16 globe tiles; every overlay filtered and
+  triangulated all of it before the canvas clip threw 15/16 away. Measured by layer and by stage
+  (expressions 13, triangulation 9, band cutting 26, Skia 13 ms after the fixes): four minor-road
+  layers were two thirds; round caps had 16 slices regardless of radius.
+- **SkSL runtime shaders crash SkiaSharp 2.88 on the CPU raster backend** (SEHException in
+  sk_canvas_draw_rect, the process gone): the GL fragment shader's edge ramp cannot move into a
+  Skia shader in vvvv 7.4. The band cutting on the CPU stays.

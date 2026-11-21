@@ -245,8 +245,20 @@ run fetched **118 tiles, 31 MB** for one view: the ancestors shown while the ras
 low-zoom vector tiles (up to 1.3 MB). Now only the wanted tiles fetch; a stand-in draws what is
 already here (`Peek`). Cold cache at Osaka afterwards: **4 tiles, 2.8 MB**, all z14.
 
-**Next:** the user's judgement while moving (frame time, the flash of raster under a stand-in),
-then country scale.
+**The user's first look (2026-11-21), two bugs, fixed the same day:**
+1. *"不连 OpenStreetMap 就看不到 vector tiles"*: tiles were built only when their raster arrived. A
+   globe with layers and no Tile Source now builds plain tiles in the background colour at once;
+   with a source, the overlay still waits for the tile it lies on.
+2. *"vector tiles 总在加载，似乎没有保持"*: every arrival redrew every incomplete overlay, stand-ins
+   that would never get their tile included, on 4 threads; and each overlay took 631 ms in vvvv
+   because it processed the whole vector tile (16 globe tiles' worth), and 3 threads decoded the
+   same tile. Now: an overlay is redrawn only when a tile it was drawn without has come; wanted
+   tiles first, `ProcessorCount - 2` threads; features off the canvas are skipped; one decode per
+   tile; round caps sliced by radius; line layers drawn in one call. Liberty around Kyoto Station:
+   172 → 60 ms an overlay single-threaded; 229 ms in vvvv with the threads contending. Status
+   reports it.
+
+**Next:** the user's judgement while moving, then country scale.
 
 ### 5. Navigation
 

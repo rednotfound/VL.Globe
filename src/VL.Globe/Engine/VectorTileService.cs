@@ -43,6 +43,7 @@ internal sealed class VectorTileService : IDisposable
     readonly ConcurrentDictionary<string, byte[]> _arrived = new();
     readonly ConcurrentDictionary<string, bool> _inFlight = new();
     readonly ConcurrentDictionary<string, bool> _failed = new();
+    readonly ConcurrentDictionary<string, bool> _here = new();   // arrived or failed this session
     readonly ConcurrentQueue<string> _queue = new();
     readonly ConcurrentDictionary<string, bool> _queued = new();
     int _arrivals, _fetched, _fromDisk, _version, _started;
@@ -135,6 +136,9 @@ internal sealed class VectorTileService : IDisposable
         return null;
     }
 
+    /// <summary>True once a fetch of <paramref name="url"/> has finished, with bytes or without: what was drawn without it can be drawn again.</summary>
+    public bool IsHere(string url) => _here.ContainsKey(Resolve(url));
+
     /// <summary>A resource's bytes if they are already in memory or on disk; never fetches.</summary>
     public byte[]? Peek(string url)
     {
@@ -185,6 +189,7 @@ internal sealed class VectorTileService : IDisposable
                 }
                 finally
                 {
+                    _here[url] = true;
                     _inFlight.TryRemove(url, out _);
                     _queued.TryRemove(url, out _);
                     Interlocked.Increment(ref _arrivals);

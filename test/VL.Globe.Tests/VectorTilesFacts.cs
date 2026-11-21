@@ -82,9 +82,12 @@ public class VectorTilesFacts
         bool here = false;
         doc.Load = url => here ? File.ReadAllBytes(url) : null;
         doc.Pending = _ => !here;
-        var first = OverlayRenderer.Render(Inside, new OverlayLayer[] { new StyleOverlay(doc) }, 256, out bool complete);
+        var missing = new List<string>();
+        var first = OverlayRenderer.Render(Inside, new OverlayLayer[] { new StyleOverlay(doc) }, 256, out bool complete, missing: missing);
         Assert.False(complete);
         Assert.Null(first);
+        // what it waits for: the globe draws it again only when this tile has come, not on every arrival
+        Assert.Equal(new[] { Path.Combine(tiles, "14-8802-5374.mvt") }, missing.Distinct());
         here = true;   // it arrives; the miss was not remembered
         var second = OverlayRenderer.Render(Inside, new OverlayLayer[] { new StyleOverlay(doc) }, 256, out complete);
         Assert.True(complete);

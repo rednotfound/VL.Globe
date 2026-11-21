@@ -23,6 +23,27 @@ internal sealed class StyleFeature
     public Dictionary<string, object?> Properties = new();
     public object? Id;
     public string GeometryType => Kind switch { Shape.Point => "Point", Shape.Line => "LineString", _ => "Polygon" };
+
+    /// <summary>The world rectangle the geometry covers, computed once (features are not changed after reading).</summary>
+    public (double MinX, double MinY, double MaxX, double MaxY) Bounds
+    {
+        get
+        {
+            if (_bounds is { } b) return b;
+            double x0 = double.MaxValue, y0 = double.MaxValue, x1 = double.MinValue, y1 = double.MinValue;
+            foreach (var part in Parts)
+                foreach (var ring in part)
+                    foreach (var (x, y) in ring)
+                    {
+                        if (x < x0) x0 = x; if (x > x1) x1 = x;
+                        if (y < y0) y0 = y; if (y > y1) y1 = y;
+                    }
+            var r = (x0, y0, x1, y1);
+            _bounds = r;
+            return r;
+        }
+    }
+    (double, double, double, double)? _bounds;
 }
 
 /// <summary>Where the map lies on a canvas: a Web Mercator view with MapLibre's 512 px world at zoom 0.</summary>
@@ -127,18 +148,38 @@ internal sealed class MapStyleDocument
     readonly LinkedList<((string, TileKey) key, Dictionary<string, List<StyleFeature>>? layers)> _lru = new();
 
     /// <summary>A vector tile's layers, decoded once; null when it cannot be had, and <paramref name="complete"/> false when it may still come.</summary>
-    public Dictionary<string, List<StyleFeature>>? Tile(VectorSource source, TileKey key, ref bool complete, bool fetch = true)
+    public Dictionary<string, List<StyleFeature>>? Tile(VectorSource source, TileKey key, ref bool complete, bool fetch = true, ICollection<string>? missing = null)
     {
         var url = source.Url(key);
         var k = (url, key);   // keyed by tile too: a template without {z}/{x}/{y} serves one file for every tile
+        if (Cached(k, out var hit)) return hit;
+        // one decode per tile: the overlays of the 16 globe tiles a vector tile covers are drawn on
+        // several threads at once, and each decoded it (18 decodes for 6 tiles, 2026-11-21)
+        lock (_gates.GetOrAdd(k, _ => new object()))
+        {
+            if (Cached(k, out hit)) return hit;
+            return LoadAndDecode(url, key, k, ref complete, fetch, missing);
+        }
+    }
+
+    readonly System.Collections.Concurrent.ConcurrentDictionary<(string, TileKey), object> _gates = new();
+
+    bool Cached((string, TileKey) k, out Dictionary<string, List<StyleFeature>>? layers)
+    {
         lock (_tiles)
         {
-            if (_tiles.TryGetValue(k, out var node)) { _lru.Remove(node); _lru.AddLast(node); return node.Value.layers; }
+            if (_tiles.TryGetValue(k, out var node)) { _lru.Remove(node); _lru.AddLast(node); layers = node.Value.layers; return true; }
         }
+        layers = null;
+        return false;
+    }
+
+    Dictionary<string, List<StyleFeature>>? LoadAndDecode(string url, TileKey key, (string, TileKey) k, ref bool complete, bool fetch, ICollection<string>? missing)
+    {
         // without fetch (a stand-in tile on the globe) only what is already here is drawn; a miss
         // leaves it incomplete, so it is drawn again once the tile has come for another reason
         var bytes = fetch || Peek is null ? Load?.Invoke(url) : Peek(url);
-        if (bytes is null && (!fetch && Peek != null || Pending?.Invoke(url) == true)) { complete = false; return null; }
+        if (bytes is null && (!fetch && Peek != null || Pending?.Invoke(url) == true)) { complete = false; missing?.Add(url); return null; }
         Dictionary<string, List<StyleFeature>>? layers = null;
         if (bytes != null)
         {
@@ -331,8 +372,12 @@ internal static class MapStylePainter
 {
     /// <summary>Draws <paramref name="style"/> on <paramref name="canvas"/> (Premul) at the viewport's zoom.</summary>
     /// <returns>False when a tile or data it needs is still on its way: draw again when it has come.</returns>
+    /// <param name="canvas">A Premul canvas.</param>
+    /// <param name="style">The style to draw.</param>
+    /// <param name="view">Where the world lands on the canvas.</param>
     /// <param name="fetch">False: draw only from tiles already here, never start a fetch.</param>
-    public static bool Draw(SKCanvas canvas, MapStyleDocument style, MapViewport view, bool fetch = true)
+    /// <param name="missing">Collects the URLs of the tiles that were not here: draw again when one of them has come.</param>
+    public static bool Draw(SKCanvas canvas, MapStyleDocument style, MapViewport view, bool fetch = true, ICollection<string>? missing = null)
     {
         bool complete = true;
         var ctx = new StyleContext { Zoom = view.Zoom, GlobalState = style.GlobalState };
@@ -340,14 +385,14 @@ internal static class MapStylePainter
         {
             if (style.Lenient && style.IsDropped(layer.Id)) continue;
             int save = canvas.Save();
-            try { DrawLayer(canvas, style, layer, view, ctx, ref complete, fetch); }
+            try { DrawLayer(canvas, style, layer, view, ctx, ref complete, fetch, missing); }
             catch (StyleUnsupportedException e) when (style.Lenient) { style.Drop(layer.Id, e.Message); }
             finally { canvas.RestoreToCount(save); }
         }
         return complete;
     }
 
-    static void DrawLayer(SKCanvas canvas, MapStyleDocument style, MapStyleDocument.Layer layer, MapViewport view, StyleContext ctx, ref bool complete, bool fetch)
+    static void DrawLayer(SKCanvas canvas, MapStyleDocument style, MapStyleDocument.Layer layer, MapViewport view, StyleContext ctx, ref bool complete, bool fetch, ICollection<string>? missing)
     {
         ctx.Properties = null; ctx.GeometryType = null; ctx.Id = null;
         // GL JS: `if (this.minzoom && zoom < this.minzoom)` - an unset minzoom hides nothing, not even below zoom 0
@@ -388,7 +433,7 @@ internal static class MapStylePainter
                     for (int tx = x0; tx <= x1; tx++)
                     {
                         var key = new TileKey(z, ((tx % n) + n) % n, ty);
-                        var layers = style.Tile(v, key, ref complete, fetch);
+                        var layers = style.Tile(v, key, ref complete, fetch, missing);
                         if (layers is null || !layers.TryGetValue(layer.SourceLayer!, out var features)) continue;
                         // GL JS clips each tile's drawing to its square with the stencil buffer;
                         // a wrapped copy of the world is shifted by whole worlds
@@ -414,10 +459,23 @@ internal static class MapStylePainter
     static void DrawFeatures(SKCanvas canvas, MapStyleDocument.Layer layer, List<StyleFeature> features, StyleContext ctx, MapViewport view, double sharpCorner)
     {
         float pr = (float)view.PixelRatio;
+        // a vector tile covers 16 globe tiles at street level: what lies off this canvas is skipped
+        // before its filter and its triangles (it cost 16x the work, 172 ms an overlay, 2026-11-21);
+        // the margin covers the widest lines' half width
+        var (vx0, vy0, vx1, vy1) = view.Bounds;
+        double margin = 64 / (512 * Math.Pow(2, view.Zoom));
+        vx0 -= margin; vy0 -= margin; vx1 += margin; vy1 += margin;
+        // a line layer's triangles go out in ONE draw, as GL JS draws a bucket: each triangle still
+        // blends on its own, so overlaps blend twice as before
+        var linePositions = new List<SKPoint>();
+        var lineColors = new List<SKColor>();
+        var triangles = new List<LineVertex>();
         foreach (var f in features)
         {
             // GL JS's fill bucket classifies any geometry's rings, so a line is filled as a ring
             if (f.Kind == StyleFeature.Shape.Point) continue;
+            var (fx0, fy0, fx1, fy1) = f.Bounds;
+            if (fx1 < vx0 || fx0 > vx1 || fy1 < vy0 || fy0 > vy1) continue;
             ctx.Properties = f.Properties; ctx.GeometryType = f.GeometryType; ctx.Id = f.Id;
             if (layer.Filter is { } filter && !Expression.Filter(filter, ctx)) continue;
             if (layer.Type == "fill")
@@ -461,20 +519,20 @@ internal static class MapStylePainter
                 double miterLimit = Expression.Number(Get(layer.Layout, "line-miter-limit"), ctx, 2);
                 double roundLimit = Expression.Number(Get(layer.Layout, "line-round-limit"), ctx, 1.05);
                 double outset = LineTessellator.Outset(width * pr / 2);
-                var triangles = new List<LineVertex>();
+                triangles.Clear();
                 foreach (var part in f.Parts)
                     foreach (var line in part)
                         LineTessellator.Tessellate(line.Select(c => view.Project(c.X, c.Y)).ToList(),
                             f.Kind == StyleFeature.Shape.Polygon, join, cap, miterLimit, roundLimit, outset, sharpCorner, triangles);
                 if (triangles.Count == 0) continue;
-                var positions = new List<SKPoint>(triangles.Count * 2);
-                var colors = new List<SKColor>(triangles.Count * 2);
-                LineTessellator.Shade(triangles, outset, ToSk(color), positions, colors);
-                // every triangle blends on its own, so overlaps blend twice, as in MapLibre
-                using var vertices = SKVertices.CreateCopy(SKVertexMode.Triangles, positions.ToArray(), null, colors.ToArray());
-                using var vpaint = new SKPaint();
-                canvas.DrawVertices(vertices, SKBlendMode.Modulate, vpaint);
+                LineTessellator.Shade(triangles, outset, ToSk(color), linePositions, lineColors);
             }
+        }
+        if (linePositions.Count > 0)
+        {
+            using var vertices = SKVertices.CreateCopy(SKVertexMode.Triangles, linePositions.ToArray(), null, lineColors.ToArray());
+            using var vpaint = new SKPaint();
+            canvas.DrawVertices(vertices, SKBlendMode.Modulate, vpaint);
         }
     }
 

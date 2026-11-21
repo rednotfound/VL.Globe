@@ -24,7 +24,8 @@ internal static class OverlayRenderer
     /// <param name="size">The overlay's width and height in pixels.</param>
     /// <param name="complete">False when a vector tile it needs was still on its way.</param>
     /// <param name="fetch">False for a tile the globe shows only while its children load: vector tiles are drawn if already here, never fetched.</param>
-    public static byte[]? Render(TileKey tile, IReadOnlyList<OverlayLayer> layers, int size, out bool complete, bool fetch = true)
+    /// <param name="missing">Collects the URLs of the vector tiles that were not here.</param>
+    public static byte[]? Render(TileKey tile, IReadOnlyList<OverlayLayer> layers, int size, out bool complete, bool fetch = true, ICollection<string>? missing = null)
     {
         complete = true;
         var info = new SKImageInfo(size, size, SKColorType.Rgba8888, SKAlphaType.Premul);
@@ -40,7 +41,7 @@ internal static class OverlayRenderer
                         TileOverlay.DrawOn(canvas, tile, g.Geometries, g.Style, size);
                         break;
                     case StyleOverlay s:
-                        complete &= MapStylePainter.Draw(canvas, s.Document, MapViewport.OfTile(tile, size), fetch);
+                        complete &= MapStylePainter.Draw(canvas, s.Document, MapViewport.OfTile(tile, size), fetch, missing);
                         break;
                 }
             }
