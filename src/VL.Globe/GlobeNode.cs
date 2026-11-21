@@ -94,7 +94,24 @@ public sealed class GlobeNode : IDisposable
     // Never two layers on one spot, so nothing to sort and nothing to z-fight. (MapLibre fades
     // many-to-one both ways; the user, 2026-11-20: "都加呗".)
     sealed class OutFade { public required List<TileKey> From; public double Start; public bool Done; }
-    readonly Dictionary<TileKey, OutFade> _outFades = new();   // this frame's eye when the camera is camera-relative (GlobeCamera), else null
+    readonly Dictionary<TileKey, OutFade> _outFades = new();
+
+    // DrawSet's Under layer: stand-in ancestors drawn sunk below the surface, so the Top tiles win
+    // the depth test and an ancestor shows only through their holes (MapLibre draws the parent under
+    // its children). Coarser sinks deeper, so two stand-ins never share a depth. The sink follows the
+    // camera height: 0.2 % of it, 0.5 m to 2 km - deep enough for the depth buffer, shallow enough
+    // that nothing shows at the edges.
+    readonly HashSet<TileKey> _under = new();
+    readonly HashSet<TileKey> _top = new();
+
+    float RadiusFor(TileKey t)
+    {
+        if (!_under.Contains(t)) return _radius;
+        var eye = _relativeEye ?? new D3(_lastEye.X, _lastEye.Y, _lastEye.Z);
+        double heightMetres = Math.Max(0, (eye.Length / _radius - 1) * GlobeCoordinates.EarthRadius);
+        double sink = Math.Clamp(0.002 * heightMetres, 0.5, 2000) * (2 - t.Zoom / 22.0);
+        return (float)(_radius * (1 - sink / GlobeCoordinates.EarthRadius));
+    }   // this frame's eye when the camera is camera-relative (GlobeCamera), else null
 
     // The globe before any tile: a sphere just below the tiles, drawn by this node because only it
     // knows the eye a camera-relative camera renders from - a Sphere placed by the patch sat at the
@@ -184,7 +201,13 @@ public sealed class GlobeNode : IDisposable
         Show(DrawSet.Resolve(wanted, _loaded.ContainsKey));
         // Every frame, not on change: with a camera-relative camera each tile sits at (centre - eye),
         // and the eye moved. Subtracted in double, then cast - the whole point of item 1.
-        foreach (var t in _shown) if (_loaded.TryGetValue(t, out var s)) s.Entity.Transform.Position = TileGeometry.Translation(s.Centre, _radius, _relativeEye);
+        foreach (var t in _shown)
+        {
+            if (!_loaded.TryGetValue(t, out var s)) continue;
+            var r = RadiusFor(t);
+            s.Entity.Transform.Scale = new Vector3(r);
+            s.Entity.Transform.Position = TileGeometry.Translation(s.Centre, r, _relativeEye);
+        }
         foreach (var w in wanted) if (_loaded.TryGetValue(w, out var s)) s.LastUsed = _frame;
         AdvanceFades();
         Evict();
@@ -385,10 +408,12 @@ public sealed class GlobeNode : IDisposable
         return Texture.New(device, image, TextureFlags.ShaderResource, GraphicsResourceUsage.Immutable);
     }
 
-    void Show(List<TileKey> draw)
+    void Show(DrawSet.Layers layers)
     {
+        var draw = layers.Top;
         var now = _clock.Elapsed.TotalSeconds;
         var before = new HashSet<TileKey>(_shown);
+        var beforeTop = new HashSet<TileKey>(_top);
         var drawn = new HashSet<TileKey>(draw);
         foreach (var k in _outFades.Keys.Where(k => !drawn.Contains(k)).ToList()) _outFades.Remove(k);
         var display = new List<TileKey>();
@@ -397,7 +422,7 @@ public sealed class GlobeNode : IDisposable
             _outFades.TryGetValue(t, out var of);
             if (of is null && _fadeDuration > 0 && !before.Contains(t))
             {
-                var under = before.Where(t.IsAncestorOf).ToList();
+                var under = beforeTop.Where(t.IsAncestorOf).ToList();   // Top only: Under tiles overlap them
                 if (under.Count > 0 && Fade.Covers(t, under) && under.All(_loaded.ContainsKey))
                     _outFades[t] = of = new OutFade { From = under, Start = now };
             }
@@ -416,7 +441,11 @@ public sealed class GlobeNode : IDisposable
                 display.Add(t);
             }
         }
-        draw = display;
+        _top.Clear();
+        _top.UnionWith(display);
+        _under.Clear();
+        foreach (var u in layers.Under) if (!_top.Contains(u)) _under.Add(u);
+        draw = display.Concat(_under).ToList();
         var next = new HashSet<TileKey>(draw);
         foreach (var t in _shown.Where(t => !next.Contains(t)).ToList())
         {
@@ -433,6 +462,7 @@ public sealed class GlobeNode : IDisposable
             // A finer tile replacing the ancestor drawn here last frame fades in over it. Not the other
             // way (a parent replacing its children) and not over nothing - the pop that shows is the
             // one on the way in.
+            if (_under.Contains(t)) { EndFade(s); continue; }      // a stand-in under the others: no fade
             if (_fadeDuration > 0 && NearestAncestorIn(t, before) is { } a && _loaded.TryGetValue(a, out var from))
                 StartFade(s, t, a, from, outward: false, now);
         }
@@ -535,6 +565,8 @@ public sealed class GlobeNode : IDisposable
         _pending.Clear();
         _failed.Clear();
         _outFades.Clear();
+        _under.Clear();
+        _top.Clear();
         _requests = 0;
         _failedCount = 0;
         _lastError = "";

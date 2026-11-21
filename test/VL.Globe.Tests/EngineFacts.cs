@@ -177,28 +177,45 @@ public class DrawSetFacts
     static readonly TileKey P = new(1, 0, 0);
     static readonly TileKey[] Kids = Enumerable.Range(0, 4).Select(P.Child).ToArray();
 
-    [Fact]
-    public void AMissingChildIsStoodInForByItsParent()
-        => Assert.Equal(new[] { P }, DrawSet.Resolve(Kids, t => t == P));
+    static List<TileKey> Sorted(IEnumerable<TileKey> t) => t.OrderBy(k => k.Zoom).ThenBy(k => k.Y).ThenBy(k => k.X).ToList();
 
     [Fact]
-    public void AllChildrenArrivedReplaceTheParent()
-        => Assert.Equal(Kids.OrderBy(k => k.Y).ThenBy(k => k.X), DrawSet.Resolve(Kids, t => t == P || Kids.Contains(t)).OrderBy(k => k.Y).ThenBy(k => k.X));
-
-    [Fact]
-    public void ThreeOfFourStillShowTheParentAloneNeverBoth()
+    public void AMissingTileIsStoodInForByItsParentUnderneath()
     {
-        var drawn = DrawSet.Resolve(Kids, t => t == P || t == Kids[0] || t == Kids[1] || t == Kids[2]);
-        Assert.Equal(new[] { P }, drawn);   // a parent and its child at one place would z-fight
+        var d = DrawSet.Resolve(new[] { Kids[0] }, t => t == P);
+        Assert.Empty(d.Top);
+        Assert.Equal(new[] { P }, d.Under);
     }
 
     [Fact]
-    public void NothingArrivedDrawsNothing() => Assert.Empty(DrawSet.Resolve(Kids, _ => false));
+    public void AllChildrenArrivedReplaceTheParent()
+    {
+        var d = DrawSet.Resolve(Kids, t => t == P || Kids.Contains(t));
+        Assert.Equal(Sorted(Kids), Sorted(d.Top));
+        Assert.Empty(d.Under);
+    }
 
-    // Zooming out fast (the user, 2026-11-21: "最root的那层tiles会跑出来，然后画面变白，变糊变花"): the
-    // coarser tiles now wanted were evicted while the camera sat low, so the only stand-in found by
-    // climbing was the zoom-2 fallback. The finer tiles just drawn are still loaded - draw them, as
-    // MapLibre's _retainLoadedChildren does, before reaching for a coarse ancestor.
+    [Fact]
+    public void ThreeOfFourAreDrawnWithTheParentUnderneathNotHidden()
+    {
+        // The old rule drew the parent ALONE until all four arrived. Zooming out, one missing tile at
+        // the edge of the view pulled a zoom-3 tile over half the screen: "缩小过程中的闪现".
+        var d = DrawSet.Resolve(Kids, t => t == P || t == Kids[0] || t == Kids[1] || t == Kids[2]);
+        Assert.Equal(Sorted(Kids.Take(3)), Sorted(d.Top));
+        Assert.Equal(new[] { P }, d.Under);
+    }
+
+    [Fact]
+    public void NothingArrivedDrawsNothing()
+    {
+        var d = DrawSet.Resolve(Kids, _ => false);
+        Assert.Empty(d.Top);
+        Assert.Empty(d.Under);
+    }
+
+    // Zooming out fast (the user, 2026-11-21): the coarser tiles now wanted were evicted while the
+    // camera sat low. The finer tiles just drawn are still loaded - they stand in on Top, as
+    // MapLibre's _retainLoadedChildren does, before any ancestor.
     static readonly TileKey W = new(5, 10, 6);
     static readonly TileKey Coarse = W.AncestorAt(2);
 
@@ -206,8 +223,9 @@ public class DrawSetFacts
     public void ZoomingOutDrawsTheLoadedChildrenNotACoarseAncestor()
     {
         var kids = Enumerable.Range(0, 4).Select(W.Child).ToHashSet();
-        var drawn = DrawSet.Resolve(new[] { W }, t => t == Coarse || kids.Contains(t));
-        Assert.Equal(kids.OrderBy(k => k.Y).ThenBy(k => k.X), drawn.OrderBy(k => k.Y).ThenBy(k => k.X));
+        var d = DrawSet.Resolve(new[] { W }, t => t == Coarse || kids.Contains(t));
+        Assert.Equal(Sorted(kids), Sorted(d.Top));
+        Assert.Empty(d.Under);
     }
 
     [Fact]
@@ -215,17 +233,18 @@ public class DrawSetFacts
     {
         var k3 = W.Child(3);
         var loaded = new[] { W.Child(0), W.Child(1), W.Child(2), k3.Child(0), k3.Child(1), k3.Child(2), k3.Child(3) }.ToHashSet();
-        var drawn = DrawSet.Resolve(new[] { W }, t => t == Coarse || loaded.Contains(t));
-        Assert.Equal(7, drawn.Count);
-        Assert.DoesNotContain(Coarse, drawn);
+        var d = DrawSet.Resolve(new[] { W }, t => t == Coarse || loaded.Contains(t));
+        Assert.Equal(7, d.Top.Count);
+        Assert.Empty(d.Under);
     }
 
     [Fact]
-    public void ChildrenWithAHoleFallBackToTheAncestor()
+    public void ChildrenWithAHoleAreDrawnAndTheAncestorFillsTheHoleFromBelow()
     {
-        // a hole would show the background; a coarse but whole stand-in is the lesser evil
         var loaded = new[] { W.Child(0), W.Child(1), W.Child(2) }.ToHashSet();
-        Assert.Equal(new[] { Coarse }, DrawSet.Resolve(new[] { W }, t => t == Coarse || loaded.Contains(t)));
+        var d = DrawSet.Resolve(new[] { W }, t => t == Coarse || loaded.Contains(t));
+        Assert.Equal(Sorted(loaded), Sorted(d.Top));
+        Assert.Equal(new[] { Coarse }, d.Under);
     }
 
     [Fact]
@@ -235,7 +254,9 @@ public class DrawSetFacts
         var deep = new HashSet<TileKey>();
         void Add(TileKey t, int depth) { if (depth == 0) deep.Add(t); else for (int i = 0; i < 4; i++) Add(t.Child(i), depth - 1); }
         Add(W, 4);
-        Assert.Equal(new[] { Coarse }, DrawSet.Resolve(new[] { W }, t => t == Coarse || deep.Contains(t)));
+        var d = DrawSet.Resolve(new[] { W }, t => t == Coarse || deep.Contains(t));
+        Assert.Empty(d.Top);
+        Assert.Equal(new[] { Coarse }, d.Under);
     }
 
     [Fact]

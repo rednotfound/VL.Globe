@@ -220,3 +220,15 @@ looked fine - "which makes one think it works". Two causes, estimated at 100 m h
   help patches do.
 - An unwired `Matrix` pin of a C# node is all zeros, not identity; the placement treats zero as
   identity.
+
+## 2026-11-21 — still a white flash zooming out: one missing tile hid every loaded one under its ancestor
+
+- The user, after the descendant stand-ins: "缩小过程中的闪现". Not a load wait (the log showed 0 loading
+  throughout) but the single-layer rule: a missing tile's stand-in ancestor hid **every loaded tile
+  under it** until all arrived. Zooming out, a tile not yet loaded at the edge of the view pulled a
+  zoom-3 tile (kept from eviction since the morning) over half the screen. Now two layers
+  (`DrawSet.Layers`): Top = wanted tiles that arrived plus any loaded descendants of missing ones;
+  Under = the nearest arrived ancestor, drawn **sunk** (0.2 % of the camera height, 0.5 m–2 km,
+  coarser deeper) so Top wins the depth test and the ancestor shows only through holes — MapLibre
+  draws the parent under its children. A probe at 20,000 km also showed OSM's own low-zoom palette
+  (land #f2efe9) is near-white: not this bug.
