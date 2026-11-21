@@ -18,10 +18,15 @@ shader GlobeVector : ShaderBase
         stage float GvIsLine;
         stage float GvStraight;         // 1: straight colour out, for the hardware-antialiased line list
         stage float GvExtrusion;        // 1: fill-extrusion, lit; GvColor is sRGB then
+        stage float GvLinearize;        // 1: vvvv (sRGB colours into a linear pipeline); 0: as GL JS, all in sRGB (the render tests)
+        stage float GvFlat;             // 1: on the Mercator plane (x east, y north, z up), not the sphere
+        stage float GvGlOutline;        // 1: the line list as GL JS's fill_outline: aliased, alpha 1 - smoothstep(distance)
+        stage float2 GvViewport;        // the target's size in pixels
+        stage float GvTiles;            // tiles per side at the bucket's zoom (2^z): a tile is 1/GvTiles of the world
     }
 
     stage stream float3 GvPosition : POSITION;
-    stage stream float2 GvExtrude : TEXCOORD0;   // snorm16: the extrusion / 4
+    stage stream int4 GvExtrude : TEXCOORD0;     // GL JS's extrusion bytes in .xy: e = k / 63
     stage stream float2 GvUvIn : TEXCOORD1;      // unorm16: (uv + 0.5) / 2
     stage stream float2 GvEdgeIn : TEXCOORD2;  // N, the feature's width scale
     stage stream float4 GvColorIn : COLOR0;
@@ -30,31 +35,53 @@ shader GlobeVector : ShaderBase
     stage stream float GvEdge;
     stage stream float GvOutset;
     stage stream float4 GvTint;
+    stage stream float2 GvScreen;   // GL JS's v_pos: the vertex in pixels, interpolated along the line
 
     float3 ToLinear(float3 c)
     {
+        if (GvLinearize < 0.5) return c;
+        c = saturate(c);
         return c <= 0.04045 ? c / 12.92 : pow((c + 0.055) / 1.055, 2.4);
+    }
+
+    // the vertex's up, east and north: on the sphere from its direction, on the plane fixed
+    void Frame(float3 position, out float3 up, out float3 east, out float3 north)
+    {
+        if (GvFlat > 0.5) { up = float3(0, 0, 1); east = float3(1, 0, 0); north = float3(0, 1, 0); return; }
+        up = normalize(GvCentre + position);
+        east = normalize(float3(up.z, 0, -up.x));
+        north = cross(up, east);
     }
 
     stage override void VSMain()
     {
         float4 v = mul(float4(streams.GvPosition, 1), GvWorldView);
         float outset = 0;
+        float2 uvShift = 0;
         if (GvIsLine > 0.5)
         {
-            float3 p = normalize(GvCentre + streams.GvPosition);
-            float3 east = normalize(float3(p.z, 0, -p.x));
-            float3 north = cross(p, east);
-            float2 q = streams.GvExtrude * 4;
+            float3 p, east, north;
+            Frame(streams.GvPosition, p, east, north);
+            float2 q = float2(streams.GvExtrude.xy) / 63.0;
             float3 dir = q.x * east - q.y * north;
             float3 dirView = mul(float4(dir, 0), GvWorldView).xyz / GvRadius;
             outset = GvHalfWidth * streams.GvEdgeIn.y + 0.5;
             float depth = max(-v.z, 1e-9);
-            v.xyz += dirView * (outset * GvPixel * depth);
+            float reach = outset * GvPixel * depth;   // view units = scene units: the extrusion's length per unit of q
+            v.xyz += dirView * reach;
+            // the extruded point's place in the tile, not the line's: GL JS clips each tile's drawing to
+            // its square by the stencil, so a line's edge past the square is cut there and the
+            // neighbour's copy (from its buffer) draws the rest. Clipped by the line's own point, line
+            // ends and corners at tile edges came out differently (MapLibre's fixtures, 2026-11-22).
+            float span = GvFlat > 0.5 ? 1 / GvTiles : 6.283185307 * sqrt(saturate(1 - p.y * p.y)) / GvTiles;
+            uvShift = q * (reach / GvRadius / span);
         }
         v.xyz *= (1 - GvLift);
         streams.ShadingPosition = mul(v, GvProjection);
-        streams.GvUv = streams.GvUvIn * 2 - 0.5;
+        // in pixels, y down as SV_Position is (GL JS's v_pos, y up as gl_FragCoord is)
+        float2 ndc = streams.ShadingPosition.xy / streams.ShadingPosition.w;
+        streams.GvScreen = float2(ndc.x * 0.5 + 0.5, 0.5 - ndc.y * 0.5) * GvViewport;
+        streams.GvUv = streams.GvUvIn * 2 - 0.5 + uvShift;
         streams.GvEdge = streams.GvEdgeIn.x;
         streams.GvOutset = outset;
         if (GvExtrusion > 0.5)
@@ -62,10 +89,9 @@ shader GlobeVector : ShaderBase
             // GL JS's fill_extrusion.vertex.glsl with its default light: anchored to the viewport at
             // [1.15, 210, 30] (radial, azimuthal, polar) = (0.2875, -0.498, 0.996) in the map's
             // east / south / up; intensity 0.5, colour white, 0.03 ambient. In sRGB, as GL JS.
-            float3 p = normalize(GvCentre + streams.GvPosition);
-            float3 east = normalize(float3(p.z, 0, -p.x));
-            float3 north = cross(p, east);
-            float2 e = streams.GvExtrude;
+            float3 p, east, north;
+            Frame(streams.GvPosition, p, east, north);
+            float2 e = float2(streams.GvExtrude.xy);
             float3 n = dot(e, e) > 0 ? normalize(e.x * east - e.y * north) : p;
             float3 light = 0.2875 * east + 0.498 * north + 0.996 * p;
             float4 color = streams.GvColorIn * GvColor;
@@ -87,6 +113,7 @@ shader GlobeVector : ShaderBase
         if (uv.x < GvClip.x || uv.y < GvClip.y || uv.x > GvClip.z || uv.y > GvClip.w) discard;
         float alpha = streams.GvTint.a;
         if (GvIsLine > 0.5) alpha *= saturate(streams.GvOutset * (1 - abs(streams.GvEdge)));
+        if (GvGlOutline > 0.5) alpha *= 1 - smoothstep(0, 1, length(streams.GvScreen - streams.ShadingPosition.xy));
         streams.ColorTarget = GvStraight > 0.5 ? float4(streams.GvTint.rgb, alpha) : float4(streams.GvTint.rgb * alpha, alpha);
     }
 };

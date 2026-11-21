@@ -10,6 +10,7 @@ using Stride.Engine;
 using Stride.Graphics;
 using VL.Stride.Rendering;
 using Buffer = Stride.Graphics.Buffer;
+using Built = VL.Globe.Engine.GpuTile;
 
 namespace VL.Globe.Engine;
 
@@ -20,15 +21,6 @@ internal sealed class GpuVectorTiles : IDisposable
 {
     public readonly Entity Entity;
     readonly VectorRenderer _renderer = new();
-
-    sealed class Built
-    {
-        public required VectorBucket Bucket;
-        public Buffer? Vertices, Indices;   // null: a tile with nothing in it
-        public long Bytes => (Vertices?.SizeInBytes ?? 0) + (Indices?.SizeInBytes ?? 0);
-        public required Dictionary<int, List<VectorRange>> ByLayer;   // -1: the background grid
-        public void Dispose() { Vertices?.Dispose(); Indices?.Dispose(); }
-    }
 
     sealed class Entry
     {
@@ -148,11 +140,20 @@ internal sealed class GpuVectorTiles : IDisposable
             var backgroundDraws = new List<(Built built, Vector4 clip)>();
             foreach (var (sourceId, layers) in info.BySource)
             {
-                if (doc.Sources[sourceId] is not VectorSource source) continue;
+                // a vector source's tiles, or a GeoJSON source cut into tiles as GL JS does (geojson-vt,
+                // maxzoom 18, 512 px): the same key choice for both
+                var source = doc.Sources[sourceId];
+                var (minZoom, maxZoom, tileSize) = source switch
+                {
+                    VectorSource v => (v.MinZoom, v.MaxZoom, v.TileSize),
+                    GeoJsonSource => (0, 18, 512),
+                    _ => (-1, -1, -1),
+                };
+                if (minZoom < 0) continue;
                 // the vector tile each shown globe tile needs, and the globe tiles each serves
                 var needed = new Dictionary<TileKey, List<TileKey>>();
                 foreach (var g in shown)
-                    if (VectorKey(source, g) is { } vk)
+                    if (VectorKey(minZoom, maxZoom, tileSize, g) is { } vk)
                     {
                         if (!needed.TryGetValue(vk, out var served)) needed[vk] = served = new List<TileKey>();
                         served.Add(g);
@@ -205,36 +206,8 @@ internal sealed class GpuVectorTiles : IDisposable
                 if (!visible) continue;
                 List<(Built built, Vector4 clip)>? list = backgroundDraws;
                 if (layer.Type != "background" && (layer.Layer.Source is not { } source || !draws.TryGetValue(source, out list))) continue;
-                int rangeLayer = layer.Type == "background" ? -1 : layer.Index;
-                // a fill-extrusion layer: every tile's depth first, then every tile's colour
-                int passes = layer.IsExtrusion ? 2 : 1;
-                for (int pass = 0; pass < passes; pass++)
-                foreach (var (built, clip) in list)
-                {
-                    if (built.Vertices is null || !built.ByLayer.TryGetValue(rangeLayer, out var ranges)) continue;
-                    var world = Matrix.Scaling(radius) * Matrix.Translation(TileGeometry.Translation(built.Bucket.Centre, radius, eye));
-                    var centre = built.Bucket.Centre.ToVector3();
-                    foreach (var r in ranges)
-                    {
-                        var (c, half, line) = r.Kind switch
-                        {
-                            RangeKind.Line => (color, width / 2, true),
-                            RangeKind.Outline => (outline, 0.0, false),
-                            _ => (color, 0.0, false),
-                        };
-                        if (c.A <= 0) continue;
-                        var kind = r.Kind switch
-                        {
-                            RangeKind.Outline => VectorRenderer.Pass.LineList,
-                            RangeKind.Extrusion => pass == 0 ? VectorRenderer.Pass.ExtrusionDepth : VectorRenderer.Pass.ExtrusionColor,
-                            _ => VectorRenderer.Pass.Triangles,
-                        };
-                        // an extrusion is lit in sRGB as GL JS lights it, then linearised in the shader
-                        var tint = r.Kind == RangeKind.Extrusion ? new Vector4((float)c.R, (float)c.G, (float)c.B, (float)c.A) : Linear(c);
-                        result.Items.Add(new VectorRenderer.Item(built.Vertices, built.Indices!, r.Start, r.Count, world, centre,
-                            tint, (float)half, line, Widen(clip), kind));
-                    }
-                }
+                VectorDrawList.AddLayer(result.Items, layer, color, width, outline, list,
+                    tile => Matrix.Scaling(radius) * Matrix.Translation(TileGeometry.Translation(tile.Bucket.Centre, radius, eye)), linearize: true);
             }
         }
         Lap(4);
@@ -253,7 +226,7 @@ internal sealed class GpuVectorTiles : IDisposable
         var layers = Enumerable.Range(0, doc.Layers.Count).Select(i => GpuStyleLayer.Of(doc, i)).Where(l => l != null).Select(l => l!).ToList();
         var bySource = new Dictionary<string, List<GpuStyleLayer>>();
         foreach (var l in layers)
-            if (l.Type != "background" && l.Layer.Source is { } s && doc.Sources.GetValueOrDefault(s) is VectorSource)
+            if (l.Type != "background" && l.Layer.Source is { } s && doc.Sources.GetValueOrDefault(s) is VectorSource or GeoJsonSource)
             {
                 if (!bySource.TryGetValue(s, out var list)) bySource[s] = list = new List<GpuStyleLayer>();
                 list.Add(l);
@@ -293,33 +266,17 @@ internal sealed class GpuVectorTiles : IDisposable
         budget -= size;
         _built++;
         _buildMs += (bucket.Ms - _buildMs) / Math.Min(_built, 50);
-        var byLayer = new Dictionary<int, List<VectorRange>>();
-        foreach (var r in bucket.Ranges)
-        {
-            if (!byLayer.TryGetValue(r.Layer, out var list)) byLayer[r.Layer] = list = new List<VectorRange>();
-            list.Add(r);
-        }
-        if (bucket.IndexCount == 0) { bucket.Release(); Set(e, Empty(bucket)); return; }
-        Set(e, Upload(device, bucket, byLayer));
-
-        static Built Empty(VectorBucket b) => new() { Bucket = b, ByLayer = new() };
+        Set(e, Upload(device, bucket));
     }
 
-    Built Upload(GraphicsDevice device, VectorBucket bucket, Dictionary<int, List<VectorRange>> byLayer)
+    static Built Empty(VectorBucket b) => GpuTile.Empty(b);
+
+    Built Upload(GraphicsDevice device, VectorBucket bucket)
     {
-        var vertices = MemoryMarshal.AsBytes(bucket.VertexSpan);
-        var indices = MemoryMarshal.AsBytes(bucket.IndexSpan);
-        var built = new Built
-        {
-            Bucket = bucket,
-            ByLayer = byLayer,
-            Vertices = Buffer.New(device, vertices, VectorVertex.Size, BufferFlags.VertexBuffer, PixelFormat.None, GraphicsResourceUsage.Immutable),
-            Indices = Buffer.New(device, indices, sizeof(uint), BufferFlags.IndexBuffer, PixelFormat.None, GraphicsResourceUsage.Immutable),
-        };
-        UploadedBytes += vertices.Length + indices.Length;
-        Uploads++;
-        bucket.Release();   // the arrays back to the pool: on the GPU now
-        return built;
+        long bytes = (long)bucket.VertexCount * VectorVertex.Size + bucket.IndexCount * 4L;
+        var tile = GpuTile.Upload(device, bucket);
+        if (tile.Vertices is not null) { UploadedBytes += bytes; Uploads++; }
+        return tile;
     }
 
     void Set(Entry e, Built built)
@@ -388,11 +345,13 @@ internal sealed class GpuVectorTiles : IDisposable
 
     // GL JS's choice: the floored zoom for the source's tile size (a 256-px globe tile at zoom z is
     // MapLibre's zoom z - 1), clamped to the source's range; overscaled beyond its maxzoom
-    internal static TileKey? VectorKey(VectorSource source, TileKey g)
+    internal static TileKey? VectorKey(VectorSource source, TileKey g) => VectorKey(source.MinZoom, source.MaxZoom, source.TileSize, g);
+
+    internal static TileKey? VectorKey(int minZoom, int maxZoom, int tileSize, TileKey g)
     {
-        int ideal = Math.Max(0, (int)Math.Floor(g.Zoom - 1 + Math.Log2(512.0 / source.TileSize)));
-        if (ideal < source.MinZoom) return null;
-        int z = Math.Min(Math.Min(ideal, source.MaxZoom), g.Zoom);
+        int ideal = Math.Max(0, (int)Math.Floor(g.Zoom - 1 + Math.Log2(512.0 / tileSize)));
+        if (ideal < minZoom) return null;
+        int z = Math.Min(Math.Min(ideal, maxZoom), g.Zoom);
         return new TileKey(z, g.X >> (g.Zoom - z), g.Y >> (g.Zoom - z));
     }
 
@@ -406,7 +365,7 @@ internal sealed class GpuVectorTiles : IDisposable
     {
         if (_backgrounds.TryGetValue(key, out var b)) { _backgrounds[key] = (b.built, _frame); return b.built; }
         var bucket = VectorBucketBuilder.BackgroundBucket(key);
-        var built = Upload(device, bucket, new() { [-1] = bucket.Ranges });
+        var built = Upload(device, bucket);
         _backgrounds[key] = (built, _frame);
         return built;
     }
@@ -419,20 +378,6 @@ internal sealed class GpuVectorTiles : IDisposable
         double s = Math.Pow(2, d.Zoom - a.Zoom);
         double u0 = d.X / s - a.X, v0 = d.Y / s - a.Y;
         return new Vector4((float)u0, (float)v0, (float)(u0 + 1 / s), (float)(v0 + 1 / s));
-    }
-
-    // neighbours clipped to the same edge each discarded some pixels on it (interpolated in float): a
-    // dotted crack along tile borders (2026-11-21). A sliver of overlap instead.
-    static Vector4 Widen(Vector4 r)
-    {
-        float e = (r.Z - r.X) * 2e-4f;
-        return new Vector4(r.X - e, r.Y - e, r.Z + e, r.W + e);
-    }
-
-    static Vector4 Linear(StyleColor c)
-    {
-        var l = new Color4((float)c.R, (float)c.G, (float)c.B, (float)c.A).ToLinear();
-        return new Vector4(l.R, l.G, l.B, l.A);
     }
 
     void Evict()

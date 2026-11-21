@@ -14,7 +14,8 @@ Guidance for Claude Code working in this repository.
    [docs/DESIGN-GPU-VECTOR.md](docs/DESIGN-GPU-VECTOR.md), its "As built" and "Next"): built and
    judged by the user the same night ("大方向完全没有问题", "我觉得还行"), 178 tests green.
    Since then: the long Updates found (a per-frame large-object-heap list), 3D buildings, a 28-byte
-   vertex. **Next: DESIGN-GPU-VECTOR.md "Next" - the GPU path under MapLibre's fixtures, then labels.**
+   vertex, MapLibre's render tests on the GPU path (97 pass offscreen in `dotnet test`).
+   **Next: DESIGN-GPU-VECTOR.md "Next" - labels.**
    Research: [docs/RESEARCH-0.1.md](docs/RESEARCH-0.1.md), [docs/RESEARCH-VECTOR.md](docs/RESEARCH-VECTOR.md).
 2. Read **[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)** — what exists and why.
 3. Read **[NOTES.md](NOTES.md)** — every failure so far, before touching the same code.
@@ -52,7 +53,7 @@ at country scale; judge every change at the lowest height.
 | `VectorTiles [Globe.Layers]` | built 2026-11-21: a MapLibre style's fills/lines/background from vector tiles, with or without a Tile Source; `Rendering` GPU (default, judged by the user moving) or Draped (seen standing still, "不太行") |
 | `ToGlobe`, `ToGlobe (Coordinate)`, `FromGlobe [Globe]` | built, 4 rungs, **absolute** — right under OrbitCamera; under GlobeCamera use GlobePositionComponent |
 
-178 tests green (incl. MapLibre v6.19.0's render tests — 164 fixtures, fetched by script). Branch `feature/camera-relative`, pushed to `github.com/rednotfound/VL.Globe`
+182 tests green (incl. MapLibre v6.19.0's render tests — 164 fixtures, fetched by script — run twice: on the drape and, offscreen on a D3D11 device of the test's own, on the GPU path). Branch `feature/camera-relative`, pushed to `github.com/rednotfound/VL.Globe`
 (public); not merged, not published. Verified on vvvv **7.4 (LTS)**; `Find-Vvvv.ps1` stays below 8.0.
 
 ## Facts this repo paid for (details in NOTES.md)

@@ -297,8 +297,8 @@ dotted cracks at tile borders, the globe shaking with the pole dragged into view
    **Left:** frames of 60–140 ms outside the node after heavy uploads (a smaller vertex should help).
 3. **3D buildings** (`fill-extrusion` for real: walls, roofs, light, depth written) — built the
    same night (DESIGN-GPU-VECTOR.md), judged by the user tilting ("确实好很多了"); then a 28-byte
-   vertex (-25% GPU memory). **Next: DESIGN-GPU-VECTOR.md "Next"** - the GPU path under MapLibre's
-   fixtures, then labels.
+   vertex (-25% GPU memory). Then MapLibre's render tests on the GPU path, offscreen in `dotnet
+   test`: 97 pass (89 non-vacuous; the drape 98/90). **Next: DESIGN-GPU-VECTOR.md "Next"** - labels.
 
 ### 5. Navigation
 

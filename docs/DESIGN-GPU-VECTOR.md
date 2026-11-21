@@ -101,11 +101,28 @@ is bound read-only, and the first build's buildings showed their far walls (the 
 -0.5..1.5, N and width half floats. Two Kyoto Station tiles 44 → 33 MB, the picture unchanged.
 The user tilted the 3D buildings: "确实好很多了".
 
+**MapLibre's render tests on the GPU path (2026-11-22): 97 of 164 pass, 89 that an empty image would
+fail** (the drape: 98 / 90), 2 ignored with reasons, the same 65 unsupported. `MapLibreGpuRenderFacts`
+renders offscreen in the test host: a D3D11 device of its own, GlobeVector.sdsl compiled by Stride's
+`EffectCompiler` from the repo (with ShaderBase/ShaderBaseStream from the Stride package), the same
+VectorBucketBuilder, VectorDrawList and `VectorRenderer.DrawFrame` the globe uses - only with the
+buckets on the Mercator plane (`VectorProjection.Mercator`), GL JS's camera (0.6435 rad), sRGB
+blending (`GvLinearize` 0) and GL's fill outline (`GlOutlines`). What the fixtures taught:
+- **Clip by the pixel, not by the line's point**: GL clips each tile's drawing with the stencil, so a
+  line's extruded edge past the square is cut and the neighbour's copy draws the rest. The vertex
+  shader now moves uv with the extrusion (a tile is 1/2^z of the world on the plane, 2π cos φ / 2^z
+  on the unit sphere). +2 fixtures; the globe looks the same.
+- **GL's fill outline** is aliased gl.LINES with alpha 1 − smoothstep of the pixel's distance to the
+  line: +9 fixtures. vvvv keeps the hardware's antialiased line the user judged.
+- **The extrusion is GL's own bytes** (k / 63, R8G8B8A8_SInt; Stride wants 4-byte elements).
+- **An edge exactly on a row of pixel centres** falls to the other side in GL (its framebuffer is y
+  up): the test camera is moved down 1/256 px (1/1024 was under the float error and did nothing).
+- GeoJSON sources are drawn by the GPU path too (geojson-vt's grid: 8192 steps a tile, maxzoom 18),
+  on the globe as well.
+
 ## Next
 
-1. MapLibre's fixtures (fill, line, fill-extrusion) rendered by the GPU path offscreen, the same
-   harness and pixelmatch as the drape's: the GPU path has no measured yardstick yet.
-2. Labels and icons (RESEARCH-VECTOR stage 4: glyph PBFs, SDF, placement and collision) - the
+1. Labels and icons (RESEARCH-VECTOR stage 4: glyph PBFs, SDF, placement and collision) - the
    largest piece left before 0.1's vector map reads like MapLibre's.
 3. 16-bit indices where a range allows, and dashes (line-dasharray) - drawn solid today.
 4. MapLibre's fixtures rendered by the GPU path offscreen, the same harness as the drape's.

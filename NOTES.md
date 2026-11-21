@@ -386,3 +386,18 @@ looked fine - "which makes one think it works". Two causes, estimated at 100 m h
   EntityRendererComponent draws; writes to it are dropped without a word. An extrusion layer now
   draws on a depth buffer of our own, a copy of the scene's (so the globe still hides what is
   behind it), with the scene's colour targets, and the scene's depth is bound back after.
+
+## 2026-11-22 — the GPU path under MapLibre's render tests
+
+- **A test can compile and run GlobeVector.sdsl with no vvvv**: `GraphicsDevice.New` headless, an
+  `EffectCompiler` over a folder holding GlobeVector + ShaderBase + ShaderBaseStream (from
+  `~\.nuget\packages\stride.graphics\4.2.1.2487\stride\Assets`), `UseFileSystem = true` with the
+  folder's ABSOLUTE path in `SourceDirectories` (a relative one: "not in the module"), and the mixin
+  given a `Name` (null: a NullReferenceException building the log file name).
+- First run 84 / 76; then 94 (GL's fill outline), 96 (clip by the pixel), 97 (the tie rule).
+- **Two guesses the fixtures refuted, each reverted**: 16-bit extrusion precision (the fix changed
+  nothing; GL's bytes were kept as the right format anyway), and a 1/1024-px nudge (below the float
+  error of the transform chain). The pixel dump (`results-gpu`, a 40-line PNG reader) settled both:
+  a whole row on exactly horizontal edges only, top one way and bottom the other - a tie rule.
+- **Stride vertex elements must be 4-byte multiples** ("VertexElementOffsetNotMultipleFour" from the
+  VectorVertex type initializer).

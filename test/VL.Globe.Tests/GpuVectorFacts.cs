@@ -169,13 +169,12 @@ public class GpuVectorFacts
     {
         Assert.Equal(VectorVertex.Size, System.Runtime.InteropServices.Marshal.SizeOf<VectorVertex>());
         Assert.Equal(VectorVertex.Size, VectorVertex.Layout.VertexStride);
-        // GL JS's extrusions wrap at 127/63; round caps and walls are unit vectors
-        foreach (var e in new[] { new global::Stride.Core.Mathematics.Vector2(127 / 63f, -128 / 63f), new(0.6f, -0.8f), new(0, 0) })
-        {
-            var v = new VectorVertex { Extrude = e };
-            Assert.InRange(v.Extrude.X - e.X, -1.5e-4f, 1.5e-4f);
-            Assert.InRange(v.Extrude.Y - e.Y, -1.5e-4f, 1.5e-4f);
-        }
+        // GL JS's extrusion bytes, exactly (they wrap at 127/63); a unit vector to 1/126
+        foreach (var e in new[] { new global::Stride.Core.Mathematics.Vector2(127 / 63f, -128 / 63f), new(5 / 63f, -40 / 63f), new(0, 0) })
+            Assert.Equal(e, new VectorVertex { Extrude = e }.Extrude);
+        var unit = new VectorVertex { Extrude = new(0.6f, -0.8f) }.Extrude;
+        Assert.InRange(unit.X - 0.6f, -1 / 126f, 1 / 126f);
+        Assert.InRange(unit.Y + 0.8f, -1 / 126f, 1 / 126f);
         // uv from the buffer left of the square to the buffer right of it, to 1/32768 of two tiles
         foreach (var u in new[] { -0.2f, 0f, 0.5f, 1f, 1.2f })
         {

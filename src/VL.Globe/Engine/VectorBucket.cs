@@ -19,27 +19,29 @@ namespace VL.Globe.Engine;
 /// <summary>One vertex; 28 bytes, as GlobeVector.sdsl reads it.</summary>
 // Packed as GL JS packs its buckets (2026-11-21: 40 bytes, and 3D buildings doubled a street-level
 // tile to 22 MB): only the position needs 32-bit floats - it is on the unit sphere, where a z14 tile
-// is 0.0004 wide. The extrusion is a 16-bit signed normalised pair holding e / 4 (GL JS wraps its
-// extrusion bytes at about 2; walls and round caps are unit vectors); uv a 16-bit unsigned pair
-// over -0.5..1.5 (a 512-px tile's square to 0.016 px, the buffer around it included); N and the
-// width half floats.
+// is 0.0004 wide. The extrusion is GL JS's own: two signed bytes k, e = k / 63, exact for a line
+// (line_bucket stores exactly these); a wall's normal and a round cap's slice to 1/63. (As 16-bit
+// e / 4 it was within 6e-5, enough to move a bevel's flat edge across a row of pixel centres:
+// line-miter-limit/default, 2026-11-22.) uv is a 16-bit unsigned pair over -0.5..1.5 (a 512-px
+// tile's square to 0.016 px, the buffer around it included); N and the width half floats.
 [StructLayout(LayoutKind.Sequential, Pack = 2)]
 internal struct VectorVertex
 {
     public Vector3 Position;   // on the unit sphere, relative to the bucket's centre
-    short _ex, _ey;            // the extrusion / 4, snorm
+    sbyte _ex, _ey;            // the extrusion x 63, rounded as GL JS rounds it
+    short _spare;              // Stride wants every element a multiple of 4 bytes: R8G8B8A8_SInt, .xy read
     ushort _u, _v;             // (uv + 0.5) / 2, unorm
     System.Half _n, _width;
     public uint Color;         // the feature's colour, straight sRGB bytes R G B A, where it depends on the feature; else white
 
     public const int Size = 28;
-    const float ExtrudeRange = 4, UvLow = -0.5f, UvSpan = 2;
+    const float ExtrudeScale = 63, UvLow = -0.5f, UvSpan = 2;
 
     /// <summary>GL JS's extrusion in units of the outset, in the tile's plane (x east, y south); a wall's outward normal.</summary>
     public Vector2 Extrude
     {
-        readonly get => new(_ex / 32767f * ExtrudeRange, _ey / 32767f * ExtrudeRange);
-        set { _ex = Snorm(value.X / ExtrudeRange); _ey = Snorm(value.Y / ExtrudeRange); }
+        readonly get => new(_ex / ExtrudeScale, _ey / ExtrudeScale);
+        set { _ex = Byte(value.X); _ey = Byte(value.Y); }
     }
 
     /// <summary>In the tile's square, 0..1: the shader clips to it.</summary>
@@ -55,12 +57,12 @@ internal struct VectorVertex
     /// <summary>The feature's line width in px where it depends on the feature, else 1; a building's height.</summary>
     public float Width { readonly get => (float)_width; set => _width = (System.Half)value; }
 
-    static short Snorm(float x) => (short)Math.Round(Math.Clamp(x, -1f, 1f) * 32767f);
+    static sbyte Byte(float x) => (sbyte)Math.Clamp((int)Math.Floor(x * ExtrudeScale + 0.5f), -128, 127);
     static ushort Unorm(float x) => (ushort)Math.Round(Math.Clamp(x, 0f, 1f) * 65535f);
 
     public static readonly VertexDeclaration Layout = new(
         VertexElement.Position<Vector3>(),
-        new VertexElement("TEXCOORD", 0, PixelFormat.R16G16_SNorm, 12),
+        new VertexElement("TEXCOORD", 0, PixelFormat.R8G8B8A8_SInt, 12),
         new VertexElement("TEXCOORD", 1, PixelFormat.R16G16_UNorm, 16),
         new VertexElement("TEXCOORD", 2, PixelFormat.R16G16_Float, 20),
         new VertexElement("COLOR", 0, PixelFormat.R8G8B8A8_UNorm, 24));
@@ -72,6 +74,9 @@ internal enum RangeKind { Fill, Outline, Line, Background, Extrusion }
 
 /// <summary>A layer's part of a bucket: <see cref="Count"/> indices from <see cref="Start"/>.</summary>
 internal readonly record struct VectorRange(int Layer, RangeKind Kind, int Start, int Count);
+
+/// <summary>Where a bucket's vertices go: on the unit sphere (the globe), or on the Web Mercator plane (MapLibre's render tests).</summary>
+internal enum VectorProjection { Sphere, Mercator }
 
 internal sealed class VectorBucket
 {
@@ -164,21 +169,34 @@ internal static class VectorBucketBuilder
     /// Builds the bucket of one vector tile for the layers of one source; null when the tile is not here
     /// (<paramref name="complete"/> false then, the URL in <paramref name="missing"/>) or has no data.
     /// </summary>
-    public static VectorBucket? Build(MapStyleDocument style, VectorSource source, IReadOnlyList<GpuStyleLayer> layers, bool withBackground,
-        TileKey key, bool fetch, ICollection<string>? missing, out bool complete)
+    public static VectorBucket? Build(MapStyleDocument style, StyleSource source, IReadOnlyList<GpuStyleLayer> layers, bool withBackground,
+        TileKey key, bool fetch, ICollection<string>? missing, out bool complete, VectorProjection projection = VectorProjection.Sphere)
     {
         complete = true;
         var clock = Stopwatch.StartNew();
-        var data = style.Tile(source, key, ref complete, fetch, missing);
-        if (data is null && !complete) return null;
+        Dictionary<string, List<StyleFeature>>? data = null;
+        List<StyleFeature>? geo = null;
+        if (source is VectorSource vector)
+        {
+            data = style.Tile(vector, key, ref complete, fetch, missing);
+            if (data is null && !complete) return null;
+        }
+        else if (source is GeoJsonSource geoJson)
+        {
+            // the whole collection, in world coordinates; what lies outside the tile is clipped by the
+            // shader. GL JS tiles GeoJSON with geojson-vt, which rounds to 8192 steps a tile: so here
+            geo = style.Features(geoJson, ref complete);
+            if (!complete) return null;
+        }
 
-        var b = new Builder(key);
+        var b = new Builder(key, projection, grid: source is GeoJsonSource);
         var ctx = new StyleContext { Zoom = key.Zoom, GlobalState = style.GlobalState };
         if (withBackground) b.Background();
         foreach (var layer in layers)
         {
             if (layer.Type == "background") continue;
-            if (data is null || layer.Layer.SourceLayer is not { } sl || !data.TryGetValue(sl, out var features)) continue;
+            List<StyleFeature>? features = geo;
+            if (features is null && (data is null || layer.Layer.SourceLayer is not { } sl || !data.TryGetValue(sl, out features))) continue;
             try { b.Layer(layer, features, ctx); }
             catch (StyleUnsupportedException e) when (style.Lenient) { style.Drop(layer.Layer.Id, e.Message); b.Rewind(); }
         }
@@ -196,9 +214,9 @@ internal static class VectorBucketBuilder
     }
 
     /// <summary>The background grid alone: it needs no data, so it is drawn at once while the tile's data is on its way.</summary>
-    public static VectorBucket BackgroundBucket(TileKey key)
+    public static VectorBucket BackgroundBucket(TileKey key, VectorProjection projection = VectorProjection.Sphere)
     {
-        var b = new Builder(key);
+        var b = new Builder(key, projection);
         b.Background();
         return b.Finish();
     }
@@ -219,25 +237,30 @@ internal static class VectorBucketBuilder
         int _layerVertexStart, _layerIndexStart, _layerRangeStart;
         readonly GeometryFactory _factory = new();
         readonly List<ExtrudedVertex> _line = new();
-        // fill-extrusion: the height (in radii) every vertex is raised by, and the N a roof carries
+        // fill-extrusion: the height (in metres) every vertex is raised by, and the N a roof carries
         double _raise;
         float _fillN;
         readonly Dictionary<ExtrudedVertex, uint> _seen = new();
 
-        public Builder(TileKey key)
+        readonly bool _flat, _grid;
+
+        public Builder(TileKey key, VectorProjection projection = VectorProjection.Sphere, bool grid = false)
         {
             _key = key;
+            _flat = projection == VectorProjection.Mercator;
+            _grid = grid;
             _vertices.Clear();
             _indices.Clear();
             _n = 1 << key.Zoom;
-            _centre = TileGeometry.Centre(key);
+            // the plane: x east, y north (minus Mercator's y), in world units (the world is 1 wide)
+            _centre = _flat ? new D3((key.X + 0.5) / _n, -(key.Y + 0.5) / _n, 0) : TileGeometry.Centre(key);
             // An edge's chord must sag less than the shader's lift (0.0015 of the distance to the eye)
             // at the distance a tile of this zoom is seen from: an eighth of a tile, as the globe's own
             // tiles are cut, and 2 degrees at most for the coarsest. Cut by 2 degrees only, a zoom-8
             // ocean square was two flat triangles sagging 1 km, seen from 300 km where the lift is
             // 450 m: discs of background in the sea (the user, 2026-11-21). From zoom 11 on a whole
             // tile sags under 2 m and nothing is cut.
-            _maxSegment = key.Zoom > 10 ? double.PositiveInfinity : Math.Min(Extent / 8, 2 * Extent * _n / 360.0);
+            _maxSegment = key.Zoom > 10 || _flat ? double.PositiveInfinity : Math.Min(Extent / 8, 2 * Extent * _n / 360.0);
         }
 
         public void Rewind()
@@ -353,8 +376,7 @@ internal static class VectorBucketBuilder
         // vertex: clamp((top + base) * sqrt(height / 150), 0.84, 1) with the default light intensity.
         void Extrusion(StyleFeature f, uint color, double height, double floor)
         {
-            const double EarthRadius = 6378137.0;
-            _raise = height / EarthRadius; _fillN = 1;
+            _raise = height; _fillN = 1;
             Fill(f, color);
             _raise = 0; _fillN = 0;
             if (height <= floor) return;
@@ -367,7 +389,7 @@ internal static class VectorBucketBuilder
                     pts.Clear();
                     foreach (var (x, y) in polygon[r])
                     {
-                        var c = ((x * _n - _key.X) * Extent, (y * _n - _key.Y) * Extent);
+                        var c = Local(x, y);
                         if (pts.Count == 0 || pts[^1] != c) pts.Add(c);
                     }
                     if (pts.Count > 1 && pts[0] == pts[^1]) pts.RemoveAt(pts.Count - 1);
@@ -384,10 +406,10 @@ internal static class VectorBucketBuilder
                         if (len == 0) continue;
                         float nx = (float)(side * dy / len), ny = (float)(side * -dx / len);
                         uint i0 = (uint)_vertices.Count;
-                        _raise = floor / EarthRadius;
+                        _raise = floor;
                         _vertices.Add(Vertex(a.X, a.Y, nx, ny, bottomN, (float)height, color));
                         _vertices.Add(Vertex(b.X, b.Y, nx, ny, bottomN, (float)height, color));
-                        _raise = height / EarthRadius;
+                        _raise = height;
                         _vertices.Add(Vertex(a.X, a.Y, nx, ny, topN, (float)height, color));
                         _vertices.Add(Vertex(b.X, b.Y, nx, ny, topN, (float)height, color));
                         _indices.Add(i0); _indices.Add(i0 + 1); _indices.Add(i0 + 2);
@@ -433,7 +455,7 @@ internal static class VectorBucketBuilder
             pts.Clear();
             foreach (var (x, y) in ring)
             {
-                var c = ((x * _n - _key.X) * Extent, (y * _n - _key.Y) * Extent);
+                var c = Local(x, y);
                 if (pts.Count == 0 || pts[^1] != c) pts.Add(c);
             }
             if (pts.Count > 1 && pts[0] == pts[^1]) pts.RemoveAt(pts.Count - 1);
@@ -507,7 +529,7 @@ internal static class VectorBucketBuilder
             var cs = new List<Coordinate>(ring.Length + 1);
             foreach (var (x, y) in ring)
             {
-                var c = new Coordinate((x * _n - _key.X) * Extent, (y * _n - _key.Y) * Extent);
+                var (cx, cy) = Local(x, y); var c = new Coordinate(cx, cy);
                 if (cs.Count == 0 || !cs[^1].Equals2D(c)) cs.Add(c);
             }
             if (cs.Count > 1 && cs[0].Equals2D(cs[^1])) cs.RemoveAt(cs.Count - 1);
@@ -553,7 +575,7 @@ internal static class VectorBucketBuilder
                     pts.Clear();
                     for (int k = 0; k < ring.Length; k++)
                     {
-                        var p = ((ring[k].X * _n - _key.X) * Extent, (ring[k].Y * _n - _key.Y) * Extent);
+                        var p = Local(ring[k].X, ring[k].Y);
                         if (pts.Count > 0)
                         {
                             var q = pts[^1];
@@ -580,7 +602,7 @@ internal static class VectorBucketBuilder
                     points.Clear();
                     for (int k = 0; k < line.Length; k++)
                     {
-                        var p = ((line[k].X * _n - _key.X) * Extent, (line[k].Y * _n - _key.Y) * Extent);
+                        var p = Local(line[k].X, line[k].Y);
                         if (k > 0)
                         {
                             // long segments get points between, so the line bends with the sphere
@@ -607,13 +629,31 @@ internal static class VectorBucketBuilder
                 }
         }
 
+        // world (Mercator 0..1) to the tile's own units, 512 a side; GeoJSON on geojson-vt's grid
+        (double X, double Y) Local(double x, double y)
+        {
+            double lx = (x * _n - _key.X) * Extent, ly = (y * _n - _key.Y) * Extent;
+            return _grid ? (Math.Round(lx * 16) / 16, Math.Round(ly * 16) / 16) : (lx, ly);
+        }
+
+        const double EarthRadius = 6378137.0;
+
         VectorVertex Vertex(double lx, double ly, float qx, float qy, float n, float width, uint color)
         {
             double wx = (_key.X + lx / Extent) / _n, wy = (_key.Y + ly / Extent) / _n;
-            var (x, y, z) = TileGeometry.OnSphere(TileGeometry.LongitudeOf(wx), TileGeometry.LatitudeOf(Math.Clamp(wy, 0, 1)));
+            double latitude = TileGeometry.LatitudeOf(Math.Clamp(wy, 0, 1));
+            D3 position;
+            if (_flat)
+                // a metre is 1 / (2 pi R cos(latitude)) of the Mercator world, as GL JS raises extrusions
+                position = new D3(wx, -wy, _raise / (2 * Math.PI * EarthRadius * Math.Cos(latitude * Math.PI / 180)));
+            else
+            {
+                var (x, y, z) = TileGeometry.OnSphere(TileGeometry.LongitudeOf(wx), latitude);
+                position = new D3(x, y, z) * (1 + _raise / EarthRadius);
+            }
             return new VectorVertex
             {
-                Position = (new D3(x, y, z) * (1 + _raise) - _centre).ToVector3(),
+                Position = (position - _centre).ToVector3(),
                 Extrude = new Vector2(qx, qy),
                 Uv = new Vector2((float)(lx / Extent), (float)(ly / Extent)),
                 N = n,
