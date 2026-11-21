@@ -24,6 +24,20 @@ internal static class TileOverlay
     /// <summary>Every layer's geometry inside <paramref name="tile"/>'s square, drawn in order on one transparent size x size image; null when nothing falls inside.</summary>
     public static byte[]? Rasterize(TileKey tile, IReadOnlyList<(IReadOnlyList<Geometry> geometries, Style style)> layers, int size)
     {
+        var info = new SKImageInfo(size, size, SKColorType.Rgba8888, SKAlphaType.Unpremul);
+        using var bitmap = new SKBitmap(info);
+        using var canvas = new SKCanvas(bitmap);
+        canvas.Clear(SKColors.Transparent);
+        bool any = false;
+        foreach (var (geometries, style) in layers) any |= DrawOn(canvas, tile, geometries, style, size);
+        if (!any) return null;
+        canvas.Flush();
+        return bitmap.Bytes;
+    }
+
+    /// <summary>One layer's geometry inside <paramref name="tile"/>'s square, drawn on a size x size canvas; false when nothing falls inside.</summary>
+    public static bool DrawOn(SKCanvas canvas, TileKey tile, IReadOnlyList<Geometry> geometries, Style style, int size)
+    {
         double n = tile.TilesPerSide;
         // the tile's lon/lat box, grown by a line width so a line just outside still draws its edge
         double west = TileGeometry.LongitudeOf(tile.X / n), east = TileGeometry.LongitudeOf((tile.X + 1) / n);
@@ -33,12 +47,7 @@ internal static class TileOverlay
             (float)(((c.X + 180) / 360 * n - tile.X) * size),
             (float)((TileGeometry.MercatorY(c.Y) * n - tile.Y) * size));
 
-        var info = new SKImageInfo(size, size, SKColorType.Rgba8888, SKAlphaType.Unpremul);
-        using var bitmap = new SKBitmap(info);
-        using var canvas = new SKCanvas(bitmap);
-        canvas.Clear(SKColors.Transparent);
         bool any = false;
-        foreach (var (geometries, style) in layers)
         {
             double pad = (east - west) * Math.Max(style.Width, 1) * 2 / size;
             var box = new Envelope(west - pad, east + pad, south - pad, north + pad);
@@ -79,9 +88,7 @@ internal static class TileOverlay
                 }
             }
         }
-        if (!any) return null;
-        canvas.Flush();
-        return bitmap.Bytes;
+        return any;
     }
 
     static void AddRing(SKPath path, Coordinate[] ring, Func<Coordinate, SKPoint> pixel)

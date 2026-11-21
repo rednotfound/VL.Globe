@@ -319,3 +319,8 @@ looked fine - "which makes one think it works". Two causes, estimated at 100 m h
   (0.19 % at zoom −1); reproducing both brought it to 0.
 - **A crash in one fixture ended the run** (an invalid inline GeoJSON). The harness records a
   throw as that fixture's failure; invalid GeoJSON now draws nothing, as in GL JS.
+- **NTS has its own `GeometryOverlay`** (NetTopologySuite.Geometries): an overlay record of that name
+  in VL.Globe.Engine was ambiguous in GlobeNode. Ours is `ShapesOverlay`.
+- **Ignoring a property can draw a different layer.** A lenient parse that only drops `fill-pattern`
+  draws the layer in the default black; one that drops `line-gap-width` draws a road casing as a
+  solid line. Those properties leave the whole layer out.

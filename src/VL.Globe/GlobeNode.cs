@@ -59,8 +59,13 @@ public sealed class GlobeNode : IDisposable
         public bool FadeOut;             // false: own image fades IN over the ancestor; true: fades OUT to it
         public double FadeStart;
         public int LastUsed;
-        public Texture? Overlay;         // the vector layers draped into this tile (TileOverlay)
-        public int OverlayVersion = -1;
+        public Texture? Overlay;         // the vector layers draped into this tile (OverlayRenderer)
+        public int OverlayVersion = -1;  // the layers' version the overlay shows
+        public int OverlayStamp;         // bumped on every new overlay image, for the stand-ins borrowing it
+        public bool OverlayIncomplete;   // drawn while a vector tile it needs was still on its way
+        public int OverlayArrivals;      // the vector tiles' arrival count it was drawn with
+        public Task<(byte[]? bytes, bool complete)>? OverlayJob;
+        public int OverlayJobVersion, OverlayJobArrivals;
         public void Dispose() { Texture.Dispose(); Overlay?.Dispose(); Vertices.Dispose(); Indices.Dispose(); }
     }
 
@@ -116,11 +121,16 @@ public sealed class GlobeNode : IDisposable
     }
     readonly Dictionary<TileKey, StandIn> _standIns = new();
 
-    // Vector layers draped into the tiles (ROADMAP 0.1 items 3-4).
+    // Vector layers draped into the tiles (ROADMAP 0.1 items 3-4, 4c). Overlays are rendered on worker
+    // threads (a street-level vector tile takes milliseconds) and uploaded here, at most
+    // OverlaysPerFrame a frame; an overlay drawn while a vector tile was missing is drawn again
+    // when tiles have arrived since.
     long _signature;
-    List<(IReadOnlyList<Geometry> geometries, TileOverlay.Style style)> _layers = new();
+    List<OverlayLayer> _layers = new();
+    List<GlobeLayer> _vectorLayers = new();
     int _overlayVersion;
     const int OverlaysPerFrame = 6;
+    const int OverlayJobs = 4;
     // A replaced overlay texture may still be sampled by a fade or a stand-in's material for a while;
     // it is disposed this many frames later instead of at once.
     readonly List<(Texture texture, int frame)> _retired = new();
@@ -340,7 +350,7 @@ public sealed class GlobeNode : IDisposable
     void UpdateOverlays(IEnumerable<GlobeLayer>? layers)
     {
         foreach (var r in _retired.Where(r => _frame - r.frame > 60).ToList()) { r.texture.Dispose(); _retired.Remove(r); }
-        var list = layers?.Where(l => l is { Enabled: true } && l.Geometries.Count > 0).Select(l => l!).ToList() ?? new List<GlobeLayer>();
+        var list = layers?.Where(l => l is { Enabled: true } && l.HasContent).Select(l => l!).ToList() ?? new List<GlobeLayer>();
         var h = new HashCode();
         h.Add(list.Count);
         foreach (var l in list) h.Add(l.Signature());
@@ -348,27 +358,79 @@ public sealed class GlobeNode : IDisposable
         if (signature != _signature)
         {
             _signature = signature;
-            _layers = list.Select(l => (l.Geometries, new TileOverlay.Style(ToSk(l.Style.LineColor), l.Style.LineWidth, ToSk(l.Style.FillColor)))).ToList();
+            _layers = list.Select(l => l.Vector?.Document is { } doc
+                ? (OverlayLayer)new StyleOverlay(doc)
+                : new ShapesOverlay(l.Geometries, new TileOverlay.Style(ToSk(l.Style.LineColor), l.Style.LineWidth, ToSk(l.Style.FillColor)))).ToList();
+            _vectorLayers = list.Where(l => l.Vector != null).ToList();
             _overlayVersion++;
         }
         if (_device is null) return;
+        int arrivals = 0;
+        foreach (var l in _vectorLayers) arrivals += l.Vector!.Arrivals;
+
+        // finished jobs: upload, nearest first, a few a frame
         int budget = OverlaysPerFrame;
-        foreach (var t in DrawSet.NearestFirst(_shown.ToList(), _lastEye, _radius))
+        int running = 0;
+        var order = DrawSet.NearestFirst(_shown.ToList(), _lastEye, _radius);
+        foreach (var t in order)
         {
             var s = _loaded[t];
-            if (s.OverlayVersion == _overlayVersion) continue;
-            if (_layers.Count == 0 && s.Overlay is null) { s.OverlayVersion = _overlayVersion; continue; }   // nothing to drape, nothing to undo
-            if (budget-- == 0) break;
-            var bytes = _layers.Count == 0 ? null : TileOverlay.Rasterize(t, _layers, 256);
-            if (s.Overlay is { } old) _retired.Add((old, _frame));
-            s.Overlay = bytes is null ? null : FromLevels(_device, bytes, 256, 256, PixelFormat.R8G8B8A8_UNorm_SRgb, srgb: true, straightAlpha: true);
-            s.OverlayVersion = _overlayVersion;
-            s.Plain = Material.New(_device, new MaterialDescriptor
+            if (s.OverlayJob is not { } job) continue;
+            if (!job.IsCompleted) { running++; continue; }
+            if (budget == 0) continue;
+            s.OverlayJob = null;
+            if (job.IsFaulted)
             {
-                Attributes = { Emissive = new MaterialEmissiveMapFeature(Look(s, Vector2.One, Vector2.Zero)), CullMode = CullMode.None },
-            });
-            if (s.Fading is null) s.Model.Materials[0] = s.Plain;
+                _logger.LogWarning(job.Exception, "Globe: the overlay of {Tile} failed", t);
+                s.OverlayVersion = s.OverlayJobVersion; s.OverlayIncomplete = false;   // not retried in a loop
+                continue;
+            }
+            if (s.OverlayJobVersion != _overlayVersion) continue;   // the layers changed meanwhile
+            budget--;
+            var (bytes, complete) = job.Result;
+            SetOverlay(s, bytes);
+            s.OverlayVersion = s.OverlayJobVersion;
+            s.OverlayIncomplete = !complete;
+            s.OverlayArrivals = s.OverlayJobArrivals;
         }
+
+        // new jobs, nearest first
+        foreach (var t in order)
+        {
+            if (running >= OverlayJobs) break;
+            var s = _loaded[t];
+            if (s.OverlayJob != null) continue;
+            bool stale = s.OverlayVersion != _overlayVersion || (s.OverlayIncomplete && s.OverlayArrivals != arrivals);
+            if (!stale) continue;
+            if (_layers.Count == 0)
+            {
+                if (s.Overlay != null) SetOverlay(s, null);   // nothing to drape: undo
+                s.OverlayVersion = _overlayVersion; s.OverlayIncomplete = false;
+                continue;
+            }
+            var snapshot = _layers;
+            var key = t;
+            s.OverlayJobVersion = _overlayVersion;
+            s.OverlayJobArrivals = arrivals;
+            s.OverlayJob = Task.Run(() =>
+            {
+                var bytes = OverlayRenderer.Render(key, snapshot, 256, out bool complete);
+                return (bytes, complete);
+            });
+            running++;
+        }
+    }
+
+    void SetOverlay(Slot s, byte[]? bytes)
+    {
+        if (s.Overlay is { } old) _retired.Add((old, _frame));
+        s.Overlay = bytes is null ? null : FromLevels(_device!, bytes, 256, 256, PixelFormat.R8G8B8A8_UNorm_SRgb, srgb: true, straightAlpha: true);
+        s.OverlayStamp++;
+        s.Plain = Material.New(_device!, new MaterialDescriptor
+        {
+            Attributes = { Emissive = new MaterialEmissiveMapFeature(Look(s, Vector2.One, Vector2.Zero)), CullMode = CullMode.None },
+        });
+        if (s.Fading is null) s.Model.Materials[0] = s.Plain;
     }
 
     static IComputeColor Sampled(Texture texture, Vector2 scale, Vector2 offset) => new ComputeTextureColor(texture)
@@ -563,15 +625,15 @@ public sealed class GlobeNode : IDisposable
             {
                 var (vb, ib, mesh, centre) = BuildMesh(_device, square);
                 var (entity, model) = MakeEntity(square, mesh, StandInMaterial(square, fromKey, from), centre);
-                si = new StandIn { Entity = entity, Vertices = vb, Indices = ib, Centre = centre, Model = model, From = fromKey, FromOverlayVersion = from.OverlayVersion };
+                si = new StandIn { Entity = entity, Vertices = vb, Indices = ib, Centre = centre, Model = model, From = fromKey, FromOverlayVersion = from.OverlayStamp };
                 _standIns[square] = si;
                 _root.Transform.Children.Add(entity.Transform);
             }
-            else if (si.From != fromKey || si.FromOverlayVersion != from.OverlayVersion)
+            else if (si.From != fromKey || si.FromOverlayVersion != from.OverlayStamp)
             {
                 si.Model.Materials[0] = StandInMaterial(square, fromKey, from);   // a nearer ancestor arrived, or its overlay changed
                 si.From = fromKey;
-                si.FromOverlayVersion = from.OverlayVersion;
+                si.FromOverlayVersion = from.OverlayStamp;
             }
         }
         foreach (var square in _standIns.Keys.Where(k => !keep.Contains(k)).ToList())

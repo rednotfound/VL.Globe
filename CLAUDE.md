@@ -9,7 +9,8 @@ Guidance for Claude Code working in this repository.
    judged; vectors are **draped** (item 3, decided 2026-11-21); Geometry/FeatureLayer/VectorStyle exist
    (item 4); **4b** is done — MapLibre's render tests run in `dotnet test` (48/48 supported pass; fetch
    the fixtures first with `tools\Fetch-MapLibreFixtures.ps1`). **4c** step 1 is done — the painter
-   reads MVT (98/164 fixtures pass, 90 counted); next is its node.
+   reads MVT (98/164 fixtures pass, 90 counted); step 2, the node `VectorTiles [Globe.Layers]`, is
+   built and passes rungs 1-3 — **rung 4 in vvvv is next** (`HowTo Draw vector tiles`).
    Research: [docs/RESEARCH-0.1.md](docs/RESEARCH-0.1.md), [docs/RESEARCH-VECTOR.md](docs/RESEARCH-VECTOR.md).
 2. Read **[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)** — what exists and why.
 3. Read **[NOTES.md](NOTES.md)** — every failure so far, before touching the same code.
@@ -44,9 +45,10 @@ at country scale; judge every change at the lowest height.
 | `GlobePositionComponent [Globe]` | stands an entity on the globe, placed at draw time; user-judged |
 | `ScreenToGlobe`, `GlobeToScreen`, `GlobeViewInfo [Globe]` | built; user-judged |
 | `Geometry`, `FeatureLayer [Globe.Layers]`, `VectorStyle [Globe.Styles]` | built, draped into the tiles; seen in vvvv |
+| `VectorTiles [Globe.Layers]` | built 2026-11-21: a MapLibre style's fills/lines/background draped from vector tiles; rungs 1-3, **not yet seen in vvvv** |
 | `ToGlobe`, `ToGlobe (Coordinate)`, `FromGlobe [Globe]` | built, 4 rungs, **absolute** — right under OrbitCamera; under GlobeCamera use GlobePositionComponent |
 
-155 tests green (incl. MapLibre v6.19.0's render tests — 164 fixtures, fetched by script). Branch `feature/camera-relative`, pushed to `github.com/rednotfound/VL.Globe`
+160 tests green (incl. MapLibre v6.19.0's render tests — 164 fixtures, fetched by script). Branch `feature/camera-relative`, pushed to `github.com/rednotfound/VL.Globe`
 (public); not merged, not published. Verified on vvvv **7.4 (LTS)**; `Find-Vvvv.ps1` stays below 8.0.
 
 ## Facts this repo paid for (details in NOTES.md)

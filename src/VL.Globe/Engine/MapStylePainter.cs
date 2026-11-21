@@ -75,6 +75,7 @@ internal sealed class VectorSource : StyleSource
     public string[] Tiles = Array.Empty<string>();
     public int MinZoom, MaxZoom = 22, TileSize = 512;
     public bool Tms;
+    public string Attribution = "";
 
     public string Url(TileKey t)
     {
@@ -87,6 +88,12 @@ internal sealed class VectorSource : StyleSource
 }
 
 /// <summary>A parsed style: its layers, its sources, the camera of a render test.</summary>
+/// <remarks>
+/// Strict (the render tests): anything outside the subset throws. Lenient (a real style on the
+/// globe): an unsupported source or layer is left out, an unsupported property is ignored, a layer
+/// that throws while drawing is dropped - each named in <see cref="Skipped"/>. Drawing may run on
+/// several threads at once: the caches are locked.
+/// </remarks>
 internal sealed class MapStyleDocument
 {
     public sealed record Layer(string Id, string Type, string? Source, string? SourceLayer, JsonElement? Filter,
@@ -96,41 +103,82 @@ internal sealed class MapStyleDocument
     public Dictionary<string, StyleSource> Sources = new();
     public Dictionary<string, JsonElement> GlobalState = new();
     public double CenterLon, CenterLat, Zoom;
+    public bool Lenient;
 
-    /// <summary>Fetches a resource (a vector tile, GeoJSON data) by URL; null when it does not exist. Set by the host.</summary>
+    /// <summary>What a lenient parse or draw left out, and why: "layer id: reason".</summary>
+    public IReadOnlyCollection<string> Skipped { get { lock (_skipped) return _skipped.ToList(); } }
+    readonly HashSet<string> _skipped = new();
+    readonly HashSet<string> _dropped = new();   // layers that threw while drawing
+
+    /// <summary>Fetches a resource (a vector tile, GeoJSON data) by URL; null when it does not exist or is not here yet. Set by the host.</summary>
     public Func<string, byte[]?>? Load;
-    readonly Dictionary<(string, TileKey), Dictionary<string, List<StyleFeature>>?> _tiles = new();
+    /// <summary>True while a resource Load returned null for is still on its way. Set by the host.</summary>
+    public Func<string, bool>? Pending;
 
-    /// <summary>A vector tile's layers, decoded once; null when it cannot be had.</summary>
-    public Dictionary<string, List<StyleFeature>>? Tile(VectorSource source, TileKey key)
+    // decoded tiles, the most recently used last; a miss that is pending is not remembered
+    const int TileCacheSize = 256;
+    readonly Dictionary<(string, TileKey), LinkedListNode<((string, TileKey) key, Dictionary<string, List<StyleFeature>>? layers)>> _tiles = new();
+    readonly LinkedList<((string, TileKey) key, Dictionary<string, List<StyleFeature>>? layers)> _lru = new();
+
+    /// <summary>A vector tile's layers, decoded once; null when it cannot be had, and <paramref name="complete"/> false when it may still come.</summary>
+    public Dictionary<string, List<StyleFeature>>? Tile(VectorSource source, TileKey key, ref bool complete)
     {
         var url = source.Url(key);
-        // keyed by tile too: a template without {z}/{x}/{y} serves one file for every tile
-        if (_tiles.TryGetValue((url, key), out var layers)) return layers;
+        var k = (url, key);   // keyed by tile too: a template without {z}/{x}/{y} serves one file for every tile
+        lock (_tiles)
+        {
+            if (_tiles.TryGetValue(k, out var node)) { _lru.Remove(node); _lru.AddLast(node); return node.Value.layers; }
+        }
         var bytes = Load?.Invoke(url);
-        return _tiles[(url, key)] = bytes is null ? null : VectorTile.Decode(bytes, key);
+        if (bytes is null && Pending?.Invoke(url) == true) { complete = false; return null; }
+        Dictionary<string, List<StyleFeature>>? layers = null;
+        if (bytes != null)
+        {
+            try { layers = VectorTile.Decode(bytes, key); }
+            catch (Exception e) when (e is System.IO.InvalidDataException or ArgumentException or IndexOutOfRangeException)
+            {
+                Skip($"tile {url}: {e.Message}");
+            }
+        }
+        lock (_tiles)
+        {
+            if (!_tiles.ContainsKey(k))
+            {
+                _tiles[k] = _lru.AddLast((k, layers));
+                if (_lru.Count > TileCacheSize) { _tiles.Remove(_lru.First!.Value.key); _lru.RemoveFirst(); }
+            }
+        }
+        return layers;
     }
 
     /// <summary>A GeoJSON source's features, loaded once; unreadable or invalid data draws nothing, as in GL JS.</summary>
-    public List<StyleFeature> Features(GeoJsonSource g)
+    public List<StyleFeature> Features(GeoJsonSource g, ref bool complete)
     {
-        if (g.Features != null) return g.Features;
-        var features = new List<StyleFeature>();
-        var bytes = g.Url is null ? null : Load?.Invoke(g.Url);
-        if (bytes != null)
+        lock (g)
         {
-            try
+            if (g.Features != null) return g.Features;
+            var bytes = g.Url is null ? null : Load?.Invoke(g.Url);
+            if (bytes is null && g.Url != null && Pending?.Invoke(g.Url) == true) { complete = false; return new List<StyleFeature>(); }
+            var features = new List<StyleFeature>();
+            if (bytes != null)
             {
-                using var json = JsonDocument.Parse(bytes);
-                GeoJson.Read(json.RootElement, features);
+                try
+                {
+                    using var json = JsonDocument.Parse(bytes);
+                    GeoJson.Read(json.RootElement, features);
+                }
+                catch (Exception e) when (e is JsonException or KeyNotFoundException or InvalidOperationException or IndexOutOfRangeException)
+                {
+                    features.Clear();
+                }
             }
-            catch (Exception e) when (e is JsonException or KeyNotFoundException or InvalidOperationException or IndexOutOfRangeException)
-            {
-                features.Clear();
-            }
+            return g.Features = features;
         }
-        return g.Features = features;
     }
+
+    internal void Skip(string what) { lock (_skipped) _skipped.Add(what); }
+    internal bool IsDropped(string layerId) { lock (_skipped) return _dropped.Contains(layerId); }
+    internal void Drop(string layerId, string why) { lock (_skipped) { _dropped.Add(layerId); _skipped.Add($"{layerId}: {why}"); } }
 
     static readonly HashSet<string> RootKeys = new() { "version", "name", "metadata", "center", "zoom", "bearing", "pitch", "sources", "layers", "state", "sprite", "glyphs", "transition" };
     static readonly HashSet<string> LayerKeys = new() { "id", "type", "source", "source-layer", "filter", "paint", "layout", "minzoom", "maxzoom", "metadata" };
@@ -147,51 +195,74 @@ internal sealed class MapStyleDocument
         ["line"] = new() { "visibility", "line-cap", "line-join", "line-miter-limit", "line-round-limit" },
     };
 
-    /// <summary>Reads a style JSON; throws StyleUnsupportedException for anything outside the subset.</summary>
-    public static MapStyleDocument Parse(JsonElement root)
+    /// <summary>Reads a style JSON. Strict: throws StyleUnsupportedException for anything outside the subset.
+    /// Lenient: leaves it out and names it in Skipped. <paramref name="tileJson"/> resolves a vector source's "url".</summary>
+    public static MapStyleDocument Parse(JsonElement root, bool lenient = false, Func<string, JsonElement?>? tileJson = null)
     {
-        var doc = new MapStyleDocument();
+        var doc = new MapStyleDocument { Lenient = lenient };
+        // in a lenient parse, an unsupported part is skipped; in a strict one it throws
+        void Unsupported(string what) { if (lenient) doc.Skip(what); else throw new StyleUnsupportedException(what); }
+
         foreach (var p in root.EnumerateObject())
-            if (!RootKeys.Contains(p.Name)) throw new StyleUnsupportedException($"style.{p.Name}");
-        if (root.TryGetProperty("bearing", out var bearing) && bearing.GetDouble() != 0) throw new StyleUnsupportedException("bearing");
-        if (root.TryGetProperty("pitch", out var pitch) && pitch.GetDouble() != 0) throw new StyleUnsupportedException("pitch");
-        if (root.TryGetProperty("center", out var c)) { doc.CenterLon = c[0].GetDouble(); doc.CenterLat = c[1].GetDouble(); }
-        if (root.TryGetProperty("zoom", out var z)) doc.Zoom = z.GetDouble();
+            if (!RootKeys.Contains(p.Name) && !lenient) throw new StyleUnsupportedException($"style.{p.Name}");
+        if (!lenient)
+        {
+            // a render test's camera; on the globe the camera is the globe's
+            if (root.TryGetProperty("bearing", out var bearing) && bearing.GetDouble() != 0) throw new StyleUnsupportedException("bearing");
+            if (root.TryGetProperty("pitch", out var pitch) && pitch.GetDouble() != 0) throw new StyleUnsupportedException("pitch");
+        }
+        if (root.TryGetProperty("center", out var c) && c.ValueKind == JsonValueKind.Array) { doc.CenterLon = c[0].GetDouble(); doc.CenterLat = c[1].GetDouble(); }
+        if (root.TryGetProperty("zoom", out var z) && z.ValueKind == JsonValueKind.Number) doc.Zoom = z.GetDouble();
         if (root.TryGetProperty("state", out var state))
             foreach (var s in state.EnumerateObject())
                 if (s.Value.TryGetProperty("default", out var d)) doc.GlobalState[s.Name] = d.Clone();
 
         if (root.TryGetProperty("sources", out var sources))
             foreach (var s in sources.EnumerateObject())
-                doc.Sources[s.Name] = ReadSource(s.Value);
+            {
+                try { doc.Sources[s.Name] = ReadSource(s.Value, lenient, tileJson); }
+                catch (StyleUnsupportedException e) when (lenient) { doc.Skip($"source {s.Name}: {e.Message}"); }
+            }
 
         foreach (var l in root.GetProperty("layers").EnumerateArray())
         {
-            foreach (var p in l.EnumerateObject())
-                if (!LayerKeys.Contains(p.Name)) throw new StyleUnsupportedException($"layer.{p.Name}");
-            var type = l.GetProperty("type").GetString()!;
-            if (!PaintKeys.ContainsKey(type)) throw new StyleUnsupportedException($"{type} layer");
-            var paint = l.TryGetProperty("paint", out var pp) ? pp.Clone() : Empty;
-            var layout = l.TryGetProperty("layout", out var ll) ? ll.Clone() : Empty;
-            foreach (var p in paint.EnumerateObject())
-                if (!PaintKeys[type].Contains(p.Name) && !p.Name.EndsWith("-transition")) throw new StyleUnsupportedException(p.Name);
-            foreach (var p in layout.EnumerateObject())
-                if (!LayoutKeys[type].Contains(p.Name)) throw new StyleUnsupportedException(p.Name);
-            string? source = l.TryGetProperty("source", out var src) ? src.GetString() : null;
-            if (type != "background" && (source is null || !doc.Sources.ContainsKey(source))) throw new StyleUnsupportedException($"source '{source}'");
-            string? sourceLayer = l.TryGetProperty("source-layer", out var sl) ? sl.GetString() : null;
-            if (source != null && doc.Sources[source] is VectorSource && sourceLayer is null) throw new StyleUnsupportedException("a vector layer without source-layer");
-            doc.Layers.Add(new Layer(l.GetProperty("id").GetString()!, type, source, sourceLayer,
-                l.TryGetProperty("filter", out var f) ? f.Clone() : null, paint, layout,
-                l.TryGetProperty("minzoom", out var mn) ? mn.GetDouble() : 0,
-                l.TryGetProperty("maxzoom", out var mx) ? mx.GetDouble() : 24));
+            string id = l.TryGetProperty("id", out var idp) ? idp.GetString() ?? "" : "";
+            try
+            {
+                foreach (var p in l.EnumerateObject())
+                    if (!LayerKeys.Contains(p.Name)) Unsupported($"{id}: layer.{p.Name}");
+                var type = l.GetProperty("type").GetString()!;
+                if (!PaintKeys.ContainsKey(type)) throw new StyleUnsupportedException($"{type} layer");
+                var paint = l.TryGetProperty("paint", out var pp) ? pp.Clone() : Empty;
+                var layout = l.TryGetProperty("layout", out var ll) ? ll.Clone() : Empty;
+                foreach (var p in paint.EnumerateObject())
+                {
+                    if (PaintKeys[type].Contains(p.Name) || p.Name.EndsWith("-transition")) continue;
+                    // without these the layer would be drawn as something else (a pattern fill as
+                    // black, a casing's two lines as one): leave the layer out instead
+                    if (p.Name is "fill-pattern" or "line-pattern" or "line-gap-width" or "line-gradient" or "line-offset" or "fill-translate" or "line-translate")
+                        throw new StyleUnsupportedException(p.Name);
+                    Unsupported($"{id}: {p.Name} ignored");
+                }
+                foreach (var p in layout.EnumerateObject())
+                    if (!LayoutKeys[type].Contains(p.Name)) Unsupported($"{id}: {p.Name} ignored");
+                string? source = l.TryGetProperty("source", out var src) ? src.GetString() : null;
+                if (type != "background" && (source is null || !doc.Sources.ContainsKey(source))) throw new StyleUnsupportedException($"source '{source}'");
+                string? sourceLayer = l.TryGetProperty("source-layer", out var sl) ? sl.GetString() : null;
+                if (source != null && doc.Sources[source] is VectorSource && sourceLayer is null) throw new StyleUnsupportedException("a vector layer without source-layer");
+                doc.Layers.Add(new Layer(id, type, source, sourceLayer,
+                    l.TryGetProperty("filter", out var f) ? f.Clone() : null, paint, layout,
+                    l.TryGetProperty("minzoom", out var mn) ? mn.GetDouble() : 0,
+                    l.TryGetProperty("maxzoom", out var mx) ? mx.GetDouble() : 24));
+            }
+            catch (StyleUnsupportedException e) when (lenient) { doc.Skip($"{id}: {e.Message}"); }
         }
         return doc;
     }
 
     static readonly JsonElement Empty = JsonDocument.Parse("{}").RootElement;
 
-    static StyleSource ReadSource(JsonElement s)
+    static StyleSource ReadSource(JsonElement s, bool lenient, Func<string, JsonElement?>? tileJson)
     {
         var type = s.GetProperty("type").GetString();
         switch (type)
@@ -199,7 +270,7 @@ internal sealed class MapStyleDocument
             case "geojson":
             {
                 foreach (var p in s.EnumerateObject())
-                    if (p.Name is not ("type" or "data" or "maxzoom" or "tolerance" or "buffer" or "attribution"))
+                    if (!lenient && p.Name is not ("type" or "data" or "maxzoom" or "tolerance" or "buffer" or "attribution"))
                         throw new StyleUnsupportedException($"geojson source {p.Name}");
                 var data = s.GetProperty("data");
                 if (data.ValueKind == JsonValueKind.String) return new GeoJsonSource { Url = data.GetString() };
@@ -214,22 +285,35 @@ internal sealed class MapStyleDocument
             case "vector":
             {
                 var v = new VectorSource();
-                foreach (var p in s.EnumerateObject())
-                    switch (p.Name)
-                    {
-                        case "type": case "attribution": case "bounds": break;
-                        case "tiles": v.Tiles = p.Value.EnumerateArray().Select(t => t.GetString()!).ToArray(); break;
-                        case "minzoom": v.MinZoom = p.Value.GetInt32(); break;
-                        case "maxzoom": v.MaxZoom = p.Value.GetInt32(); break;
-                        case "tileSize": v.TileSize = p.Value.GetInt32(); break;
-                        case "scheme": v.Tms = p.Value.GetString() == "tms"; break;
-                        default: throw new StyleUnsupportedException($"vector source {p.Name}");
-                    }
+                // TileJSON first, then the source's own keys over it, as GL JS merges them
+                if (s.TryGetProperty("url", out var url))
+                {
+                    var tj = url.GetString() is { } u ? tileJson?.Invoke(u) : null;
+                    if (tj is null) throw new StyleUnsupportedException($"TileJSON not available: {url.GetString()}");
+                    ReadVectorKeys(tj.Value, v, lenient: true);
+                }
+                ReadVectorKeys(s, v, lenient);
                 if (v.Tiles.Length == 0) throw new StyleUnsupportedException("vector source without tiles");
                 return v;
             }
         }
         throw new StyleUnsupportedException($"{type} source");
+    }
+
+    static void ReadVectorKeys(JsonElement s, VectorSource v, bool lenient)
+    {
+        foreach (var p in s.EnumerateObject())
+            switch (p.Name)
+            {
+                case "tiles": v.Tiles = p.Value.EnumerateArray().Select(t => t.GetString()!).ToArray(); break;
+                case "minzoom": v.MinZoom = (int)p.Value.GetDouble(); break;
+                case "maxzoom": v.MaxZoom = (int)p.Value.GetDouble(); break;
+                case "tileSize": v.TileSize = (int)p.Value.GetDouble(); break;
+                case "scheme": v.Tms = p.Value.GetString() == "tms"; break;
+                case "attribution": v.Attribution = p.Value.GetString() ?? ""; break;
+                case "type": case "bounds": case "url": break;
+                default: if (!lenient) throw new StyleUnsupportedException($"vector source {p.Name}"); break;
+            }
     }
 }
 
@@ -237,65 +321,77 @@ internal sealed class MapStyleDocument
 internal static class MapStylePainter
 {
     /// <summary>Draws <paramref name="style"/> on <paramref name="canvas"/> (Premul) at the viewport's zoom.</summary>
-    public static void Draw(SKCanvas canvas, MapStyleDocument style, MapViewport view)
+    /// <returns>False when a tile or data it needs is still on its way: draw again when it has come.</returns>
+    public static bool Draw(SKCanvas canvas, MapStyleDocument style, MapViewport view)
     {
+        bool complete = true;
         var ctx = new StyleContext { Zoom = view.Zoom, GlobalState = style.GlobalState };
         foreach (var layer in style.Layers)
         {
-            ctx.Properties = null; ctx.GeometryType = null; ctx.Id = null;
-            // GL JS: `if (this.minzoom && zoom < this.minzoom)` - an unset minzoom hides nothing, not even below zoom 0
-            if ((layer.MinZoom > 0 && view.Zoom < layer.MinZoom) || view.Zoom >= layer.MaxZoom) continue;
-            if (Expression.String(Get(layer.Layout, "visibility"), ctx, "visible") == "none") continue;
-            if (layer.Type == "background")
+            if (style.Lenient && style.IsDropped(layer.Id)) continue;
+            int save = canvas.Save();
+            try { DrawLayer(canvas, style, layer, view, ctx, ref complete); }
+            catch (StyleUnsupportedException e) when (style.Lenient) { style.Drop(layer.Id, e.Message); }
+            finally { canvas.RestoreToCount(save); }
+        }
+        return complete;
+    }
+
+    static void DrawLayer(SKCanvas canvas, MapStyleDocument style, MapStyleDocument.Layer layer, MapViewport view, StyleContext ctx, ref bool complete)
+    {
+        ctx.Properties = null; ctx.GeometryType = null; ctx.Id = null;
+        // GL JS: `if (this.minzoom && zoom < this.minzoom)` - an unset minzoom hides nothing, not even below zoom 0
+        if ((layer.MinZoom > 0 && view.Zoom < layer.MinZoom) || view.Zoom >= layer.MaxZoom) return;
+        if (Expression.String(Get(layer.Layout, "visibility"), ctx, "visible") == "none") return;
+        if (layer.Type == "background")
+        {
+            var color = Expression.Color(Get(layer.Paint, "background-color"), ctx, StyleColor.Black)
+                .WithOpacity(Expression.Number(Get(layer.Paint, "background-opacity"), ctx, 1));
+            using var paint = new SKPaint { ColorF = ToSk(color), BlendMode = SKBlendMode.SrcOver };
+            canvas.DrawPaint(paint);
+            return;
+        }
+        switch (style.Sources[layer.Source!])
+        {
+            case GeoJsonSource g:
             {
-                var color = Expression.Color(Get(layer.Paint, "background-color"), ctx, StyleColor.Black)
-                    .WithOpacity(Expression.Number(Get(layer.Paint, "background-opacity"), ctx, 1));
-                using var paint = new SKPaint { ColorF = ToSk(color), BlendMode = SKBlendMode.SrcOver };
-                canvas.DrawPaint(paint);
-                continue;
+                // GL JS tiles GeoJSON at the floored zoom with geojson-vt (maxzoom 18), which rounds
+                // coordinates to 8192 steps per tile
+                double dataZoom = Math.Max(0, Math.Min(Math.Floor(view.Zoom), 18));
+                var grid = view with { Grid = 1 / (8192 * Math.Pow(2, dataZoom)) };
+                DrawFeatures(canvas, layer, style.Features(g, ref complete), ctx, grid, SharpCorner(view, Math.Max(0, Math.Floor(view.Zoom)), dataZoom));
+                break;
             }
-            switch (style.Sources[layer.Source!])
+            case VectorSource v:
             {
-                case GeoJsonSource g:
-                    // GL JS tiles GeoJSON at the floored zoom (geojson-vt, maxzoom 18)
-                {
-                    // geojson-vt rounds coordinates to 8192 steps per tile of the zoom it tiles at
-                    double dataZoom = Math.Max(0, Math.Min(Math.Floor(view.Zoom), 18));
-                    var grid = view with { Grid = 1 / (8192 * Math.Pow(2, dataZoom)) };
-                    DrawFeatures(canvas, layer, style.Features(g), ctx, grid, SharpCorner(view, Math.Max(0, Math.Floor(view.Zoom)), dataZoom));
-                    break;
-                }
-                case VectorSource v:
-                {
-                    // the tiles GL JS would pick: the floored zoom for the source's tile size, clamped
-                    // to its zoom range (beyond maxzoom the last level is overscaled)
-                    int ideal = Math.Max(0, (int)Math.Floor(view.Zoom + Math.Log2(512.0 / v.TileSize)));
-                    if (ideal < v.MinZoom) break;
-                    int z = Math.Min(ideal, v.MaxZoom);
-                    int n = 1 << z;
-                    var (minX, minY, maxX, maxY) = view.Bounds;
-                    int y0 = Math.Max(0, (int)Math.Floor(minY * n)), y1 = Math.Min(n - 1, (int)Math.Floor(maxY * n - 1e-12));
-                    int x0 = (int)Math.Floor(minX * n), x1 = (int)Math.Floor(maxX * n - 1e-12);
-                    double sharp = SharpCorner(view, ideal, z);
-                    for (int ty = y0; ty <= y1; ty++)
-                        for (int tx = x0; tx <= x1; tx++)
-                        {
-                            var key = new TileKey(z, ((tx % n) + n) % n, ty);
-                            var layers = style.Tile(v, key);
-                            if (layers is null || !layers.TryGetValue(layer.SourceLayer!, out var features)) continue;
-                            // GL JS clips each tile's drawing to its square with the stencil buffer;
-                            // a wrapped copy of the world is shifted by whole worlds
-                            double shift = Math.Floor((double)tx / n);
-                            var a = view.Project((double)tx / n, (double)ty / n);
-                            var b = view.Project((double)(tx + 1) / n, (double)(ty + 1) / n);
-                            canvas.Save();
-                            canvas.ClipRect(new SKRect(a.X, a.Y, b.X, b.Y), antialias: false);
-                            var shifted = view with { CenterX = view.CenterX - shift };
-                            DrawFeatures(canvas, layer, features, ctx, shifted, sharp);
-                            canvas.Restore();
-                        }
-                    break;
-                }
+                // the tiles GL JS would pick: the floored zoom for the source's tile size, clamped
+                // to its zoom range (beyond maxzoom the last level is overscaled)
+                int ideal = Math.Max(0, (int)Math.Floor(view.Zoom + Math.Log2(512.0 / v.TileSize)));
+                if (ideal < v.MinZoom) break;
+                int z = Math.Min(ideal, v.MaxZoom);
+                int n = 1 << z;
+                var (minX, minY, maxX, maxY) = view.Bounds;
+                int y0 = Math.Max(0, (int)Math.Floor(minY * n)), y1 = Math.Min(n - 1, (int)Math.Floor(maxY * n - 1e-9));
+                int x0 = (int)Math.Floor(minX * n), x1 = (int)Math.Floor(maxX * n - 1e-9);
+                double sharp = SharpCorner(view, ideal, z);
+                for (int ty = y0; ty <= y1; ty++)
+                    for (int tx = x0; tx <= x1; tx++)
+                    {
+                        var key = new TileKey(z, ((tx % n) + n) % n, ty);
+                        var layers = style.Tile(v, key, ref complete);
+                        if (layers is null || !layers.TryGetValue(layer.SourceLayer!, out var features)) continue;
+                        // GL JS clips each tile's drawing to its square with the stencil buffer;
+                        // a wrapped copy of the world is shifted by whole worlds
+                        double shift = Math.Floor((double)tx / n);
+                        var a = view.Project((double)tx / n, (double)ty / n);
+                        var b = view.Project((double)(tx + 1) / n, (double)(ty + 1) / n);
+                        canvas.Save();
+                        canvas.ClipRect(new SKRect(a.X, a.Y, b.X, b.Y), antialias: false);
+                        var shifted = view with { CenterX = view.CenterX - shift };
+                        DrawFeatures(canvas, layer, features, ctx, shifted, sharp);
+                        canvas.Restore();
+                    }
+                break;
             }
         }
     }

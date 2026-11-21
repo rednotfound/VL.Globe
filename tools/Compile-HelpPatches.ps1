@@ -144,6 +144,7 @@ $OurNodes = @{
     'ScreenToGlobe'        = 'GlobeViewNodes\.ScreenToGlobe\('
     'Geometry'             = 'new\s+[\w\.]*GlobeGeometryLayerNode\('
     'FeatureLayer'         = 'new\s+[\w\.]*GlobeFeatureLayerNode\('
+    'VectorTiles'          = 'new\s+[\w\.]*GlobeVectorTilesNode\('
     'VectorStyle'          = 'GlobeStyleNodes\.VectorStyle\('
     'GlobeToScreen'        = 'GlobeViewNodes\.GlobeToScreen\('
     'GlobeViewInfo'        = 'GlobeViewNodes\.GlobeViewInfo\('

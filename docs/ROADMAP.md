@@ -224,9 +224,21 @@ a tile and are cut at its edge — the reason for the later vector node.
   65 unsupported** (circle and symbol layers, operations, bearing, raster, clustering, patterns,
   dasharray, colour spaces).
 
-**Next:** the node. The runtime cannot be strict like the harness: a real style (OpenFreeMap's) has
-symbol layers, so unsupported layers are skipped and named in `Status`. TileJSON `url` sources
-need resolving. FeatureLayer moves onto the painter.
+**Step 2 built 2026-11-21, not yet seen in vvvv — the node `VectorTiles [Globe.Layers]`** (the user
+chose: a layer into Layers, the style by URL):
+- Style (URL or file, default OpenFreeMap Liberty), Enabled (off), Name → Output, Attribution, Status.
+- `Engine\VectorTileService.cs`: the style, each source's TileJSON, tiles on demand (6 in flight),
+  disk cache `%LOCALAPPDATA%\VL.Globe\vector-tiles`, 7 days.
+- A **lenient** parse: unsupported sources and layers are left out, unsupported properties ignored,
+  except those that would make a layer something else (`fill-pattern`, `line-gap-width`, offsets,
+  translates, gradients: the layer is left out); a layer that throws while drawing is dropped. All
+  counted in Status. Liberty: 84 of 111 layers drawable; 17 of them dashed, drawn solid.
+- Overlays now render on **worker threads** (`OverlayRenderer`: FeatureLayer/Geometry and styles into
+  one image, in order) and upload 6 a frame; one drawn while a vector tile was missing is redrawn
+  when tiles have arrived. FeatureLayer still draws with TileOverlay.
+- Help patch `HowTo Draw vector tiles` (Tokyo Station, 1500 m); rungs 1-3 pass.
+
+**Next:** rung 4 in vvvv (frame time inside the patch, street level), then the user's judgement.
 
 ### 5. Navigation
 
