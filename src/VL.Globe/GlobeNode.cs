@@ -18,6 +18,8 @@ using VL.Core;
 using VL.Core.Import;
 using VL.Globe.Engine;
 using Buffer = Stride.Graphics.Buffer;
+using NetTopologySuite.Geometries;
+using SkiaSharp;
 
 namespace VL.Globe;
 
@@ -57,7 +59,9 @@ public sealed class GlobeNode : IDisposable
         public bool FadeOut;             // false: own image fades IN over the ancestor; true: fades OUT to it
         public double FadeStart;
         public int LastUsed;
-        public void Dispose() { Texture.Dispose(); Vertices.Dispose(); Indices.Dispose(); }
+        public Texture? Overlay;         // EXPERIMENT: vectors draped into this tile (TileOverlay)
+        public int OverlayVersion = -1;
+        public void Dispose() { Texture.Dispose(); Overlay?.Dispose(); Vertices.Dispose(); Indices.Dispose(); }
     }
 
     const int MaxCreatedPerFrame = 8;
@@ -107,9 +111,29 @@ public sealed class GlobeNode : IDisposable
         public required D3 Centre;
         public required ModelComponent Model;
         public TileKey From;
+        public int FromOverlayVersion;
         public void Dispose() { Vertices.Dispose(); Indices.Dispose(); }
     }
     readonly Dictionary<TileKey, StandIn> _standIns = new();
+
+    // EXPERIMENT (ROADMAP 0.1 item 3, branch experiment/vectors): NTS geometry draped into the tiles.
+    long _signature;
+
+    static long Signature(List<Geometry> geometries)
+    {
+        var h = new HashCode();
+        h.Add(geometries.Count);
+        foreach (var g in geometries)
+            foreach (var c in g.Coordinates) { h.Add(c.X); h.Add(c.Y); }
+        return h.ToHashCode() ^ ((long)geometries.Count << 32);
+    }
+    List<Geometry> _features = new();
+    TileOverlay.Style _style;
+    int _overlayVersion;
+    const int OverlaysPerFrame = 6;
+    // A replaced overlay texture may still be sampled by a fade or a stand-in's material for a while;
+    // it is disposed this many frames later instead of at once.
+    readonly List<(Texture texture, int frame)> _retired = new();
 
     // The globe before any tile: a sphere just below the tiles, drawn by this node because only it
     // knows the eye a camera-relative camera renders from - a Sphere placed by the patch sat at the
@@ -136,6 +160,10 @@ public sealed class GlobeNode : IDisposable
     /// <param name="maxZoom">The finest zoom ever requested.</param>
     /// <param name="screenSpaceError">Refine while a tile pixel would cover more screen pixels than this. 1.41 shows tiles at 0.71-1.41x, as MapLibre and Cesium do.</param>
     /// <param name="maxRequestsInFlight">Requests running at once.</param>
+    /// <param name="features">EXPERIMENT: NTS geometry in longitude/latitude, drawn into the tiles.</param>
+    /// <param name="featureStroke">EXPERIMENT: line colour.</param>
+    /// <param name="featureWidth">EXPERIMENT: line width in pixels.</param>
+    /// <param name="featureFill">EXPERIMENT: polygon fill colour.</param>
     /// <param name="fadeDuration">Seconds a finer tile takes to fade in over the one it replaces. 0: at once.</param>
     /// <param name="screenHeight">The height of the view in pixels: SceneWindow's Client Bounds. GlobeWindow wires it.</param>
     /// <param name="tilesVisible">Tiles drawn this frame.</param>
@@ -148,7 +176,8 @@ public sealed class GlobeNode : IDisposable
     public Entity Update(
         out int tilesVisible, out int tilesLoading, out int requestsSent, out long bytesReceived, out string attribution, out string status,
         GlobeTileSource? tileSource = null, Entity? camera = null, bool enabled = false, float radius = 1f, Color4 background = default,
-        int maxZoom = 19, float screenSpaceError = 1.41f, int maxRequestsInFlight = 6, float screenHeight = 1080f, float fadeDuration = 0.3f)
+        int maxZoom = 19, float screenSpaceError = 1.41f, int maxRequestsInFlight = 6, float screenHeight = 1080f, float fadeDuration = 0.3f,
+        IEnumerable<Geometry>? features = null, Color4 featureStroke = default, float featureWidth = 2f, Color4 featureFill = default)
     {
         _frame++;
         _fadeDuration = Math.Max(0, fadeDuration);
@@ -214,6 +243,7 @@ public sealed class GlobeNode : IDisposable
         }
         foreach (var w in wanted) if (_loaded.TryGetValue(w, out var s)) s.LastUsed = _frame;
         AdvanceFades();
+        UpdateOverlays(features, new TileOverlay.Style(ToSk(featureStroke), Math.Max(0, featureWidth), ToSk(featureFill)));
         Evict();
 
         tilesVisible = _shown.Count;
@@ -309,6 +339,49 @@ public sealed class GlobeNode : IDisposable
         });
         var (entity, modelComponent) = MakeEntity(key, mesh, material, tileCentre);
         return new Slot { Entity = entity, Texture = texture, Vertices = vb, Indices = ib, Centre = tileCentre, Model = modelComponent, Plain = material, LastUsed = _frame };
+    }
+
+    // What a tile looks like: its imagery, with its overlay laid over it (BinaryOperator.Over is the
+    // 3ds over, straight alpha: front x a + back x (1 - a)) - the same for the tile itself, the fades
+    // and the stand-ins that borrow it, so vectors do not blink while tiles change.
+    static IComputeColor Look(Slot s, Vector2 scale, Vector2 offset)
+        => s.Overlay is null ? Sampled(s.Texture, scale, offset)
+         : new ComputeBinaryColor(Sampled(s.Texture, scale, offset), Sampled(s.Overlay, scale, offset), BinaryOperator.Over);
+
+    static SKColor ToSk(Color4 c) => new((byte)Math.Clamp(c.R * 255, 0, 255), (byte)Math.Clamp(c.G * 255, 0, 255), (byte)Math.Clamp(c.B * 255, 0, 255), (byte)Math.Clamp(c.A * 255, 0, 255));
+
+    void UpdateOverlays(IEnumerable<Geometry>? features, TileOverlay.Style style)
+    {
+        foreach (var r in _retired.Where(r => _frame - r.frame > 60).ToList()) { r.texture.Dispose(); _retired.Remove(r); }
+        // Changed by CONTENT, not identity: FromWKT and Cons build new objects every frame (memory:
+        // "static node before index needs Cache"), and identity would redraw every overlay every frame.
+        var list = features?.Where(g => g is not null).ToList() ?? new List<Geometry>();
+        var signature = Signature(list);
+        if (signature != _signature || style != _style)
+        {
+            _signature = signature;
+            _features = list;
+            _style = style;
+            _overlayVersion++;
+        }
+        if (_device is null) return;
+        int budget = OverlaysPerFrame;
+        foreach (var t in DrawSet.NearestFirst(_shown.ToList(), _lastEye, _radius))
+        {
+            var s = _loaded[t];
+            if (s.OverlayVersion == _overlayVersion) continue;
+            if (_features.Count == 0 && s.Overlay is null) { s.OverlayVersion = _overlayVersion; continue; }   // nothing to drape, nothing to undo
+            if (budget-- == 0) break;
+            var bytes = _features.Count == 0 ? null : TileOverlay.Rasterize(t, _features, style, 256);
+            if (s.Overlay is { } old) _retired.Add((old, _frame));
+            s.Overlay = bytes is null ? null : FromLevels(_device, bytes, 256, 256, PixelFormat.R8G8B8A8_UNorm_SRgb, srgb: true, straightAlpha: true);
+            s.OverlayVersion = _overlayVersion;
+            s.Plain = Material.New(_device, new MaterialDescriptor
+            {
+                Attributes = { Emissive = new MaterialEmissiveMapFeature(Look(s, Vector2.One, Vector2.Zero)), CullMode = CullMode.None },
+            });
+            if (s.Fading is null) s.Model.Materials[0] = s.Plain;
+        }
     }
 
     static IComputeColor Sampled(Texture texture, Vector2 scale, Vector2 offset) => new ComputeTextureColor(texture)
@@ -415,7 +488,12 @@ public sealed class GlobeNode : IDisposable
         for (int y = 0; y < h; y++)
             System.Runtime.InteropServices.Marshal.Copy(pb.DataPointer + y * pb.RowStride, level0, y * w * 4, w * 4);
         bool srgb = format is PixelFormat.R8G8B8A8_UNorm_SRgb or PixelFormat.B8G8R8A8_UNorm_SRgb;
-        var levels = MipChain.Build(level0, w, h, srgb);
+        return FromLevels(device, level0, w, h, format, srgb, straightAlpha: false);
+    }
+
+    static Texture FromLevels(GraphicsDevice device, byte[] level0, int w, int h, PixelFormat format, bool srgb, bool straightAlpha)
+    {
+        var levels = MipChain.Build(level0, w, h, srgb, straightAlpha);
 
         using var image = Image.New2D(w, h, MipMapCount.Auto, format);
         for (int m = 0; m < levels.Count && m < image.Description.MipLevels; m++)
@@ -498,14 +576,15 @@ public sealed class GlobeNode : IDisposable
             {
                 var (vb, ib, mesh, centre) = BuildMesh(_device, square);
                 var (entity, model) = MakeEntity(square, mesh, StandInMaterial(square, fromKey, from), centre);
-                si = new StandIn { Entity = entity, Vertices = vb, Indices = ib, Centre = centre, Model = model, From = fromKey };
+                si = new StandIn { Entity = entity, Vertices = vb, Indices = ib, Centre = centre, Model = model, From = fromKey, FromOverlayVersion = from.OverlayVersion };
                 _standIns[square] = si;
                 _root.Transform.Children.Add(entity.Transform);
             }
-            else if (si.From != fromKey)
+            else if (si.From != fromKey || si.FromOverlayVersion != from.OverlayVersion)
             {
-                si.Model.Materials[0] = StandInMaterial(square, fromKey, from);   // a nearer ancestor arrived
+                si.Model.Materials[0] = StandInMaterial(square, fromKey, from);   // a nearer ancestor arrived, or its overlay changed
                 si.From = fromKey;
+                si.FromOverlayVersion = from.OverlayVersion;
             }
         }
         foreach (var square in _standIns.Keys.Where(k => !keep.Contains(k)).ToList())
@@ -522,7 +601,7 @@ public sealed class GlobeNode : IDisposable
         var (scale, offset) = Fade.AncestorTransform(square, fromKey);
         return Material.New(_device!, new MaterialDescriptor
         {
-            Attributes = { Emissive = new MaterialEmissiveMapFeature(Sampled(from.Texture, scale, offset)), CullMode = CullMode.None },
+            Attributes = { Emissive = new MaterialEmissiveMapFeature(Look(from, scale, offset)), CullMode = CullMode.None },
         });
     }
 
@@ -542,8 +621,8 @@ public sealed class GlobeNode : IDisposable
                 Attributes =
                 {
                     Emissive = new MaterialEmissiveMapFeature(new ComputeBinaryColor(
-                        new ComputeBinaryColor(Sampled(from.Texture, scale, offset), new ComputeFloat4(Vector4.One) { Key = FadeOutKey }, BinaryOperator.Multiply),
-                        new ComputeBinaryColor(Sampled(s.Texture, Vector2.One, Vector2.Zero), new ComputeFloat4(new Vector4(0, 0, 0, 1)) { Key = FadeInKey }, BinaryOperator.Multiply),
+                        new ComputeBinaryColor(Look(from, scale, offset), new ComputeFloat4(Vector4.One) { Key = FadeOutKey }, BinaryOperator.Multiply),
+                        new ComputeBinaryColor(Look(s, Vector2.One, Vector2.Zero), new ComputeFloat4(new Vector4(0, 0, 0, 1)) { Key = FadeInKey }, BinaryOperator.Multiply),
                         BinaryOperator.Add)),
                     CullMode = CullMode.None,
                 },
@@ -621,6 +700,8 @@ public sealed class GlobeNode : IDisposable
         _outFades.Clear();
         foreach (var si in _standIns.Values) { _root.Transform.Children.Remove(si.Entity.Transform); si.Dispose(); }
         _standIns.Clear();
+        foreach (var r in _retired) r.texture.Dispose();
+        _retired.Clear();
         _requests = 0;
         _failedCount = 0;
         _lastError = "";

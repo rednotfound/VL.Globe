@@ -39,6 +39,10 @@
               <Pin Id="TLSPX75K1fwRrNo5PiapAA" Name="Enabled" Kind="InputPin" />
               <Pin Id="MS2sctTBhw5rCAsILTAMAR" Name="Background" Kind="InputPin" />
               <Pin Id="RvdwA5eS1xw3RksQPGOYup" Name="Screen Height" Kind="InputPin" />
+              <Pin Id="Jce6sOXNG3JSbxzVK4KKge" Name="Features" Kind="InputPin" />
+              <Pin Id="EL3e2fZgAo5UMJRcQL9afO" Name="Feature Stroke" Kind="InputPin" />
+              <Pin Id="Qm4dWzNvm8w4Mt8x5bbylM" Name="Feature Width" Kind="InputPin" />
+              <Pin Id="J6BJpblewqScO4Q6HAK1Jv" Name="Feature Fill" Kind="InputPin" />
               <Pin Id="LPZklW1vpTnweVxfbqNlHo" Name="Entity" Kind="OutputPin" />
               <Pin Id="DMoen1SFJD8KTbd0mYms3w" Name="Attribution" Kind="OutputPin" />
               <Pin Id="OmGugU4cmf5gN3PPZrPw6B" Name="Status" Kind="OutputPin" />
@@ -184,6 +188,22 @@
                 <Choice Kind="TypeFlag" Name="RGBA" />
               </p:TypeAnnotation>
             </Pin>
+            <Pin Id="O6jUqB7CjulgB76rwphBZx" Name="Features" Kind="InputPin" Visibility="Optional" />
+            <Pin Id="CWhIKQIljxm7F5IRYjJGvw" Name="Feature Stroke" Kind="InputPin" DefaultValue="1, 0.25, 0.1, 1" Visibility="Optional">
+              <p:TypeAnnotation LastCategoryFullName="Color" LastDependency="VL.CoreLib.vl">
+                <Choice Kind="TypeFlag" Name="RGBA" />
+              </p:TypeAnnotation>
+            </Pin>
+            <Pin Id="C7FPdP6RewL5vQyjrEXT2w" Name="Feature Width" Kind="InputPin" DefaultValue="3" Visibility="Optional">
+              <p:TypeAnnotation LastCategoryFullName="Primitive" LastDependency="VL.CoreLib.vl">
+                <Choice Kind="TypeFlag" Name="Float32" />
+              </p:TypeAnnotation>
+            </Pin>
+            <Pin Id="O376edpat2TSkrey7P09lC" Name="Feature Fill" Kind="InputPin" DefaultValue="1, 0.45, 0.1, 0.3" Visibility="Optional">
+              <p:TypeAnnotation LastCategoryFullName="Color" LastDependency="VL.CoreLib.vl">
+                <Choice Kind="TypeFlag" Name="RGBA" />
+              </p:TypeAnnotation>
+            </Pin>
             <Pin Id="BkhcgPbNYsum7T136ojfmH" Name="Input" Kind="InputPin" Visibility="Optional" />
             <Pin Id="MS1pSC2B5MOFVTQMvyYeRv" Name="Title" Kind="InputPin" DefaultValue="Globe">
               <p:TypeAnnotation LastCategoryFullName="Primitive" LastDependency="VL.CoreLib.vl">
@@ -222,6 +242,10 @@
             <Fragment Id="UXQ4mQlWlHEgcHYWFQbhEg" Patch="LrkrQdbiH9FsxIoydgqNhj" Enabled="true" />
             <Fragment Id="D7jrXh4ifrUcJSsv5lMw1x" Patch="AJmjIfRzBxd6Di2uELJOAG" Enabled="true" />
           </ProcessDefinition>
+          <Link Id="D3XmfIzMuhVDrj8etKYEQ8" Ids="O6jUqB7CjulgB76rwphBZx,Jce6sOXNG3JSbxzVK4KKge" IsHidden="true" />
+          <Link Id="Tm9bfkIIzDjuCflayCljhG" Ids="CWhIKQIljxm7F5IRYjJGvw,EL3e2fZgAo5UMJRcQL9afO" IsHidden="true" />
+          <Link Id="HlB5aJFgGEVTlUCrpI4AJK" Ids="C7FPdP6RewL5vQyjrEXT2w,Qm4dWzNvm8w4Mt8x5bbylM" IsHidden="true" />
+          <Link Id="LsjXzdcjSdoL4htoaFGcu3" Ids="O376edpat2TSkrey7P09lC,J6BJpblewqScO4Q6HAK1Jv" IsHidden="true" />
           <Link Id="NRxIhHzLcxGendEYxV3HvH" Ids="UzrLQcOB6dtIXlF1Cbsa42,Ig5kbhJ0wgt6M6W2O2Lhd5" IsHidden="true" />
           <Link Id="HezOyEVlui8yhVIkFDbkSr" Ids="FIurQ7sf9vJPmBbyuZXsCv,Fz2GmHvnXZtZGvhmrUfEM1" />
           <Link Id="EIXtaWUkxgTGJLbyKlRVIq" Ids="E3ZPLWWNmlB5GS07XCHNg1,LfQ8QxKyPGWuadKnYUDhjg" />
