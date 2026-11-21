@@ -296,7 +296,9 @@ dotted cracks at tile borders, the globe shaking with the pole dragged into view
    Updates were the draw list, a new large-object-heap list every frame (fixed, two frames reused).
    **Left:** frames of 60–140 ms outside the node after heavy uploads (a smaller vertex should help).
 3. **3D buildings** (`fill-extrusion` for real: walls, roofs, light, depth written) — built the
-   same night (DESIGN-GPU-VECTOR.md); seen in vvvv from above, the user's look while tilting next.
+   same night (DESIGN-GPU-VECTOR.md), judged by the user tilting ("确实好很多了"); then a 28-byte
+   vertex (-25% GPU memory). **Next: DESIGN-GPU-VECTOR.md "Next"** - the GPU path under MapLibre's
+   fixtures, then labels.
 
 ### 5. Navigation
 

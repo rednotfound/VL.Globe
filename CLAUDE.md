@@ -13,8 +13,8 @@ Guidance for Claude Code working in this repository.
    built and seen in vvvv; the user found the drape "不太行" and chose the GPU (ROADMAP **4d**,
    [docs/DESIGN-GPU-VECTOR.md](docs/DESIGN-GPU-VECTOR.md), its "As built" and "Next"): built and
    judged by the user the same night ("大方向完全没有问题", "我觉得还行"), 178 tests green.
-   **Next: `fill-extrusion` drawn flat (buildings vanish past z14), the 200-330 ms Updates its
-   log names, then 3D buildings.**
+   Since then: the long Updates found (a per-frame large-object-heap list), 3D buildings, a 28-byte
+   vertex. **Next: DESIGN-GPU-VECTOR.md "Next" - the GPU path under MapLibre's fixtures, then labels.**
    Research: [docs/RESEARCH-0.1.md](docs/RESEARCH-0.1.md), [docs/RESEARCH-VECTOR.md](docs/RESEARCH-VECTOR.md).
 2. Read **[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)** — what exists and why.
 3. Read **[NOTES.md](NOTES.md)** — every failure so far, before touching the same code.

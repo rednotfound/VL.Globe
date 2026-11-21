@@ -97,9 +97,15 @@ keep it: the harness renders with the drape. Cost: a street-level Liberty tile i
 The depth pass writes to a copy of the scene's depth: in vvvv's transparent stage the scene's depth
 is bound read-only, and the first build's buildings showed their far walls (the user).
 
+**A 28-byte vertex** (from 40): only the position stays float; extrusion snorm16, uv unorm16 over
+-0.5..1.5, N and width half floats. Two Kyoto Station tiles 44 → 33 MB, the picture unchanged.
+The user tilted the 3D buildings: "确实好很多了".
+
 ## Next
 
-1. A smaller vertex (40 bytes; GL JS packs ~half) - extrusions doubled a tile's size.
-2. The user's judgement of 3D buildings while tilting.
-3. MapLibre's fixtures (fill-extrusion too) rendered by the GPU path offscreen.
+1. MapLibre's fixtures (fill, line, fill-extrusion) rendered by the GPU path offscreen, the same
+   harness and pixelmatch as the drape's: the GPU path has no measured yardstick yet.
+2. Labels and icons (RESEARCH-VECTOR stage 4: glyph PBFs, SDF, placement and collision) - the
+   largest piece left before 0.1's vector map reads like MapLibre's.
+3. 16-bit indices where a range allows, and dashes (line-dasharray) - drawn solid today.
 4. MapLibre's fixtures rendered by the GPU path offscreen, the same harness as the drape's.
