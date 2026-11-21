@@ -200,15 +200,32 @@ public sealed class GlobeNode : IDisposable
         IEnumerable<GlobeLayer>? layers = null)
     {
         double updateStart = _clock.Elapsed.TotalMilliseconds;
+        _stages.Clear();
+        _gcPauseAtStart = GC.GetTotalPauseDuration();
         try { return UpdateCore(out tilesVisible, out tilesLoading, out requestsSent, out bytesReceived, out attribution, out status,
             tileSource, camera, enabled, radius, background, maxZoom, screenSpaceError, maxRequestsInFlight, screenHeight, fadeDuration, layers); }
         finally { Measure(updateStart); }
     }
 
+    // a long Update says where its time went: each stage, and how much of it the collector paused
+    // (23:16:05 on 2026-11-21: one Update of 580 ms, a gen-2 collection in the same second)
+    readonly List<(string stage, double at)> _stages = new();
+    TimeSpan _gcPauseAtStart;
+    void Stage(string name) => _stages.Add((name, _clock.Elapsed.TotalMilliseconds));
+
     void Measure(double updateStart)
     {
         double now = _clock.Elapsed.TotalMilliseconds;
         _updateMax = Math.Max(_updateMax, now - updateStart);
+        if (now - updateStart > 50)
+        {
+            var parts = new List<string>();
+            double prev = updateStart;
+            foreach (var (stage, at) in _stages) { parts.Add($"{stage} {at - prev:F0}"); prev = at; }
+            parts.Add($"rest {now - prev:F0}");
+            _logger.LogWarning("Globe perf: an Update of {Ms:F0} ms - {Stages} ms; GC paused {Pause:F0} ms in it",
+                now - updateStart, string.Join(", ", parts), (GC.GetTotalPauseDuration() - _gcPauseAtStart).TotalMilliseconds);
+        }
         if (_lastUpdateAt >= 0)
         {
             double frame = updateStart - _lastUpdateAt;
@@ -243,6 +260,7 @@ public sealed class GlobeNode : IDisposable
 
         _device ??= GetDevice();
         if (_device is not null) CreateArrived(_device);
+        Stage("arrived");
 
         if (Math.Abs(radius - _radius) > 0 && radius > 0)
         {
@@ -299,7 +317,9 @@ public sealed class GlobeNode : IDisposable
         // drawn while off too - left at null it put the sphere around the camera (2026-11-20).
         _relativeEye = camera?.Get<GlobeCameraFrame>()?.Eye;
         ShowBackground(camera is not null ? _device : null, background);
+        Stage("select+requests");
         Show(DrawSet.Resolve(wanted, _loaded.ContainsKey));
+        Stage("show");
         // Every frame, not on change: with a camera-relative camera each tile sits at (centre - eye),
         // and the eye moved. Subtracted in double, then cast - the whole point of item 1.
         foreach (var t in _shown)
@@ -315,13 +335,16 @@ public sealed class GlobeNode : IDisposable
         }
         foreach (var w in wanted) if (_loaded.TryGetValue(w, out var s)) s.LastUsed = _frame;
         AdvanceFades();
+        Stage("fades");
         UpdateOverlays(layers);
+        Stage("overlays");
         // the GPU's vector tiles follow the wanted tiles, not the ones shown: they need no imagery,
         // and the wanted set covers the view at the right zoom even while the raster loads
         var gpuServices = enabled && layers is not null
             ? layers.Where(l => l is { Enabled: true, Gpu: true, Vector: not null }).Select(l => l.Vector!).ToList()
             : new List<VectorTileService>();
         if (_device is not null) _gpu.Update(_device, wanted, _wantedSet, gpuServices, _radius, _relativeEye, _cameraZoom, _frame);
+        Stage("gpu vectors");
         // into the log: the renderer's error once, and how far the building is, once a second at most
         if (_gpu.Error != _gpuError) { _gpuError = _gpu.Error; if (_gpuError.Length > 0) _logger.LogError("Globe: {Error}", _gpuError); }
         if (gpuServices.Count > 0 && _gpu.TilesBuilt != _gpuBuiltLogged && _clock.Elapsed.TotalSeconds - _gpuLoggedAt > 1)
@@ -330,6 +353,7 @@ public sealed class GlobeNode : IDisposable
             _logger.LogInformation("Globe: {Status} (zoom {Zoom:F2})", _gpu.Status, _cameraZoom);
         }
         Evict();
+        Stage("evict");
 
         tilesVisible = _shown.Count;
         tilesLoading = _pending.Count;
