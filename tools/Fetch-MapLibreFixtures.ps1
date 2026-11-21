@@ -22,7 +22,19 @@ param(
     [string[]]$Groups = @(
         'background-color', 'background-opacity',
         'fill-antialias', 'fill-color', 'fill-opacity', 'fill-outline-color',
-        'line-cap', 'line-color', 'line-join', 'line-opacity', 'line-width'),
+        'line-cap', 'line-color', 'line-join', 'line-opacity', 'line-width',
+        # 4c: filters, geometry types, zoom ranges, tile schemes, overscaling
+        'extent', 'fill-outside-tile', 'filter', 'geojson', 'geometry-type', 'line-miter-limit',
+        'line-overlap', 'line-round-limit', 'line-triangulation', 'overscale', 'tms', 'visibility',
+        'zoom-visibility', 'zoomed-fill'),
+    # Files under test/integration/assets that the fixtures load as local://<path> (the Berlin
+    # tiles of the line-* vector fixtures). Saved under <tag>\_assets.
+    [string[]]$Assets = @(
+        'tiles/14-8802-5374.mvt', 'tiles/14-8802-5375.mvt', 'tiles/14-8803-5374.mvt', 'tiles/14-8803-5375.mvt',
+        'tiles/extent1024-14-8802-5374.mvt', 'tiles/0-0-0.mvt', 'tiles/extent65536-0-0-0.mvt',
+        'tiles/outside_ring.mvt', 'tiles/2-1-1.tms.mvt', 'tiles/2-1-2.tms.mvt', 'tiles/2-2-1.tms.mvt', 'tiles/2-2-2.tms.mvt',
+        'data/feature.geojson', 'data/invalid.geojson', 'data/malformed.geojson', 'data/places.geojson',
+        'data/winding.geojson'),
     [string]$Destination = (Join-Path $PSScriptRoot '..\test\fixtures\maplibre'),
     [switch]$Force
 )
@@ -58,8 +70,16 @@ foreach ($f in $files) {
         "https://raw.githubusercontent.com/$repo/$Tag/$root/$($f.path)" -OutFile $target
     $fetched++
 }
+foreach ($a in $Assets) {
+    $target = Join-Path $dest ('_assets\' + ($a -replace '/', '\'))
+    if ((Test-Path $target) -and -not $Force) { continue }
+    New-Item -ItemType Directory -Force (Split-Path $target) | Out-Null
+    Invoke-WebRequest -UseBasicParsing -Headers @{ 'User-Agent' = $headers['User-Agent'] } `
+        "https://raw.githubusercontent.com/$repo/$Tag/test/integration/assets/$a" -OutFile $target
+    $fetched++
+}
 Invoke-WebRequest -UseBasicParsing "https://raw.githubusercontent.com/$repo/$Tag/LICENSE.txt" `
     -OutFile (Join-Path $dest 'LICENSE.txt')
 
 $count = ($files | Where-Object { $_.path -match '/style\.json$' }).Count
-Write-Host "$count fixtures in $($Groups.Count) groups at $Tag -> $dest ($fetched files fetched)"
+Write-Host "$count fixtures in $($Groups.Count) groups and $($Assets.Count) assets at $Tag -> $dest ($fetched files fetched)"

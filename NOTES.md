@@ -303,3 +303,19 @@ looked fine - "which makes one think it works". Two causes, estimated at 100 m h
   one device pixel at the edge; reproduced exactly by cutting triangles where the ramp bends.
 - **A pass can prove nothing.** `fill-outline-color/default` expects an empty image; an empty render
   passes it. The harness compares an empty image too and leaves such passes out of `passedAtLeast`.
+
+## 2026-11-21 — 4c step 1: vector tiles in the painter
+
+- **MapLibre's look includes its storage formats.** Line extrusions are `Math.round(63 x) + 128` in
+  a Uint8Array, which wraps: a miter longer than about twice the width folds back, and the
+  `line-miter-limit` fixtures expect the fold. GeoJSON goes through geojson-vt, which rounds to 8192
+  steps per tile; without that rounding a bevel's edge landed one pixel row off. Both reproduced.
+- **`if (this.minzoom && zoom < this.minzoom)`**: an unset minzoom (0) hides nothing, even at zoom
+  −1. Testing `zoom < 0` dropped every layer, the background included, at negative zoom.
+- **A tile cache keyed by URL** put `outside_ring.mvt` (a template with no `{z}/{x}/{y}`) into the
+  first tile's square for every tile. Keyed by URL and tile.
+- **GL fills are aliased**; their edge is a separate `gl.LINES` outline, one pixel per step with
+  alpha `1 − smoothstep(0, 1, d)`. Skia's antialiased fill made tiny islands and lakes lighter
+  (0.19 % at zoom −1); reproducing both brought it to 0.
+- **A crash in one fixture ended the run** (an invalid inline GeoJSON). The harness records a
+  throw as that fixture's failure; invalid GeoJSON now draws nothing, as in GL JS.

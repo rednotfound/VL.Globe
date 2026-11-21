@@ -1,6 +1,7 @@
 {
   "tag": "v6.19.0",
-  "passedAtLeast": 47,
+  "passedAtLeast": 90,
   "ignores": {
+    "geojson/inline-linestring-fill": "a self-intersecting ring filled: GL JS's earcut triangulation covers it differently from Skia's even-odd fill"
   }
 }

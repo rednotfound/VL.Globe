@@ -269,8 +269,10 @@ internal sealed class LineTessellator
 
     void AddHalfVertex(V p, V extrude, bool round, bool up)
     {
-        // quantised as GL JS stores it
-        var q = new V(Math.Round(ExtrudeScale * extrude.X) / ExtrudeScale, Math.Round(ExtrudeScale * extrude.Y) / ExtrudeScale);
+        // stored as GL JS stores it: Math.round(63 x) + 128 in a Uint8Array, which wraps - a miter
+        // longer than about twice the width folds back (line-miter-limit fixtures show the fold)
+        static double Byte(double x) => ((((int)Math.Floor(ExtrudeScale * x + 0.5) + 128) & 0xFF) - 128) / ExtrudeScale;
+        var q = new V(Byte(extrude.X), Byte(extrude.Y));
         var at = new LineVertex((p + q * _outset).ToSk(), up ? 1 : -1);
         int e = _strip.Count;
         _strip.Add((at, round));

@@ -212,6 +212,22 @@ machinery as FeatureLayer. Keyless sources: OpenFreeMap (OpenMapTiles), VersaTil
 Verified by 4b's fixtures and, at street level, by the user. Labels drawn this way collide only within
 a tile and are cut at its edge — the reason for the later vector node.
 
+**Step 1 done 2026-11-21 — the painter reads vector tiles:**
+- `Engine\VectorTile.cs`, an MVT decoder written by hand instead of NTS.IO.VectorTiles: that one
+  needs protobuf-net (not shipped by vvvv; another package could load another version) and converts
+  to lon/lat, which the painter would convert back. Geometry is kept in Web Mercator world
+  coordinates (0..1) for GeoJSON and tiles alike.
+- Vector sources (`tiles`, min/maxzoom, `tileSize`, `scheme: tms`), drawn tile by tile with a hard
+  clip to the tile's square, overscaled past maxzoom; GeoJSON by URL; filters in both syntaxes
+  (MapLibre's `isExpressionFilter` decides), `in`, `id`.
+- The harness: 25 groups, 164 fixtures, 17 assets; **98 pass (90 counted), 1 ignored (earcut),
+  65 unsupported** (circle and symbol layers, operations, bearing, raster, clustering, patterns,
+  dasharray, colour spaces).
+
+**Next:** the node. The runtime cannot be strict like the harness: a real style (OpenFreeMap's) has
+symbol layers, so unsupported layers are skipped and named in `Status`. TileJSON `url` sources
+need resolving. FeatureLayer moves onto the painter.
+
 ### 5. Navigation
 
 - `CenterOn`, `ZoomToLevel`, `ZoomIn`, `ZoomOut`.

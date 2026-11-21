@@ -66,7 +66,8 @@ public class MapLibreRenderFacts
 
         var problems = new List<string>();
         foreach (var r in failed.Where(r => !manifest.Ignores.ContainsKey(r.Id)))
-            problems.Add($"{r.Id} failed: {r.Difference:P3} of the pixels differ, {r.Allowed:P3} allowed (results\\{r.Id}\\diff.png)");
+            problems.Add(r.Reason != null ? $"{r.Id} failed: {r.Reason}"
+                : $"{r.Id} failed: {r.Difference:P3} of the pixels differ, {r.Allowed:P3} allowed (results\\{r.Id}\\diff.png)");
         foreach (var r in passed.Where(r => manifest.Ignores.ContainsKey(r.Id)))
             problems.Add($"{r.Id} passes now: remove it from render-tests.json's ignores");
         foreach (var id in manifest.Ignores.Keys.Where(id => all.All(r => r.Id != id)))
@@ -96,11 +97,24 @@ public class MapLibreRenderFacts
                     if (p.Name is not ("width" or "height" or "pixelRatio" or "allowed" or "threshold" or "description" or "timeout" or "fadeDuration" or "antialias"))
                         throw new StyleUnsupportedException($"test.{p.Name}");
             var style = MapStyleDocument.Parse(json.RootElement);
+            // local://<path> is test/integration/assets/<path>, fetched into <tag>\_assets
+            style.Load = url =>
+            {
+                if (!url.StartsWith("local://")) throw new StyleUnsupportedException($"a resource not in the assets: {url}");
+                var file = Path.Combine(fixtures, "_assets", url.Substring("local://".Length).Replace('/', Path.DirectorySeparatorChar));
+                if (!File.Exists(file)) throw new StyleUnsupportedException($"an asset not fetched: {url} (add it to Fetch-MapLibreFixtures.ps1 -Assets)");
+                return File.ReadAllBytes(file);
+            };
             actual = MapStylePainter.RenderStraight(style, width, height, pixelRatio);
         }
         catch (StyleUnsupportedException e)
         {
             return new Result(id, Outcome.Unsupported, double.NaN, allowed, e.Message);
+        }
+        catch (Exception e)
+        {
+            // a crash is a failure of ours, reported with the fixture, not the end of the run
+            return new Result(id, Outcome.Failed, double.PositiveInfinity, allowed, $"threw {e.GetType().Name}: {e.Message}");
         }
 
         int w = (int)Math.Floor(width * pixelRatio), h = (int)Math.Floor(height * pixelRatio);

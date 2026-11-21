@@ -138,7 +138,9 @@ internal readonly record struct StyleColor(double R, double G, double B, double 
 internal sealed class StyleContext
 {
     public double Zoom;
-    public IReadOnlyDictionary<string, JsonElement>? Properties;
+    // values are double, string, bool or null (a GeoJSON object or array property: its JsonElement)
+    public IReadOnlyDictionary<string, object?>? Properties;
+    public object? Id;
     public string? GeometryType;    // "Point", "LineString", "Polygon"
     public IReadOnlyDictionary<string, JsonElement> GlobalState = new Dictionary<string, JsonElement>();
 }
@@ -161,8 +163,77 @@ internal static class Expression
     public static string String(JsonElement? value, StyleContext ctx, string fallback)
         => value is { } v && Evaluate(v, ctx, Kind.String) is { } r ? r as string ?? throw new StyleUnsupportedException("a string property that is not a string") : fallback;
 
-    /// <summary>A filter: true when the feature is drawn.</summary>
-    public static bool Filter(JsonElement filter, StyleContext ctx) => Evaluate(filter, ctx, Kind.Any) is true;
+    /// <summary>A layer filter, expression or legacy syntax: true when the feature is drawn.</summary>
+    public static bool Filter(JsonElement filter, StyleContext ctx)
+        => IsExpressionFilter(filter) ? Evaluate(filter, ctx, Kind.Any) is true : Legacy(filter, ctx);
+
+    // MapLibre's isExpressionFilter (style-spec feature_filter): which syntax a filter is written in
+    static bool IsExpressionFilter(JsonElement f)
+    {
+        if (f.ValueKind is JsonValueKind.True or JsonValueKind.False) return true;
+        if (f.ValueKind != JsonValueKind.Array || f.GetArrayLength() == 0) return false;
+        int n = f.GetArrayLength();
+        switch (f[0].GetString())
+        {
+            case "has": return n >= 2 && f[1].GetString() is not ("$id" or "$type");
+            case "in": return n >= 3 && (f[1].ValueKind != JsonValueKind.String || f[2].ValueKind == JsonValueKind.Array);
+            case "!in": case "!has": case "none": return false;
+            case "==": case "!=": case ">": case ">=": case "<": case "<=":
+                return n != 3 || f[1].ValueKind == JsonValueKind.Array || f[2].ValueKind == JsonValueKind.Array;
+            case "any": case "all":
+                return f.EnumerateArray().Skip(1).All(x => IsExpressionFilter(x) || x.ValueKind is JsonValueKind.True or JsonValueKind.False);
+            default: return true;
+        }
+    }
+
+    // the legacy filter syntax: ["==", key, value], ["in", key, v...], ["has", key], ["all", f...];
+    // the key "$type" is the geometry type, "$id" the feature id; comparisons never coerce
+    static bool Legacy(JsonElement f, StyleContext ctx)
+    {
+        var op = f[0].GetString();
+        object? Key(string k) => k switch
+        {
+            "$type" => ctx.GeometryType,
+            "$id" => ctx.Id,
+            _ => ctx.Properties != null && ctx.Properties.TryGetValue(k, out var v) ? v : null,
+        };
+        bool Has(string k) => k switch
+        {
+            "$type" => true,
+            "$id" => ctx.Id != null,
+            _ => ctx.Properties?.ContainsKey(k) == true,
+        };
+        switch (op)
+        {
+            case "all": return f.EnumerateArray().Skip(1).All(x => Legacy(x, ctx));
+            case "any": return f.EnumerateArray().Skip(1).Any(x => Legacy(x, ctx));
+            case "none": return !f.EnumerateArray().Skip(1).Any(x => Legacy(x, ctx));
+            case "has": return Has(f[1].GetString()!);
+            case "!has": return !Has(f[1].GetString()!);
+            case "in":
+            case "!in":
+            {
+                var v = Key(f[1].GetString()!);
+                bool found = f.EnumerateArray().Skip(2).Any(x => Equals(FromJson(x, Kind.Any), v));
+                return op == "in" ? found : !found;
+            }
+            case "==": return Equals(Key(f[1].GetString()!), FromJson(f[2], Kind.Any));
+            case "!=": return !Equals(Key(f[1].GetString()!), FromJson(f[2], Kind.Any));
+            case "<": case "<=": case ">": case ">=":
+            {
+                var a = Key(f[1].GetString()!);
+                var b = FromJson(f[2], Kind.Any);
+                if (a is double x && b is double y) return op switch { "<" => x < y, "<=" => x <= y, ">" => x > y, _ => x >= y };
+                if (a is string s && b is string t)
+                {
+                    int c = string.CompareOrdinal(s, t);
+                    return op switch { "<" => c < 0, "<=" => c <= 0, ">" => c > 0, _ => c >= 0 };
+                }
+                return false;
+            }
+        }
+        throw new StyleUnsupportedException($"legacy filter '{op}'");
+    }
 
     /// <summary>True when the value depends on the feature (so it is evaluated per feature).</summary>
     public static bool IsFeatureDependent(JsonElement value) => value.ValueKind switch
@@ -205,9 +276,22 @@ internal static class Expression
             case "zoom": return ctx.Zoom;
             case "get":
                 if (n != 2) throw new StyleUnsupportedException("get from an object");
-                return ctx.Properties != null && ctx.Properties.TryGetValue(e[1].GetString()!, out var p) ? FromJson(p, want) : null;
+                return ctx.Properties != null && ctx.Properties.TryGetValue(e[1].GetString()!, out var p) ? FromValue(p, want) : null;
             case "has": return ctx.Properties?.ContainsKey(e[1].GetString()!) == true;
             case "geometry-type": return ctx.GeometryType;
+            case "id": return ctx.Id;
+            case "in":
+            {
+                var needle = Arg(1);
+                var haystack = Arg(2);
+                return haystack switch
+                {
+                    JsonElement a when a.ValueKind == JsonValueKind.Array => a.EnumerateArray().Any(x => Equals(FromJson(x, Kind.Any), needle)),
+                    string s => needle is string n2 && s.Contains(n2),
+                    null => false,
+                    _ => throw new StyleUnsupportedException("in on a non-array"),
+                };
+            }
             case "global-state":
                 return ctx.GlobalState.TryGetValue(e[1].GetString()!, out var g) ? FromJson(g, want) : null;
             case "string": case "number": case "boolean": case "to-number": case "to-string": case "to-boolean":
@@ -290,7 +374,7 @@ internal static class Expression
         if (type == "identity")
         {
             if (!isProperty) return ctx.Zoom;
-            return ctx.Properties != null && ctx.Properties.TryGetValue(prop.GetString()!, out var iv) ? FromJson(iv, want) ?? Default() : Default();
+            return ctx.Properties != null && ctx.Properties.TryGetValue(prop.GetString()!, out var iv) ? FromValue(iv, want) ?? Default() : Default();
         }
         if (!f.TryGetProperty("stops", out var stopsJson)) throw new StyleUnsupportedException("a function without stops");
         var stops = stopsJson.EnumerateArray().Select(s => (key: s[0], output: s[1])).ToList();
@@ -305,7 +389,7 @@ internal static class Expression
         }
         return EvaluateStops(stops, isProperty ? PropertyInput() : ctx.Zoom, type, b, ctx, want) ?? Default();
 
-        object? PropertyInput() => ctx.Properties != null && ctx.Properties.TryGetValue(prop.GetString()!, out var pv) ? FromJson(pv, Kind.Any) : null;
+        object? PropertyInput() => ctx.Properties != null && ctx.Properties.TryGetValue(prop.GetString()!, out var pv) ? pv : null;
     }
 
     static object? EvaluateStops(List<(JsonElement key, JsonElement output)> stops, object? input, string type, double b, StyleContext ctx, Kind want)
@@ -351,7 +435,10 @@ internal static class Expression
         };
     }
 
-    static object? FromJson(JsonElement e, Kind want) => e.ValueKind switch
+    static object? FromValue(object? v, Kind want) => v is string s && want == Kind.Color ? StyleColor.Parse(s) : v;
+
+    /// <summary>A JSON value as an expression value: double, string, bool, null, or the element itself.</summary>
+    public static object? FromJson(JsonElement e, Kind want) => e.ValueKind switch
     {
         JsonValueKind.Number => e.GetDouble(),
         JsonValueKind.String => want == Kind.Color ? StyleColor.Parse(e.GetString()!) : e.GetString(),

@@ -125,8 +125,10 @@ Each frame, on vvvv's main thread:
    fades and by stand-ins borrowing it. A replaced overlay is disposed 60 frames later, since a fade or
    stand-in may still sample it. Layers change by content, not identity.
    **A MapLibre style subset** is drawn by a second, newer painter (`MapStyle.cs`,
-   `MapStylePainter.cs`, `LineTessellator.cs`), measured against MapLibre's render tests (ROADMAP
-   4b) and not yet wired to a node: lines are triangulated as GL JS's `line_bucket.ts` does and drawn
+   `MapStylePainter.cs`, `LineTessellator.cs`, `VectorTile.cs` for MVT), measured against MapLibre's
+   render tests (ROADMAP 4b, 4c) and not yet wired to a node. Geometry is in Web Mercator world
+   coordinates; a vector layer is drawn tile by tile, clipped to each tile's square; fills are
+   aliased with GL's one-pixel `gl.LINES` outline reproduced pixel by pixel; lines are triangulated as GL JS's `line_bucket.ts` does and drawn
    with `DrawVertices`, every triangle blending on its own, so translucent overlaps darken as in
    MapLibre; the shader's 1-pixel edge ramp is reproduced by cutting each triangle where its alpha
    bends and colouring the vertices.
