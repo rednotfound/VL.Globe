@@ -237,11 +237,14 @@ internal sealed class MapStyleDocument
         ["background"] = new() { "background-color", "background-opacity" },
         ["fill"] = new() { "fill-color", "fill-opacity", "fill-outline-color", "fill-antialias" },
         ["line"] = new() { "line-color", "line-opacity", "line-width" },
+        // lenient parses only (see Parse): drawn flat by the GPU path, its height not yet
+        ["fill-extrusion"] = new() { "fill-extrusion-color", "fill-extrusion-opacity" },
     };
     static readonly Dictionary<string, HashSet<string>> LayoutKeys = new()
     {
         ["background"] = new() { "visibility" },
         ["fill"] = new() { "visibility" },
+        ["fill-extrusion"] = new() { "visibility" },
         ["line"] = new() { "visibility", "line-cap", "line-join", "line-miter-limit", "line-round-limit" },
     };
 
@@ -283,6 +286,15 @@ internal sealed class MapStyleDocument
                     if (!LayerKeys.Contains(p.Name)) Unsupported($"{id}: layer.{p.Name}");
                 var type = l.GetProperty("type").GetString()!;
                 if (!PaintKeys.ContainsKey(type)) throw new StyleUnsupportedException($"{type} layer");
+                // A real style hands its buildings from a flat fill to fill-extrusion (Liberty: building
+                // below z14, building-3d from 14), so without it buildings vanished as one zoomed in (the
+                // user, 2026-11-21). A lenient parse keeps it, drawn flat by the GPU path until 3D is
+                // built; a strict one (MapLibre's fixtures, which are 3D) still refuses it.
+                if (type == "fill-extrusion")
+                {
+                    if (!lenient) throw new StyleUnsupportedException("fill-extrusion layer");
+                    doc.Skip($"{id}: fill-extrusion drawn flat");
+                }
                 var paint = l.TryGetProperty("paint", out var pp) ? pp.Clone() : Empty;
                 var layout = l.TryGetProperty("layout", out var ll) ? ll.Clone() : Empty;
                 foreach (var p in paint.EnumerateObject())
@@ -290,8 +302,10 @@ internal sealed class MapStyleDocument
                     if (PaintKeys[type].Contains(p.Name) || p.Name.EndsWith("-transition")) continue;
                     // without these the layer would be drawn as something else (a pattern fill as
                     // black, a casing's two lines as one): leave the layer out instead
-                    if (p.Name is "fill-pattern" or "line-pattern" or "line-gap-width" or "line-gradient" or "line-offset" or "fill-translate" or "line-translate")
+                    if (p.Name is "fill-pattern" or "line-pattern" or "line-gap-width" or "line-gradient" or "line-offset" or "fill-translate" or "line-translate"
+                        or "fill-extrusion-pattern" or "fill-extrusion-translate")
                         throw new StyleUnsupportedException(p.Name);
+                    if (type == "fill-extrusion") continue;   // its height and base: "drawn flat" says it
                     Unsupported($"{id}: {p.Name} ignored");
                 }
                 foreach (var p in layout.EnumerateObject())
@@ -398,6 +412,7 @@ internal static class MapStylePainter
         // GL JS: `if (this.minzoom && zoom < this.minzoom)` - an unset minzoom hides nothing, not even below zoom 0
         if ((layer.MinZoom > 0 && view.Zoom < layer.MinZoom) || view.Zoom >= layer.MaxZoom) return;
         if (Expression.String(Get(layer.Layout, "visibility"), ctx, "visible") == "none") return;
+        if (layer.Type == "fill-extrusion") return;   // the GPU path draws it (flat); the drape does not
         if (layer.Type == "background")
         {
             var color = Expression.Color(Get(layer.Paint, "background-color"), ctx, StyleColor.Black)

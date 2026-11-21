@@ -85,6 +85,38 @@ public class GpuVectorFacts
     }
 
     [Fact]
+    public void BuildingsInFillExtrusionAreDrawnFlatNotDropped()
+    {
+        // Liberty's buildings are a fill below z14 and fill-extrusion from 14: without it they
+        // vanished as one zoomed in (the user, 2026-11-21). Flat until 3D is built - and only in a
+        // lenient parse: MapLibre's fixtures for it are 3D, and a strict parse still refuses them.
+        var tiles = Tiles();
+        using var json = JsonDocument.Parse($$"""
+            {
+              "version": 8,
+              "sources": { "berlin": { "type": "vector", "maxzoom": 14, "tiles": [{{JsonSerializer.Serialize(Path.Combine(tiles, "{z}-{x}-{y}.mvt"))}}] } },
+              "layers": [
+                { "id": "building-3d", "type": "fill-extrusion", "source": "berlin", "source-layer": "building", "minzoom": 14,
+                  "paint": { "fill-extrusion-color": "#ccbbaa", "fill-extrusion-height": ["get", "height"], "fill-extrusion-opacity": 0.8 } }
+              ]
+            }
+            """);
+        Assert.Throws<StyleUnsupportedException>(() => MapStyleDocument.Parse(json.RootElement));
+        var doc = MapStyleDocument.Parse(json.RootElement.Clone(), lenient: true);
+        doc.Load = url => File.Exists(url) ? File.ReadAllBytes(url) : null;
+        Assert.Contains(doc.Skipped, s => s == "building-3d: fill-extrusion drawn flat");
+        var layer = Assert.Single(Layers(doc));
+        Assert.Equal("fill", layer.Type);
+        Assert.True(layer.Uniforms(new StyleContext { Zoom = 15 }, out var color, out _, out _));
+        Assert.Equal(0.8, color.A, 6);
+        Assert.False(layer.Uniforms(new StyleContext { Zoom = 13 }, out _, out _, out _));   // its minzoom
+        var b = VectorBucketBuilder.Build(doc, (VectorSource)doc.Sources["berlin"], Layers(doc), false, new TileKey(14, 8802, 5374), true, null, out _)!;
+        var fill = Assert.Single(b.Ranges);
+        Assert.Equal(RangeKind.Fill, fill.Kind);
+        Assert.True(fill.Count > 3000, $"{fill.Count / 3} triangles of Berlin's buildings");
+    }
+
+    [Fact]
     public void ATileNotHereYetBuildsNothingAndNamesWhatItWaitsFor()
     {
         var tiles = Tiles();

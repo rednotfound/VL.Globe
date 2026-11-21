@@ -77,13 +77,15 @@ internal sealed class GpuStyleLayer
     public JsonElement? Color, Opacity, Width, OutlineColor;
     public bool ColorPerFeature, OpacityPerFeature, WidthPerFeature, OutlinePerFeature, Antialias;
 
-    public string Type => Layer.Type;
+    // fill-extrusion is drawn as a fill, flat, until 3D buildings are built (its paint keys are
+    // fill-extrusion-color and -opacity, read by Of with the type as the prefix; no outline)
+    public string Type => Layer.Type == "fill-extrusion" ? "fill" : Layer.Type;
 
     // what GL JS evaluates per feature goes into the vertices; the rest is a uniform per frame
     public static GpuStyleLayer? Of(MapStyleDocument style, int index)
     {
         var l = style.Layers[index];
-        if (l.Type is not ("fill" or "line" or "background")) return null;
+        if (l.Type is not ("fill" or "line" or "background" or "fill-extrusion")) return null;
         if (style.Lenient && style.IsDropped(l.Id)) return null;
         var g = new GpuStyleLayer { Index = index, Layer = l };
         string p = l.Type;
