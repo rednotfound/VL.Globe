@@ -298,7 +298,13 @@ dotted cracks at tile borders, the globe shaking with the pole dragged into view
 3. **3D buildings** (`fill-extrusion` for real: walls, roofs, light, depth written) — built the
    same night (DESIGN-GPU-VECTOR.md), judged by the user tilting ("确实好很多了"); then a 28-byte
    vertex (-25% GPU memory). Then MapLibre's render tests on the GPU path, offscreen in `dotnet
-   test`: 97 pass (89 non-vacuous; the drape 98/90). **Next: DESIGN-GPU-VECTOR.md "Next"** - labels.
+   test`: 97 pass (89 non-vacuous; the drape 98/90).
+
+### 4e. Labels — milestones 1 (point text) and 2 (collision) done 2026-11-22
+
+Ported from GL JS against its fixtures and shaping expectations (DESIGN-GPU-VECTOR.md, "Labels"):
+154 fixtures pass on the GPU path (146 non-vacuous). Seen in vvvv on Liberty, not yet judged by the
+user. **Next: milestone 3, labels along lines; then icons.**
 
 ### 5. Navigation
 

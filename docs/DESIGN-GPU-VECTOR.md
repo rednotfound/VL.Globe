@@ -120,9 +120,39 @@ blending (`GvLinearize` 0) and GL's fill outline (`GlOutlines`). What the fixtur
 - GeoJSON sources are drawn by the GPU path too (geojson-vt's grid: 8192 steps a tile, maxzoom 18),
   on the globe as well.
 
+## Labels (ROADMAP 4e), 2026-11-22 - milestones 1 and 2
+
+The fixtures first, as for the lines: the text-* groups (134 fixtures) and Open Sans Semibold's glyph
+ranges fetched; MapLibre's symbol-shaping expectations copied into the tests. Then GL JS's pieces, each
+ported against them:
+- `GlyphPbf` (glyph ranges), `GlyphStore` (ranges loaded through the style's Load/Peek/Pending, so a
+  missing range rebuilds the tile when it comes), `GlyphAtlas` (one per style, shelves, a glyph never
+  moves: buckets keep their texture coordinates; the image is uploaded again when it grows).
+- `Shaping.cs` - shapeText for horizontal text, ported by a subagent against the 8 expected JSONs
+  (vertical text, images in text and unspaced scripts' dictionary breaking throw unsupported).
+- `SymbolLayout.cs` - symbol_layout.ts and quads.ts for point labels: text-field (tokens and
+  expressions, concat), text-font stacks, sizes at the tile's zoom and the next, anchors (points, line
+  starts, polygons' poles of inaccessibility), only inside the tile; glyph quads x 32 as GL JS stores them.
+- `GlobeSymbol.sdsl` - symbol_sdf: the anchor projected (on the sphere or the plane), the quad in
+  screen pixels, GL JS's perspective ratio, its SDF smoothstep and halo, halo and text in one pass or
+  two. No depth test, as GL JS; the globe's far side hidden.
+- `LabelPlacement.cs` (milestone 2) - placement.ts / collision_index.ts / grid_index.ts for viewport
+  point labels, every frame in the renderer: layers top first, boxes at the layout size with
+  text-padding times the perspective ratio, a 25-px grid with 100 px round the view, the 0.6 cutoff.
+  Each tile's per-vertex placement is a second vertex stream.
+
+**MapLibre's fixtures on the GPU path: 154 pass, 146 non-vacuous** (97 / 89 before labels): 56 text
+fixtures, and visibility/text/visible - dozens of POIs - placed exactly as GL JS places them.
+**Seen in vvvv on Liberty at Kyoto Station**: Latin and Japanese names, halos, transit labels in
+blue italics, no overlaps.
+
 ## Next
 
-1. Labels and icons (RESEARCH-VECTOR stage 4: glyph PBFs, SDF, placement and collision) - the
+1. Labels, milestone 3: along lines (symbol-placement line / line-center: road and river names) -
+   getAnchors, the glyphs following the line, collision circles; then fades (300 ms) and labels across
+   tiles of two zooms (CrossTileSymbolIndex), the `format` expression, text-size by zoom and feature.
+2. Labels, milestone 4: icons (sprites, icon-image, text-fit) - Liberty's POI icons and road shields.
+3. Labels and icons (RESEARCH-VECTOR stage 4: glyph PBFs, SDF, placement and collision) - the
    largest piece left before 0.1's vector map reads like MapLibre's.
 3. 16-bit indices where a range allows, and dashes (line-dasharray) - drawn solid today.
 4. MapLibre's fixtures rendered by the GPU path offscreen, the same harness as the drape's.

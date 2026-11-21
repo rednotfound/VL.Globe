@@ -401,3 +401,17 @@ looked fine - "which makes one think it works". Two causes, estimated at 100 m h
   a whole row on exactly horizontal edges only, top one way and bottom the other - a tie rule.
 - **Stride vertex elements must be 4-byte multiples** ("VertexElementOffsetNotMultipleFour" from the
   VectorVertex type initializer).
+
+## 2026-11-22 — labels
+
+- **A Stride stage VSMain must not `return;` early**: it becomes an HLSL function with a return value
+  (X3080). Hide a vertex with a flag and one assignment of ShadingPosition at the end. Found by the
+  test host's compile before vvvv ever saw the shader - compile shaders in the tests.
+- **Liberty writes every name with `concat`**: without it every label layer was dropped (lenient) in
+  silence on the globe while the fixtures passed. Real styles need their own check beside the fixtures.
+- **Strictly parsing a new layer type changes both harnesses**: symbol layers read made the drape's and
+  the GPU harness's text fixtures "failed" instead of "unsupported" until each renderer said what it
+  cannot draw. A subagent saw the two VectorTilesFacts it broke and reported them instead of
+  "fixing" them.
+- **A stand-in tile drawn once per square draws its labels once per square**: the symbol shader does
+  not clip, and the copies collided with themselves. Labels come only from tiles drawn whole.

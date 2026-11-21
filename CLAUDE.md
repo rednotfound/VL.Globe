@@ -15,7 +15,8 @@ Guidance for Claude Code working in this repository.
    judged by the user the same night ("大方向完全没有问题", "我觉得还行"), 178 tests green.
    Since then: the long Updates found (a per-frame large-object-heap list), 3D buildings, a 28-byte
    vertex, MapLibre's render tests on the GPU path (97 pass offscreen in `dotnet test`).
-   **Next: DESIGN-GPU-VECTOR.md "Next" - labels.**
+   Then labels (ROADMAP **4e**): point text and collision ported from GL JS, 154 fixtures pass on the
+   GPU path, seen in vvvv on Liberty. **Next: labels along lines (milestone 3), then icons.**
    Research: [docs/RESEARCH-0.1.md](docs/RESEARCH-0.1.md), [docs/RESEARCH-VECTOR.md](docs/RESEARCH-VECTOR.md).
 2. Read **[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)** — what exists and why.
 3. Read **[NOTES.md](NOTES.md)** — every failure so far, before touching the same code.
