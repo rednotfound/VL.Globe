@@ -59,7 +59,7 @@ public sealed class GlobeNode : IDisposable
         public bool FadeOut;             // false: own image fades IN over the ancestor; true: fades OUT to it
         public double FadeStart;
         public int LastUsed;
-        public Texture? Overlay;         // EXPERIMENT: vectors draped into this tile (TileOverlay)
+        public Texture? Overlay;         // the vector layers draped into this tile (TileOverlay)
         public int OverlayVersion = -1;
         public void Dispose() { Texture.Dispose(); Overlay?.Dispose(); Vertices.Dispose(); Indices.Dispose(); }
     }
@@ -116,19 +116,9 @@ public sealed class GlobeNode : IDisposable
     }
     readonly Dictionary<TileKey, StandIn> _standIns = new();
 
-    // EXPERIMENT (ROADMAP 0.1 item 3, branch experiment/vectors): NTS geometry draped into the tiles.
+    // Vector layers draped into the tiles (ROADMAP 0.1 items 3-4).
     long _signature;
-
-    static long Signature(List<Geometry> geometries)
-    {
-        var h = new HashCode();
-        h.Add(geometries.Count);
-        foreach (var g in geometries)
-            foreach (var c in g.Coordinates) { h.Add(c.X); h.Add(c.Y); }
-        return h.ToHashCode() ^ ((long)geometries.Count << 32);
-    }
-    List<Geometry> _features = new();
-    TileOverlay.Style _style;
+    List<(IReadOnlyList<Geometry> geometries, TileOverlay.Style style)> _layers = new();
     int _overlayVersion;
     const int OverlaysPerFrame = 6;
     // A replaced overlay texture may still be sampled by a fade or a stand-in's material for a while;
@@ -160,10 +150,7 @@ public sealed class GlobeNode : IDisposable
     /// <param name="maxZoom">The finest zoom ever requested.</param>
     /// <param name="screenSpaceError">Refine while a tile pixel would cover more screen pixels than this. 1.41 shows tiles at 0.71-1.41x, as MapLibre and Cesium do.</param>
     /// <param name="maxRequestsInFlight">Requests running at once.</param>
-    /// <param name="features">EXPERIMENT: NTS geometry in longitude/latitude, drawn into the tiles.</param>
-    /// <param name="featureStroke">EXPERIMENT: line colour.</param>
-    /// <param name="featureWidth">EXPERIMENT: line width in pixels.</param>
-    /// <param name="featureFill">EXPERIMENT: polygon fill colour.</param>
+    /// <param name="layers">Vector layers from FeatureLayer or Geometry, drawn on the map in order, first at the bottom.</param>
     /// <param name="fadeDuration">Seconds a finer tile takes to fade in over the one it replaces. 0: at once.</param>
     /// <param name="screenHeight">The height of the view in pixels: SceneWindow's Client Bounds. GlobeWindow wires it.</param>
     /// <param name="tilesVisible">Tiles drawn this frame.</param>
@@ -177,7 +164,7 @@ public sealed class GlobeNode : IDisposable
         out int tilesVisible, out int tilesLoading, out int requestsSent, out long bytesReceived, out string attribution, out string status,
         GlobeTileSource? tileSource = null, Entity? camera = null, bool enabled = false, float radius = 1f, Color4 background = default,
         int maxZoom = 19, float screenSpaceError = 1.41f, int maxRequestsInFlight = 6, float screenHeight = 1080f, float fadeDuration = 0.3f,
-        IEnumerable<Geometry>? features = null, Color4 featureStroke = default, float featureWidth = 2f, Color4 featureFill = default)
+        IEnumerable<GlobeLayer>? layers = null)
     {
         _frame++;
         _fadeDuration = Math.Max(0, fadeDuration);
@@ -243,7 +230,7 @@ public sealed class GlobeNode : IDisposable
         }
         foreach (var w in wanted) if (_loaded.TryGetValue(w, out var s)) s.LastUsed = _frame;
         AdvanceFades();
-        UpdateOverlays(features, new TileOverlay.Style(ToSk(featureStroke), Math.Max(0, featureWidth), ToSk(featureFill)));
+        UpdateOverlays(layers);
         Evict();
 
         tilesVisible = _shown.Count;
@@ -350,18 +337,18 @@ public sealed class GlobeNode : IDisposable
 
     static SKColor ToSk(Color4 c) => new((byte)Math.Clamp(c.R * 255, 0, 255), (byte)Math.Clamp(c.G * 255, 0, 255), (byte)Math.Clamp(c.B * 255, 0, 255), (byte)Math.Clamp(c.A * 255, 0, 255));
 
-    void UpdateOverlays(IEnumerable<Geometry>? features, TileOverlay.Style style)
+    void UpdateOverlays(IEnumerable<GlobeLayer>? layers)
     {
         foreach (var r in _retired.Where(r => _frame - r.frame > 60).ToList()) { r.texture.Dispose(); _retired.Remove(r); }
-        // Changed by CONTENT, not identity: FromWKT and Cons build new objects every frame (memory:
-        // "static node before index needs Cache"), and identity would redraw every overlay every frame.
-        var list = features?.Where(g => g is not null).ToList() ?? new List<Geometry>();
-        var signature = Signature(list);
-        if (signature != _signature || style != _style)
+        var list = layers?.Where(l => l is { Enabled: true } && l.Geometries.Count > 0).Select(l => l!).ToList() ?? new List<GlobeLayer>();
+        var h = new HashCode();
+        h.Add(list.Count);
+        foreach (var l in list) h.Add(l.Signature());
+        long signature = h.ToHashCode();
+        if (signature != _signature)
         {
             _signature = signature;
-            _features = list;
-            _style = style;
+            _layers = list.Select(l => (l.Geometries, new TileOverlay.Style(ToSk(l.Style.LineColor), l.Style.LineWidth, ToSk(l.Style.FillColor)))).ToList();
             _overlayVersion++;
         }
         if (_device is null) return;
@@ -370,9 +357,9 @@ public sealed class GlobeNode : IDisposable
         {
             var s = _loaded[t];
             if (s.OverlayVersion == _overlayVersion) continue;
-            if (_features.Count == 0 && s.Overlay is null) { s.OverlayVersion = _overlayVersion; continue; }   // nothing to drape, nothing to undo
+            if (_layers.Count == 0 && s.Overlay is null) { s.OverlayVersion = _overlayVersion; continue; }   // nothing to drape, nothing to undo
             if (budget-- == 0) break;
-            var bytes = _features.Count == 0 ? null : TileOverlay.Rasterize(t, _features, style, 256);
+            var bytes = _layers.Count == 0 ? null : TileOverlay.Rasterize(t, _layers, 256);
             if (s.Overlay is { } old) _retired.Add((old, _frame));
             s.Overlay = bytes is null ? null : FromLevels(_device, bytes, 256, 256, PixelFormat.R8G8B8A8_UNorm_SRgb, srgb: true, straightAlpha: true);
             s.OverlayVersion = _overlayVersion;

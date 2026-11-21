@@ -24,6 +24,12 @@ at the lowest height, not the comfortable one. The verification host is **vvvv 7
 - **How lines and polygons are drawn is decided by an experiment**, not up front. The user: "先做实验再定，
   因为我再考虑如何支持raster tiles". Draping vectors into tile textures and compositing several raster
   layers are the same machinery, so one experiment (item 3) answers both.
+- **Vectors are draped** (decided 2026-11-21 from experiment A, "问题不大"): drawn by SkiaSharp into each
+  tile's overlay image, laid over the map in the tile material. **A MapLibre-like GPU vector renderer is
+  the future** (the user: "那是未来，就算现在不做，将来也是要做的"); if it cannot share the raster engine it
+  becomes **a separate node** ("能够集成在一起固然好…如果不行，我们是可以提供不同的节点，渲染raster的和vector的").
+  The .NET survey and the staged path: [RESEARCH-VECTOR.md](RESEARCH-VECTOR.md). **Vector tiles as a
+  draped source join 0.1**, terrain stays 0.2, and MapLibre's render tests become our yardstick first.
 - **GeoLibre** (`rednotfound/GeoLibre`, a fork of opengeos/GeoLibre) is studied for its **feature
   set** and two small algorithms: the Terrarium provider and zoom ↔ distance. Its engines and app
   shell are not copied (RESEARCH-0.1 §3).
@@ -116,7 +122,17 @@ The plan as written:
     matches VL.Mapsui's and a 2D map can be synced to the globe.
 - All of these are absolute maths and camera-relative-safe. Heights are above sea level, as decided.
 
-### 3. Experiment: how vectors and extra raster layers reach the globe
+### 3. Experiment: how vectors and extra raster layers reach the globe — decided 2026-11-21: draped
+
+Prototype (a) was built and judged by the user ("问题不大"): SkiaSharp draws NTS geometry into a
+transparent overlay per tile (`Engine/TileOverlay.cs`), laid over the imagery with `BinaryOperator.Over`
+— in the tile, its fades and the stand-ins that borrow it, so lines do not blink while tiles change.
+Overlay mips weight colour by alpha (no dark halo). Prototype (b), geometry, was not built: several
+times A's cost for a picture the user did not ask for; the GPU path belongs to the future vector node.
+An extra raster layer (opacity) goes the same way as a second texture under the overlay — item 6.
+
+The plan as written:
+
 
 The user decides this from what they see. Build the two smallest prototypes:
 
@@ -142,7 +158,15 @@ The user decides this from what they see. Build the two smallest prototypes:
 Show both at 20 m and at country scale, side by side, and record the decision in this file. Points
 and labels are screen-facing 3D in both prototypes.
 
-### 4. FeatureLayer, styles, Graticule
+### 4. FeatureLayer, styles, Graticule — partly done 2026-11-21
+
+**Built and seen in vvvv:** `Geometry`, `FeatureLayer` [Globe.Layers] and `VectorStyle` [Globe.Styles]
+in VL.Mapsui's shape (Features/Geometries + Style + Enabled + Name → a layer), into Globe's and
+GlobeWindow's **`Layers`**, drawn in order. Help patch `HowTo Draw shapes on the globe`. Changes are
+found by content (FromWKT and Cons rebuild objects every frame). **Still to do:** `Pick`, `Graticule`.
+
+The plan as written:
+
 
 - **`FeatureLayer [Globe]`**: NTS points, lines and polygons, drawn the way item 3 decided.
 - **`VectorStyle`, `SymbolStyle`, `LabelStyle`**: the same shape as VL.Mapsui's. Whether they *are*
@@ -152,6 +176,23 @@ and labels are screen-facing 3D in both prototypes.
   as Mapsui's Pick.
 
 **Verify:** a GeoJSON of Tokyo's wards stays on OSM's boundaries from 20 m to the whole globe.
+
+### 4b. A test harness on MapLibre's render tests — next
+
+The yardstick for every vector stage (RESEARCH-VECTOR "Testing"): MapLibre GL JS's
+`test/integration/render` (1,796 fixtures, 128 for the globe; `style.json` + `expected.png`,
+pixelmatch `threshold` 0.1285, `allowed` 0.00025), run as MapLibre Native runs them — the fixtures, a
+stated threshold, and an ignore list of known failures. First: fetch a pinned subset (background,
+fill, line) by script into a git-ignored folder, vendor a pixelmatch port, and render each fixture on
+a flat 512 px tile with our draped path. The report is a number that can only go up.
+
+### 4c. `VectorTiles` — a draped vector-tile source
+
+MVT via NetTopologySuite.IO.VectorTiles, drawn per tile into the overlay from a MapLibre Style JSON
+*subset* (fill, line, background; filters; zoom stops) — stage 1 of RESEARCH-VECTOR's path, the same
+machinery as FeatureLayer. Keyless sources: OpenFreeMap (OpenMapTiles), VersaTiles / OSMF (Shortbread).
+Verified by 4b's fixtures and, at street level, by the user. Labels drawn this way collide only within
+a tile and are cut at its edge — the reason for the later vector node.
 
 ### 5. Navigation
 
@@ -232,6 +273,12 @@ ruled out by their terms.
 crack visible at a level boundary. The camera never enters a hillside while dragging uphill.
 
 ## After — each waiting for a consumer
+
+- **`VectorGlobe`: a MapLibre-like GPU vector renderer**, a separate node if it cannot share Globe —
+  RESEARCH-VECTOR stages 2–4: a style-spec expression evaluator ported with its tests, GPU fills
+  (Cutear/Earcut.NET), line extrusion and globe subdivision ported from GL JS, then SDF text with
+  cross-tile placement — the largest stage. In parallel, a spike on MapLibre Native's FFI (D3D11
+  shared texture) once its globe merges and the FFI reaches 1.0.
 
 - A Compass (tilt and turn exist since 0.1 item 1b).
 - Great-circle arcs.

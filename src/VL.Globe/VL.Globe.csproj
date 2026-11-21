@@ -25,6 +25,8 @@
   <ItemGroup>
     <!-- Same version as VL.NetTopologySuite and VL.Mapsui: one identity in one vvvv process. -->
     <PackageReference Include="NetTopologySuite" Version="2.6.0" />
+    <!-- FeatureLayer takes NTS Features, VL.NetTopologySuite's Feature type; VL.Mapsui's version -->
+    <PackageReference Include="NetTopologySuite.Features" Version="2.1.0" />
     <!-- VL.Mapsui's version, deliberately: both packages load into one vvvv process, and NuGet
          unifies to one BruTile. Move them together or not at all. -->
     <PackageReference Include="BruTile" Version="5.0.6" />

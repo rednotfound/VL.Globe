@@ -10,9 +10,15 @@ patches (`lab\Experiment globe*.vl` there).
 
 | node | status |
 |---|---|
-| `ToGlobe [Globe]`, `ToGlobe (Coordinate) [Globe]`, `FromGlobe [Globe]` | built, tested |
-| `Globe [Globe]` — the tile engine | built, seen in vvvv |
+| `GlobeWindow [Globe]` — a globe in one window | built, seen in vvvv |
+| `Globe [Globe]` — the tile engine, camera-relative to street level | built, seen in vvvv |
 | `OpenStreetMap [Globe]`, `XyzTiles [Globe]` | built |
+| `GlobeCamera`, `Drag`, `ZoomByWheel`, `DragRotate [Globe]` | built, seen in vvvv |
+| `GlobePositionComponent [Globe]` — your own entities on the globe | built, seen in vvvv |
+| `ScreenToGlobe`, `GlobeToScreen`, `GlobeViewInfo [Globe]` | built, tested |
+| `Geometry`, `FeatureLayer [Globe.Layers]`, `VectorStyle [Globe.Styles]` | built, seen in vvvv |
+| `ToGlobe [Globe]`, `ToGlobe (Coordinate) [Globe]`, `FromGlobe [Globe]` | built, tested |
 
-Requires vvvv gamma 7.4 (.NET 8, Stride 4.2). Depends on NetTopologySuite 2.6.0; VL.Stride ships
-with vvvv.
+Requires vvvv gamma 7.4 (.NET 8, Stride 4.2). Depends on NetTopologySuite 2.6.0,
+NetTopologySuite.Features 2.1.0 and BruTile 5.0.6; VL.Stride and SkiaSharp ship with vvvv.
+Start with the help patch `HowTo Open a globe window`.

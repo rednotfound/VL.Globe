@@ -2,13 +2,13 @@
 
 Guidance for Claude Code working in this repository.
 
-## Start here — the next session begins with ROADMAP 0.1 item 1, `PlaceOnGlobe`
+## Start here — the next session begins with ROADMAP 0.1 item 4b, the MapLibre test harness
 
-1. Read **[docs/ROADMAP.md](docs/ROADMAP.md)** — planned by release since 2026-11-21: **0.1 = VL.Mapsui's
-   basics on a smooth globe, 0.2 = terrain** (both the user's decisions). Next is 0.1 item 1,
-   `PlaceOnGlobe` (anything a patch places is drawn wrong under GlobeCamera until it exists). How
-   lines and polygons are drawn is decided by the user from an experiment (item 3), not up front.
-   The research behind the plan is [docs/RESEARCH-0.1.md](docs/RESEARCH-0.1.md).
+1. Read **[docs/ROADMAP.md](docs/ROADMAP.md)** — planned by release: **0.1 = VL.Mapsui's basics on a smooth
+   globe plus draped vector tiles, 0.2 = terrain** (the user's decisions). Items 1, 1b, 2 are done and
+   judged; vectors are **draped** (item 3, decided 2026-11-21); Geometry/FeatureLayer/VectorStyle exist
+   (item 4). Next: **4b**, a harness on MapLibre's render tests, then **4c**, a `VectorTiles` source.
+   Research: [docs/RESEARCH-0.1.md](docs/RESEARCH-0.1.md), [docs/RESEARCH-VECTOR.md](docs/RESEARCH-VECTOR.md).
 2. Read **[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)** — what exists and why.
 3. Read **[NOTES.md](NOTES.md)** — every failure so far, before touching the same code.
 4. The family's rules are the siblings': `D:\2026_Projects\vl-mapsui\docs\RULES.md` and that repo's
@@ -39,9 +39,12 @@ at country scale; judge every change at the lowest height.
 | `Globe [Globe]` — the tile engine | camera-relative, rounded levels, mipmaps, fades both ways, background sphere; user-judged |
 | `OpenStreetMap`, `XyzTiles [Globe]` | built; disk cache shared with VL.Mapsui by folder convention; `XyzTiles` has no help patch |
 | `GlobeCamera`, `Drag`, `ZoomByWheel [Globe]` | north stays up; wheel eased (one notch = Wheel Delta 1); vertical drag direction never asked (ROADMAP item 2) |
-| `ToGlobe`, `ToGlobe (Coordinate)`, `FromGlobe [Globe]` | built, 4 rungs, **absolute** — right under OrbitCamera, wrong under GlobeCamera until `PlaceOnGlobe` |
+| `GlobePositionComponent [Globe]` | stands an entity on the globe, placed at draw time; user-judged |
+| `ScreenToGlobe`, `GlobeToScreen`, `GlobeViewInfo [Globe]` | built; user-judged |
+| `Geometry`, `FeatureLayer [Globe.Layers]`, `VectorStyle [Globe.Styles]` | built, draped into the tiles; seen in vvvv |
+| `ToGlobe`, `ToGlobe (Coordinate)`, `FromGlobe [Globe]` | built, 4 rungs, **absolute** — right under OrbitCamera; under GlobeCamera use GlobePositionComponent |
 
-94 tests green. Branch `feature/camera-relative`, pushed to `github.com/rednotfound/VL.Globe`
+145 tests green. Branch `feature/camera-relative`, pushed to `github.com/rednotfound/VL.Globe`
 (public); not merged, not published. Verified on vvvv **7.4 (LTS)**; `Find-Vvvv.ps1` stays below 8.0.
 
 ## Facts this repo paid for (details in NOTES.md)

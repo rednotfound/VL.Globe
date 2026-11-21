@@ -271,3 +271,18 @@ looked fine - "which makes one think it works". Two causes, estimated at 100 m h
   above the pivot, so the horizon ran against the hand ("体感上面是反的"). Sign flipped, pinned by
   `DraggingRightTurnsTheViewToLookRight`. Speed stays 180° per screen width (deck.gl's constant);
   drag up still tilts toward the horizon (MapLibre/Mapbox/deck.gl; only Google Earth is the reverse).
+
+## 2026-11-21 — vectors: draped, decided; a vector globe is the future, maybe a separate node
+
+- Experiment A (SkiaSharp into per-tile overlays) was seen and judged ("问题不大"); B (geometry) was not
+  built — several times A's cost. The user then named the real goal, MapLibre's GPU vector globe ("那是
+  未来"), and settled the architecture question in advance: one node if raster and vector can share
+  the engine, separate nodes if not. Survey: docs/RESEARCH-VECTOR.md — no .NET GPU vector renderer
+  exists; MVT via NTS.IO.VectorTiles; no .NET style-spec port; symbol placement must be ported from GL
+  JS; MapLibre Native's FFI is pre-1.0 with no released globe.
+- A replaced overlay texture can still be sampled by a fade or a stand-in that borrowed it; disposing
+  it at once would leave a material pointing at a freed texture. Retired textures wait 60 frames.
+- Mapsui's `VectorStyle` takes `Color4?` — a nullable pin is how a C# node gets a colour default (C#
+  cannot write a Color4 default value); used for ours.
+- A help patch referencing `Geometry` names its category (`Globe` > `Layers`) in the NodeReference:
+  VL.NetTopologySuite also has things called Geometry.

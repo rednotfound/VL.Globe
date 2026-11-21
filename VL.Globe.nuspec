@@ -24,6 +24,7 @@
     <dependencies>
       <group targetFramework="net8.0">
         <dependency id="NetTopologySuite" version="2.6.0" />
+        <dependency id="NetTopologySuite.Features" version="2.1.0" />
         <!-- VL.Mapsui's version: one BruTile per vvvv process. -->
         <dependency id="BruTile" version="5.0.6" />
       </group>

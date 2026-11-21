@@ -26,7 +26,9 @@ the LTS line** (user, 2026-11-20); `tools\Find-Vvvv.ps1` stays below 8.0.
 | `GlobeWindow [Globe]` | **patched** process | `VL.Globe.vl` | the front door: the whole chain below in one node, with its own window; tells Globe the window's real height |
 | `OpenStreetMap [Globe]` | process | `TileSources.cs` | an `HttpTileSource` for OSM, built once (an HttpTileSource owns an HttpClient and is not disposable) |
 | `XyzTiles [Globe]` | process | `TileSources.cs` | any `{z}/{x}/{y}` server + its required attribution; one source per URL |
-| `Globe [Globe]` | process | `GlobeNode.cs` | the engine: select → request → build → draw → fade; outputs one Stride `Entity` |
+| `Globe [Globe]` | process | `GlobeNode.cs` | the engine: select → request → build → draw → fade → drape the `Layers`; outputs one Stride `Entity` |
+| `Geometry`, `FeatureLayer [Globe.Layers]` | process | `GlobeLayers.cs` | NTS geometries / features in one style → a layer for `Layers`, VL.Mapsui's shape |
+| `VectorStyle [Globe.Styles]` | static | `GlobeLayers.cs` | fill, line colour, line width in pixels; unwired colours default as Mapsui's |
 | `GlobeCamera [Globe]` | process | `GlobeCameraNodes.cs` | a geographic camera state and the Stride camera entity it drives, camera-relative |
 | `Drag [Globe]` | process | `GlobeCameraNodes.cs` | grab the globe (input `View`, output `Result`) |
 | `ZoomByWheel [Globe]` | process | `GlobeCameraNodes.cs` | zoom toward the cursor, eased (input `View`, output `Output`) |
@@ -62,6 +64,8 @@ SceneWindow: Enable Default Post Effects = False, Present Interval = One, Enable
 - **Post effects off**: SceneWindow's defaults tone-map and anti-alias the frame — map colours came
   out darker (10,26,56 shown as 0,7,50) and the text soft. Map tiles are finished pixels.
 - **Present Interval One**: the pin has no default and ran `Immediate`; a fast drag tore.
+- GlobeWindow also takes **`Layers`** (vector layers) and outputs **`Cursor`** (its Mouse's position in
+  projection space, for ScreenToGlobe) — it hides its Mouse.
 
 ## Coordinates and units
 
@@ -114,10 +118,16 @@ Each frame, on vvvv's main thread:
    spot throughout. The weights are keyed `ComputeFloat4`s set every frame, **alpha 1**: Stride's
    `BinaryOperator.Add` is `ComputeColorAdd3ds`, an alpha-weighted blend. An ancestor under a running
    fade is never evicted.
-7. **Every tile's translation** is set from this frame's eye; the **background sphere** (radius
+7. **Drape the layers** (`TileOverlay`, Cesium's and Mapsui's own way): every shown tile whose overlay
+   is out of date gets one, at most 6 per frame, nearest first — the layers' geometry in its Web
+   Mercator square drawn by SkiaSharp into a transparent 256 px image, mipped with colour weighted by
+   alpha, and laid over the imagery with `BinaryOperator.Over`. The same look is used by the tile's
+   fades and by stand-ins borrowing it. A replaced overlay is disposed 60 frames later, since a fade or
+   stand-in may still sample it. Layers change by content, not identity.
+8. **Every tile's translation** is set from this frame's eye; the **background sphere** (radius
    0.995, `Background` colour, a 1 × 1 sRGB texture — an emissive `ComputeColor` drew black) too,
    and it is drawn whenever there is a camera, Enabled or not.
-8. **Evict** least-recently-used tiles beyond 600; **report** `Tiles Visible`, `Tiles Loading`,
+9. **Evict** least-recently-used tiles beyond 600; **report** `Tiles Visible`, `Tiles Loading`,
    `Requests Sent`, `Bytes Received`, `Attribution`, `Status` — logging `Status` when its head changes.
 
 `Enabled` off requests nothing and draws only the background. A source change resets everything.
@@ -158,7 +168,7 @@ main thread. A tile from a source that has since been replaced is dropped on arr
 
 ## Verification
 
-- **Tests** (`test\VL.Globe.Tests`, 94, no network, no GPU): coordinates; tile geometry (exact
+- **Tests** (`test\VL.Globe.Tests`, 145, no network, no GPU — SkiaSharp runs in the test host): coordinates; tile geometry (exact
   seams, sag); camera-relative precision (0.008 mm vs 0.54 m); selection — the tile below at
   0.6–1.42×, **every sampled pixel of the screen** at ≤ 1.5× over seven poses (`TileCoverageFacts`;
   the tile-below test could not see a stretched row), a wrong Screen Height making text small; draw
