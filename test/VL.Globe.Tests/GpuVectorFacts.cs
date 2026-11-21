@@ -111,6 +111,25 @@ public class GpuVectorFacts
     }
 
     [Theory]
+    [InlineData(1)]
+    [InlineData(3)]
+    [InlineData(14)]
+    public void TheBackgroundGridBendsWithTheSphereAtEveryZoom(int zoom)
+    {
+        // a chequerboard from afar (the user, 2026-11-21): 8 cells at zoom 1 sank 1.8% of the radius
+        // under the globe in their middles; cells of 2 degrees at most sag 0.00015
+        var b = VectorBucketBuilder.BackgroundBucket(new TileKey(zoom, 0, (1 << zoom) / 2));
+        double worst = 0;
+        for (int t = 0; t < b.Indices.Length; t += 3)
+        {
+            D3 P(int k) { var v = b.Vertices[b.Indices[t + k]].Position; return new D3(b.Centre.X + v.X, b.Centre.Y + v.Y, b.Centre.Z + v.Z); }
+            var mid = (P(0) + P(1) + P(2)) * (1.0 / 3);
+            worst = Math.Max(worst, 1 - mid.Length);
+        }
+        Assert.InRange(worst, 0, 0.0003);   // under the 0.0015 the shader lifts by, seen from two radii
+    }
+
+    [Theory]
     [InlineData(15, 14)]   // a 256-px globe tile at zoom 15 is MapLibre's zoom 14
     [InlineData(19, 14)]   // beyond the source's maxzoom: overscaled
     [InlineData(1, 0)]

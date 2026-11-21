@@ -22,6 +22,7 @@ internal sealed class GpuVectorTiles : IDisposable
     {
         public required VectorBucket Bucket;
         public Buffer? Vertices, Indices;   // null: a tile with nothing in it
+        public long Bytes => (Vertices?.SizeInBytes ?? 0) + (Indices?.SizeInBytes ?? 0);
         public required Dictionary<int, List<VectorRange>> ByLayer;   // -1: the background grid
         public void Dispose() { Vertices?.Dispose(); Indices?.Dispose(); }
     }
@@ -45,9 +46,13 @@ internal sealed class GpuVectorTiles : IDisposable
 
     readonly Dictionary<(VectorTileService service, string source, TileKey key), Entry> _entries = new();
     readonly Dictionary<VectorTileService, StyleInfo> _styles = new();
+    // the background grids, by tile: no data in them, built at once on this thread
+    readonly Dictionary<TileKey, (Built built, int lastUsed)> _backgrounds = new();
     static readonly int MaxJobs = Math.Max(2, Environment.ProcessorCount - 2);
     const int UploadsPerFrame = 4;
     const int KeepFrames = 600, KeepTiles = 160;
+    // a street-level Liberty tile is ~380k vertices, 15 MB: kept by bytes, the least recently used out
+    const long GpuBudget = 768L << 20;
     int _frame, _built;
     double _buildMs;
 
@@ -64,7 +69,7 @@ internal sealed class GpuVectorTiles : IDisposable
 
     public string Status => _styles.Count == 0 ? "" :
         $"GPU vectors: {_entries.Values.Count(e => e.Built != null)} tiles built ({_buildMs:F0} ms each), " +
-        $"{_entries.Values.Count(e => e.Job != null)} building, {_renderer.ItemsDrawn} draws" +
+        $"{_entries.Values.Count(e => e.Job != null)} building, {_entries.Values.Sum(e => e.Built?.Bytes ?? 0) >> 20} MB, {_renderer.ItemsDrawn} draws" +
         (_renderer.Error.Length > 0 ? " - " + _renderer.Error : "");
 
     // shown: the globe tiles whose area is drawn; wanted: those that fetch vector tiles; zoom: the
@@ -84,6 +89,7 @@ internal sealed class GpuVectorTiles : IDisposable
             if (info is null) continue;
             var doc = info.Document;
             var draws = new Dictionary<string, List<(Built built, Vector4 clip)>>();
+            var backgroundDraws = new List<(Built built, Vector4 clip)>();
             foreach (var (sourceId, layers) in info.BySource)
             {
                 if (doc.Sources[sourceId] is not VectorSource source) continue;
@@ -95,7 +101,6 @@ internal sealed class GpuVectorTiles : IDisposable
                         if (!needed.TryGetValue(vk, out var served)) needed[vk] = served = new List<TileKey>();
                         served.Add(g);
                     }
-                bool withBackground = sourceId == info.BackgroundSource;
                 // the tiles wanted globe tiles need build first
                 foreach (var (vk, served) in needed.OrderByDescending(n => n.Value.Any(wanted.Contains)))
                 {
@@ -111,7 +116,7 @@ internal sealed class GpuVectorTiles : IDisposable
                             e.Job = Task.Run(() =>
                             {
                                 var missing = new List<string>();
-                                var bucket = VectorBucketBuilder.Build(doc, source, layers, withBackground, key, fetch, missing, out bool complete);
+                                var bucket = VectorBucketBuilder.Build(doc, source, layers, false, key, fetch, missing, out bool complete);
                                 return (bucket, complete, missing.ToArray());
                             });
                             running++;
@@ -119,6 +124,15 @@ internal sealed class GpuVectorTiles : IDisposable
                     }
                 }
                 draws[sourceId] = Resolve(service, sourceId, needed);
+                // the background is drawn on every needed tile from the first frame, built or not:
+                // the style's ground colour, not the globe's dark one, while the data comes
+                if (sourceId == info.BackgroundSource)
+                    foreach (var (vk, served) in needed)
+                    {
+                        var bg = Background(device, vk);
+                        if (needed.Keys.Any(o => o.Zoom > vk.Zoom && Contains(vk, o))) foreach (var g in served) backgroundDraws.Add((bg, Rect(vk, g)));
+                        else backgroundDraws.Add((bg, new Vector4(0, 0, 1, 1)));
+                    }
             }
 
             var ctx = new StyleContext { Zoom = zoom, GlobalState = doc.GlobalState };
@@ -130,8 +144,8 @@ internal sealed class GpuVectorTiles : IDisposable
                 try { visible = layer.Uniforms(ctx, out color, out width, out outline); }
                 catch (StyleUnsupportedException e) when (doc.Lenient) { doc.Drop(layer.Layer.Id, e.Message); continue; }
                 if (!visible) continue;
-                var source = layer.Type == "background" ? info.BackgroundSource : layer.Layer.Source;
-                if (source is null || !draws.TryGetValue(source, out var list)) continue;
+                List<(Built built, Vector4 clip)>? list = backgroundDraws;
+                if (layer.Type != "background" && (layer.Layer.Source is not { } source || !draws.TryGetValue(source, out list))) continue;
                 int rangeLayer = layer.Type == "background" ? -1 : layer.Index;
                 foreach (var (built, clip) in list)
                 {
@@ -241,6 +255,24 @@ internal sealed class GpuVectorTiles : IDisposable
                 else foreach (var g in served) list.Add((built, Rect(vk, g)));
                 continue;
             }
+            // zooming out: finer tiles already built cover it (MapLibre keeps children for this too)
+            bool Here(TileKey k) => _entries.TryGetValue((service, source, k), out var c) && c.Built != null;
+            bool Covered(TileKey k, int depth) => (k != vk && Here(k)) || (depth > 0 && Children(k).All(c => Covered(c, depth - 1)));
+            if (Covered(vk, 2))
+            {
+                void Add(TileKey k, int depth)
+                {
+                    if (k != vk && _entries.TryGetValue((service, source, k), out var c) && c.Built is { } cb)
+                    {
+                        c.LastUsed = _frame;
+                        if (!needed.ContainsKey(k)) list.Add((cb, full));   // a needed one draws itself
+                        return;
+                    }
+                    if (depth > 0) foreach (var child in Children(k)) Add(child, depth - 1);
+                }
+                Add(vk, 2);
+                continue;
+            }
             for (int z = vk.Zoom - 1; z >= 0; z--)
             {
                 var a = new TileKey(z, vk.X >> (vk.Zoom - z), vk.Y >> (vk.Zoom - z));
@@ -265,6 +297,29 @@ internal sealed class GpuVectorTiles : IDisposable
         return new TileKey(z, g.X >> (g.Zoom - z), g.Y >> (g.Zoom - z));
     }
 
+    static TileKey[] Children(TileKey k) => new[]
+    {
+        new TileKey(k.Zoom + 1, k.X * 2, k.Y * 2), new TileKey(k.Zoom + 1, k.X * 2 + 1, k.Y * 2),
+        new TileKey(k.Zoom + 1, k.X * 2, k.Y * 2 + 1), new TileKey(k.Zoom + 1, k.X * 2 + 1, k.Y * 2 + 1),
+    };
+
+    Built Background(GraphicsDevice device, TileKey key)
+    {
+        if (_backgrounds.TryGetValue(key, out var b)) { _backgrounds[key] = (b.built, _frame); return b.built; }
+        var bucket = VectorBucketBuilder.BackgroundBucket(key);
+        var built = new Built
+        {
+            Bucket = bucket,
+            ByLayer = new() { [-1] = bucket.Ranges },
+            Vertices = Buffer.Vertex.New(device, bucket.Vertices, GraphicsResourceUsage.Immutable),
+            Indices = Buffer.Index.New(device, bucket.Indices, GraphicsResourceUsage.Immutable),
+        };
+        bucket.Vertices = Array.Empty<VectorVertex>();
+        bucket.Indices = Array.Empty<uint>();
+        _backgrounds[key] = (built, _frame);
+        return built;
+    }
+
     static bool Contains(TileKey a, TileKey d) => d.Zoom >= a.Zoom && (d.X >> (d.Zoom - a.Zoom)) == a.X && (d.Y >> (d.Zoom - a.Zoom)) == a.Y;
 
     // d's square in a's, 0..1
@@ -283,9 +338,15 @@ internal sealed class GpuVectorTiles : IDisposable
 
     void Evict()
     {
-        if (_entries.Count <= KeepTiles) return;
-        foreach (var (k, e) in _entries.Where(kv => _frame - kv.Value.LastUsed > KeepFrames && kv.Value.Job is null).ToList())
+        if (_backgrounds.Count > KeepTiles)
+            foreach (var (k, b) in _backgrounds.Where(kv => _frame - kv.Value.lastUsed > KeepFrames).ToList()) { b.built.Dispose(); _backgrounds.Remove(k); }
+        long bytes = _entries.Values.Sum(e => e.Built?.Bytes ?? 0);
+        // never what this frame draws; the oldest first
+        foreach (var (k, e) in _entries.Where(kv => kv.Value.LastUsed < _frame && kv.Value.Job is null).OrderBy(kv => kv.Value.LastUsed).ToList())
         {
+            bool stale = _frame - e.LastUsed > KeepFrames && _entries.Count > KeepTiles;
+            if (bytes <= GpuBudget && !stale) break;
+            bytes -= e.Built?.Bytes ?? 0;
             e.Built?.Dispose();
             _entries.Remove(k);
         }
@@ -296,5 +357,7 @@ internal sealed class GpuVectorTiles : IDisposable
         _renderer.Current = null;
         foreach (var e in _entries.Values) e.Built?.Dispose();
         _entries.Clear();
+        foreach (var b in _backgrounds.Values) b.built.Dispose();
+        _backgrounds.Clear();
     }
 }

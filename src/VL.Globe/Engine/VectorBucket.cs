@@ -106,7 +106,6 @@ internal static class VectorBucketBuilder
     public const double Extent = 512;
     const double NominalOutset = 10;          // slices round caps for lines up to ~20 px wide
     const double SharpCornerOffset = 15;      // GL JS: 15 px of the tile it is built in
-    const int BackgroundCells = 8;
 
     /// <summary>
     /// Builds the bucket of one vector tile for the layers of one source; null when the tile is not here
@@ -133,6 +132,14 @@ internal static class VectorBucketBuilder
         var bucket = b.Finish();
         bucket.Ms = clock.Elapsed.TotalMilliseconds;
         return bucket;
+    }
+
+    /// <summary>The background grid alone: it needs no data, so it is drawn at once while the tile's data is on its way.</summary>
+    public static VectorBucket BackgroundBucket(TileKey key)
+    {
+        var b = new Builder(key);
+        b.Background();
+        return b.Finish();
     }
 
     sealed class Builder
@@ -170,17 +177,20 @@ internal static class VectorBucketBuilder
             Key = _key, Centre = _centre, Vertices = _vertices.ToArray(), Indices = _indices.ToArray(), Ranges = _ranges.ToList(),
         };
 
-        // the whole square, a grid so it bends with the sphere; the background layers draw it
+        // the whole square, a grid so it bends with the sphere; the background layers draw it. Cells of
+        // 2 degrees at most, as every other edge here: 8 cells at zoom 1 are 22 degrees, whose middles
+        // sank 1.8% of the radius under the globe - a chequerboard seen from afar (the user, 2026-11-21)
         public void Background()
         {
             int start = _indices.Count;
             uint first = (uint)_vertices.Count;
-            int side = BackgroundCells + 1;
+            int cells = Math.Max(8, (int)Math.Ceiling(Extent / _maxSegment));
+            int side = cells + 1;
             for (int j = 0; j < side; j++)
                 for (int i = 0; i < side; i++)
-                    _vertices.Add(Vertex(Extent * i / BackgroundCells, Extent * j / BackgroundCells, 0, 0, 0, 1, uint.MaxValue));
-            for (int j = 0; j < BackgroundCells; j++)
-                for (int i = 0; i < BackgroundCells; i++)
+                    _vertices.Add(Vertex(Extent * i / cells, Extent * j / cells, 0, 0, 0, 1, uint.MaxValue));
+            for (int j = 0; j < cells; j++)
+                for (int i = 0; i < cells; i++)
                 {
                     uint a = first + (uint)(j * side + i), c = a + (uint)side;
                     _indices.Add(a); _indices.Add(a + 1); _indices.Add(c);
@@ -232,7 +242,7 @@ internal static class VectorBucketBuilder
                 if (_indices.Count > fillStart) _ranges.Add(new VectorRange(layer.Index, RangeKind.Fill, fillStart, _indices.Count - fillStart));
                 int outlineStart = _indices.Count;
                 // GL JS's antialiasing outline, one device pixel: a 1 px line here
-                foreach (var (f, color) in outlines) Lines(f, true, "miter", "butt", 2, 1.05, 1, color);
+                foreach (var (f, color) in outlines) Outline(f, color);
                 if (_indices.Count > outlineStart) _ranges.Add(new VectorRange(layer.Index, RangeKind.Outline, outlineStart, _indices.Count - outlineStart));
             }
             else if (_indices.Count > fillStart) _ranges.Add(new VectorRange(layer.Index, RangeKind.Line, fillStart, _indices.Count - fillStart));
@@ -243,6 +253,9 @@ internal static class VectorBucketBuilder
             foreach (var polygon in f.Parts)
             {
                 if (polygon.Count == 0) continue;
+                // most polygons (buildings) have no hole and few corners: clipped here without NTS's
+                // objects, which made buildings 85 of a tile's 118 ms (Liberty, Kyoto, 2026-11-21)
+                if (polygon.Count == 1 && polygon[0].Length <= 128 && SimpleRing(polygon[0], color)) continue;
                 Polygon geometry;
                 try
                 {
@@ -258,6 +271,85 @@ internal static class VectorBucketBuilder
                 catch (Exception e) when (e is ArgumentException or InvalidOperationException or NullReferenceException or IndexOutOfRangeException or NetTopologySuite.Geometries.TopologyException) { continue; }
                 var seen = new Dictionary<(double, double), uint>();
                 foreach (var t in tris) Triangle(t.GetCoordinate(0), t.GetCoordinate(1), t.GetCoordinate(2), color, seen, 0);
+            }
+        }
+
+        readonly List<(double X, double Y)> _ring = new();
+        readonly List<int> _left = new();
+
+        // ear clipping of one ring without holes; false when it is not simple enough (left to NTS)
+        bool SimpleRing((double X, double Y)[] ring, uint color)
+        {
+            var pts = _ring;
+            pts.Clear();
+            foreach (var (x, y) in ring)
+            {
+                var c = ((x * _n - _key.X) * Extent, (y * _n - _key.Y) * Extent);
+                if (pts.Count == 0 || pts[^1] != c) pts.Add(c);
+            }
+            if (pts.Count > 1 && pts[0] == pts[^1]) pts.RemoveAt(pts.Count - 1);
+            if (pts.Count < 3) return true;   // nothing to fill
+            double area = 0;
+            for (int i = 0, j = pts.Count - 1; i < pts.Count; j = i++) area += (pts[j].X - pts[i].X) * (pts[j].Y + pts[i].Y);
+            if (area == 0) return true;
+            double sign = Math.Sign(area);
+            var left = _left;
+            left.Clear();
+            for (int i = 0; i < pts.Count; i++) left.Add(i);
+            var tris = new List<int>(3 * pts.Count);
+            int guard = 0;
+            while (left.Count > 3)
+            {
+                bool cut = false;
+                for (int k = 0; k < left.Count; k++)
+                {
+                    int ia = left[(k + left.Count - 1) % left.Count], ib = left[k], ic = left[(k + 1) % left.Count];
+                    var (a, b, c) = (pts[ia], pts[ib], pts[ic]);
+                    double cross = (b.X - a.X) * (c.Y - a.Y) - (b.Y - a.Y) * (c.X - a.X);
+                    if (cross * sign <= 0) continue;   // reflex or flat: not an ear
+                    bool inside = false;
+                    foreach (int m in left)
+                    {
+                        if (m == ia || m == ib || m == ic) continue;
+                        if (In(pts[m], a, b, c)) { inside = true; break; }
+                    }
+                    if (inside) continue;
+                    tris.Add(ia); tris.Add(ib); tris.Add(ic);
+                    left.RemoveAt(k);
+                    cut = true;
+                    break;
+                }
+                if (!cut || ++guard > 4 * pts.Count) return false;   // self-intersecting: NTS decides
+            }
+            tris.Add(left[0]); tris.Add(left[1]); tris.Add(left[2]);
+            uint first = (uint)_vertices.Count;
+            foreach (var (x, y) in pts) _vertices.Add(Vertex(x, y, 0, 0, 0, 1, color));
+            if (pts.Count > 0 && Max(pts) > _maxSegment)
+            {
+                // a coarse tile's large polygon: through the splitting path, so it follows the sphere
+                _vertices.RemoveRange((int)first, pts.Count);
+                var seen = new Dictionary<(double, double), uint>();
+                for (int t = 0; t < tris.Count; t += 3)
+                    Triangle(new Coordinate(pts[tris[t]].X, pts[tris[t]].Y), new Coordinate(pts[tris[t + 1]].X, pts[tris[t + 1]].Y),
+                        new Coordinate(pts[tris[t + 2]].X, pts[tris[t + 2]].Y), color, seen, 0);
+                return true;
+            }
+            foreach (int t in tris) _indices.Add(first + (uint)t);
+            return true;
+
+            static bool In((double X, double Y) p, (double X, double Y) a, (double X, double Y) b, (double X, double Y) c)
+            {
+                double d1 = (p.X - b.X) * (a.Y - b.Y) - (a.X - b.X) * (p.Y - b.Y);
+                double d2 = (p.X - c.X) * (b.Y - c.Y) - (b.X - c.X) * (p.Y - c.Y);
+                double d3 = (p.X - a.X) * (c.Y - a.Y) - (c.X - a.X) * (p.Y - a.Y);
+                bool neg = d1 < 0 || d2 < 0 || d3 < 0, pos = d1 > 0 || d2 > 0 || d3 > 0;
+                return !(neg && pos);
+            }
+            static double Max(List<(double X, double Y)> q)
+            {
+                double x0 = double.MaxValue, y0 = double.MaxValue, x1 = double.MinValue, y1 = double.MinValue;
+                foreach (var (x, y) in q) { x0 = Math.Min(x0, x); y0 = Math.Min(y0, y); x1 = Math.Max(x1, x); y1 = Math.Max(y1, y); }
+                return Math.Max(x1 - x0, y1 - y0);
             }
         }
 
@@ -298,6 +390,50 @@ internal static class VectorBucketBuilder
                 return i;
             }
             static Coordinate Mid(Coordinate p, Coordinate q) => new((p.X + q.X) / 2, (p.Y + q.Y) / 2);
+        }
+
+        // GL JS's fill outline is gl.LINES: one device pixel along each edge, no joins. Here a quad
+        // per edge, extruded half a pixel each side (+0.5 ramp); each corner projected once. Through
+        // the full line path it was 42 of a tile's 56 ms of buildings (2026-11-21).
+        void Outline(StyleFeature f, uint color)
+        {
+            foreach (var polygon in f.Parts)
+                foreach (var ring in polygon)
+                {
+                    var pts = _ring;
+                    pts.Clear();
+                    for (int k = 0; k < ring.Length; k++)
+                    {
+                        var p = ((ring[k].X * _n - _key.X) * Extent, (ring[k].Y * _n - _key.Y) * Extent);
+                        if (pts.Count > 0)
+                        {
+                            var q = pts[^1];
+                            double len = Math.Sqrt((p.Item1 - q.X) * (p.Item1 - q.X) + (p.Item2 - q.Y) * (p.Item2 - q.Y));
+                            int cuts = (int)Math.Min(64, Math.Ceiling(len / _maxSegment));
+                            for (int c = 1; c < cuts; c++) pts.Add((q.X + (p.Item1 - q.X) * c / cuts, q.Y + (p.Item2 - q.Y) * c / cuts));
+                        }
+                        pts.Add(p);
+                    }
+                    if (pts.Count < 2) continue;
+                    VectorVertex prev = Vertex(pts[0].X, pts[0].Y, 0, 0, 0, 1, color);
+                    for (int k = 1; k < pts.Count; k++)
+                    {
+                        var cur = Vertex(pts[k].X, pts[k].Y, 0, 0, 0, 1, color);
+                        double dx = pts[k].X - pts[k - 1].X, dy = pts[k].Y - pts[k - 1].Y, len = Math.Sqrt(dx * dx + dy * dy);
+                        if (len > 0)
+                        {
+                            var nrm = new Vector2((float)(-dy / len), (float)(dx / len));
+                            uint i0 = (uint)_vertices.Count;
+                            _vertices.Add(prev with { Extrude = nrm, N = 1 });
+                            _vertices.Add(prev with { Extrude = -nrm, N = -1 });
+                            _vertices.Add(cur with { Extrude = nrm, N = 1 });
+                            _vertices.Add(cur with { Extrude = -nrm, N = -1 });
+                            _indices.Add(i0); _indices.Add(i0 + 1); _indices.Add(i0 + 2);
+                            _indices.Add(i0 + 1); _indices.Add(i0 + 3); _indices.Add(i0 + 2);
+                        }
+                        prev = cur;
+                    }
+                }
         }
 
         void Lines(StyleFeature f, bool isPolygon, string join, string cap, double miterLimit, double roundLimit, float width, uint color)
