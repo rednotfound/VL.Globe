@@ -254,3 +254,20 @@ looked fine - "which makes one think it works". Two causes, estimated at 100 m h
   nearest first, so the ground ahead sharpens before the horizon); stand-ins sank by the camera's
   height — 0.5 m at 20 m, below the depth buffer's resolution 10 km away (now 0.3 % of each tile's
   distance).
+
+## 2026-11-21 — sunk stand-ins showed as tiles dropping and black cracks; the turn ran backwards
+
+- **"加载的一瞬间…tiles和tiles之间的那个黑框…那个地砖往下下降了一点，然后抬起来" (the user, tilted).** The
+  Under layer worked by sinking the stand-in ancestor (0.3 % of its distance): under tilt the sink
+  was seen as a drop, and the step between a surface tile and a sunk one had no wall, so the eye saw
+  through the crack to the dark background sphere — black edges zooming in; white frames zooming out
+  were the same layer. Replaced by **stand-in squares**: each uncovered square drawn with its own mesh
+  and the matching part of an arrived ancestor's image (uv × scale + offset, as the fades sample) —
+  every drawn thing at the surface, none overlapping (`StandInsNeverOverlapTheTopTilesOrEachOther`).
+  When the real tile arrives it fades from exactly the image the square was borrowing.
+- **The right-drag turn was backwards.** Researched (MapLibre linear mode, Mapbox, deck.gl, Cesium):
+  every one raises the heading on a drag right — the view turns to look right. Ours lowered it, "the
+  map turns with the cursor", which is true only above the pivot; a tilted view is mostly what lies
+  above the pivot, so the horizon ran against the hand ("体感上面是反的"). Sign flipped, pinned by
+  `DraggingRightTurnsTheViewToLookRight`. Speed stays 180° per screen width (deck.gl's constant);
+  drag up still tilts toward the horizon (MapLibre/Mapbox/deck.gl; only Google Earth is the reverse).

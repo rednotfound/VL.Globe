@@ -5,16 +5,16 @@ using System.Linq;
 namespace VL.Globe.Engine;
 
 // From the tiles the camera wants and the tiles that have arrived: what to draw now, and what to
-// ask for. Two layers (2026-11-21):
-//   Top   - every wanted tile that arrived, and for one that has not, its loaded descendants (a
-//           zoom out leaves them loaded; MapLibre's _retainLoadedChildren). Never two Top tiles
-//           on one spot (coplanar tiles z-fight).
-//   Under - for whatever part of a missing tile no descendant covers, its nearest arrived
-//           ancestor, drawn sunk below the surface (GlobeNode) so Top wins the depth test and the
-//           ancestor shows only through the holes - MapLibre draws the parent under its children.
-// The old single-layer rule let ONE missing tile's stand-in ancestor hide every loaded tile under
-// it until all arrived: zooming out, a not-yet-loaded tile at the edge of the view pulled a whole
-// zoom-3 tile over half the screen - "缩小过程中的闪现" a white, blurred flash (the user, 2026-11-21).
+// ask for. Two kinds of thing are drawn, never two on one spot (coplanar tiles z-fight):
+//   Top      - every wanted tile that arrived, and for one that has not, its loaded descendants (a
+//              zoom out leaves them loaded; MapLibre's _retainLoadedChildren).
+//   StandIns - each square still uncovered, drawn with ITS OWN mesh and the matching part of its
+//              nearest arrived ancestor's image (as Cesium and MapLibre draw a missing tile from the
+//              parent's texture). Everything stays at the surface.
+// History (2026-11-21): first the stand-in ancestor alone hid every loaded tile under it (a zoom-3
+// "white flash" over half the screen); then the whole ancestor was drawn SUNK beneath the loaded
+// tiles, which a tilted view showed as tiles "dropping and rising" and black cracks down the step
+// to the background (the user: "那个地砖往下下降了一点，然后抬起来的那种感觉").
 internal static class DrawSet
 {
     /// <summary>The coarse fallback level: every wanted tile also asks for its ancestor here.</summary>
@@ -23,39 +23,49 @@ internal static class DrawSet
     /// <summary>How many levels below a missing tile its loaded descendants are looked for.</summary>
     public const int MaxChildLevels = 3;
 
-    /// <summary>What to draw: <c>Top</c> tiles at the surface, <c>Under</c> stand-ins sunk below it.</summary>
-    public readonly record struct Layers(List<TileKey> Top, List<TileKey> Under);
+    /// <summary>What to draw: <c>Top</c> tiles, and <c>StandIns</c> - squares drawn from part of an ancestor's image.</summary>
+    public readonly record struct Layers(List<TileKey> Top, List<(TileKey Square, TileKey From)> StandIns);
 
     public static Layers Resolve(IReadOnlyList<TileKey> wanted, Func<TileKey, bool> isLoaded)
     {
         var top = new HashSet<TileKey>();
-        var under = new HashSet<TileKey>();
-        foreach (var w in wanted)
+        var holes = new List<TileKey>();
+        foreach (var w in wanted) Fill(w, isLoaded, MaxChildLevels, top, holes);
+        var standIns = new List<(TileKey, TileKey)>();
+        foreach (var h in holes)
         {
-            if (isLoaded(w)) { top.Add(w); continue; }
-            if (LoadedDescendants(w, isLoaded, MaxChildLevels, top)) continue;   // covered entirely
-            var t = w;
-            while (!isLoaded(t) && t.Zoom > 0) t = t.Parent;
-            if (isLoaded(t)) under.Add(t);
+            for (var a = h; a.Zoom > 0;)
+            {
+                a = a.Parent;
+                if (isLoaded(a)) { standIns.Add((h, a)); break; }
+            }
         }
         var topList = top.Where(t => !HasAncestorIn(t, top)).OrderBy(t => t.Zoom).ToList();
-        var underList = under.Where(t => !top.Contains(t)).OrderBy(t => t.Zoom).ToList();
-        return new Layers(topList, underList);
+        return new Layers(topList, standIns);
     }
 
-    // Adds t's loaded descendants within `levels` to `into`, each branch as coarse as possible;
-    // true when they cover all of t.
-    static bool LoadedDescendants(TileKey t, Func<TileKey, bool> isLoaded, int levels, HashSet<TileKey> into)
+    // t itself when loaded; else its loaded descendants within `levels`, and the squares between
+    // them that nothing covers - each as coarse as possible.
+    static void Fill(TileKey t, Func<TileKey, bool> isLoaded, int levels, HashSet<TileKey> top, List<TileKey> holes)
+    {
+        if (isLoaded(t)) { top.Add(t); return; }
+        if (levels > 0 && AnyLoadedBelow(t, isLoaded, levels))
+        {
+            for (int i = 0; i < 4; i++) Fill(t.Child(i), isLoaded, levels - 1, top, holes);
+            return;
+        }
+        holes.Add(t);
+    }
+
+    static bool AnyLoadedBelow(TileKey t, Func<TileKey, bool> isLoaded, int levels)
     {
         if (levels <= 0) return false;
-        bool all = true;
         for (int i = 0; i < 4; i++)
         {
             var c = t.Child(i);
-            if (isLoaded(c)) { into.Add(c); continue; }
-            if (!LoadedDescendants(c, isLoaded, levels - 1, into)) all = false;
+            if (isLoaded(c) || AnyLoadedBelow(c, isLoaded, levels - 1)) return true;
         }
-        return all;
+        return false;
     }
 
     static bool HasAncestorIn(TileKey t, HashSet<TileKey> set)

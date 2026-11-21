@@ -184,7 +184,7 @@ public class DrawSetFacts
     {
         var d = DrawSet.Resolve(new[] { Kids[0] }, t => t == P);
         Assert.Empty(d.Top);
-        Assert.Equal(new[] { P }, d.Under);
+        Assert.Equal(new[] { (Kids[0], P) }, d.StandIns);
     }
 
     [Fact]
@@ -192,17 +192,31 @@ public class DrawSetFacts
     {
         var d = DrawSet.Resolve(Kids, t => t == P || Kids.Contains(t));
         Assert.Equal(Sorted(Kids), Sorted(d.Top));
-        Assert.Empty(d.Under);
+        Assert.Empty(d.StandIns);
     }
 
     [Fact]
-    public void ThreeOfFourAreDrawnWithTheParentUnderneathNotHidden()
+    public void ThreeOfFourAreDrawnAndOnlyTheFourthSquareBorrowsTheParent()
     {
-        // The old rule drew the parent ALONE until all four arrived. Zooming out, one missing tile at
-        // the edge of the view pulled a zoom-3 tile over half the screen: "缩小过程中的闪现".
+        // First the parent was drawn ALONE until all four arrived (a zoom-3 "white flash" over half the
+        // screen); then whole and sunk beneath them ("下降了一点，然后抬起来", black cracks when tilted).
         var d = DrawSet.Resolve(Kids, t => t == P || t == Kids[0] || t == Kids[1] || t == Kids[2]);
         Assert.Equal(Sorted(Kids.Take(3)), Sorted(d.Top));
-        Assert.Equal(new[] { P }, d.Under);
+        Assert.Equal(new[] { (Kids[3], P) }, d.StandIns);
+    }
+
+    [Fact]
+    public void StandInsNeverOverlapTheTopTilesOrEachOther()
+    {
+        // a deep mix: some grandchildren, a child, nothing in one quarter
+        var k0 = W.Child(0);
+        var loaded = new[] { k0.Child(1), k0.Child(2), W.Child(1), Coarse }.ToHashSet();
+        var d = DrawSet.Resolve(new[] { W }, loaded.Contains);
+        var squares = d.Top.Concat(d.StandIns.Select(x => x.Square)).ToList();
+        foreach (var a in squares)
+            foreach (var b in squares)
+                if (a != b) Assert.False(a.IsAncestorOf(b), $"{a} overlaps {b}");
+        Assert.True(Fade.Covers(W, squares), "the squares together cover the wanted tile");
     }
 
     [Fact]
@@ -210,7 +224,7 @@ public class DrawSetFacts
     {
         var d = DrawSet.Resolve(Kids, _ => false);
         Assert.Empty(d.Top);
-        Assert.Empty(d.Under);
+        Assert.Empty(d.StandIns);
     }
 
     // Zooming out fast (the user, 2026-11-21): the coarser tiles now wanted were evicted while the
@@ -225,7 +239,7 @@ public class DrawSetFacts
         var kids = Enumerable.Range(0, 4).Select(W.Child).ToHashSet();
         var d = DrawSet.Resolve(new[] { W }, t => t == Coarse || kids.Contains(t));
         Assert.Equal(Sorted(kids), Sorted(d.Top));
-        Assert.Empty(d.Under);
+        Assert.Empty(d.StandIns);
     }
 
     [Fact]
@@ -235,16 +249,16 @@ public class DrawSetFacts
         var loaded = new[] { W.Child(0), W.Child(1), W.Child(2), k3.Child(0), k3.Child(1), k3.Child(2), k3.Child(3) }.ToHashSet();
         var d = DrawSet.Resolve(new[] { W }, t => t == Coarse || loaded.Contains(t));
         Assert.Equal(7, d.Top.Count);
-        Assert.Empty(d.Under);
+        Assert.Empty(d.StandIns);
     }
 
     [Fact]
-    public void ChildrenWithAHoleAreDrawnAndTheAncestorFillsTheHoleFromBelow()
+    public void ChildrenWithAHoleAreDrawnAndTheHoleBorrowsTheAncestor()
     {
         var loaded = new[] { W.Child(0), W.Child(1), W.Child(2) }.ToHashSet();
         var d = DrawSet.Resolve(new[] { W }, t => t == Coarse || loaded.Contains(t));
         Assert.Equal(Sorted(loaded), Sorted(d.Top));
-        Assert.Equal(new[] { Coarse }, d.Under);
+        Assert.Equal(new[] { (W.Child(3), Coarse) }, d.StandIns);
     }
 
     [Fact]
@@ -256,7 +270,7 @@ public class DrawSetFacts
         Add(W, 4);
         var d = DrawSet.Resolve(new[] { W }, t => t == Coarse || deep.Contains(t));
         Assert.Empty(d.Top);
-        Assert.Equal(new[] { Coarse }, d.Under);
+        Assert.Equal(new[] { (W, Coarse) }, d.StandIns);
     }
 
     [Fact]

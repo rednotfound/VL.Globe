@@ -200,6 +200,25 @@ public class GlobeViewFacts
     }
 
     [Fact]
+    public void DraggingRightTurnsTheViewToLookRight()
+    {
+        // MapLibre, Mapbox, deck.gl, Cesium: drag right raises the heading (the user found the opposite
+        // "体感上面是反的" once tilted, 2026-11-21)
+        var (heading, tilt) = GlobeDragRotateNode.Turn(new global::Stride.Core.Mathematics.Vector2(0.5f, 0), 180);
+        Assert.True(heading > 0);
+        Assert.Equal(45, heading, 6);     // a quarter of the width: 180 x 0.25
+        Assert.Equal(0, tilt);
+    }
+
+    [Fact]
+    public void DraggingUpTiltsTowardTheHorizon()
+    {
+        var (heading, tilt) = GlobeDragRotateNode.Turn(new global::Stride.Core.Mathematics.Vector2(0, 0.5f), 180);
+        Assert.Equal(0, heading);
+        Assert.Equal(22.5, tilt, 6);      // tilting half as fast as turning
+    }
+
+    [Fact]
     public void ClipPlanesFollowTheHeight()
     {
         var (n1, f1) = View(0, 0, 1e6).ClipPlanes();

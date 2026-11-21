@@ -80,7 +80,7 @@ public sealed class GlobeNode : IDisposable
     long _bytes;
     float _radius = 1f;
     Vector3 _lastEye;
-    D3? _relativeEye;
+    D3? _relativeEye;   // this frame's eye when the camera is camera-relative (GlobeCamera), else null
 
     // The fade's two weights, keyed so the material can be told them every frame without being
     // rebuilt: own * In + ancestor * Out. A float4 per weight, multiplied into each image.
@@ -96,23 +96,20 @@ public sealed class GlobeNode : IDisposable
     sealed class OutFade { public required List<TileKey> From; public double Start; public bool Done; }
     readonly Dictionary<TileKey, OutFade> _outFades = new();
 
-    // DrawSet's Under layer: stand-in ancestors drawn sunk below the surface, so the Top tiles win
-    // the depth test and an ancestor shows only through their holes (MapLibre draws the parent under
-    // its children). Coarser sinks deeper, so two stand-ins never share a depth. The sink follows the
-    // tile's DISTANCE from the eye, 0.3 % of it, 0.5 m to 5 km: the depth buffer's resolution falls
-    // with distance squared, and a tilted view sees ground tens of km away from a camera 20 m up - a
-    // sink taken from the camera's height (0.5 m there) would z-fight at the horizon.
-    readonly HashSet<TileKey> _under = new();
-    readonly HashSet<TileKey> _top = new();
-
-    float RadiusFor(TileKey t)
+    // DrawSet's StandIns: a square not yet loaded, drawn with its own mesh and the matching part of an
+    // arrived ancestor's image - at the surface, never two things on one spot. Kept by square so a
+    // square that stays missing for many frames is built once; dropped when no longer drawn.
+    sealed class StandIn
     {
-        if (!_under.Contains(t)) return _radius;
-        var eye = _relativeEye ?? new D3(_lastEye.X, _lastEye.Y, _lastEye.Z);
-        double distanceMetres = (TileGeometry.Centre(t) * _radius - eye).Length / _radius * GlobeCoordinates.EarthRadius;
-        double sink = Math.Clamp(0.003 * distanceMetres, 0.5, 5000) * (2 - t.Zoom / 22.0);
-        return (float)(_radius * (1 - sink / GlobeCoordinates.EarthRadius));
-    }   // this frame's eye when the camera is camera-relative (GlobeCamera), else null
+        public required Entity Entity;
+        public required Buffer Vertices;
+        public required Buffer Indices;
+        public required D3 Centre;
+        public required ModelComponent Model;
+        public TileKey From;
+        public void Dispose() { Vertices.Dispose(); Indices.Dispose(); }
+    }
+    readonly Dictionary<TileKey, StandIn> _standIns = new();
 
     // The globe before any tile: a sphere just below the tiles, drawn by this node because only it
     // knows the eye a camera-relative camera renders from - a Sphere placed by the patch sat at the
@@ -207,9 +204,13 @@ public sealed class GlobeNode : IDisposable
         foreach (var t in _shown)
         {
             if (!_loaded.TryGetValue(t, out var s)) continue;
-            var r = RadiusFor(t);
-            s.Entity.Transform.Scale = new Vector3(r);
-            s.Entity.Transform.Position = TileGeometry.Translation(s.Centre, r, _relativeEye);
+            s.Entity.Transform.Scale = new Vector3(_radius);
+            s.Entity.Transform.Position = TileGeometry.Translation(s.Centre, _radius, _relativeEye);
+        }
+        foreach (var si in _standIns.Values)
+        {
+            si.Entity.Transform.Scale = new Vector3(_radius);
+            si.Entity.Transform.Position = TileGeometry.Translation(si.Centre, _radius, _relativeEye);
         }
         foreach (var w in wanted) if (_loaded.TryGetValue(w, out var s)) s.LastUsed = _frame;
         AdvanceFades();
@@ -292,7 +293,45 @@ public sealed class GlobeNode : IDisposable
     Slot Build(GraphicsDevice device, TileKey key, byte[] bytes)
     {
         var texture = LoadMipmapped(device, bytes);
+        var (vb, ib, mesh, tileCentre) = BuildMesh(device, key);
 
+        // Emissive only, as in the lab: the map is the light, so the globe reads the same in any scene.
+        var material = Material.New(device, new MaterialDescriptor
+        {
+            Attributes =
+            {
+                // Anisotropic between the mip levels (MipChain) - a tilted view sees the ground at a grazing
+                // angle, where trilinear picks the blurriest level - clamped at the tile's edge: wrapping
+                // blended a tile's opposite edge into its border once mips were sampled.
+                Emissive = new MaterialEmissiveMapFeature(Sampled(texture, Vector2.One, Vector2.Zero)),
+                CullMode = CullMode.None,
+            },
+        });
+        var (entity, modelComponent) = MakeEntity(key, mesh, material, tileCentre);
+        return new Slot { Entity = entity, Texture = texture, Vertices = vb, Indices = ib, Centre = tileCentre, Model = modelComponent, Plain = material, LastUsed = _frame };
+    }
+
+    static IComputeColor Sampled(Texture texture, Vector2 scale, Vector2 offset) => new ComputeTextureColor(texture)
+    {
+        Filtering = TextureFilter.Anisotropic, AddressModeU = TextureAddressMode.Clamp, AddressModeV = TextureAddressMode.Clamp,
+        Scale = scale, Offset = offset,
+    };
+
+    (Entity, ModelComponent) MakeEntity(TileKey key, Mesh mesh, Material material, D3 centre)
+    {
+        var model = new global::Stride.Rendering.Model { mesh };   // inside namespace VL, "Model" and "Stride" bind to VL.*
+        model.Materials.Add(new MaterialInstance(material));
+        model.BoundingBox = mesh.BoundingBox;
+        model.BoundingSphere = mesh.BoundingSphere;
+        var modelComponent = new ModelComponent(model);
+        var entity = new Entity(key.ToString()) { modelComponent };
+        entity.Transform.Scale = new Vector3(_radius);
+        entity.Transform.Position = TileGeometry.Translation(centre, _radius, _relativeEye);
+        return (entity, modelComponent);
+    }
+
+    static (Buffer vb, Buffer ib, Mesh mesh, D3 centre) BuildMesh(GraphicsDevice device, TileKey key)
+    {
         var (tileCentre, offsets, normals, uv) = TileGeometry.RelativeVertices(key);
         var vertices = new VertexPositionNormalTexture[offsets.Length];
         for (int i = 0; i < offsets.Length; i++) vertices[i] = new VertexPositionNormalTexture(offsets[i], normals[i], uv[i]);
@@ -315,34 +354,7 @@ public sealed class GlobeNode : IDisposable
             BoundingBox = new BoundingBox(centre - new Vector3(r), centre + new Vector3(r)),
             BoundingSphere = new BoundingSphere(centre, r),
         };
-
-        // Emissive only, as in the lab: the map is the light, so the globe reads the same in any scene.
-        var material = Material.New(device, new MaterialDescriptor
-        {
-            Attributes =
-            {
-                // Anisotropic between the mip levels (MipChain) - a tilted view sees the ground at a grazing
-                // angle, where trilinear picks the blurriest level - clamped at the tile's edge: wrapping
-                // blended a tile's opposite edge into its border once mips were sampled.
-                Emissive = new MaterialEmissiveMapFeature(new ComputeTextureColor(texture)
-                {
-                    Filtering = TextureFilter.Anisotropic,
-                    AddressModeU = TextureAddressMode.Clamp,
-                    AddressModeV = TextureAddressMode.Clamp,
-                }),
-                CullMode = CullMode.None,
-            },
-        });
-        var model = new global::Stride.Rendering.Model { mesh };   // inside namespace VL, "Model" and "Stride" bind to VL.*
-        model.Materials.Add(new MaterialInstance(material));
-        model.BoundingBox = mesh.BoundingBox;
-        model.BoundingSphere = mesh.BoundingSphere;
-
-        var modelComponent = new ModelComponent(model);
-        var entity = new Entity(key.ToString()) { modelComponent };
-        entity.Transform.Scale = new Vector3(_radius);
-        entity.Transform.Position = TileGeometry.Translation(tileCentre, _radius, _relativeEye);
-        return new Slot { Entity = entity, Texture = texture, Vertices = vb, Indices = ib, Centre = tileCentre, Model = modelComponent, Plain = material, LastUsed = _frame };
+        return (vb, ib, mesh, tileCentre);
     }
 
     void ShowBackground(GraphicsDevice? device, Color4 color)
@@ -421,7 +433,8 @@ public sealed class GlobeNode : IDisposable
         var draw = layers.Top;
         var now = _clock.Elapsed.TotalSeconds;
         var before = new HashSet<TileKey>(_shown);
-        var beforeTop = new HashSet<TileKey>(_top);
+        var borrowed = _standIns.ToDictionary(kv => kv.Key, kv => kv.Value.From);   // what each square showed last frame
+        ShowStandIns(layers.StandIns);
         var drawn = new HashSet<TileKey>(draw);
         foreach (var k in _outFades.Keys.Where(k => !drawn.Contains(k)).ToList()) _outFades.Remove(k);
         var display = new List<TileKey>();
@@ -430,7 +443,7 @@ public sealed class GlobeNode : IDisposable
             _outFades.TryGetValue(t, out var of);
             if (of is null && _fadeDuration > 0 && !before.Contains(t))
             {
-                var under = beforeTop.Where(t.IsAncestorOf).ToList();   // Top only: Under tiles overlap them
+                var under = before.Where(t.IsAncestorOf).ToList();
                 if (under.Count > 0 && Fade.Covers(t, under) && under.All(_loaded.ContainsKey))
                     _outFades[t] = of = new OutFade { From = under, Start = now };
             }
@@ -449,11 +462,7 @@ public sealed class GlobeNode : IDisposable
                 display.Add(t);
             }
         }
-        _top.Clear();
-        _top.UnionWith(display);
-        _under.Clear();
-        foreach (var u in layers.Under) if (!_top.Contains(u)) _under.Add(u);
-        draw = display.Concat(_under).ToList();
+        draw = display;
         var next = new HashSet<TileKey>(draw);
         foreach (var t in _shown.Where(t => !next.Contains(t)).ToList())
         {
@@ -470,10 +479,51 @@ public sealed class GlobeNode : IDisposable
             // A finer tile replacing the ancestor drawn here last frame fades in over it. Not the other
             // way (a parent replacing its children) and not over nothing - the pop that shows is the
             // one on the way in.
-            if (_under.Contains(t)) { EndFade(s); continue; }      // a stand-in under the others: no fade
-            if (_fadeDuration > 0 && NearestAncestorIn(t, before) is { } a && _loaded.TryGetValue(a, out var from))
+            // A tile replacing the ancestor drawn here last frame - itself, or as this square's stand-in -
+            // fades in over exactly the image that was showing.
+            var ancestor = borrowed.TryGetValue(t, out var lent) ? lent : NearestAncestorIn(t, before);
+            if (_fadeDuration > 0 && ancestor is { } a && _loaded.TryGetValue(a, out var from))
                 StartFade(s, t, a, from, outward: false, now);
         }
+    }
+
+    void ShowStandIns(List<(TileKey Square, TileKey From)> wanted)
+    {
+        var keep = new HashSet<TileKey>();
+        foreach (var (square, fromKey) in wanted)
+        {
+            if (_device is null || !_loaded.TryGetValue(fromKey, out var from)) continue;
+            keep.Add(square);
+            if (!_standIns.TryGetValue(square, out var si))
+            {
+                var (vb, ib, mesh, centre) = BuildMesh(_device, square);
+                var (entity, model) = MakeEntity(square, mesh, StandInMaterial(square, fromKey, from), centre);
+                si = new StandIn { Entity = entity, Vertices = vb, Indices = ib, Centre = centre, Model = model, From = fromKey };
+                _standIns[square] = si;
+                _root.Transform.Children.Add(entity.Transform);
+            }
+            else if (si.From != fromKey)
+            {
+                si.Model.Materials[0] = StandInMaterial(square, fromKey, from);   // a nearer ancestor arrived
+                si.From = fromKey;
+            }
+        }
+        foreach (var square in _standIns.Keys.Where(k => !keep.Contains(k)).ToList())
+        {
+            var si = _standIns[square];
+            _root.Transform.Children.Remove(si.Entity.Transform);
+            si.Dispose();
+            _standIns.Remove(square);
+        }
+    }
+
+    Material StandInMaterial(TileKey square, TileKey fromKey, Slot from)
+    {
+        var (scale, offset) = Fade.AncestorTransform(square, fromKey);
+        return Material.New(_device!, new MaterialDescriptor
+        {
+            Attributes = { Emissive = new MaterialEmissiveMapFeature(Sampled(from.Texture, scale, offset)), CullMode = CullMode.None },
+        });
     }
 
     static TileKey? NearestAncestorIn(TileKey t, HashSet<TileKey> set)
@@ -485,11 +535,6 @@ public sealed class GlobeNode : IDisposable
     void StartFade(Slot s, TileKey t, TileKey a, Slot from, bool outward, double start)
     {
         var (scale, offset) = Fade.AncestorTransform(t, a);
-        IComputeColor Sampled(Texture texture, Vector2 sc, Vector2 off) => new ComputeTextureColor(texture)
-        {
-            Filtering = TextureFilter.Anisotropic, AddressModeU = TextureAddressMode.Clamp, AddressModeV = TextureAddressMode.Clamp,
-            Scale = sc, Offset = off,
-        };
         try
         {
             s.Fading = Material.New(_device!, new MaterialDescriptor
@@ -557,6 +602,7 @@ public sealed class GlobeNode : IDisposable
         // Zoom 3 and coarser are never evicted: at most 85 tiles, and the stand-ins of last resort.
         // Least-recently-used evicted them first while the camera sat low, and a fast zoom out then
         // found nothing but the zoom-2 fallback still loading (the user, 2026-11-21).
+        fadingFrom.UnionWith(_standIns.Values.Select(si => si.From));   // borrowed by a stand-in
         foreach (var (k, s) in _loaded.Where(kv => kv.Key.Zoom > KeepZoom && !_shown.Contains(kv.Key) && !fadingFrom.Contains(kv.Key)).OrderBy(kv => kv.Value.LastUsed).Take(_loaded.Count - MaxSlots).ToList())
         {
             s.Dispose();
@@ -573,8 +619,8 @@ public sealed class GlobeNode : IDisposable
         _pending.Clear();
         _failed.Clear();
         _outFades.Clear();
-        _under.Clear();
-        _top.Clear();
+        foreach (var si in _standIns.Values) { _root.Transform.Children.Remove(si.Entity.Transform); si.Dispose(); }
+        _standIns.Clear();
         _requests = 0;
         _failedCount = 0;
         _lastError = "";

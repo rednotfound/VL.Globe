@@ -174,13 +174,20 @@ public sealed class GlobeDragRotateNode
             _last = position;
             return view;
         }
-        var d = position - last;
+        var (dh, dt) = Turn(position - last, degreesPerScreen);
         _last = position;
-        // projection space spans 2 across the window: a full-width drag turns degreesPerScreen. Dragging
-        // right turns the map with the cursor (the heading decreases); dragging up tilts toward the horizon.
-        view.RotateBy(-d.X / 2 * degreesPerScreen, d.Y / 2 * degreesPerScreen / 2);
+        view.RotateBy(dh, dt);
         return view;
     }
+
+    // Projection space spans 2 across the window: a full-width drag turns degreesPerScreen (deck.gl's
+    // 180), tilting half as fast. Dragging RIGHT RAISES the heading - the view turns to look right - as
+    // MapLibre (linear), Mapbox, deck.gl and Cesium do. The first version lowered it ("the map turns with
+    // the cursor"): true only for the half of the screen above the pivot, which a tilted view is mostly
+    // made of, so the horizon ran against the hand (the user, 2026-11-21: "我的鼠标往左转，但是地球的视野是往
+    // 右看…体感上面是反的"). Dragging up tilts toward the horizon, as MapLibre, Mapbox and deck.gl do.
+    internal static (double heading, double tilt) Turn(Vector2 delta, float degreesPerScreen)
+        => (delta.X / 2.0 * degreesPerScreen, delta.Y / 2.0 * degreesPerScreen / 2);
 }
 
 /// <summary>Zoom toward the cursor by a fixed fraction of a zoom level per wheel notch, never below Min Height.</summary>
