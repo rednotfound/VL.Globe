@@ -64,6 +64,18 @@ internal static class DrawSet
         return false;
     }
 
+    /// <summary>The wanted tiles ordered by the distance of their centres from the eye, nearest first.</summary>
+    public static List<TileKey> NearestFirst(IReadOnlyList<TileKey> wanted, global::Stride.Core.Mathematics.Vector3 eye, float radius)
+    {
+        double ex = eye.X, ey = eye.Y, ez = eye.Z;
+        return wanted.OrderBy(t =>
+        {
+            var c = TileGeometry.Centre(t);
+            double dx = c.X * radius - ex, dy = c.Y * radius - ey, dz = c.Z * radius - ez;
+            return dx * dx + dy * dy + dz * dz;
+        }).ToList();
+    }
+
     /// <summary>Tiles to request, coarse first: each wanted tile's fallback ancestor, then the tile.</summary>
     public static List<TileKey> Requests(IReadOnlyList<TileKey> wanted, Func<TileKey, bool> isLoadedOrPending)
     {

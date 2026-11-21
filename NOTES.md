@@ -242,3 +242,15 @@ looked fine - "which makes one think it works". Two causes, estimated at 100 m h
   centre point and heading direction only at tilt 0; it now rotates those two directly.
 - A help patch's node must name `LastDependency="VL.Globe.vl"`: written as `VL.Globe.dll` (copied from
   inside GlobeWindow) DragRotate compiled but the compile check did not list it, so did not check it.
+
+## 2026-11-21 — loading under tilt, checked before the user saw a problem
+
+- The user: "现在我们的camera允许有斜视了，所以也请确保加载不出现问题". Eight tilted poses joined
+  `TileCoverageFacts`: no hole, ≤ 179 tiles. Off-axis pixels read up to 1.6× where the selector aims for
+  1.41×: it converts angle to pixels at the view's centre, and a radian covers 1/cos² more toward a
+  corner — cancelled by distance when looking down, not when tilted.
+- Three faults found by reading the code with tilt in mind, none yet seen on screen: Globe's frustum
+  assumed 16:9 (now the aspect from Stride's projection); requests went in the walk's order (now
+  nearest first, so the ground ahead sharpens before the horizon); stand-ins sank by the camera's
+  height — 0.5 m at 20 m, below the depth buffer's resolution 10 km away (now 0.3 % of each tile's
+  distance).

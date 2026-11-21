@@ -99,8 +99,9 @@ public sealed class GlobeNode : IDisposable
     // DrawSet's Under layer: stand-in ancestors drawn sunk below the surface, so the Top tiles win
     // the depth test and an ancestor shows only through their holes (MapLibre draws the parent under
     // its children). Coarser sinks deeper, so two stand-ins never share a depth. The sink follows the
-    // camera height: 0.2 % of it, 0.5 m to 2 km - deep enough for the depth buffer, shallow enough
-    // that nothing shows at the edges.
+    // tile's DISTANCE from the eye, 0.3 % of it, 0.5 m to 5 km: the depth buffer's resolution falls
+    // with distance squared, and a tilted view sees ground tens of km away from a camera 20 m up - a
+    // sink taken from the camera's height (0.5 m there) would z-fight at the horizon.
     readonly HashSet<TileKey> _under = new();
     readonly HashSet<TileKey> _top = new();
 
@@ -108,8 +109,8 @@ public sealed class GlobeNode : IDisposable
     {
         if (!_under.Contains(t)) return _radius;
         var eye = _relativeEye ?? new D3(_lastEye.X, _lastEye.Y, _lastEye.Z);
-        double heightMetres = Math.Max(0, (eye.Length / _radius - 1) * GlobeCoordinates.EarthRadius);
-        double sink = Math.Clamp(0.002 * heightMetres, 0.5, 2000) * (2 - t.Zoom / 22.0);
+        double distanceMetres = (TileGeometry.Centre(t) * _radius - eye).Length / _radius * GlobeCoordinates.EarthRadius;
+        double sink = Math.Clamp(0.003 * distanceMetres, 0.5, 5000) * (2 - t.Zoom / 22.0);
         return (float)(_radius * (1 - sink / GlobeCoordinates.EarthRadius));
     }   // this frame's eye when the camera is camera-relative (GlobeCamera), else null
 
@@ -185,7 +186,9 @@ public sealed class GlobeNode : IDisposable
 
         if (wanted.Count > 0)
         {
-            foreach (var t in DrawSet.Requests(wanted, k => _loaded.ContainsKey(k) || _pending.Contains(k) || _failed.Contains(k)))
+            // nearest first: a tilted view wants a hundred tiles at once, and the ground in front of the
+            // camera should sharpen before the horizon does (MapLibre sorts by distance to the centre)
+            foreach (var t in DrawSet.Requests(DrawSet.NearestFirst(wanted, _lastEye, _radius), k => _loaded.ContainsKey(k) || _pending.Contains(k) || _failed.Contains(k)))
             {
                 if (_pending.Count >= Math.Max(1, maxRequestsInFlight)) break;
                 Request(t, _source!);
@@ -246,7 +249,11 @@ public sealed class GlobeNode : IDisposable
         var eye = Matrix.Invert(view).TranslationVector;
         _lastEye = eye;
         var fov = MathUtil.DegreesToRadians(cc?.VerticalFieldOfView ?? 45f);
-        var aspect = cc is { UseCustomAspectRatio: true } ? cc.AspectRatio : 16f / 9f;
+        // The window's real aspect, from the projection Stride computed for it (as GlobeCamera reads it
+        // for the gestures). 16:9 was assumed before: a wider window lost its side tiles to culling.
+        var aspect = cc is { UseCustomAspectRatio: true } ? cc.AspectRatio
+            : cc is { } c && c.ProjectionMatrix.M11 > 0 && c.ProjectionMatrix.M22 > 0 ? c.ProjectionMatrix.M22 / c.ProjectionMatrix.M11
+            : 16f / 9f;
         var near = Math.Max(cc?.NearClipPlane ?? 0.01f, 1e-6f);
         var far = Math.Max(cc?.FarClipPlane ?? 1000f, near * 2);
         var vp = view * Matrix.PerspectiveFovRH(fov, aspect, near, far);

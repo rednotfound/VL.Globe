@@ -15,9 +15,9 @@ public class TileCoverageFacts(ITestOutputHelper output)
 
     // For each sampled pixel: the selected tile under it and how many screen pixels one of its texels
     // covers there, measured by projecting the texel's two neighbours.
-    List<(double px, double py, TileKey tile, double pixels)> Survey(double lon, double lat, double h)
+    List<(double px, double py, TileKey tile, double pixels)> Survey(double lon, double lat, double h, double tilt = 0, double heading = 0)
     {
-        var v = new GlobeView { MinHeight = 1, Longitude = lon, Latitude = lat, Width = W, Height_px = H, FovY = FovY };
+        var v = new GlobeView { MinHeight = 1, Longitude = lon, Latitude = lat, Width = W, Height_px = H, FovY = FovY, Tilt = tilt, Heading = heading };
         v.ProjX = 1 / Math.Tan(FovY / 2) / (W / H); v.ProjY = 1 / Math.Tan(FovY / 2);
         v.SetHeight(h);
         var (eye, _, _) = v.Pose();
@@ -25,6 +25,7 @@ public class TileCoverageFacts(ITestOutputHelper output)
         var view = v.ViewMatrix();
         var vp = view * Matrix.PerspectiveFovRH((float)FovY, (float)(W / H), near, far);
         var tiles = new TileSelector { MaxZoom = 19 }.Select(eye.ToVector3(), new BoundingFrustum(ref vp), FovY, H, 1f);
+        LastCount = tiles.Count;
         output.WriteLine($"{tiles.Count} tiles, zoom {tiles.Min(t => t.Zoom)}..{tiles.Max(t => t.Zoom)}");
 
         var result = new List<(double, double, TileKey, double)>();
@@ -43,6 +44,8 @@ public class TileCoverageFacts(ITestOutputHelper output)
             }
         return result;
     }
+
+    int LastCount;
 
     static Vector2 Screen(GlobeView v, Matrix view, double mx, double my)
     {
@@ -71,5 +74,31 @@ public class TileCoverageFacts(ITestOutputHelper output)
             output.WriteLine($"zoom {g.Key}: {g.Count()} samples, {g.Min(r => r.pixels):F2}-{g.Max(r => r.pixels):F2} px per texel");
         Assert.All(s, r => Assert.True(r.pixels <= 1.5,   // 1.41 asked; the selector estimates at the tile's nearest point, a sampled pixel can read ~2 % more
              $"pixel {r.px},{r.py} drawn by {r.tile} at {r.pixels:F2} px per texel"));
+    }
+
+    // Tilted (2026-11-21, the user: "现在我们的camera允许有斜视了，所以也请确保加载不出现问题"). A tilted view
+    // reaches the horizon: many more tiles, near ones fine and far ones coarse. Every sampled pixel
+    // that shows ground must be drawn - no hole - and fine enough, at every height down to street level.
+    [Theory]
+    [InlineData(139.77, 35.68, 20, 60)]
+    [InlineData(139.77, 35.68, 50, 60)]
+    [InlineData(139.77, 35.68, 200, 60)]
+    [InlineData(139.77, 35.68, 2_000, 60)]
+    [InlineData(139.77, 35.68, 2_000, 30)]
+    [InlineData(8.0, 46.5, 20_000, 45)]
+    [InlineData(115, 45, 1_000_000, 60)]
+    [InlineData(-70, -45, 300_000, 50)]
+    public void ATiltedViewIsDrawnEverywhereAndFineEnough(double lon, double lat, double h, double tilt)
+    {
+        var s = Survey(lon, lat, h, tilt, heading: 20);
+        foreach (var g in s.GroupBy(r => r.tile.Zoom).OrderBy(g => g.Key))
+            output.WriteLine($"zoom {g.Key}: {g.Count()} samples, {g.Min(r => r.pixels):F2}-{g.Max(r => r.pixels):F2} px per texel");
+        Assert.All(s, r => Assert.True(!double.IsInfinity(r.pixels), $"pixel {r.px},{r.py} shows ground but no tile was selected there"));
+        // 1.6, not 1.5: the selector converts angle to pixels at the CENTRE of the view, and toward a
+        // corner a radian covers 1/cos^2 more pixels (~1.26x in this window). Looking straight down the
+        // corners' ground is farther away and it cancels; tilted it does not. MapLibre and Cesium ignore
+        // it too. Tiles at Max Zoom (19, OSM's finest) are excused: there is nothing finer to fetch.
+        Assert.All(s.Where(r => r.tile.Zoom < 19), r => Assert.True(r.pixels <= 1.6, $"pixel {r.px},{r.py} drawn by {r.tile} at {r.pixels:F2} px per texel"));
+        Assert.True(LastCount < 400, $"{LastCount} tiles: the selector's cap was reached, so refinement stopped somewhere arbitrary");
     }
 }

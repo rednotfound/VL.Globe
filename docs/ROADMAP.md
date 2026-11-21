@@ -82,8 +82,15 @@ The user, having stood a model on the globe: "因为是3d的场景了…还是�
 的3d模型". Gesture chosen by the user: **right-drag** (MapLibre): sideways turns, up/down tilts, about
 the view's centre, `Max Tilt` 60°. The view state became centred (ARCHITECTURE "The camera"); at tilt 0
 nothing changed (all 105 earlier tests, and the ball's 66–67 px). Tiles now filter anisotropically.
-**Still open:** `TileCoverageFacts` has no tilted poses yet; the 400-tile cap and the far plane under
-tilt; depth precision toward the horizon; a Compass widget.
+**Loading under tilt, checked 2026-11-21** ("请确保加载不出现问题"): `TileCoverageFacts` now samples
+eight tilted poses (20 m to 1,000 km, 30–60°). No hole anywhere; at most 179 tiles, far under the 400
+cap; the selector's magnification ≤ 1.6 (the 0.1 over the straight-down bound is the centre-of-view
+pixel density it uses, 1/cos² more toward the corners; MapLibre and Cesium ignore it too), except at
+zoom 19 where OSM has nothing finer. Fixed on the way: Globe's frustum took a 16:9 aspect (a wider
+window lost its side tiles), requests now go nearest first, and stand-ins sink by their distance (a
+sink by the camera's height z-fought at the horizon). **Still open:** if the 400 cap is ever reached,
+the depth-first walk stops refining wherever it happens to be (make it priority-ordered then); depth
+precision toward the horizon has not been measured on screen; a Compass widget.
 
 ### 2. Coordinates and reading the view
 

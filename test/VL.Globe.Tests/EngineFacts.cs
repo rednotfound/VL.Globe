@@ -260,6 +260,16 @@ public class DrawSetFacts
     }
 
     [Fact]
+    public void TheNearestTilesAreRequestedFirst()
+    {
+        // a tilted view over Tokyo: the tile under the eye before the one toward the horizon
+        var near = new TileKey(15, 29104, 12903);
+        var far = new TileKey(15, 29104, 12880);
+        var eye = GlobeCoordinates.ToGlobe(139.77, 35.68, 2000);
+        Assert.Equal(new[] { near, far }, DrawSet.NearestFirst(new[] { far, near }, eye, 1f));
+    }
+
+    [Fact]
     public void RequestsAreCoarseFirst()
     {
         var wanted = new[] { new TileKey(9, 270, 254), new TileKey(9, 271, 254) };
