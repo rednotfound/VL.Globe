@@ -211,17 +211,48 @@ public sealed class GlobeView
     // refined by Gauss-Newton until the wanted point is under the cursor again.
     /// <summary>Move the camera, keeping its heading, so that the point now along <paramref name="camDir"/> becomes <paramref name="wanted"/>.</summary>
     /// <returns>False when the direction misses the globe; the view is then unchanged.</returns>
+    //
+    // From where the camera is first: one frame's move is small, so Newton converges there and never
+    // crosses a pole. The rigid rotation is only the fallback guess for a move too large for that - it
+    // used to be the first guess, and dragging the pole into view (the camera's latitude at its 89.9
+    // limit) put that guess over the pole, 180 degrees of longitude away; each frame then jumped
+    // between the two sides and the globe shook (the user, 2026-11-21, "仿佛转不过来一样").
+    // Of two exact answers the one on this side of the pole is kept: over it the same point is under
+    // the cursor again with the camera 180 degrees round, which is the jump this replaced. A large
+    // move's first Newton step can also overshoot the limit when the answer lies well inside it, so
+    // "at the pole" is believed only when the rigid guess finds nothing nearer.
     internal bool BringUnderCursor(D3 wanted, D3 camDir)
     {
         double lon0 = Longitude, lat0 = Latitude, heading = Heading;
-        if (!RotateRig(wanted, camDir)) return false;
+        var near = Refine(wanted, camDir);
+        if (near == Fit.Exact) return true;
+        double lonNear = Longitude, latNear = Latitude;
+
+        Longitude = lon0; Latitude = lat0;
+        bool rig = RotateRig(wanted, camDir);
         Heading = heading;
-        if (!Refine(wanted, camDir)) { Longitude = lon0; Latitude = lat0; return false; }
-        return true;
+        if (rig)
+        {
+            Latitude = Math.Clamp(Latitude, -MaxLatitude, MaxLatitude);
+            if (Refine(wanted, camDir) == Fit.Exact && Math.Abs(Wrap(Longitude - lon0)) < 90) return true;
+        }
+        if (near == Fit.AtPole) { Longitude = lonNear; Latitude = latNear; return true; }
+        Longitude = lon0; Latitude = lat0;
+        return false;
+
+        static double Wrap(double deg) => deg - 360 * Math.Round(deg / 360);
     }
 
-    /// <summary>Newton steps on (Longitude, Latitude) with the heading fixed; false when the cursor leaves the globe on the way.</summary>
-    bool Refine(D3 wanted, D3 camDir)
+    const double MaxLatitude = 89.9;
+
+    enum Fit { Exact, AtPole, Failed }
+
+    /// <summary>Newton steps on (Longitude, Latitude) with the heading fixed.</summary>
+    // Exact: the point is under the cursor. AtPole: the latitude reached its limit before that, and only
+    // the longitude was fitted - the cross-screen part; the grabbed point then stays below the cursor
+    // and the camera stops, as a map stops at its edge. Failed: the cursor left the globe, or no
+    // convergence from here.
+    Fit Refine(D3 wanted, D3 camDir)
     {
         var (east, north) = Frame(wanted);
         (double, double)? Residual()
@@ -234,21 +265,41 @@ public sealed class GlobeView
         // against double's 1e-16 - the difference quotient keeps ~9 digits, and the residual itself
         // is computed exactly, so the iteration converges to the true point regardless.
         const double d = 1e-7;
+        const double close = 1e-28;   // squared, 1e-14 radii: 0.06 mm
+        bool atPole = false;
         for (int it = 0; it < 12; it++)
         {
-            if (Residual() is not var (rx, ry)) return false;
-            if (rx * rx + ry * ry < 1e-28) return true;        // 1e-14 radii: 0.06 mm
+            if (Residual() is not var (rx, ry)) return Fit.Failed;
+            if (atPole ? rx * rx < close : rx * rx + ry * ry < close) return atPole ? Fit.AtPole : Fit.Exact;
             double lon = Longitude, lat = Latitude;
             Longitude = lon + d; var ex = Residual(); Longitude = lon;
-            Latitude = lat + d; var ey = Residual(); Latitude = lat;
-            if (ex is not var (ax, ay) || ey is not var (bx, by)) return false;
-            double j11 = (ax - rx) / d, j21 = (ay - ry) / d, j12 = (bx - rx) / d, j22 = (by - ry) / d;
-            double det = j11 * j22 - j12 * j21;
-            if (Math.Abs(det) < 1e-30) return false;
-            Longitude = lon - (j22 * rx - j12 * ry) / det;
-            Latitude = Math.Clamp(lat - (-j21 * rx + j11 * ry) / det, -89.9, 89.9);
+            if (ex is not var (ax, ay)) return Fit.Failed;
+            double j11 = (ax - rx) / d, j21 = (ay - ry) / d;
+            if (!atPole)
+            {
+                Latitude = lat + d; var ey = Residual(); Latitude = lat;
+                if (ey is not var (bx, by)) return Fit.Failed;
+                double j12 = (bx - rx) / d, j22 = (by - ry) / d;
+                double det = j11 * j22 - j12 * j21;
+                if (Math.Abs(det) < 1e-30) return Fit.Failed;
+                double nextLat = lat - (-j21 * rx + j11 * ry) / det;
+                if (Math.Abs(nextLat) <= MaxLatitude)
+                {
+                    Longitude = lon - (j22 * rx - j12 * ry) / det;
+                    Latitude = nextLat;
+                    continue;
+                }
+                // the point would need the camera past the pole: stop there, fit the rest across
+                atPole = true;
+                Latitude = Math.Clamp(nextLat, -MaxLatitude, MaxLatitude);
+                continue;
+            }
+            if (Math.Abs(j11) < 1e-30) return Fit.AtPole;
+            Longitude = lon - rx / j11;
         }
-        return Residual() is not null;
+        if (Residual() is not var (fx, fy)) return Fit.Failed;
+        if (atPole) return fx * fx < 1e-20 ? Fit.AtPole : Fit.Failed;
+        return fx * fx + fy * fy < 1e-20 ? Fit.Exact : Fit.Failed;
     }
 
     /// <summary>The shortest move: rotate the whole rig about the centre by the rotation taking the point under the cursor to the wanted one.</summary>

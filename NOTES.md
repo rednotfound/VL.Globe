@@ -341,3 +341,22 @@ looked fine - "which makes one think it works". Two causes, estimated at 100 m h
 - **SkSL runtime shaders crash SkiaSharp 2.88 on the CPU raster backend** (SEHException in
   sk_canvas_draw_rect, the process gone): the GL fragment shader's edge ramp cannot move into a
   Skia shader in vvvv 7.4. The band cutting on the CPU stays.
+
+## 2026-11-21 — 4d: the GPU path's first faults, seen by the user
+
+- **Discs of background in the sea, then a chequerboard before that.** A vertex lifted towards the
+  eye by 0.0015 of its distance stays over the globe's tiles only if every chord between vertices
+  sags less than that *at the distance that zoom is seen from*. Cutting edges by an absolute 2
+  degrees fixed the chequerboard (zoom 1, 8 background cells of 22 degrees) and left zoom 8's ocean
+  squares as two flat triangles 1 km deep, seen from 300 km: discs. Edges are now an eighth of a
+  tile up to zoom 10, as the globe's own tiles are cut. **A sag bound must be relative to the view
+  distance of the zoom, not absolute.**
+- **Dotted cracks along tile borders:** two tiles clipped to one edge in the pixel shader each
+  discarded some of its pixels (their uv interpolated in float). Clip rectangles overlap by 2e-4,
+  and the background grid reaches past its square.
+- **The globe shook when the pole was dragged into view** (camera, older than the GPU path): the
+  rigid rotation, used as the first guess of every drag frame, crossed the pole once the camera's
+  latitude was at its 89.9 limit, and the refinement found the point under the cursor again 180
+  degrees round. Frames alternated between the two sides. Not damped: the solve now starts from
+  the camera's own pose, keeps the answer on this side of the pole, and at the limit fits only the
+  longitude, so the camera stops. `DraggingThePoleIntoViewStopsAtItWithoutShaking`.

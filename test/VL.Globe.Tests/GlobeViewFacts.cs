@@ -36,6 +36,39 @@ public class GlobeViewFacts
     }
 
     [Theory]
+    [InlineData(1.2e7, 35)] [InlineData(2e7, 60)] [InlineData(1.2e7, -35)]
+    public void DraggingThePoleIntoViewStopsAtItWithoutShaking(double h, double lat)
+    {
+        // the user, 2026-11-21, at globe scale: "鼠标拖拽到画面的底部的时候，整个地球开始抖动，仿佛转不过来一样".
+        // Pulling a point down brings the pole towards the centre; north stays up, so the camera's
+        // latitude stops at 89.9 and the grabbed point cannot follow the cursor any further. Each
+        // frame then jumped between two answers. It must stop, and stay stopped.
+        var v = View(140, lat, h);
+        double sign = lat > 0 ? 1 : -1;
+        var grabbed = v.Pick(400, sign > 0 ? 200 : 400)!.Value;
+        var poses = new List<(double lon, double lat, double heading)>();
+        for (int k = 0; k <= 60; k++)
+        {
+            double y = sign > 0 ? 200 + 390.0 * System.Math.Min(k, 40) / 40 : 400 - 390.0 * System.Math.Min(k, 40) / 40;
+            v.DragTo(grabbed, 400, y);
+            poses.Add((v.Longitude, v.Latitude, v.Heading));
+        }
+        foreach (var (lon, la, heading) in poses)
+        {
+            Assert.InRange(System.Math.Abs(la), 0, 89.9 + 1e-9);
+            Assert.InRange(heading, -1e-6, 1e-6);
+        }
+        for (int k = 1; k < poses.Count; k++)
+            Assert.True(System.Math.Abs(poses[k].lon - poses[k - 1].lon) < 5, $"frame {k}: longitude jumped {poses[k - 1].lon:F2} -> {poses[k].lon:F2}");
+        // held still at the bottom: not a hair of movement
+        for (int k = 42; k < poses.Count; k++)
+        {
+            Assert.InRange(poses[k].lon - poses[41].lon, -1e-6, 1e-6);
+            Assert.InRange(poses[k].lat - poses[41].lat, -1e-6, 1e-6);
+        }
+    }
+
+    [Theory]
     [InlineData(1e7)] [InlineData(1e5)] [InlineData(500)]
     public void AGrabbedPointStaysUnderTheCursor(double h)
     {
