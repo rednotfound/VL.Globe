@@ -48,17 +48,22 @@ public sealed class GlobeCameraNode
     /// <param name="view">The camera's state, for Drag and ZoomByWheel.</param>
     /// <param name="longitude">Degrees east straight below the camera.</param>
     /// <param name="latitude">Degrees north straight below the camera.</param>
-    /// <param name="height">Metres above the surface.</param>
+    /// <param name="height">Metres the camera is above the surface.</param>
+    /// <param name="heading">Degrees clockwise from north that the top of the view points to.</param>
+    /// <param name="tilt">Degrees the view is tilted from straight down.</param>
+    /// <param name="maxTilt">The most the view can be tilted, in degrees.</param>
     [return: Pin(Name = "Camera")]
     public Entity Update(
-        out GlobeView view, out double longitude, out double latitude, out double height,
+        out GlobeView view, out double longitude, out double latitude, out double height, out double heading, out double tilt,
         double initialLongitude = 0, double initialLatitude = 20, double initialHeight = 1.5e7,
-        double minHeight = 20, double maxHeight = 2.5e7, float radius = 1f, float fieldOfView = 45f)
+        double minHeight = 20, double maxHeight = 2.5e7, float radius = 1f, float fieldOfView = 45f, double maxTilt = 60)
     {
         _view.MinHeight = Math.Max(1, minHeight);
         _view.MaxHeight = Math.Max(_view.MinHeight, maxHeight);
         _view.Radius = radius > 0 ? radius : 1f;
         _view.FovY = MathUtil.DegreesToRadians(Math.Clamp(fieldOfView, 1f, 170f));
+        _view.MaxTilt = Math.Clamp(maxTilt, 0, 85);
+        if (_view.Tilt > _view.MaxTilt) _view.RotateBy(0, 0);   // a lowered limit applies at once
         if (!_initialised)
         {
             _view.Longitude = initialLongitude;
@@ -85,7 +90,10 @@ public sealed class GlobeCameraNode
         view = _view;
         longitude = _view.Longitude;
         latitude = _view.Latitude;
-        height = _view.Height;
+        // Height is where the CAMERA is: with a tilt the view's Height is the distance to the centre point.
+        height = _view.EyeAltitude;
+        heading = _view.Heading;
+        tilt = _view.Tilt;
         return _entity;
     }
 }
@@ -130,6 +138,47 @@ public sealed class GlobeDragNode
         if (!dragging) { _grabbed = null; return view; }
         if (_grabbed is null) { _grabbed = view.PickDir(camDir); return view; }   // grabbed space: nothing to hold
         view.DragTo(_grabbed.Value, camDir);
+        return view;
+    }
+}
+
+/// <summary>Turn and tilt the view about its centre: drag sideways to turn, up and down to tilt.</summary>
+/// <remarks>Position and Dragging come from a Mouse [Stride.Input] node: its Position in Projection and Right Pressed.</remarks>
+// MapLibre's DragRotate handler (right button: x turns the bearing, y the pitch), chosen by the user
+// on 2026-11-21. The centre stays where it is - the view's state is centred on it (GlobeView.Tilt).
+[ProcessNode(Name = "DragRotate", Category = "Globe")]
+public sealed class GlobeDragRotateNode
+{
+    Vector2? _last;
+    readonly ILogger _logger;
+
+    public GlobeDragRotateNode(NodeContext nodeContext) => _logger = nodeContext.GetLogger();
+
+    /// <param name="view">From GlobeCamera, or through Drag and ZoomByWheel.</param>
+    /// <param name="position">The cursor in projection space, -1..1 - Mouse's Position in Projection.</param>
+    /// <param name="dragging">True while the button is held - Mouse's Right Pressed.</param>
+    /// <param name="degreesPerScreen">Degrees the view turns for a drag across the whole width; tilting moves half as fast.</param>
+    [return: Pin(Name = "Result")]
+    public GlobeView? Update(GlobeView? view, Vector2 position = default, bool dragging = false, float degreesPerScreen = 180f)
+    {
+        if (view is null) return view;
+        if (!dragging)
+        {
+            if (_last is not null) _logger.LogInformation("Globe DragRotate: release, heading {H:F1}, tilt {T:F1}", view.Heading, view.Tilt);
+            _last = null;
+            return view;
+        }
+        if (_last is not { } last)
+        {
+            _logger.LogInformation("Globe DragRotate: press, cursor {P}", position);
+            _last = position;
+            return view;
+        }
+        var d = position - last;
+        _last = position;
+        // projection space spans 2 across the window: a full-width drag turns degreesPerScreen. Dragging
+        // right turns the map with the cursor (the heading decreases); dragging up tilts toward the horizon.
+        view.RotateBy(-d.X / 2 * degreesPerScreen, d.Y / 2 * degreesPerScreen / 2);
         return view;
     }
 }

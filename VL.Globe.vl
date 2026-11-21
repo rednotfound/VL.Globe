@@ -6,7 +6,7 @@
   <NugetDependency Id="SUAeOTPJlryUSKynrWmHb6" Location="BruTile" Version="5.0.6" />
   <Patch Id="SKTxI1h5DmCeNE0Z0nE6G4">
     <Canvas Id="Roygb3bQuVqK15xRv6xKxz" DefaultCategory="Globe" CanvasType="FullCategory">
-      <Node Name="GlobeWindow" Bounds="100,220" Id="VBrh8tKkQ1kPaTaEgq0sJb" Summary="A window that shows a globe. The mouse moves it." Remarks="Connect a tile source and switch Enabled on: left drag moves the globe, the wheel zooms.&#xD;&#xA;It tells the tiles how tall the window really is, so map text is drawn at its size.&#xD;&#xA;To share the window with other scenes, use GlobeCamera, Globe, Drag and ZoomByWheel instead." Tags="renderer,window,globe,map">
+      <Node Name="GlobeWindow" Bounds="100,220" Id="VBrh8tKkQ1kPaTaEgq0sJb" Summary="A window that shows a globe. The mouse moves it." Remarks="Connect a tile source and switch Enabled on: left drag moves the globe, the wheel zooms, right drag turns and tilts.&#xD;&#xA;It tells the tiles how tall the window really is, so map text is drawn at its size.&#xD;&#xA;To share the window with other scenes, use GlobeCamera, Globe, Drag and ZoomByWheel instead." Tags="renderer,window,globe,map">
         <p:NodeReference>
           <Choice Kind="ContainerDefinition" Name="Process" />
           <FullNameCategoryReference ID="Primitive" />
@@ -55,6 +55,7 @@
               <Pin Id="UzrLQcOB6dtIXlF1Cbsa42" Name="Position in Projection" Kind="OutputPin" />
               <Pin Id="QfbWBWZoUcv8yX9Boo5o61" Name="Left Pressed" Kind="OutputPin" />
               <Pin Id="P95nnARHPms2kSxxby4Paf" Name="Mouse Wheel Delta" Kind="OutputPin" />
+              <Pin Id="RR2pfVn2TelKCMwPy6ank5" Name="Right Pressed" Kind="OutputPin" />
             </Node>
             <Node Bounds="420,270,120,19" Id="A64oKRkIMuWl3quhq1AzKQ">
               <p:NodeReference LastCategoryFullName="Globe" LastDependency="VL.Globe.dll">
@@ -75,6 +76,16 @@
               <Pin Id="J6lcH5zz0xP6sTr8Alqsld" Name="Position" Kind="InputPin" />
               <Pin Id="D2FuHbDxIJdWHuby3njvST" Name="Wheel Delta" Kind="InputPin" />
               <Pin Id="E3ZPLWWNmlB5GS07XCHNg1" Name="Output" Kind="OutputPin" />
+            </Node>
+            <Node Bounds="420,350,140,19" Id="IO6jofInPwuXyHuvqCwike">
+              <p:NodeReference LastCategoryFullName="Globe" LastDependency="VL.Globe.dll">
+                <Choice Kind="NodeFlag" Name="Node" Fixed="true" />
+                <Choice Kind="ProcessAppFlag" Name="DragRotate" />
+              </p:NodeReference>
+              <Pin Id="LfQ8QxKyPGWuadKnYUDhjg" Name="View" Kind="InputPin" />
+              <Pin Id="DtWh0xMPTJBxrEl4LPhtqd" Name="Position" Kind="InputPin" />
+              <Pin Id="GAwN4hhJVErvR2Ndv4wUf5" Name="Dragging" Kind="InputPin" />
+              <Pin Id="HboMB6r3oOBWXqrKvUHIVk" Name="Result" Kind="OutputPin" />
             </Node>
             <Node Bounds="100,380,105,19" Id="P7dkIGDo3m0DPyuvp8ck1t">
               <p:NodeReference LastCategoryFullName="Stride" LastDependency="VL.Stride.Engine.vl">
@@ -209,6 +220,9 @@
             <Fragment Id="UXQ4mQlWlHEgcHYWFQbhEg" Patch="LrkrQdbiH9FsxIoydgqNhj" Enabled="true" />
             <Fragment Id="D7jrXh4ifrUcJSsv5lMw1x" Patch="AJmjIfRzBxd6Di2uELJOAG" Enabled="true" />
           </ProcessDefinition>
+          <Link Id="EIXtaWUkxgTGJLbyKlRVIq" Ids="E3ZPLWWNmlB5GS07XCHNg1,LfQ8QxKyPGWuadKnYUDhjg" />
+          <Link Id="OCkLvjzRITZfB3m1R1laJ2" Ids="UzrLQcOB6dtIXlF1Cbsa42,DtWh0xMPTJBxrEl4LPhtqd" />
+          <Link Id="AVet3BMgAZb4s9hMmHA53h" Ids="RR2pfVn2TelKCMwPy6ank5,GAwN4hhJVErvR2Ndv4wUf5" />
           <Link Id="IqQUDxliZBWRelArFOUfZq" Ids="SL7ppt5RhCZleruS8IEBIz,RD5i1LTCrG4Hw60evvNTu8" IsHidden="true" />
           <Link Id="EPnqXhPKOVVMYjt699l0wL" Ids="AbXn6Zbwp9Awy0l3cHTUlC,KtZfO8yHT5RXmDu4v6xgLw" IsHidden="true" />
           <Link Id="CLXmaHhkFmPMdR9Mqrzndd" Ids="SL7eUprBCwWoGKaZjwfsAz,Li4Y2I3N7vgqdMoovuj7eA" IsHidden="true" />

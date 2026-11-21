@@ -21,7 +21,7 @@
               <p:stringtype p:Assembly="VL.Core" p:Type="VL.Core.StringType">Comment</p:stringtype>
             </p:ValueBoxSettings>
           </Pad>
-          <Pad Id="RcmBMwBOtzTjDE86qYNgz6" Bounds="60,90,600,40" ShowValueBox="true" isIOBox="true" Value="Switch Enabled on. A red ball, 100 m across, stands at Tokyo Station; zoom in and it stays put while you drag. Its size is in metres.">
+          <Pad Id="RcmBMwBOtzTjDE86qYNgz6" Bounds="60,90,600,40" ShowValueBox="true" isIOBox="true" Value="Switch Enabled on. A red ball, 100 m across, stands at Tokyo Station; zoom in and right-drag upward to look at it from the side. Its size is in metres.">
             <p:TypeAnnotation LastCategoryFullName="Primitive" LastDependency="VL.CoreLib.vl">
               <Choice Kind="TypeFlag" Name="String" />
             </p:TypeAnnotation>

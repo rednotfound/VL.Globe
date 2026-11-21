@@ -129,6 +129,76 @@ public class GlobeViewFacts
         Assert.InRange(v.Heading, -1e-6, 1e-6);
     }
 
+    // Tilt (2026-11-21): the state is MapLibre's - the centre point, the distance to it, heading, tilt.
+    static GlobeView Tilted(double h, double tilt, double heading = 0)
+    {
+        var v = View(139.77, 35.68, h, heading);
+        v.Tilt = tilt;
+        v.SetHeight(h);
+        return v;
+    }
+
+    [Theory]
+    [InlineData(1e6, 45)] [InlineData(2000, 60)] [InlineData(30, 30)]
+    public void ATiltedViewStillLooksAtItsCentrePoint(double h, double tilt)
+    {
+        var v = Tilted(h, tilt, heading: 25);
+        Same(GlobeView.Unit(139.77, 35.68), v.PickDir(new D3(0, 0, 1))!.Value, System.Math.Max(0.01, h * 1e-7));
+    }
+
+    [Fact]
+    public void RotatingAndTiltingTurnAboutTheCentre()
+    {
+        var v = Tilted(5000, 0);
+        var centre = v.PickDir(new D3(0, 0, 1))!.Value;
+        v.RotateBy(30, 40);
+        Assert.Equal(30, v.Heading, 9);
+        Assert.Equal(40, v.Tilt, 9);
+        Same(centre, v.PickDir(new D3(0, 0, 1))!.Value, 0.01);
+    }
+
+    [Fact]
+    public void TiltStaysBetweenStraightDownAndTheLimit()
+    {
+        var v = Tilted(5000, 0);
+        v.RotateBy(0, 500);
+        Assert.Equal(v.MaxTilt, v.Tilt);
+        v.RotateBy(0, -500);
+        Assert.Equal(0, v.Tilt);
+    }
+
+    [Fact]
+    public void TiltingAtTheFloorDoesNotPutTheEyeBelowIt()
+    {
+        var v = Tilted(20, 0);                 // at the 20 m floor
+        v.RotateBy(0, 60);
+        Assert.True(v.EyeAltitude >= 19.9, $"{v.EyeAltitude:F2} m");
+    }
+
+    [Theory]
+    [InlineData(1e5, 45)] [InlineData(500, 50)]
+    public void ATiltedDragKeepsTheGrabbedPointAndTheHeading(double h, double tilt)
+    {
+        var v = Tilted(h, tilt, heading: 15);
+        var grabbed = v.Pick(400, 350)!.Value;
+        foreach (var (x, y) in new[] { (420.0, 360.0), (480.0, 420.0), (350.0, 380.0) })
+        {
+            v.DragTo(grabbed, x, y);
+            Same(grabbed, v.Pick(x, y)!.Value, System.Math.Max(0.01, h * 1e-6));
+        }
+        Assert.Equal(15, v.Heading, 6);
+        Assert.Equal(tilt, v.Tilt, 9);
+    }
+
+    [Fact]
+    public void ATiltedZoomKeepsThePointUnderTheCursor()
+    {
+        var v = Tilted(1e5, 45);
+        var before = v.Pick(500, 400)!.Value;
+        v.ZoomAt(500, 400, 0.5);
+        Same(before, v.Pick(500, 400)!.Value, 0.5);
+    }
+
     [Fact]
     public void ClipPlanesFollowTheHeight()
     {

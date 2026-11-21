@@ -30,6 +30,7 @@ the LTS line** (user, 2026-11-20); `tools\Find-Vvvv.ps1` stays below 8.0.
 | `GlobeCamera [Globe]` | process | `GlobeCameraNodes.cs` | a geographic camera state and the Stride camera entity it drives, camera-relative |
 | `Drag [Globe]` | process | `GlobeCameraNodes.cs` | grab the globe (input `View`, output `Result`) |
 | `ZoomByWheel [Globe]` | process | `GlobeCameraNodes.cs` | zoom toward the cursor, eased (input `View`, output `Output`) |
+| `DragRotate [Globe]` | process | `GlobeCameraNodes.cs` | right button: turn (sideways) and tilt (up/down) about the view's centre, MapLibre's handler (input `View`, output `Result`) |
 | `GlobePositionComponent [Globe]` | process → component | `GlobePosition.cs` | stands an entity on the globe: into its `Components`; its own Transformation is then in metres (+X east, +Y up, −Z north); placed camera-relative at draw time |
 | `ToGlobe`, `ToGlobe (Coordinate)`, `FromGlobe [Globe]` | static | `GlobeCoordinates.cs` | lon/lat/height ↔ Vector3, absolute scene coordinates |
 
@@ -124,9 +125,12 @@ it too — rounding makes its two sides 0.71× and 1.41× instead of 1× and 2×
 
 ## The camera (`GlobeView`, `GlobeCameraNodes.cs`)
 
-- **State is geographic**: `Longitude`, `Latitude` of the point straight below, `Height` in metres,
-  `Heading`. Never a free 3D pose: every change goes through `SetHeight`, clamped to Min/Max Height.
-  Tilt is 0 (looking straight down) until a Tilt node exists.
+- **State is geographic and centred, MapLibre's** (since 2026-11-21): `Longitude`, `Latitude` of the
+  point at the centre of the view, `Height` the distance from the eye to it, `Heading`, `Tilt`
+  (0 = straight down, at most `Max Tilt`, 60°). At tilt 0 this is exactly the old state (the point
+  below, the height above it). Rotating and tilting turn about the centre. The floor applies to the
+  eye's altitude (`EyeAltitude`, GlobeCamera's `Height` output): `SetHeight` keeps
+  Height ≥ Min Height / cos(tilt). Clip planes follow the eye's altitude.
 - **All camera maths is double** (`D3`, with a hand-written `ToString` — the generated one recursed
   and crashed vvvv).
 - **One primitive does both gestures, north up**: `BringUnderCursor(wanted, camDir)` takes the rigid
@@ -141,7 +145,9 @@ it too — rounding makes its two sides 0.71× and 1.41× instead of 1× and 2×
   pending zoom that `WheelSmoother` plays out exponentially over `Smoothing` (0.15 s), frame-rate
   independent; what is left is dropped at Min/Max Height. (MapLibre 0.151 eased 200 ms.)
 - **Clip planes follow the height**: near = 0.1 × height, far = 1.1 × horizon distance + 0.01 R.
-- **Off the globe** (the cursor in space) the camera does not move — ROADMAP item 3.
+- **Tiles are filtered anisotropically**: a tilted view sees the ground at a grazing angle, where
+  trilinear picks the blurriest mip.
+- **Off the globe** (the cursor in space) the camera does not move — ROADMAP item 5.
 
 ## Threading and lifetime
 

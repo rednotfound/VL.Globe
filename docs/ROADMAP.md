@@ -76,6 +76,15 @@ while dragging at Min Height.
 
 **Open:** depth precision once tilt exists (after 0.1).
 
+### 1b. Tilt and turn — pulled into 0.1 by the user, 2026-11-21, built, the user's look pending
+
+The user, having stood a model on the globe: "因为是3d的场景了…还是想要调整camera的俯仰角度从侧面看你放在地图上
+的3d模型". Gesture chosen by the user: **right-drag** (MapLibre): sideways turns, up/down tilts, about
+the view's centre, `Max Tilt` 60°. The view state became centred (ARCHITECTURE "The camera"); at tilt 0
+nothing changed (all 105 earlier tests, and the ball's 66–67 px). Tiles now filter anisotropically.
+**Still open:** `TileCoverageFacts` has no tilted poses yet; the 400-tile cap and the far plane under
+tilt; depth precision toward the horizon; a Compass widget.
+
 ### 2. Coordinates and reading the view
 
 - **`ScreenToGlobe`**: the cursor in projection space → longitude/latitude, plus `Success`, because
@@ -204,8 +213,7 @@ crack visible at a level boundary. The camera never enters a hillside while drag
 
 ## After — each waiting for a consumer
 
-- Tilt and Rotate, then a Compass. Tilted poses also need to join `TileCoverageFacts`, together with
-  anisotropic filtering.
+- A Compass (tilt and turn exist since 0.1 item 1b).
 - Great-circle arcs.
 - Extrusion.
 - GPU picking.

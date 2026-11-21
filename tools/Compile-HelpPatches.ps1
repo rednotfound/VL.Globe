@@ -140,6 +140,7 @@ $OurNodes = @{
     'GlobeCamera'          = 'new\s+[\w\.]*GlobeCameraNode\('
     'Drag'                 = 'new\s+[\w\.]*GlobeDragNode\('
     'ZoomByWheel'          = 'new\s+[\w\.]*GlobeZoomByWheelNode\('
+    'DragRotate'           = 'new\s+[\w\.]*GlobeDragRotateNode\('
     'GlobeWindow'          = 'GlobeWindow_P\.Create\('     # patched in VL.Globe.vl, not C#
     'GlobePositionComponent' = 'new\s+[\w\.]*GlobePositionComponentNode\('
 }

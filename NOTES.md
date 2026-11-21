@@ -232,3 +232,13 @@ looked fine - "which makes one think it works". Two causes, estimated at 100 m h
   coarser deeper) so Top wins the depth test and the ancestor shows only through holes — MapLibre
   draws the parent under its children. A probe at 20,000 km also showed OSM's own low-zoom palette
   (land #f2efe9) is near-white: not this bug.
+
+## 2026-11-21 — tilt and turn
+
+- The camera state became MapLibre's (centre point, distance, heading, tilt) so that turning and
+  tilting pivot on the centre. Chosen so that tilt 0 is the old state exactly: all 105 earlier tests
+  passed unchanged before any tilt test was written — the check that the refactor changed nothing.
+- `RotateRig` (the drag's first guess) rotated `-forward` and `up`, the rig's axes, which are the
+  centre point and heading direction only at tilt 0; it now rotates those two directly.
+- A help patch's node must name `LastDependency="VL.Globe.vl"`: written as `VL.Globe.dll` (copied from
+  inside GlobeWindow) DragRotate compiled but the compile check did not list it, so did not check it.

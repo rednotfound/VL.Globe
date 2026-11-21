@@ -21,7 +21,7 @@
               <p:stringtype p:Assembly="VL.Core" p:Type="VL.Core.StringType">Comment</p:stringtype>
             </p:ValueBoxSettings>
           </Pad>
-          <Pad Id="QLfpAMz2MIA0sdXZQL9pha" Bounds="60,90,600,40" ShowValueBox="true" isIOBox="true" Value="Switch Enabled on. Drag the globe like a map, wheel toward a place. The Globe asks only for the tiles the camera can see, sharper as it comes closer.">
+          <Pad Id="QLfpAMz2MIA0sdXZQL9pha" Bounds="60,90,600,40" ShowValueBox="true" isIOBox="true" Value="Switch Enabled on. Drag the globe like a map, wheel toward a place, right-drag to turn and tilt. The Globe asks only for the tiles the camera can see, sharper as it comes closer.">
             <p:TypeAnnotation LastCategoryFullName="Primitive" LastDependency="VL.CoreLib.vl">
               <Choice Kind="TypeFlag" Name="String" />
             </p:TypeAnnotation>
@@ -60,6 +60,15 @@
             <p:TypeAnnotation LastCategoryFullName="Primitive" LastDependency="VL.CoreLib.vl">
               <Choice Kind="TypeFlag" Name="Float64" />
             </p:TypeAnnotation>
+          </Pad>
+          <Pad Id="DRXiGZyTmLaTcc3r43BtFb" Bounds="450,678,320,34" ShowValueBox="true" isIOBox="true" Value="&lt; right button turns the view (sideways) and tilts it (up and down) about its centre">
+            <p:TypeAnnotation LastCategoryFullName="Primitive" LastDependency="VL.CoreLib.vl">
+              <Choice Kind="TypeFlag" Name="String" />
+            </p:TypeAnnotation>
+            <p:ValueBoxSettings>
+              <p:fontsize p:Type="Int32">9</p:fontsize>
+              <p:stringtype p:Assembly="VL.Core" p:Type="VL.Core.StringType">Comment</p:stringtype>
+            </p:ValueBoxSettings>
           </Pad>
           <Pad Id="PCuAaFYw4ZpGHu53fJv3Ko" Bounds="450,598,320,34" ShowValueBox="true" isIOBox="true" Value="&lt; left button drags the globe: the place you grab stays under the cursor">
             <p:TypeAnnotation LastCategoryFullName="Primitive" LastDependency="VL.CoreLib.vl">
@@ -176,6 +185,7 @@
             <Pin Id="L8AbuKhs93kaqiRojC3kCH" Name="Position in Projection" Kind="OutputPin" />
             <Pin Id="Jwh5ehQR9cSMVuGglgQDTD" Name="Left Pressed" Kind="OutputPin" />
             <Pin Id="Qzh4e07eLYQkHWqlJwIDcg" Name="Mouse Wheel Delta" Kind="OutputPin" />
+            <Pin Id="C7Z5QeWTDeq6F3Kh8fWX9g" Name="Right Pressed" Kind="OutputPin" />
           </Node>
           <Node Bounds="300,600,120,19" Id="PPKOMI9A3WxG2AtLNECFbi">
             <p:NodeReference LastCategoryFullName="Globe" LastDependency="VL.Globe.vl">
@@ -196,6 +206,16 @@
             <Pin Id="AovU1V1N8gJsezVUWSALtt" Name="Position" Kind="InputPin" />
             <Pin Id="LmiHiesiYvoY7TYi0cpyzM" Name="Wheel Delta" Kind="InputPin" />
             <Pin Id="SvYyQ7d5Aots0PpTnfz9P8" Name="Output" Kind="OutputPin" />
+          </Node>
+          <Node Bounds="300,680,140,19" Id="RUovLhm23wJsjaSqrAPWtP">
+            <p:NodeReference LastCategoryFullName="Globe" LastDependency="VL.Globe.vl">
+              <Choice Kind="NodeFlag" Name="Node" Fixed="true" />
+              <Choice Kind="ProcessAppFlag" Name="DragRotate" />
+            </p:NodeReference>
+            <Pin Id="FLte66XIUu2XVUYzWsHC5Q" Name="View" Kind="InputPin" />
+            <Pin Id="Lo6eX6n3UhGu7JBnzyBkW4" Name="Position" Kind="InputPin" />
+            <Pin Id="BEmshGzzJzTNRTk8MVkXB3" Name="Dragging" Kind="InputPin" />
+            <Pin Id="ENVlwkQPXAFZX5XlQBBwuo" Name="Result" Kind="OutputPin" />
           </Node>
           <Node Bounds="60,250,260,19" Id="L7c7uBVvCRrYGUh3EOYlm2">
             <p:NodeReference LastCategoryFullName="Globe" LastDependency="VL.Globe.vl">
@@ -281,6 +301,9 @@
           <Fragment Id="P6sLRGmGbrmgeqj31lujwW" Patch="V7NvhD9eski8s0Vr5aEOia" Enabled="true" />
           <Fragment Id="SsBd95EVVgEBPyQck91qPb" Patch="Nq80R7FNDIpd2lBMHrf1Nx" Enabled="true" />
         </ProcessDefinition>
+        <Link Id="TzI9kihICvm0DXit06sUky" Ids="SvYyQ7d5Aots0PpTnfz9P8,FLte66XIUu2XVUYzWsHC5Q" />
+        <Link Id="RnqMy4nuT8d2yMGxUypbkC" Ids="L8AbuKhs93kaqiRojC3kCH,Lo6eX6n3UhGu7JBnzyBkW4" />
+        <Link Id="SYwNd5QTVePiOWAsUi08KK" Ids="C7Z5QeWTDeq6F3Kh8fWX9g,BEmshGzzJzTNRTk8MVkXB3" />
         <Link Id="UGz5zmaLP4REAJl9PoSzaK" Ids="KxHPxImuECptMJMKjt0sXc,NljKtZfIt6qypxCZ78U8qV" />
         <Link Id="Ab5r5I1ICBlfOLeKSa6xZF" Ids="Tr1X3pEUFnMVSRT2xfteft,VkZa6ZaCY3zXbiKX0H5aRH" />
         <Link Id="GBgFhShNhYDymBSE5KA1I9" Ids="KZ4MbYDrBKufVj5MpLu9XY,SsKArKryzsYFdrUwgWhYFx" />

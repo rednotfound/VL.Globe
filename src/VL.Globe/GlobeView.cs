@@ -37,6 +37,16 @@ public sealed class GlobeView
     /// <summary>Degrees clockwise from north that the top of the view points to.</summary>
     public double Heading { get; internal set; }
 
+    // Tilt (2026-11-21, the user: "想要调整camera的俯仰角度从侧面看你放在地图上的3d模型"). With a tilt the state is
+    // MapLibre's: Longitude/Latitude is the point at the CENTRE of the view, Height the distance from
+    // the eye to it, Heading and Tilt orient the eye around it - so rotating and tilting turn about
+    // the centre, and at Tilt 0 every number means what it meant before (the point straight below, the
+    // height above it). EyeAltitude is the height the camera is actually at.
+    /// <summary>Degrees the view is tilted from looking straight down: 0 is a map, larger looks toward the horizon.</summary>
+    public double Tilt { get; internal set; }
+
+    internal double MaxTilt = 60;   // MapLibre's default maxPitch
+
     internal double MinHeight = 20, MaxHeight = 4 * GlobeCoordinates.EarthRadius;
     internal float Radius = 1f;
     internal double FovY = Math.PI / 4;
@@ -47,7 +57,24 @@ public sealed class GlobeView
 
     internal double HeightScene => Height / GlobeCoordinates.EarthRadius * Radius;
 
-    internal void SetHeight(double metres) => Height = Math.Clamp(metres, MinHeight, Math.Max(MinHeight, MaxHeight));
+    // Height is the distance to the centre point; the floor is on the EYE's altitude, which a tilt
+    // lowers to about Height x cos(tilt).
+    internal void SetHeight(double metres)
+    {
+        double floor = MinHeight / Math.Max(Math.Cos(Tilt * Math.PI / 180), 0.2);
+        Height = Math.Clamp(metres, floor, Math.Max(floor, MaxHeight));
+    }
+
+    /// <summary>The eye's height above the surface, in metres.</summary>
+    internal double EyeAltitude => (Pose().eye.Length / Radius - 1) * GlobeCoordinates.EarthRadius;
+
+    /// <summary>Turn the view about the point at its centre: heading by <paramref name="degreesHeading"/>, tilt by <paramref name="degreesTilt"/>, tilt kept within 0..MaxTilt.</summary>
+    internal void RotateBy(double degreesHeading, double degreesTilt)
+    {
+        Heading = ((Heading + degreesHeading) % 360 + 540) % 360 - 180;
+        Tilt = Math.Clamp(Tilt + degreesTilt, 0, MaxTilt);
+        SetHeight(Height);   // the floor moved with the tilt
+    }
 
     // ---------------------------------------------------------------- frame and pose
 
@@ -70,10 +97,19 @@ public sealed class GlobeView
     internal (D3 eye, D3 forward, D3 up) Pose()
     {
         var t = Unit(Longitude, Latitude);
+        var dir = Ahead(t);
+        double p = Tilt * Math.PI / 180;
+        var fwd = -t * Math.Cos(p) + dir * Math.Sin(p);   // tilt 0: straight down
+        var up = dir * Math.Cos(p) + t * Math.Sin(p);     // tilt 0: the heading direction
+        return (t * Radius - fwd * HeightScene, fwd, up);
+    }
+
+    /// <summary>The horizontal direction the heading points to at a unit surface point.</summary>
+    D3 Ahead(D3 t)
+    {
         var (east, north) = Frame(t);
         double hd = Heading * Math.PI / 180;
-        var top = north * Math.Cos(hd) + east * Math.Sin(hd);
-        return (t * (Radius + HeightScene), -t, top);
+        return north * Math.Cos(hd) + east * Math.Sin(hd);
     }
 
     internal Matrix ViewMatrix()
@@ -92,7 +128,7 @@ public sealed class GlobeView
     /// <summary>Near and far planes that follow the height: near a tenth of the way down, far past the horizon.</summary>
     internal (float near, float far) ClipPlanes()
     {
-        var h = HeightScene;
+        var h = Math.Max(Pose().eye.Length - Radius, 1e-12);   // the eye's altitude: a tilt brings the ground nearer than Height
         var horizon = Math.Sqrt((Radius + h) * (Radius + h) - Radius * (double)Radius);
         return ((float)Math.Max(h * 0.1, 1e-9), (float)(horizon * 1.1 + Radius * 0.01));
     }
@@ -212,9 +248,11 @@ public sealed class GlobeView
         axis = axis * (1 / sin);
         double angle = Math.Atan2(sin, cos);
 
-        var (_, fwd, up) = Pose();
-        var t = Rotate(-fwd, axis, angle);
-        var top = Rotate(up, axis, angle);
+        // the centre point and the heading direction travel with the rotation (at tilt 0 these are
+        // -forward and up, the rig's own axes, as before)
+        var t0 = Unit(Longitude, Latitude);
+        var t = Rotate(t0, axis, angle);
+        var top = Rotate(Ahead(t0), axis, angle);
         Latitude = Math.Asin(Math.Clamp(t.Y, -1, 1)) * 180 / Math.PI;
         Longitude = Math.Atan2(t.X, t.Z) * 180 / Math.PI;
         var (east, north) = Frame(t);

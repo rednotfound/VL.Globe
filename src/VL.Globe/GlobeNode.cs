@@ -314,11 +314,12 @@ public sealed class GlobeNode : IDisposable
         {
             Attributes =
             {
-                // Trilinear between the mip levels (MipChain), clamped at the tile's edge: wrapping
+                // Anisotropic between the mip levels (MipChain) - a tilted view sees the ground at a grazing
+                // angle, where trilinear picks the blurriest level - clamped at the tile's edge: wrapping
                 // blended a tile's opposite edge into its border once mips were sampled.
                 Emissive = new MaterialEmissiveMapFeature(new ComputeTextureColor(texture)
                 {
-                    Filtering = TextureFilter.Linear,
+                    Filtering = TextureFilter.Anisotropic,
                     AddressModeU = TextureAddressMode.Clamp,
                     AddressModeV = TextureAddressMode.Clamp,
                 }),
@@ -479,7 +480,7 @@ public sealed class GlobeNode : IDisposable
         var (scale, offset) = Fade.AncestorTransform(t, a);
         IComputeColor Sampled(Texture texture, Vector2 sc, Vector2 off) => new ComputeTextureColor(texture)
         {
-            Filtering = TextureFilter.Linear, AddressModeU = TextureAddressMode.Clamp, AddressModeV = TextureAddressMode.Clamp,
+            Filtering = TextureFilter.Anisotropic, AddressModeU = TextureAddressMode.Clamp, AddressModeV = TextureAddressMode.Clamp,
             Scale = sc, Offset = off,
         };
         try
