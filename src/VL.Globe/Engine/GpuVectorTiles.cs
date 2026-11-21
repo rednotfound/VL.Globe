@@ -206,6 +206,9 @@ internal sealed class GpuVectorTiles : IDisposable
                 List<(Built built, Vector4 clip)>? list = backgroundDraws;
                 if (layer.Type != "background" && (layer.Layer.Source is not { } source || !draws.TryGetValue(source, out list))) continue;
                 int rangeLayer = layer.Type == "background" ? -1 : layer.Index;
+                // a fill-extrusion layer: every tile's depth first, then every tile's colour
+                int passes = layer.IsExtrusion ? 2 : 1;
+                for (int pass = 0; pass < passes; pass++)
                 foreach (var (built, clip) in list)
                 {
                     if (built.Vertices is null || !built.ByLayer.TryGetValue(rangeLayer, out var ranges)) continue;
@@ -220,8 +223,16 @@ internal sealed class GpuVectorTiles : IDisposable
                             _ => (color, 0.0, false),
                         };
                         if (c.A <= 0) continue;
+                        var kind = r.Kind switch
+                        {
+                            RangeKind.Outline => VectorRenderer.Pass.LineList,
+                            RangeKind.Extrusion => pass == 0 ? VectorRenderer.Pass.ExtrusionDepth : VectorRenderer.Pass.ExtrusionColor,
+                            _ => VectorRenderer.Pass.Triangles,
+                        };
+                        // an extrusion is lit in sRGB as GL JS lights it, then linearised in the shader
+                        var tint = r.Kind == RangeKind.Extrusion ? new Vector4((float)c.R, (float)c.G, (float)c.B, (float)c.A) : Linear(c);
                         result.Items.Add(new VectorRenderer.Item(built.Vertices, built.Indices!, r.Start, r.Count, world, centre,
-                            Linear(c), (float)half, line, Widen(clip), r.Kind == RangeKind.Outline));
+                            tint, (float)half, line, Widen(clip), kind));
                     }
                 }
             }

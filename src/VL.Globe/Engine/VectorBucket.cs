@@ -37,8 +37,9 @@ internal struct VectorVertex
         new VertexElement("COLOR", 0, PixelFormat.R8G8B8A8_UNorm, 36));
 }
 
-// Outline is a line list (GL JS's gl.LINES, one device pixel); the rest are triangle lists
-internal enum RangeKind { Fill, Outline, Line, Background }
+// Outline is a line list (GL JS's gl.LINES, one device pixel); the rest are triangle lists. Extrusion
+// is fill-extrusion: roofs and walls in 3D, drawn in two passes (depth, then colour)
+internal enum RangeKind { Fill, Outline, Line, Background, Extrusion }
 
 /// <summary>A layer's part of a bucket: <see cref="Count"/> indices from <see cref="Start"/>.</summary>
 internal readonly record struct VectorRange(int Layer, RangeKind Kind, int Start, int Count);
@@ -74,11 +75,12 @@ internal sealed class GpuStyleLayer
 {
     public required int Index;           // in the style's layer order
     public required MapStyleDocument.Layer Layer;
-    public JsonElement? Color, Opacity, Width, OutlineColor;
+    public JsonElement? Color, Opacity, Width, OutlineColor, Height, Base;
     public bool ColorPerFeature, OpacityPerFeature, WidthPerFeature, OutlinePerFeature, Antialias;
+    public bool IsExtrusion => Layer.Type == "fill-extrusion";
 
-    // fill-extrusion is drawn as a fill, flat, until 3D buildings are built (its paint keys are
-    // fill-extrusion-color and -opacity, read by Of with the type as the prefix; no outline)
+    // fill-extrusion counts as a fill where only fill vs line matters (its colour and opacity keys are
+    // fill-extrusion-color and -opacity, read by Of with the type as the prefix; it has no outline)
     public string Type => Layer.Type == "fill-extrusion" ? "fill" : Layer.Type;
 
     // what GL JS evaluates per feature goes into the vertices; the rest is a uniform per frame
@@ -93,6 +95,8 @@ internal sealed class GpuStyleLayer
         g.Opacity = Get(l.Paint, p + "-opacity");
         g.Width = l.Type == "line" ? Get(l.Paint, "line-width") : null;
         g.OutlineColor = l.Type == "fill" ? Get(l.Paint, "fill-outline-color") : null;
+        g.Height = l.Type == "fill-extrusion" ? Get(l.Paint, "fill-extrusion-height") : null;
+        g.Base = l.Type == "fill-extrusion" ? Get(l.Paint, "fill-extrusion-base") : null;
         g.Antialias = l.Type == "fill" && Get(l.Paint, "fill-antialias") is not { ValueKind: JsonValueKind.False };
         g.ColorPerFeature = g.Color is { } c && Expression.IsFeatureDependent(c);
         g.OpacityPerFeature = g.Opacity is { } o && Expression.IsFeatureDependent(o);
@@ -154,6 +158,14 @@ internal static class VectorBucketBuilder
         return bucket;
     }
 
+    /// <summary>One layer's features into a bucket of their own (tests).</summary>
+    internal static VectorBucket BuildFeatures(TileKey key, GpuStyleLayer layer, List<StyleFeature> features, StyleContext ctx)
+    {
+        var b = new Builder(key);
+        b.Layer(layer, features, ctx);
+        return b.Finish();
+    }
+
     /// <summary>The background grid alone: it needs no data, so it is drawn at once while the tile's data is on its way.</summary>
     public static VectorBucket BackgroundBucket(TileKey key)
     {
@@ -178,6 +190,9 @@ internal static class VectorBucketBuilder
         int _layerVertexStart, _layerIndexStart, _layerRangeStart;
         readonly GeometryFactory _factory = new();
         readonly List<ExtrudedVertex> _line = new();
+        // fill-extrusion: the height (in radii) every vertex is raised by, and the N a roof carries
+        double _raise;
+        float _fillN;
         readonly Dictionary<ExtrudedVertex, uint> _seen = new();
 
         public Builder(TileKey key)
@@ -256,6 +271,15 @@ internal static class VectorBucketBuilder
                 ctx.Properties = f.Properties; ctx.GeometryType = f.GeometryType; ctx.Id = f.Id;
                 if (l.Filter is { } filter && !Expression.Filter(filter, ctx)) continue;
                 double opacity = layer.OpacityPerFeature ? Expression.Number(layer.Opacity, ctx, 1) : 1;
+                if (layer.IsExtrusion)
+                {
+                    if (f.Kind != StyleFeature.Shape.Polygon) continue;
+                    var color = layer.ColorPerFeature ? Expression.Color(layer.Color, ctx, StyleColor.Black) : new StyleColor(1, 1, 1, 1);
+                    double height = Math.Max(0, Expression.Number(layer.Height, ctx, 0));
+                    double floor = Math.Clamp(Expression.Number(layer.Base, ctx, 0), 0, height);
+                    Extrusion(f, Pack(color.WithOpacity(opacity)), height, floor);
+                    continue;
+                }
                 if (layer.Type == "fill")
                 {
                     if (f.Kind != StyleFeature.Shape.Polygon) continue;
@@ -279,7 +303,11 @@ internal static class VectorBucketBuilder
                     Lines(f, f.Kind == StyleFeature.Shape.Polygon, join, cap, miterLimit, roundLimit, (float)width, Pack(color.WithOpacity(opacity)));
                 }
             }
-            if (layer.Type == "fill")
+            if (layer.IsExtrusion)
+            {
+                if (_indices.Count > fillStart) _ranges.Add(new VectorRange(layer.Index, RangeKind.Extrusion, fillStart, _indices.Count - fillStart));
+            }
+            else if (layer.Type == "fill")
             {
                 if (_indices.Count > fillStart) _ranges.Add(new VectorRange(layer.Index, RangeKind.Fill, fillStart, _indices.Count - fillStart));
                 int outlineStart = _indices.Count;
@@ -288,6 +316,56 @@ internal static class VectorBucketBuilder
                 if (_indices.Count > outlineStart) _ranges.Add(new VectorRange(layer.Index, RangeKind.Outline, outlineStart, _indices.Count - outlineStart));
             }
             else if (_indices.Count > fillStart) _ranges.Add(new VectorRange(layer.Index, RangeKind.Line, fillStart, _indices.Count - fillStart));
+        }
+
+        // GL JS's fill_extrusion_bucket: the roof is the polygon raised to its height, each edge of each
+        // ring a wall from base to height, facing out. The shader lights them as fill_extrusion.vertex
+        // does; N carries the wall's vertical gradient, computed here because it depends only on the
+        // vertex: clamp((top + base) * sqrt(height / 150), 0.84, 1) with the default light intensity.
+        void Extrusion(StyleFeature f, uint color, double height, double floor)
+        {
+            const double EarthRadius = 6378137.0;
+            _raise = height / EarthRadius; _fillN = 1;
+            Fill(f, color);
+            _raise = 0; _fillN = 0;
+            if (height <= floor) return;
+            double scale = Math.Sqrt(height / 150);
+            float bottomN = (float)Math.Clamp((0 + floor) * scale, 0.84, 1), topN = (float)Math.Clamp((1 + floor) * scale, 0.84, 1);
+            foreach (var polygon in f.Parts)
+                for (int r = 0; r < polygon.Count; r++)
+                {
+                    var pts = _ring;
+                    pts.Clear();
+                    foreach (var (x, y) in polygon[r])
+                    {
+                        var c = ((x * _n - _key.X) * Extent, (y * _n - _key.Y) * Extent);
+                        if (pts.Count == 0 || pts[^1] != c) pts.Add(c);
+                    }
+                    if (pts.Count > 1 && pts[0] == pts[^1]) pts.RemoveAt(pts.Count - 1);
+                    if (pts.Count < 3) continue;
+                    double area = 0;
+                    for (int i = 0; i < pts.Count; i++) { var a = pts[i]; var b = pts[(i + 1) % pts.Count]; area += a.X * b.Y - b.X * a.Y; }
+                    // outward: right of the edge for a ring wound counter-clockwise (area > 0), left
+                    // otherwise; a hole's walls face into the hole, away from the building
+                    double side = (area > 0 ? 1 : -1) * (r == 0 ? 1 : -1);
+                    for (int i = 0; i < pts.Count; i++)
+                    {
+                        var a = pts[i]; var b = pts[(i + 1) % pts.Count];
+                        double dx = b.X - a.X, dy = b.Y - a.Y, len = Math.Sqrt(dx * dx + dy * dy);
+                        if (len == 0) continue;
+                        float nx = (float)(side * dy / len), ny = (float)(side * -dx / len);
+                        uint i0 = (uint)_vertices.Count;
+                        _raise = floor / EarthRadius;
+                        _vertices.Add(Vertex(a.X, a.Y, nx, ny, bottomN, (float)height, color));
+                        _vertices.Add(Vertex(b.X, b.Y, nx, ny, bottomN, (float)height, color));
+                        _raise = height / EarthRadius;
+                        _vertices.Add(Vertex(a.X, a.Y, nx, ny, topN, (float)height, color));
+                        _vertices.Add(Vertex(b.X, b.Y, nx, ny, topN, (float)height, color));
+                        _indices.Add(i0); _indices.Add(i0 + 1); _indices.Add(i0 + 2);
+                        _indices.Add(i0 + 1); _indices.Add(i0 + 3); _indices.Add(i0 + 2);
+                    }
+                    _raise = 0;
+                }
         }
 
         void Fill(StyleFeature f, uint color)
@@ -365,7 +443,7 @@ internal static class VectorBucketBuilder
             }
             tris.Add(left[0]); tris.Add(left[1]); tris.Add(left[2]);
             uint first = (uint)_vertices.Count;
-            foreach (var (x, y) in pts) _vertices.Add(Vertex(x, y, 0, 0, 0, 1, color));
+            foreach (var (x, y) in pts) _vertices.Add(Vertex(x, y, 0, 0, _fillN, 1, color));
             if (pts.Count > 0 && Max(pts) > _maxSegment)
             {
                 // a coarse tile's large polygon: through the splitting path, so it follows the sphere
@@ -427,7 +505,7 @@ internal static class VectorBucketBuilder
             {
                 if (seen.TryGetValue((p.X, p.Y), out var i)) return i;
                 i = (uint)_vertices.Count;
-                _vertices.Add(Vertex(p.X, p.Y, 0, 0, 0, 1, color));
+                _vertices.Add(Vertex(p.X, p.Y, 0, 0, _fillN, 1, color));
                 seen[(p.X, p.Y)] = i;
                 return i;
             }
@@ -506,7 +584,7 @@ internal static class VectorBucketBuilder
             var (x, y, z) = TileGeometry.OnSphere(TileGeometry.LongitudeOf(wx), TileGeometry.LatitudeOf(Math.Clamp(wy, 0, 1)));
             return new VectorVertex
             {
-                Position = (new D3(x, y, z) - _centre).ToVector3(),
+                Position = (new D3(x, y, z) * (1 + _raise) - _centre).ToVector3(),
                 Extrude = new Vector2(qx, qy),
                 Uv = new Vector2((float)(lx / Extent), (float)(ly / Extent)),
                 N = n,

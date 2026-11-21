@@ -17,6 +17,7 @@ shader GlobeVector : ShaderBase
         stage float GvLift;             // fraction of the distance moved towards the eye, over the tiles
         stage float GvIsLine;
         stage float GvStraight;         // 1: straight colour out, for the hardware-antialiased line list
+        stage float GvExtrusion;        // 1: fill-extrusion, lit; GvColor is sRGB then
     }
 
     stage stream float3 GvPosition : POSITION;
@@ -55,7 +56,28 @@ shader GlobeVector : ShaderBase
         streams.GvUv = streams.GvUvIn;
         streams.GvEdge = streams.GvEdgeIn.x;
         streams.GvOutset = outset;
-        streams.GvTint = float4(ToLinear(streams.GvColorIn.rgb), streams.GvColorIn.a) * GvColor;
+        if (GvExtrusion > 0.5)
+        {
+            // GL JS's fill_extrusion.vertex.glsl with its default light: anchored to the viewport at
+            // [1.15, 210, 30] (radial, azimuthal, polar) = (0.2875, -0.498, 0.996) in the map's
+            // east / south / up; intensity 0.5, colour white, 0.03 ambient. In sRGB, as GL JS.
+            float3 p = normalize(GvCentre + streams.GvPosition);
+            float3 east = normalize(float3(p.z, 0, -p.x));
+            float3 north = cross(p, east);
+            float2 e = streams.GvExtrude;
+            float3 n = dot(e, e) > 0 ? normalize(e.x * east - e.y * north) : p;
+            float3 light = 0.2875 * east + 0.498 * north + 0.996 * p;
+            float4 color = streams.GvColorIn * GvColor;
+            float value = dot(color.rgb, float3(0.2126, 0.7152, 0.0722));
+            float3 rgb = color.rgb + 0.03;
+            float directional = saturate(dot(n, light));
+            directional = lerp(0.5, max(1.5 - value, 1.0), directional);
+            directional *= streams.GvEdgeIn.x;   // the wall's vertical gradient; 1 on a roof
+            rgb = saturate(rgb * directional);
+            streams.GvTint = float4(ToLinear(rgb), color.a);
+            streams.GvEdge = 0;
+        }
+        else streams.GvTint = float4(ToLinear(streams.GvColorIn.rgb), streams.GvColorIn.a) * GvColor;
     }
 
     stage override void PSMain()

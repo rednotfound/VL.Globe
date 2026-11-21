@@ -16,9 +16,14 @@ namespace VL.Globe.Engine;
 // one after the other, but the swap is a single reference anyway.
 internal sealed class VectorRenderer : IGraphicsRendererBase
 {
-    // LineList: GL JS's fill outline, gl.LINES - one device pixel, the hardware's own line
+    // LineList: GL JS's fill outline, gl.LINES - one device pixel, the hardware's own line.
+    // ExtrusionDepth then ExtrusionColor: GL JS draws a fill-extrusion layer's depth first, then its
+    // colour where the depth is equal, so a translucent layer is one even layer, its buildings not
+    // showing through each other
+    internal enum Pass { Triangles, LineList, ExtrusionDepth, ExtrusionColor }
+
     internal readonly record struct Item(Buffer Vertices, Buffer Indices, int Start, int Count, Matrix World, Vector3 Centre,
-        Vector4 Color, float HalfWidth, bool IsLine, Vector4 Clip, bool LineList = false);
+        Vector4 Color, float HalfWidth, bool IsLine, Vector4 Clip, Pass Pass = Pass.Triangles);
 
     internal sealed class Frame
     {
@@ -38,7 +43,7 @@ internal sealed class VectorRenderer : IGraphicsRendererBase
     public float Lift = 0.0015f;
 
     DynamicEffectInstance? _effect;
-    MutablePipelineState? _pipeline, _linePipeline;
+    MutablePipelineState? _pipeline, _linePipeline, _depthPipeline, _extrusionPipeline;
     bool _broken;
     readonly Dictionary<string, ParameterKey> _keys = new();
 
@@ -77,6 +82,23 @@ internal sealed class VectorRenderer : IGraphicsRendererBase
                 l.RasterizerState = RasterizerStates.CullNone;
                 l.RasterizerState.MultisampleAntiAliasLine = true;
                 l.PrimitiveType = PrimitiveType.LineList;
+                // fill-extrusion: depth only (written), then colour where it is equal (not written)
+                _depthPipeline = new MutablePipelineState(device);
+                var d = _depthPipeline.State;
+                d.SetDefaults();
+                d.InputElements = s.InputElements;
+                d.BlendState = BlendStates.ColorDisabled;
+                d.DepthStencilState = DepthStencilStates.Default;
+                d.RasterizerState = RasterizerStates.CullNone;
+                d.PrimitiveType = PrimitiveType.TriangleList;
+                _extrusionPipeline = new MutablePipelineState(device);
+                var x = _extrusionPipeline.State;
+                x.SetDefaults();
+                x.InputElements = s.InputElements;
+                x.BlendState = BlendStates.AlphaBlend;
+                x.DepthStencilState = DepthStencilStates.DepthRead;
+                x.RasterizerState = RasterizerStates.CullNone;
+                x.PrimitiveType = PrimitiveType.TriangleList;
             }
             _effect.UpdateEffect(device);
             if (_effect.Effect is null) return;   // still compiling
@@ -91,14 +113,15 @@ internal sealed class VectorRenderer : IGraphicsRendererBase
             }
 
             var view = context.RenderContext.RenderView;
-            foreach (var p in new[] { _pipeline!, _linePipeline! })
+            var pipelines = new[] { _pipeline!, _linePipeline!, _depthPipeline!, _extrusionPipeline! };
+            foreach (var p in pipelines)
             {
                 p.State.RootSignature = _effect.RootSignature;
                 p.State.EffectBytecode = _effect.Effect.Bytecode;
                 p.State.Output.CaptureState(commandList);
                 p.Update();
             }
-            bool? lineList = null;
+            Pass? pass = null;
 
             var parameters = _effect.Parameters;
             float pixel = 2f / (view.Projection.M22 * Math.Max(1f, view.ViewSize.Y));
@@ -115,10 +138,10 @@ internal sealed class VectorRenderer : IGraphicsRendererBase
                     commandList.SetIndexBuffer(item.Indices, 0, true);
                     boundVertices = item.Vertices;
                 }
-                if (lineList != item.LineList)
+                if (pass != item.Pass)
                 {
-                    commandList.SetPipelineState(item.LineList ? _linePipeline!.CurrentState : _pipeline!.CurrentState);
-                    lineList = item.LineList;
+                    commandList.SetPipelineState(pipelines[(int)item.Pass].CurrentState);
+                    pass = item.Pass;
                 }
                 Set(parameters, "GvWorldView", item.World * view.View);
                 Set(parameters, "GvColor", item.Color);
@@ -126,7 +149,8 @@ internal sealed class VectorRenderer : IGraphicsRendererBase
                 Set(parameters, "GvCentre", item.Centre);
                 Set(parameters, "GvHalfWidth", item.HalfWidth);
                 Set(parameters, "GvIsLine", item.IsLine ? 1f : 0f);
-                Set(parameters, "GvStraight", item.LineList ? 1f : 0f);
+                Set(parameters, "GvStraight", item.Pass == Pass.LineList ? 1f : 0f);
+                Set(parameters, "GvExtrusion", item.Pass is Pass.ExtrusionDepth or Pass.ExtrusionColor ? 1f : 0f);
                 _effect.Apply(context.GraphicsContext);
                 commandList.DrawIndexed(item.Count, item.Start);
                 ItemsDrawn++;

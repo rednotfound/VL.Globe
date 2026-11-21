@@ -295,7 +295,8 @@ dotted cracks at tile borders, the globe shaking with the pole dragged into view
    outlines as a line list; frames stay under 27 ms while 170 MB a second load. The 200-330 ms
    Updates were the draw list, a new large-object-heap list every frame (fixed, two frames reused).
    **Left:** frames of 60–140 ms outside the node after heavy uploads (a smaller vertex should help).
-3. **3D buildings** (`fill-extrusion` for real: walls, roofs, light, depth written).
+3. **3D buildings** (`fill-extrusion` for real: walls, roofs, light, depth written) — built the
+   same night (DESIGN-GPU-VECTOR.md); seen in vvvv from above, the user's look while tilting next.
 
 ### 5. Navigation
 

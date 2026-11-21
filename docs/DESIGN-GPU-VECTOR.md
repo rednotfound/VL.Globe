@@ -87,9 +87,17 @@ Measured after: a second of 80 tiles / 170 MB uploaded kept every frame under 27
 stages named the draw list - a new large-object-heap list every frame, which waited on the
 background collection it fed. Two frames are reused in turn now. Build time single-threaded, Liberty around Kyoto Station: 118 → 66 ms a tile.
 
+**3D buildings (fill-extrusion), the same night:** GL JS's fill_extrusion_bucket and shader. The roof is
+the polygon raised to `fill-extrusion-height`; each ring edge is a wall from `-base` to the height,
+its normal outward (by the ring's winding, flipped for holes). The light is GL JS's default
+(viewport-anchored [1.15, 210°, 30°], intensity 0.5, ambient 0.03, the vertical gradient computed per
+vertex on the CPU), lit in sRGB and then linearised. A layer is drawn in two passes, depth written
+then colour where equal, so a translucent layer of buildings is one even layer. Only lenient parses
+keep it: the harness renders with the drape. Cost: a street-level Liberty tile is ~22 MB now.
+
 ## Next
 
-1. `fill-extrusion` drawn flat, so buildings stay past z14.
-2. The 200–330 ms Updates (logged by stage); then a smaller vertex (40 bytes; GL JS packs ~half).
-3. 3D buildings: walls, roofs, light, depth written.
+1. A smaller vertex (40 bytes; GL JS packs ~half) - extrusions doubled a tile's size.
+2. The user's judgement of 3D buildings while tilting.
+3. MapLibre's fixtures (fill-extrusion too) rendered by the GPU path offscreen.
 4. MapLibre's fixtures rendered by the GPU path offscreen, the same harness as the drape's.

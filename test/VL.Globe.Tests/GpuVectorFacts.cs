@@ -85,11 +85,11 @@ public class GpuVectorFacts
     }
 
     [Fact]
-    public void BuildingsInFillExtrusionAreDrawnFlatNotDropped()
+    public void BuildingsAreExtrudedToTheirHeightWithWallsFacingOut()
     {
         // Liberty's buildings are a fill below z14 and fill-extrusion from 14: without it they
-        // vanished as one zoomed in (the user, 2026-11-21). Flat until 3D is built - and only in a
-        // lenient parse: MapLibre's fixtures for it are 3D, and a strict parse still refuses them.
+        // vanished as one zoomed in (the user, 2026-11-21). In 3D on the GPU path - and only in a
+        // lenient parse: the harness renders MapLibre's fixtures with the drape, which has no 3D.
         var tiles = Tiles();
         using var json = JsonDocument.Parse($$"""
             {
@@ -97,23 +97,70 @@ public class GpuVectorFacts
               "sources": { "berlin": { "type": "vector", "maxzoom": 14, "tiles": [{{JsonSerializer.Serialize(Path.Combine(tiles, "{z}-{x}-{y}.mvt"))}}] } },
               "layers": [
                 { "id": "building-3d", "type": "fill-extrusion", "source": "berlin", "source-layer": "building", "minzoom": 14,
-                  "paint": { "fill-extrusion-color": "#ccbbaa", "fill-extrusion-height": ["get", "height"], "fill-extrusion-opacity": 0.8 } }
+                  "paint": { "fill-extrusion-color": "#ccbbaa", "fill-extrusion-height": 30, "fill-extrusion-opacity": 0.8 } }
               ]
             }
             """);
         Assert.Throws<StyleUnsupportedException>(() => MapStyleDocument.Parse(json.RootElement));
         var doc = MapStyleDocument.Parse(json.RootElement.Clone(), lenient: true);
         doc.Load = url => File.Exists(url) ? File.ReadAllBytes(url) : null;
-        Assert.Contains(doc.Skipped, s => s == "building-3d: fill-extrusion drawn flat");
         var layer = Assert.Single(Layers(doc));
-        Assert.Equal("fill", layer.Type);
+        Assert.True(layer.IsExtrusion);
         Assert.True(layer.Uniforms(new StyleContext { Zoom = 15 }, out var color, out _, out _));
         Assert.Equal(0.8, color.A, 6);
         Assert.False(layer.Uniforms(new StyleContext { Zoom = 13 }, out _, out _, out _));   // its minzoom
         var b = VectorBucketBuilder.Build(doc, (VectorSource)doc.Sources["berlin"], Layers(doc), false, new TileKey(14, 8802, 5374), true, null, out _)!;
-        var fill = Assert.Single(b.Ranges);
-        Assert.Equal(RangeKind.Fill, fill.Kind);
-        Assert.True(fill.Count > 3000, $"{fill.Count / 3} triangles of Berlin's buildings");
+        var range = Assert.Single(b.Ranges);
+        Assert.Equal(RangeKind.Extrusion, range.Kind);
+
+        double up = 30 / 6378137.0;
+        int roofs = 0, walls = 0;
+        for (int t = range.Start; t < range.Start + range.Count; t += 3)
+        {
+            var vs = new[] { b.Vertices[b.Indices[t]], b.Vertices[b.Indices[t + 1]], b.Vertices[b.Indices[t + 2]] };
+            D3 P(VectorVertex v) => new(b.Centre.X + v.Position.X, b.Centre.Y + v.Position.Y, b.Centre.Z + v.Position.Z);
+            if (vs.All(v => v.Extrude == default))
+            {
+                roofs++;
+                foreach (var v in vs) Assert.InRange(P(v).Length - 1, up - 1e-7, up + 1e-7);   // raised 30 m
+                continue;
+            }
+            walls++;
+            Assert.All(vs, v => Assert.InRange(P(v).Length - 1, -1e-7, up + 1e-7));   // between the ground and the roof
+        }
+        Assert.True(roofs > 1000, $"{roofs} roof triangles");
+        Assert.True(walls > 1000, $"{walls} wall triangles");
+    }
+
+    [Fact]
+    public void AWallFacesAwayFromItsBuildingWhicheverWayTheRingWinds()
+    {
+        // a square building in the middle of a tile, wound both ways: each wall's normal points out
+        foreach (bool clockwise in new[] { false, true })
+        {
+            var ring = new (double, double)[] { (0.5, 0.5), (0.5001, 0.5), (0.5001, 0.5001), (0.5, 0.5001), (0.5, 0.5) };
+            if (clockwise) ring = ring.Reverse().ToArray();
+            var f = new StyleFeature { Kind = StyleFeature.Shape.Polygon };
+            f.Parts.Add(new() { ring });
+            using var json = JsonDocument.Parse("""
+                { "version": 8, "sources": { "s": { "type": "geojson", "data": { "type": "FeatureCollection", "features": [] } } },
+                  "layers": [ { "id": "b", "type": "fill-extrusion", "source": "s", "paint": { "fill-extrusion-height": 10 } } ] }
+                """);
+            var doc = MapStyleDocument.Parse(json.RootElement.Clone(), lenient: true);
+            var b = VectorBucketBuilder.BuildFeatures(new TileKey(0, 0, 0), Layers(doc)[0], new List<StyleFeature> { f }, new StyleContext { Zoom = 0 });
+            var centre = (0.50005 * 512, 0.50005 * 512);
+            int checkedWalls = 0;
+            foreach (var v in b.VertexSpan)
+            {
+                if (v.Extrude == default) continue;
+                double px = v.Uv.X * 512, py = v.Uv.Y * 512;
+                // a wall vertex sits on an edge; its normal points from the centre towards that edge
+                double dot = (px - centre.Item1) * v.Extrude.X + (py - centre.Item2) * v.Extrude.Y;
+                Assert.True(dot > 0, $"wound {(clockwise ? "clockwise" : "counter-clockwise")}: a wall faces in");
+                checkedWalls++;
+            }
+            Assert.Equal(16, checkedWalls);
+        }
     }
 
     [Fact]
