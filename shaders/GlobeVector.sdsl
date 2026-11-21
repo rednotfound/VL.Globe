@@ -21,8 +21,8 @@ shader GlobeVector : ShaderBase
     }
 
     stage stream float3 GvPosition : POSITION;
-    stage stream float2 GvExtrude : TEXCOORD0;
-    stage stream float2 GvUvIn : TEXCOORD1;
+    stage stream float2 GvExtrude : TEXCOORD0;   // snorm16: the extrusion / 4
+    stage stream float2 GvUvIn : TEXCOORD1;      // unorm16: (uv + 0.5) / 2
     stage stream float2 GvEdgeIn : TEXCOORD2;  // N, the feature's width scale
     stage stream float4 GvColorIn : COLOR0;
 
@@ -45,7 +45,8 @@ shader GlobeVector : ShaderBase
             float3 p = normalize(GvCentre + streams.GvPosition);
             float3 east = normalize(float3(p.z, 0, -p.x));
             float3 north = cross(p, east);
-            float3 dir = streams.GvExtrude.x * east - streams.GvExtrude.y * north;
+            float2 q = streams.GvExtrude * 4;
+            float3 dir = q.x * east - q.y * north;
             float3 dirView = mul(float4(dir, 0), GvWorldView).xyz / GvRadius;
             outset = GvHalfWidth * streams.GvEdgeIn.y + 0.5;
             float depth = max(-v.z, 1e-9);
@@ -53,7 +54,7 @@ shader GlobeVector : ShaderBase
         }
         v.xyz *= (1 - GvLift);
         streams.ShadingPosition = mul(v, GvProjection);
-        streams.GvUv = streams.GvUvIn;
+        streams.GvUv = streams.GvUvIn * 2 - 0.5;
         streams.GvEdge = streams.GvEdgeIn.x;
         streams.GvOutset = outset;
         if (GvExtrusion > 0.5)

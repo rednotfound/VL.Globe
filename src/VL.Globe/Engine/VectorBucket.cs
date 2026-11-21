@@ -16,25 +16,54 @@ namespace VL.Globe.Engine;
 // the unit sphere, built once on a worker thread, drawn every frame by VectorRenderer. GL JS's
 // buckets, with the globe's projection done here per vertex in double instead of in the shader.
 
-/// <summary>One vertex; 40 bytes, as GlobeVector.sdsl reads it.</summary>
-[StructLayout(LayoutKind.Sequential, Pack = 4)]
+/// <summary>One vertex; 28 bytes, as GlobeVector.sdsl reads it.</summary>
+// Packed as GL JS packs its buckets (2026-11-21: 40 bytes, and 3D buildings doubled a street-level
+// tile to 22 MB): only the position needs 32-bit floats - it is on the unit sphere, where a z14 tile
+// is 0.0004 wide. The extrusion is a 16-bit signed normalised pair holding e / 4 (GL JS wraps its
+// extrusion bytes at about 2; walls and round caps are unit vectors); uv a 16-bit unsigned pair
+// over -0.5..1.5 (a 512-px tile's square to 0.016 px, the buffer around it included); N and the
+// width half floats.
+[StructLayout(LayoutKind.Sequential, Pack = 2)]
 internal struct VectorVertex
 {
     public Vector3 Position;   // on the unit sphere, relative to the bucket's centre
-    public Vector2 Extrude;    // GL JS's extrusion in units of the outset, in the tile's plane (x east, y south)
-    public Vector2 Uv;         // in the tile's square, 0..1: the shader clips to it
-    public float N;            // -1..1 across a line, 0..1 out from a round cap's centre, 0 for a fill
-    public float Width;        // the feature's line width in px where it depends on the feature, else 1
+    short _ex, _ey;            // the extrusion / 4, snorm
+    ushort _u, _v;             // (uv + 0.5) / 2, unorm
+    System.Half _n, _width;
     public uint Color;         // the feature's colour, straight sRGB bytes R G B A, where it depends on the feature; else white
 
-    public const int Size = 40;
+    public const int Size = 28;
+    const float ExtrudeRange = 4, UvLow = -0.5f, UvSpan = 2;
+
+    /// <summary>GL JS's extrusion in units of the outset, in the tile's plane (x east, y south); a wall's outward normal.</summary>
+    public Vector2 Extrude
+    {
+        readonly get => new(_ex / 32767f * ExtrudeRange, _ey / 32767f * ExtrudeRange);
+        set { _ex = Snorm(value.X / ExtrudeRange); _ey = Snorm(value.Y / ExtrudeRange); }
+    }
+
+    /// <summary>In the tile's square, 0..1: the shader clips to it.</summary>
+    public Vector2 Uv
+    {
+        readonly get => new(_u / 65535f * UvSpan + UvLow, _v / 65535f * UvSpan + UvLow);
+        set { _u = Unorm((value.X - UvLow) / UvSpan); _v = Unorm((value.Y - UvLow) / UvSpan); }
+    }
+
+    /// <summary>-1..1 across a line, 0..1 out from a round cap's centre, 0 for a fill; a wall's vertical gradient.</summary>
+    public float N { readonly get => (float)_n; set => _n = (System.Half)value; }
+
+    /// <summary>The feature's line width in px where it depends on the feature, else 1; a building's height.</summary>
+    public float Width { readonly get => (float)_width; set => _width = (System.Half)value; }
+
+    static short Snorm(float x) => (short)Math.Round(Math.Clamp(x, -1f, 1f) * 32767f);
+    static ushort Unorm(float x) => (ushort)Math.Round(Math.Clamp(x, 0f, 1f) * 65535f);
 
     public static readonly VertexDeclaration Layout = new(
         VertexElement.Position<Vector3>(),
-        new VertexElement("TEXCOORD", 0, PixelFormat.R32G32_Float, 12),
-        new VertexElement("TEXCOORD", 1, PixelFormat.R32G32_Float, 20),
-        new VertexElement("TEXCOORD", 2, PixelFormat.R32G32_Float, 28),
-        new VertexElement("COLOR", 0, PixelFormat.R8G8B8A8_UNorm, 36));
+        new VertexElement("TEXCOORD", 0, PixelFormat.R16G16_SNorm, 12),
+        new VertexElement("TEXCOORD", 1, PixelFormat.R16G16_UNorm, 16),
+        new VertexElement("TEXCOORD", 2, PixelFormat.R16G16_Float, 20),
+        new VertexElement("COLOR", 0, PixelFormat.R8G8B8A8_UNorm, 24));
 }
 
 // Outline is a line list (GL JS's gl.LINES, one device pixel); the rest are triangle lists. Extrusion

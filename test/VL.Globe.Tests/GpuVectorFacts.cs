@@ -138,7 +138,8 @@ public class GpuVectorFacts
         // a square building in the middle of a tile, wound both ways: each wall's normal points out
         foreach (bool clockwise in new[] { false, true })
         {
-            var ring = new (double, double)[] { (0.5, 0.5), (0.5001, 0.5), (0.5001, 0.5001), (0.5, 0.5001), (0.5, 0.5) };
+            // 5 tile units a side: uv is packed to 1/32768 of two tiles (0.016 units of 512)
+            var ring = new (double, double)[] { (0.5, 0.5), (0.51, 0.5), (0.51, 0.51), (0.5, 0.51), (0.5, 0.5) };
             if (clockwise) ring = ring.Reverse().ToArray();
             var f = new StyleFeature { Kind = StyleFeature.Shape.Polygon };
             f.Parts.Add(new() { ring });
@@ -148,7 +149,7 @@ public class GpuVectorFacts
                 """);
             var doc = MapStyleDocument.Parse(json.RootElement.Clone(), lenient: true);
             var b = VectorBucketBuilder.BuildFeatures(new TileKey(0, 0, 0), Layers(doc)[0], new List<StyleFeature> { f }, new StyleContext { Zoom = 0 });
-            var centre = (0.50005 * 512, 0.50005 * 512);
+            var centre = (0.505 * 512, 0.505 * 512);
             int checkedWalls = 0;
             foreach (var v in b.VertexSpan)
             {
@@ -161,6 +162,27 @@ public class GpuVectorFacts
             }
             Assert.Equal(16, checkedWalls);
         }
+    }
+
+    [Fact]
+    public void AVertexKeepsWhatTheShaderNeedsIn28Bytes()
+    {
+        Assert.Equal(VectorVertex.Size, System.Runtime.InteropServices.Marshal.SizeOf<VectorVertex>());
+        Assert.Equal(VectorVertex.Size, VectorVertex.Layout.VertexStride);
+        // GL JS's extrusions wrap at 127/63; round caps and walls are unit vectors
+        foreach (var e in new[] { new global::Stride.Core.Mathematics.Vector2(127 / 63f, -128 / 63f), new(0.6f, -0.8f), new(0, 0) })
+        {
+            var v = new VectorVertex { Extrude = e };
+            Assert.InRange(v.Extrude.X - e.X, -1.5e-4f, 1.5e-4f);
+            Assert.InRange(v.Extrude.Y - e.Y, -1.5e-4f, 1.5e-4f);
+        }
+        // uv from the buffer left of the square to the buffer right of it, to 1/32768 of two tiles
+        foreach (var u in new[] { -0.2f, 0f, 0.5f, 1f, 1.2f })
+        {
+            var v = new VectorVertex { Uv = new(u, u) };
+            Assert.InRange(v.Uv.X - u, -3.1e-5f, 3.1e-5f);
+        }
+        Assert.Equal(new VectorVertex().Extrude, default);   // a roof: no extrusion, exactly
     }
 
     [Fact]
