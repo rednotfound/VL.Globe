@@ -286,3 +286,20 @@ looked fine - "which makes one think it works". Two causes, estimated at 100 m h
   cannot write a Color4 default value); used for ours.
 - A help patch referencing `Geometry` names its category (`Globe` > `Layers`) in the NodeReference:
   VL.NetTopologySuite also has things called Geometry.
+
+## 2026-11-21 — 4b: MapLibre's render tests
+
+- **pixelmatch 8 is not the pixelmatch everyone quotes.** v8.0.0 (what GL JS v6.19.0 locks) measures
+  OKLab HyAB distance, not YIQ; the `threshold` 0.1285 means something else under it. Ported from
+  the locked version, its lookup tables included (they change results near black), and checked
+  against its own test counts before trusting any render number.
+- **render.test.ts un-premultiplies by dividing into a Uint8Array**, which truncates. The PNGs store
+  that; RenderStraight does the same so equal renderings give equal bytes.
+- **Skia's stroker drew translucent lines 7 % wrong.** It unions a path's outline and blends it once;
+  GL JS's triangles blend each on their own, so where a line turns back on itself, at a bevel or
+  flipbevel join and between a round join's two half discs the colour doubles (the `*-transparent`
+  join fixtures, line-opacity). Ported `line_bucket.ts`'s join logic and draw with `DrawVertices`.
+  Hard-edged triangles then failed two 2 px diagonal lines by 0.2 %: GL JS's shader ramps alpha over
+  one device pixel at the edge; reproduced exactly by cutting triangles where the ramp bends.
+- **A pass can prove nothing.** `fill-outline-color/default` expects an empty image; an empty render
+  passes it. The harness compares an empty image too and leaves such passes out of `passedAtLeast`.

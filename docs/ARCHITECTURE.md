@@ -124,6 +124,12 @@ Each frame, on vvvv's main thread:
    alpha, and laid over the imagery with `BinaryOperator.Over`. The same look is used by the tile's
    fades and by stand-ins borrowing it. A replaced overlay is disposed 60 frames later, since a fade or
    stand-in may still sample it. Layers change by content, not identity.
+   **A MapLibre style subset** is drawn by a second, newer painter (`MapStyle.cs`,
+   `MapStylePainter.cs`, `LineTessellator.cs`), measured against MapLibre's render tests (ROADMAP
+   4b) and not yet wired to a node: lines are triangulated as GL JS's `line_bucket.ts` does and drawn
+   with `DrawVertices`, every triangle blending on its own, so translucent overlaps darken as in
+   MapLibre; the shader's 1-pixel edge ramp is reproduced by cutting each triangle where its alpha
+   bends and colouring the vertices.
 8. **Every tile's translation** is set from this frame's eye; the **background sphere** (radius
    0.995, `Background` colour, a 1 × 1 sRGB texture — an emissive `ComputeColor` drew black) too,
    and it is drawn whenever there is a camera, Enabled or not.
@@ -168,7 +174,10 @@ main thread. A tile from a source that has since been replaced is dropped on arr
 
 ## Verification
 
-- **Tests** (`test\VL.Globe.Tests`, 145, no network, no GPU — SkiaSharp runs in the test host): coordinates; tile geometry (exact
+- **MapLibre's render tests** (`MapLibreRenderFacts`, ROADMAP 4b): fixtures fetched by
+  `tools\Fetch-MapLibreFixtures.ps1` (the test fails, saying so, when they are missing), pixelmatch
+  8.0.0 ported, `render-tests.json` holding the ignores and the count that may only go up.
+- **Tests** (`test\VL.Globe.Tests`, 155, no network, no GPU — SkiaSharp runs in the test host): coordinates; tile geometry (exact
   seams, sag); camera-relative precision (0.008 mm vs 0.54 m); selection — the tile below at
   0.6–1.42×, **every sampled pixel of the screen** at ≤ 1.5× over seven poses (`TileCoverageFacts`;
   the tile-below test could not see a stretched row), a wrong Screen Height making text small; draw

@@ -2,12 +2,13 @@
 
 Guidance for Claude Code working in this repository.
 
-## Start here — the next session begins with ROADMAP 0.1 item 4b, the MapLibre test harness
+## Start here — the next session begins with ROADMAP 0.1 item 4c, the `VectorTiles` source
 
 1. Read **[docs/ROADMAP.md](docs/ROADMAP.md)** — planned by release: **0.1 = VL.Mapsui's basics on a smooth
    globe plus draped vector tiles, 0.2 = terrain** (the user's decisions). Items 1, 1b, 2 are done and
    judged; vectors are **draped** (item 3, decided 2026-11-21); Geometry/FeatureLayer/VectorStyle exist
-   (item 4). Next: **4b**, a harness on MapLibre's render tests, then **4c**, a `VectorTiles` source.
+   (item 4); **4b** is done — MapLibre's render tests run in `dotnet test` (48/48 supported pass; fetch
+   the fixtures first with `tools\Fetch-MapLibreFixtures.ps1`). Next: **4c**, a `VectorTiles` source.
    Research: [docs/RESEARCH-0.1.md](docs/RESEARCH-0.1.md), [docs/RESEARCH-VECTOR.md](docs/RESEARCH-VECTOR.md).
 2. Read **[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)** — what exists and why.
 3. Read **[NOTES.md](NOTES.md)** — every failure so far, before touching the same code.
@@ -44,7 +45,7 @@ at country scale; judge every change at the lowest height.
 | `Geometry`, `FeatureLayer [Globe.Layers]`, `VectorStyle [Globe.Styles]` | built, draped into the tiles; seen in vvvv |
 | `ToGlobe`, `ToGlobe (Coordinate)`, `FromGlobe [Globe]` | built, 4 rungs, **absolute** — right under OrbitCamera; under GlobeCamera use GlobePositionComponent |
 
-145 tests green. Branch `feature/camera-relative`, pushed to `github.com/rednotfound/VL.Globe`
+155 tests green (incl. MapLibre v6.19.0's render tests, fixtures fetched by script). Branch `feature/camera-relative`, pushed to `github.com/rednotfound/VL.Globe`
 (public); not merged, not published. Verified on vvvv **7.4 (LTS)**; `Find-Vvvv.ps1` stays below 8.0.
 
 ## Facts this repo paid for (details in NOTES.md)
@@ -91,6 +92,7 @@ at country scale; judge every change at the lowest height.
 
 ```powershell
 dotnet test test\VL.Globe.Tests\VL.Globe.Tests.csproj     # close vvvv first
+.\tools\Fetch-MapLibreFixtures.ps1                          # once: MapLibre's render-test fixtures (git-ignored)
 .\build.ps1 ; .\pack.ps1                                     # pack.ps1 is not optional: same-version cache
 .\tools\Compile-HelpPatches.ps1 -OutputDirectory <abs>       # rung 2, plus the node table and dropped-link checks of rung 3
 .\tools\Open-HelpPatch.ps1 -Path <help .vl> -Log             # rung 4; then close YOUR pid with WM_CLOSE

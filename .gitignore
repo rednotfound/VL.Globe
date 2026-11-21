@@ -38,3 +38,6 @@ deps/
 # which is one pack.ps1 away from shipping them inside the package. The bug that writes them is
 # still open; this stops it contaminating the repository meanwhile.
 **/[0-9]*/[0-9]*/[0-9]*.png
+
+# MapLibre's render-test fixtures, fetched by tools\Fetch-MapLibreFixtures.ps1 (ROADMAP 4b)
+test/fixtures/maplibre/

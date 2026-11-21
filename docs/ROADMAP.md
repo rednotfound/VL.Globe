@@ -177,16 +177,34 @@ The plan as written:
 
 **Verify:** a GeoJSON of Tokyo's wards stays on OSM's boundaries from 20 m to the whole globe.
 
-### 4b. A test harness on MapLibre's render tests — next
+### 4b. A test harness on MapLibre's render tests — done 2026-11-21
 
 The yardstick for every vector stage (RESEARCH-VECTOR "Testing"): MapLibre GL JS's
 `test/integration/render` (1,796 fixtures, 128 for the globe; `style.json` + `expected.png`,
 pixelmatch `threshold` 0.1285, `allowed` 0.00025), run as MapLibre Native runs them — the fixtures, a
-stated threshold, and an ignore list of known failures. First: fetch a pinned subset (background,
-fill, line) by script into a git-ignored folder, vendor a pixelmatch port, and render each fixture on
-a flat 512 px tile with our draped path. The report is a number that can only go up.
+stated threshold, and an ignore list of known failures.
 
-### 4c. `VectorTiles` — a draped vector-tile source
+**Built:**
+- `tools\Fetch-MapLibreFixtures.ps1` fetches 11 groups at **v6.19.0** (background-color/-opacity,
+  fill-antialias/-color/-opacity/-outline-color, line-cap/-color/-join/-opacity/-width; 81 fixtures)
+  into the git-ignored `test\fixtures\maplibre`.
+- `test\VL.Globe.Tests\MapLibre\Pixelmatch.cs`: pixelmatch **8.0.0** (the version v6.19.0 locks)
+  ported line by line, checked against pixelmatch's own tests.
+- `MapLibreRenderFacts`: each fixture is passed, failed or unsupported (with the reason). Every
+  supported fixture passes or is in `render-tests.json`'s ignores; an ignored one that passes must
+  leave; `passedAtLeast` may only go up, and does not count passes an empty image would also make.
+  Results and `report.md` in `test\fixtures\maplibre\results`.
+- The renderer is new engine code, not FeatureLayer's: `Engine\MapStyle.cs` (a style-spec subset:
+  CSS colours, legacy functions, the common expressions), `MapStylePainter.cs` (background, fill,
+  line; inline GeoJSON; a viewport that is a test's canvas or a tile's square) and
+  `LineTessellator.cs` (GL JS's `line_bucket.ts` joins and its shader's antialiasing).
+
+**Result:** 48 of 48 supported fixtures pass (47 counted); 33 unsupported — 15 need a vector source
+(4c), the rest raster sources, patterns, dasharray, `lineMetrics`, filters, non-RGB colour spaces,
+a symbol layer, terrain, operations. FeatureLayer still drapes with `TileOverlay`'s Skia stroke;
+moving it onto the painter is part of 4c.
+
+### 4c. `VectorTiles` — a draped vector-tile source — next
 
 MVT via NetTopologySuite.IO.VectorTiles, drawn per tile into the overlay from a MapLibre Style JSON
 *subset* (fill, line, background; filters; zoom stops) — stage 1 of RESEARCH-VECTOR's path, the same
