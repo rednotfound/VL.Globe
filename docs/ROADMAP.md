@@ -49,7 +49,7 @@ Each was found or confirmed on the user's screen. Details and numbers are in NOT
 
 ## 0.1 — Mapsui's basics on a smooth globe
 
-### 1. PlaceOnGlobe, then the 20 m floor — built 2026-11-21, the user's look pending
+### 1. PlaceOnGlobe, then the 20 m floor — done 2026-11-21, the user judged it ("似乎ok")
 
 **Built as `GlobePositionComponent`**, not a transformation node: the Camera-taking node formed a
 cycle in GlobeWindow (see ARCHITECTURE "Coordinates"). `HowTo Stand a model on the globe`: a 100 m
@@ -76,12 +76,16 @@ while dragging at Min Height.
 
 **Open:** depth precision once tilt exists (after 0.1).
 
-### 1b. Tilt and turn — pulled into 0.1 by the user, 2026-11-21, built, the user's look pending
+### 1b. Tilt and turn — done 2026-11-21, the user judged it ("问题不大")
 
 The user, having stood a model on the globe: "因为是3d的场景了…还是想要调整camera的俯仰角度从侧面看你放在地图上
 的3d模型". Gesture chosen by the user: **right-drag** (MapLibre): sideways turns, up/down tilts, about
 the view's centre, `Max Tilt` 60°. The view state became centred (ARCHITECTURE "The camera"); at tilt 0
 nothing changed (all 105 earlier tests, and the ball's 66–67 px). Tiles now filter anisotropically.
+The turn direction was flipped after the user found it backwards (drag right now looks right, as
+MapLibre, Mapbox, deck.gl and Cesium do), and stand-ins became squares at the surface after a sunk
+ancestor showed as dropping tiles and black cracks under tilt (NOTES 2026-11-21).
+
 **Loading under tilt, checked 2026-11-21** ("请确保加载不出现问题"): `TileCoverageFacts` now samples
 eight tilted poses (20 m to 1,000 km, 30–60°). No hole anywhere; at most 179 tiles, far under the 400
 cap; the selector's magnification ≤ 1.6 (the 0.1 over the straight-down bound is the centre-of-view
