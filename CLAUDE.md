@@ -24,7 +24,9 @@ Guidance for Claude Code working in this repository.
    302 non-vacuous; one-way arrows seen in vvvv at Kyoto Station, shields not yet seen.
    Then symbols past the source's maxzoom (laid out at the overscaled zoom, as GL JS) - street
    names along every street at Kyoto Station in vvvv.
-   **Next: label fades (DESIGN-GPU-VECTOR.md, "Next" 1); then ROADMAP 4f (the tilted distance).**
+   Labels now placed as GL JS (every 300 ms while moving): 60 fps tilted while no tiles arrive.
+   **Next: frame time while tiles load, and a one-off 170-190 ms hitch (DESIGN-GPU-VECTOR.md, "Next" 0);
+   then label fades; then ROADMAP 4f (the tilted distance).**
    Research: [docs/RESEARCH-0.1.md](docs/RESEARCH-0.1.md), [docs/RESEARCH-VECTOR.md](docs/RESEARCH-VECTOR.md).
 2. Read **[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)** — what exists and why.
 3. Read **[NOTES.md](NOTES.md)** — every failure so far, before touching the same code.
