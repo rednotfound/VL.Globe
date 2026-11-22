@@ -152,12 +152,6 @@ internal sealed class VectorRenderer : IGraphicsRendererBase
         }
     }
 
-    /// <summary>
-    /// Draws a frame's items with a compiled GlobeVector effect into the targets bound on <paramref name="commandList"/>.
-    /// vvvv's Draw above calls it; MapLibre's render tests call it offscreen, flat and without linearising.
-    /// </summary>
-    // linearize: The colours are sRGB and the target linear (vvvv); false draws in sRGB space, as GL JS blends.
-    // flat: The buckets are on the Mercator plane (x east, y north, z up), not the sphere.
     /// <summary>The fog for a frame: by the eye's height above the globe; none without an eye or below the ground.</summary>
     internal static Fog? FogOf(Frame frame)
         => frame.Eye is { } eye && eye.Length - frame.Radius is var height && height > 0 ? Engine.Fog.For((float)height) : null;
@@ -183,6 +177,12 @@ internal sealed class VectorRenderer : IGraphicsRendererBase
         return step;
     }
 
+    /// <summary>
+    /// Draws a frame's items with a compiled GlobeVector effect into the targets bound on <paramref name="commandList"/>.
+    /// vvvv's Draw above calls it; MapLibre's render tests call it offscreen, flat and without linearising.
+    /// </summary>
+    // linearize: The colours are sRGB and the target linear (vvvv); false draws in sRGB space, as GL JS blends.
+    // flat: The buckets are on the Mercator plane (x east, y north, z up), not the sphere.
     internal void DrawFrame(CommandList commandList, GraphicsContext graphicsContext, EffectInstance effect, EffectInstance symbolEffect,
         EffectInstance circleEffect, Matrix view, Matrix projection, float viewHeight, Frame frame, float lift, bool linearize, bool flat)
     {
