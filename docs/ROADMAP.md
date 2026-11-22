@@ -305,7 +305,24 @@ dotted cracks at tile borders, the globe shaking with the pole dragged into view
 Ported from GL JS against its fixtures and shaping expectations (DESIGN-GPU-VECTOR.md, "Labels"):
 154 fixtures pass on the GPU path (146 non-vacuous). Seen in vvvv on Liberty, not yet judged by the
 user. **Milestone 3, labels along lines, done the same day: 158 fixtures (150 non-vacuous).**
-**Next: icons (milestone 4), fades.**
+**Milestone 4, icons, steps 1-6 done the same day: 311 fixtures (302 non-vacuous)** - sprites,
+point icons, icon-text-fit and stretch zones, circle layers, shields and icons along lines.
+**Next: symbols past the source's maxzoom (DESIGN-GPU-VECTOR.md, "Next" 1), then fades.**
+
+### 4f. The distance in a tilted view — asked by the user 2026-11-22, to do after 4e
+
+"斜视的时候，远处的建筑就很少加载了…缺的会比较明显". Why: far tiles are chosen coarser (screen-space
+error), the vector tile one level below the globe tile, and OpenMapTiles has buildings only from z13
+(Liberty's building-3d from z14) - so wherever the far vector tiles fall to z12 or coarser there is
+no building data at all. Limiting the tilt alone does not cure it: the gap shows at our default
+`MaxTilt` 60. Surveyed (2026-11-22): Google's vector maps cap the tilt by zoom (30° at z10, 45° at
+z14, 60° at z15, 67.5° from z15.5); MapLibre / Mapbox allow 85° and load fewer, coarser tiles far
+away, Mapbox hiding the distance in fog; Cesium's fog coarsens and culls horizon tiles (35% fewer).
+**Agreed order, cheapest first:**
+1. The tilt capped by zoom, as Google's (in `GlobeCamera`; `MaxTilt` stays the ceiling).
+2. Fog / a fade towards the horizon, as Mapbox and Cesium - softens the edge and loads fewer tiles.
+3. A z13 floor for vector tiles within some distance while the camera is at street level - fills
+   the buildings in; measure GPU memory and frame time tilted in vvvv before choosing the distance.
 
 ### 5. Navigation
 
