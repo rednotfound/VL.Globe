@@ -136,6 +136,7 @@ public sealed class GlobeDragNode
             _was = dragging;
             _logger.LogInformation("Globe Drag: {State}, cursor {P}, grabbed {Hit}", dragging ? "press" : "release", position,
                 dragging ? view.PickDir(camDir)?.ToString() ?? "space" : "-");
+            if (!dragging) GlobeViewLog.Write(_logger, view);
         }
         if (!dragging) { _grabbed = null; return view; }
         if (_grabbed is null) { _grabbed = view.PickDir(camDir); return view; }   // grabbed space: nothing to hold
@@ -166,7 +167,11 @@ public sealed class GlobeDragRotateNode
         if (view is null) return view;
         if (!dragging)
         {
-            if (_last is not null) _logger.LogInformation("Globe DragRotate: release, heading {H:F1}, tilt {T:F1}", view.Heading, view.Tilt);
+            if (_last is not null)
+            {
+                _logger.LogInformation("Globe DragRotate: release, heading {H:F1}, tilt {T:F1}", view.Heading, view.Tilt);
+                GlobeViewLog.Write(_logger, view);
+            }
             _last = null;
             return view;
         }
@@ -203,6 +208,7 @@ public sealed class GlobeZoomByWheelNode
     double _last;
 
     public GlobeZoomByWheelNode(NodeContext nodeContext) => _logger = nodeContext.GetLogger();
+    bool _zooming;
 
     /// <param name="view">From GlobeCamera.</param>
     /// <param name="position">The cursor in projection space, -1..1 - Mouse's Position in Projection.</param>
@@ -228,7 +234,10 @@ public sealed class GlobeZoomByWheelNode
             _logger.LogInformation("Globe ZoomByWheel: delta {Delta}, pending {Pending:F2} levels, cursor {P}, height {H:F0} m", wheelDelta, _smoother.Pending, position, view.Height);
         }
         var levels = _smoother.Step(dt, smoothing);
+        // the wheel's zoom played out: where it ended
+        if (levels == 0 && _zooming) { _zooming = false; GlobeViewLog.Write(_logger, view); }
         if (levels == 0) return view;
+        _zooming = true;
         var before = view.Height;
         view.ZoomAt(view.CameraDirectionFromProjection(position.X, position.Y), Math.Pow(0.5, levels));
         // At Min or Max Height the rest of the wheel has nowhere to go: drop it, or it plays out later
@@ -259,3 +268,12 @@ internal sealed class WheelSmoother
     }
 }
 
+// After every gesture, the view in the log as MapLibre's hash: "the problem was at 15:42" is then a
+// place, a heading and a tilt that a test can load (GlobeView.TryApplyHash) - the user's request,
+// 2026-11-22: "你得给我一种方式让我告诉你我的camera在什么位置，什么角度".
+static class GlobeViewLog
+{
+    internal static void Write(ILogger logger, GlobeView view)
+        => logger.LogInformation("Globe view: {Hash} - eye {Eye:F0} m up, zoom {Zoom:F2}", view.Hash(), view.EyeAltitude,
+            GlobeView.ZoomOf(view.GroundResolution(), view.Latitude));
+}

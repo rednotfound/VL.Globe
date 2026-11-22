@@ -368,6 +368,35 @@ public sealed class GlobeView
     }
     internal void ZoomAt(double x, double y, double factor) => ZoomAt(CameraDirection(x, y), factor);
 
+    // The view as MapLibre's URL hash, #zoom/lat/lng/bearing/pitch (maplibre-gl-js src/ui/hash.ts):
+    // the user can name the view they saw a fault in (the camera nodes log it after every gesture),
+    // a test can load it, and the same text in a MapLibre page shows GL JS's picture of that place.
+    // MapLibre's zoom is in 512-px tiles, one below ours; its bearing is our heading, its pitch our tilt.
+    /// <summary>The view as MapLibre writes it in a page's address: #zoom/latitude/longitude/bearing/pitch.</summary>
+    internal string Hash()
+    {
+        double zoom = ZoomOf(GroundResolution(), Latitude) - 1;
+        return FormattableString.Invariant($"#{zoom:F2}/{Latitude:F5}/{Longitude:F5}/{Heading:F1}/{Tilt:F1}");
+    }
+
+    /// <summary>Moves the view to a MapLibre hash (#zoom/lat/lng[/bearing[/pitch]]); false if it is not one.</summary>
+    internal bool TryApplyHash(string hash)
+    {
+        var parts = (hash ?? "").Trim().TrimStart('#').Split('/');
+        if (parts.Length < 3) return false;
+        var n = new double[5];
+        for (int i = 0; i < parts.Length && i < 5; i++)
+            if (!double.TryParse(parts[i], System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out n[i])) return false;
+        Latitude = Math.Clamp(n[1], -85.0511, 85.0511);
+        Longitude = ((n[2] + 180) % 360 + 360) % 360 - 180;
+        Heading = ((n[3] % 360) + 540) % 360 - 180;
+        Tilt = Math.Clamp(n[4], 0, MaxTilt);
+        // the height whose ground resolution at the centre is that of MapLibre's zoom (ours is one more)
+        double metresPerPixel = MetresPerPixelAtZoom0 * Math.Cos(Latitude * Math.PI / 180) / Math.Pow(2, n[0] + 1);
+        SetHeight(metresPerPixel * Math.Max(1, Height_px) / (2 * Math.Tan(FovY / 2)));
+        return true;
+    }
+
     public override string ToString() => $"{Longitude:F4}, {Latitude:F4} at {Height:F0} m";
 }
 

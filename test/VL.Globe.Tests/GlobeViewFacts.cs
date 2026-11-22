@@ -226,6 +226,35 @@ public class GlobeViewFacts
     }
 
     [Fact]
+    public void AViewWrittenAsMapLibresHashComesBackTheSame()
+    {
+        // the user names a view by the line the camera nodes log after a gesture; a test loads it
+        var v = Tilted(800, 40, heading: -23.9);
+        var hash = v.Hash();
+        Assert.Matches(@"^#\d+\.\d\d/35\.68000/139\.77000/-23\.9/40\.0$", hash);
+        var w = View(0, 0, 1e7);
+        w.TiltByZoomLimit = false;
+        Assert.True(w.TryApplyHash(hash));
+        Assert.Equal(v.Longitude, w.Longitude, 5);
+        Assert.Equal(v.Latitude, w.Latitude, 5);
+        Assert.Equal(v.Heading, w.Heading, 1);
+        Assert.Equal(v.Tilt, w.Tilt, 1);
+        Assert.Equal(v.Height, w.Height, v.Height * 0.01);   // the zoom is written to 2 decimals
+        Assert.False(w.TryApplyHash("Kyoto"));
+    }
+
+    [Fact]
+    public void AMapLibreZoomIsOneBelowOurs()
+    {
+        // MapLibre counts 512-px tiles: its z16 shows the ground our z17 does
+        var w = View(0, 0, 1e7);
+        Assert.True(w.TryApplyHash("#16/34.9858/135.7588"));
+        Assert.Equal(17, GlobeView.ZoomOf(w.GroundResolution(), w.Latitude), 6);
+        Assert.Equal(0, w.Heading);
+        Assert.Equal(0, w.Tilt);
+    }
+
+    [Fact]
     public void TiltingAtTheFloorDoesNotPutTheEyeBelowIt()
     {
         var v = Tilted(20, 0);                 // at the 20 m floor
