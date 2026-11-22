@@ -41,7 +41,8 @@ Guidance for Claude Code working in this repository.
    style's bearing: 326 fixtures pass, 317 non-vacuous (viewport-glyph labels were turned to the line).
    Then point symbols turned with the map (rotation-alignment map, not yet pitched with it): 329 pass,
    320 non-vacuous, 262 tests green.
-   **Next: DESIGN-GPU-VECTOR.md "Next" 1 - pitch in the harness (with pitch-alignment map), `format`.**
+   **Next: ROADMAP 4g, as smooth as GL JS (the user, 2026-11-22: "远远不如人家那么流畅，还是卡卡的") -
+   step 1, the instrument. Then DESIGN-GPU-VECTOR.md "Next" 1 - pitch in the harness, `format`.**
    Research: [docs/RESEARCH-0.1.md](docs/RESEARCH-0.1.md), [docs/RESEARCH-VECTOR.md](docs/RESEARCH-VECTOR.md).
 2. Read **[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)** — what exists and why.
 3. Read **[NOTES.md](NOTES.md)** — every failure so far, before touching the same code.

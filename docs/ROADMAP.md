@@ -295,6 +295,7 @@ dotted cracks at tile borders, the globe shaking with the pole dragged into view
    outlines as a line list; frames stay under 27 ms while 170 MB a second load. The 200-330 ms
    Updates were the draw list, a new large-object-heap list every frame (fixed, two frames reused).
    **Left:** frames of 60–140 ms outside the node after heavy uploads (a smaller vertex should help).
+   Not done after all: the user, 2026-11-22 night, "远远不如 GL JS 流畅" - see **4g**.
 3. **3D buildings** (`fill-extrusion` for real: walls, roofs, light, depth written) — built the
    same night (DESIGN-GPU-VECTOR.md), judged by the user tilting ("确实好很多了"); then a 28-byte
    vertex (-25% GPU memory). Then MapLibre's render tests on the GPU path, offscreen in `dotnet
@@ -350,6 +351,40 @@ reach); the fog now 2 to 5 eye heights, so it is whole where the floor ends. Ren
 the user's view (`ViewProbe`): no line, buildings into the haze. Cost there: 39 z14 tiles with
 buildings, 853 MB on the GPU (658 before) - over the 768 MB budget; the compact extrusion vertex
 (C) is what brings it down.
+
+### 4g. As smooth as MapLibre GL JS — asked by the user 2026-11-22 night, before the rest of 4e
+
+The user: "我们的系统跟 MapLibre GL JS 相比，还是远远不如人家那么流畅，还是卡卡的" - and asked where
+the difference is. An acceptance criterion of 0.1, not a polish item. 4d's "有点卡" entry read
+"largely done"; it was not.
+
+**Why it was not seen: the instrument.** `Globe perf` logs the slowest frame and the frames over
+33 ms. At 60 Hz a frame over 16.7 ms misses the vsync and judders. The user's log of 22:51 at rest,
+nothing uploaded: slowest frame 23 ms, "0 over 33 ms", submit 5.5 ms mean, 2876 draws. "60 fps
+while no tiles arrive" (4e) was read off that instrument and does not hold.
+
+**Where we differ from GL JS** (measured here; GL JS's numbers from its source, to be checked):
+1. *Bytes per tile.* Our vertex is 28 bytes (three floats on the unit sphere), indices 32-bit,
+   roads built twice (casing and line). GL JS keeps Int16 tile coordinates - a fill 4 bytes, a line
+   8, an extrusion 12 - with 16-bit indices, and projects onto the globe in the shader. A z14 tile
+   at Kyoto is 6.7 MB here; uploads run 130-150 MB/s while loading, single tiles above the 8 MB a
+   frame budget (13-18 MB in one frame).
+2. *Tiles in a tilted view.* GL JS chooses coarser tiles with distance; 4f step 3 keeps the camera's
+   zoom to 5 eye heights for the 3D buildings (853 MB tilted over Tokyo).
+3. *Draw submission.* 2300-3100 draws, submit 5.5-10 ms mean - a third to a half of the frame.
+   GL JS draws as many (per layer per tile), each cheap. Suspected, not measured: our per-draw
+   parameter setting through Stride's EffectInstance.
+4. *Feel, not verified:* GL JS's drag inertia and easing; ours eases only the wheel.
+
+**Order:**
+1. The instrument: mean frame time, frames over 16.7 ms, percentiles, per second in `Globe perf`;
+   the same view (a view hash) measured in GL JS in Chrome - frame time, tiles, GPU memory - as the
+   yardstick.
+2. Lighter tiles, GL JS's layout: Int16 tile coordinates projected in the shader, 16-bit indices,
+   roads built once.
+3. Coarser tiles far away, as GL JS; 4f's far buildings weighed again against the cost.
+4. Draw submission timed by part, then batched or its parameters cut, whichever the timing names.
+5. Drag inertia, if the feel is still behind once the frames are.
 
 ### 5. Navigation
 
