@@ -53,6 +53,7 @@ shader GlobeSymbol : ShaderBase
     stage stream float4 GsColorIn : COLOR0;       // the feature's colour (sRGB, straight) where it depends on it, else white
     stage stream float GsPlacedIn : TEXCOORD2;    // slot 1: 1 placed, 0 not (LabelPlacement, every frame)
     stage stream float4 GsLineIn : TEXCOORD3;     // slot 2: a glyph along a line - x, y px, angle, 1; -1 hidden; 0 a point label
+    stage stream int4 GsPixelIn : TEXCOORD4;      // a stretchable icon: xy pixels x 16 not stretched, zw the min font scale x 256
 
     stage stream float2 GsTex;
     stage stream float3 GsData;                   // GL JS's v_data1: gamma scale, size, opacity
@@ -86,18 +87,21 @@ shader GlobeSymbol : ShaderBase
         float perspective = clamp(0.5 + 0.5 * GsCameraToCenter / max(clip.w, 1e-9), 0, 4);
         size *= perspective;
         float fontScale = GsIconMode > 0.5 ? size : size / 24.0;
-        float2 offset = float2(streams.GsOffsetTex.xy) / 32.0 * fontScale;
+        // GL JS: a_offset / 32 * max(a_minFontScale, fontScale) + a_pxoffset / 16
+        float2 offset = float2(streams.GsOffsetTex.xy) / 32.0 * max(float2(streams.GsPixelIn.zw) / 256.0, fontScale)
+            + float2(streams.GsPixelIn.xy) / 16.0;
         if (streams.GsLineIn.w > 0.5)
         {
             // along a line: the glyph's place in pixels, the quad turned to its segment (GL JS's
             // a_projected_pos and segment_angle; rotation_matrix turns by the angle, y down)
             float s = sin(streams.GsLineIn.z), c = cos(streams.GsLineIn.z);
-            float2 px = streams.GsLineIn.xy + float2(c * offset.x - s * offset.y, s * offset.x + c * offset.y);
+            // CSS pixels (as placed), to the target's device pixels
+            float2 px = (streams.GsLineIn.xy + float2(c * offset.x - s * offset.y, s * offset.x + c * offset.y)) * GsDevicePixelRatio;
             clip = float4(px.x / GsViewport.x * 2 - 1, 1 - px.y / GsViewport.y * 2, saturate(clip.z / clip.w), 1);
         }
         else
             // pixels, y down, to clip space at the anchor's depth
-            clip.xy += float2(2 * offset.x / GsViewport.x, -2 * offset.y / GsViewport.y) * clip.w;
+            clip.xy += float2(2 * offset.x / GsViewport.x, -2 * offset.y / GsViewport.y) * GsDevicePixelRatio * clip.w;
         hidden = hidden || streams.GsLineIn.w < -0.5;
         streams.ShadingPosition = hidden ? float4(-2, -2, -2, 1) : clip;
         streams.GsTex = float2(streams.GsOffsetTex.zw) / GsTexSize;

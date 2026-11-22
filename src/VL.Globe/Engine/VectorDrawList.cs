@@ -12,6 +12,7 @@ internal sealed class GpuTile
     public required VectorBucket Bucket;
     public Buffer? Vertices, Indices;   // null: a tile with nothing in it
     public Buffer? SymbolVertices, SymbolIndices;   // the labels' glyph quads, null when it has none
+    public Buffer? CircleVertices, CircleIndices;   // circle layers' quads, null when it has none
     // labels, milestone 2: each label's collision data, and per symbol vertex whether it is placed
     // (LabelPlacement writes Placed every frame, the renderer uploads it to PlacedBuffer when dirty)
     public IReadOnlyList<LabelInfo> Labels = Array.Empty<LabelInfo>();
@@ -25,8 +26,9 @@ internal sealed class GpuTile
     public Buffer? DynamicBuffer;
     public bool DynamicDirty;
     public required Dictionary<int, List<VectorRange>> ByLayer;   // -1: the background grid
-    public long Bytes => (Vertices?.SizeInBytes ?? 0) + (Indices?.SizeInBytes ?? 0) + (SymbolVertices?.SizeInBytes ?? 0) + (SymbolIndices?.SizeInBytes ?? 0);
-    public void Dispose() { Vertices?.Dispose(); Indices?.Dispose(); SymbolVertices?.Dispose(); SymbolIndices?.Dispose(); PlacedBuffer?.Dispose(); DynamicBuffer?.Dispose(); }
+    public long Bytes => (Vertices?.SizeInBytes ?? 0) + (Indices?.SizeInBytes ?? 0) + (SymbolVertices?.SizeInBytes ?? 0) + (SymbolIndices?.SizeInBytes ?? 0)
+        + (CircleVertices?.SizeInBytes ?? 0) + (CircleIndices?.SizeInBytes ?? 0);
+    public void Dispose() { Vertices?.Dispose(); Indices?.Dispose(); SymbolVertices?.Dispose(); SymbolIndices?.Dispose(); PlacedBuffer?.Dispose(); DynamicBuffer?.Dispose(); CircleVertices?.Dispose(); CircleIndices?.Dispose(); }
 
     public static GpuTile Empty(VectorBucket bucket) => new() { Bucket = bucket, ByLayer = new() };
 
@@ -55,10 +57,19 @@ internal sealed class GpuTile
             bucket.SymbolVertices = Array.Empty<SymbolVertex>();
             bucket.SymbolIndices = Array.Empty<uint>();
         }
+        Buffer? circleVertices = null, circleIndices = null;
+        if (bucket.CircleIndices.Length > 0)
+        {
+            circleVertices = Buffer.New(device, System.Runtime.InteropServices.MemoryMarshal.AsBytes(bucket.CircleVertices.AsSpan()), CircleVertex.Size, BufferFlags.VertexBuffer, PixelFormat.None, GraphicsResourceUsage.Immutable);
+            circleIndices = Buffer.New(device, System.Runtime.InteropServices.MemoryMarshal.AsBytes(bucket.CircleIndices.AsSpan()), sizeof(uint), BufferFlags.IndexBuffer, PixelFormat.None, GraphicsResourceUsage.Immutable);
+            bucket.CircleVertices = Array.Empty<CircleVertex>();
+            bucket.CircleIndices = Array.Empty<uint>();
+        }
         if (bucket.IndexCount == 0)
         {
             bucket.Release();
             return new GpuTile { Bucket = bucket, ByLayer = byLayer, SymbolVertices = symbolVertices, SymbolIndices = symbolIndices,
+                CircleVertices = circleVertices, CircleIndices = circleIndices,
                 Labels = bucket.Labels, Placed = placed, PlacedBuffer = placedBuffer,
                 LineLabels = bucket.LineLabels, Dynamic = dynamic, DynamicBuffer = dynamicBuffer };
         }
@@ -72,6 +83,8 @@ internal sealed class GpuTile
             Indices = Buffer.New(device, indices, sizeof(uint), BufferFlags.IndexBuffer, PixelFormat.None, GraphicsResourceUsage.Immutable),
             SymbolVertices = symbolVertices,
             SymbolIndices = symbolIndices,
+            CircleVertices = circleVertices,
+            CircleIndices = circleIndices,
             Labels = bucket.Labels,
             Placed = placed,
             PlacedBuffer = placedBuffer,
@@ -104,7 +117,7 @@ internal static class VectorDrawList
                 var centre = tile.Bucket.Centre.ToVector3();
                 foreach (var r in ranges)
                 {
-                    if (r.Kind is RangeKind.Text or RangeKind.Icon) continue;   // AddSymbolLayer's
+                    if (r.Kind is RangeKind.Text or RangeKind.Icon or RangeKind.Circle) continue;   // drawn by AddSymbolLayer, AddCircleLayer
                     var (c, half, line) = r.Kind switch
                     {
                         RangeKind.Line => (color, width / 2, true),
@@ -169,6 +182,26 @@ internal static class VectorDrawList
         {
             var v = linearize ? Linear(c) : new Vector4((float)c.R, (float)c.G, (float)c.B, (float)c.A);
             return new Vector4(v.X * v.W, v.Y * v.W, v.Z * v.W, v.W);
+        }
+    }
+
+    // A circle layer's draw items: GL JS's draw_circle.ts, tile by tile; colours premultiplied
+    public static void AddCircleLayer(List<VectorRenderer.Item> items, GpuStyleLayer layer, CirclePaint paint,
+        IReadOnlyList<(GpuTile tile, Vector4 clip)> tiles, Func<GpuTile, Matrix> world, bool linearize, double cameraToCenter, double pixelRatio)
+    {
+        Vector4 Premultiplied(StyleColor c)
+        {
+            var v = linearize ? Linear(c) : new Vector4((float)c.R, (float)c.G, (float)c.B, (float)c.A);
+            return new Vector4(v.X * v.W, v.Y * v.W, v.Z * v.W, v.W);
+        }
+        var draw = new VectorRenderer.CircleDraw(paint, Premultiplied(paint.Color), Premultiplied(paint.StrokeColor), (float)cameraToCenter, (float)pixelRatio);
+        foreach (var (tile, clip) in tiles)
+        {
+            if (tile.CircleVertices is null || !tile.ByLayer.TryGetValue(layer.Index, out var ranges)) continue;
+            foreach (var r in ranges)
+                if (r.Kind == RangeKind.Circle)
+                    items.Add(new VectorRenderer.Item(tile.CircleVertices, tile.CircleIndices!, r.Start, r.Count, world(tile),
+                        tile.Bucket.Centre.ToVector3(), default, 0, false, Widen(clip), VectorRenderer.Pass.Circle, 1 << tile.Bucket.Key.Zoom, Circle: draw));
         }
     }
 

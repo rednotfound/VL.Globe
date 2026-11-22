@@ -71,7 +71,7 @@ internal struct VectorVertex
 // Outline is a line list (GL JS's gl.LINES, one device pixel); the rest are triangle lists. Extrusion
 // is fill-extrusion: roofs and walls in 3D, drawn in two passes (depth, then colour). Text is a
 // symbol layer's glyph quads, in the bucket's symbol arrays (SymbolLayout.cs)
-internal enum RangeKind { Fill, Outline, Line, Background, Extrusion, Text, Icon }
+internal enum RangeKind { Fill, Outline, Line, Background, Extrusion, Text, Icon, Circle }
 
 /// <summary>A layer's part of a bucket: <see cref="Count"/> indices from <see cref="Start"/>.</summary>
 internal readonly record struct VectorRange(int Layer, RangeKind Kind, int Start, int Count);
@@ -94,6 +94,9 @@ internal sealed class VectorBucket
     public SymbolVertex[] SymbolVertices = Array.Empty<SymbolVertex>();
     public uint[] SymbolIndices = Array.Empty<uint>();
     public List<LabelInfo> Labels = new();
+    // circle layers' quads (CircleLayout.cs)
+    public CircleVertex[] CircleVertices = Array.Empty<CircleVertex>();
+    public uint[] CircleIndices = Array.Empty<uint>();
     public List<LineLabel> LineLabels = new();
     // icons, per symbol layer: an SDF or an image (the layer's first icon decides, as GL JS's
     // bucket.sdfIcons), and whether GL JS's iconsNeedLinear holds (another pixel ratio, a rotation)
@@ -130,9 +133,10 @@ internal sealed partial class GpuStyleLayer
     public static GpuStyleLayer? Of(MapStyleDocument style, int index)
     {
         var l = style.Layers[index];
-        if (l.Type is not ("fill" or "line" or "background" or "fill-extrusion" or "symbol")) return null;
+        if (l.Type is not ("fill" or "line" or "background" or "fill-extrusion" or "symbol" or "circle")) return null;
         if (style.Lenient && style.IsDropped(l.Id)) return null;
         if (l.Type == "symbol") return SymbolOf(index, l);
+        if (l.Type == "circle") return CircleOf(index, l);
         var g = new GpuStyleLayer { Index = index, Layer = l };
         string p = l.Type;
         g.Color = Get(l.Paint, p + "-color");
@@ -210,6 +214,7 @@ internal static partial class VectorBucketBuilder
             try
             {
                 if (layer.IsSymbol) b.Symbol(layer, features, ctx, style, fetch, missing, ref complete);
+                else if (layer.IsCircle) b.Circle(layer, features, ctx);
                 else b.Layer(layer, features, ctx);
             }
             catch (StyleUnsupportedException e) when (style.Lenient) { style.Drop(layer.Layer.Id, e.Message); b.Rewind(); }
@@ -288,6 +293,7 @@ internal static partial class VectorBucketBuilder
             _symbolIndices.RemoveRange(_layerSymbolIndexStart, _symbolIndices.Count - _layerSymbolIndexStart);
             _labels.RemoveRange(_layerLabelStart, _labels.Count - _layerLabelStart);
             _lineLabels.RemoveRange(_layerLineLabelStart, _lineLabels.Count - _layerLineLabelStart);
+            RewindCircles();
         }
 
         public VectorBucket Finish()
@@ -302,6 +308,7 @@ internal static partial class VectorBucketBuilder
                 VertexCount = _vertices.Count, IndexCount = _indices.Count, Ranges = _ranges.ToList(),
                 SymbolVertices = _symbolVertices.ToArray(), SymbolIndices = _symbolIndices.ToArray(), Labels = _labels.ToList(), LineLabels = _lineLabels.ToList(),
                 IconModes = new Dictionary<int, (bool, bool)>(_iconModes),
+                CircleVertices = _circleVertices.ToArray(), CircleIndices = _circleIndices.ToArray(),
             };
         }
 

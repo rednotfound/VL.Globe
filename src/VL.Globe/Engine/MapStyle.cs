@@ -190,6 +190,9 @@ internal static class Expression
     // the key "$type" is the geometry type, "$id" the feature id; comparisons never coerce
     static bool Legacy(JsonElement f, StyleContext ctx)
     {
+        // an expression inside a legacy tree ("any" of both kinds) is evaluated as one: GL JS renders
+        // such a filter with a warning (filter/mixed-legacy-expression)
+        if (IsExpressionFilter(f)) return Evaluate(f, ctx, Kind.Any) is true;
         var op = f[0].GetString();
         object? Key(string k) => k switch
         {

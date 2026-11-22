@@ -438,3 +438,9 @@ looked fine - "which makes one think it works". Two causes, estimated at 100 m h
   line drops the layer whole, and Liberty's road-name layers (shields along the line) would have lost
   their text - caught reading the code before vvvv, not seen. Strict throws; lenient leaves out the
   icons and names it in Skipped.
+- **Most icon-text-fit fixtures need a circle layer** (it marks the anchor): the stretch-zone code
+  passed nothing until circles were drawn. Read why a group is unsupported before calling it tested.
+- **GL JS lays labels out in CSS pixels**: offsets and the collision grid were in device pixels, so
+  the 2x-screen fixtures drew labels at half size. `Frame.PixelRatio` (1 in vvvv).
+- **The test host copies the shaders it compiles by name**: a new `.sdsl` must be added to the list
+  in `GpuFixtureRenderer.Create`, or every fixture fails with "E1202 ... not in the module".

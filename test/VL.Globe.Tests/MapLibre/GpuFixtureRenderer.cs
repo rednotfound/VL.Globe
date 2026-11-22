@@ -22,7 +22,7 @@ internal static class GpuFixtureRenderer
     {
         public required GraphicsDevice Device;
         public required GraphicsContext Context;
-        public required EffectInstance Effect, SymbolEffect;
+        public required EffectInstance Effect, SymbolEffect, CircleEffect;
         public readonly VectorRenderer Renderer = new() { GlOutlines = true };
     }
 
@@ -37,7 +37,7 @@ internal static class GpuFixtureRenderer
         string repo = RenderHarness.RepoRoot();
         var dir = Path.Combine(Path.GetTempPath(), "vlglobe-shaders-" + Environment.ProcessId);
         Directory.CreateDirectory(dir);
-        foreach (var f in new[] { "GlobeVector.sdsl", "GlobeSymbol.sdsl" }) File.Copy(Path.Combine(repo, "shaders", f), Path.Combine(dir, f), overwrite: true);
+        foreach (var f in new[] { "GlobeVector.sdsl", "GlobeSymbol.sdsl", "GlobeCircle.sdsl" }) File.Copy(Path.Combine(repo, "shaders", f), Path.Combine(dir, f), overwrite: true);
         var nuget = Environment.GetEnvironmentVariable("NUGET_PACKAGES") ?? Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".nuget", "packages");
         var assets = Path.Combine(nuget, "stride.graphics", "4.2.1.2487", "stride", "Assets");
         foreach (var f in new[] { "ShaderBase.sdsl", "ShaderBaseStream.sdsl" }) File.Copy(Path.Combine(assets, f), Path.Combine(dir, f), overwrite: true);
@@ -56,7 +56,7 @@ internal static class GpuFixtureRenderer
             effect.UpdateEffect(device);
             return effect;
         }
-        return new Gpu { Device = device, Context = new GraphicsContext(device), Effect = Compile("GlobeVector"), SymbolEffect = Compile("GlobeSymbol") };
+        return new Gpu { Device = device, Context = new GraphicsContext(device), Effect = Compile("GlobeVector"), SymbolEffect = Compile("GlobeSymbol"), CircleEffect = Compile("GlobeCircle") };
     }
 
     public static byte[] Render(MapStyleDocument style, int width, int height, double pixelRatio)
@@ -127,9 +127,20 @@ internal static class GpuFixtureRenderer
             images = Texture.New2D(gpu.Device, ImageAtlas.Width, imagesHeight, PixelFormat.R8G8B8A8_UNorm, pixels);
         }
 
-        var frame = new VectorRenderer.Frame { Radius = 1, CameraToCenter = (float)distance };
+        var frame = new VectorRenderer.Frame { Radius = 1, CameraToCenter = (float)distance, PixelRatio = (float)pixelRatio };
         foreach (var layer in layers)
         {
+            if (layer.IsCircle)
+            {
+                if (layer.CircleUniforms(ctx) is not { } circlePaint || !bySource.TryGetValue(layer.Layer.Source!, out var circled)) continue;
+                foreach (var (tile, shift) in circled)
+                {
+                    var at = Matrix.Translation((float)(tile.Bucket.Centre.X + shift - cx), (float)(tile.Bucket.Centre.Y + cy), (float)(tile.Bucket.Centre.Z - distance));
+                    VectorDrawList.AddCircleLayer(frame.Items, layer, circlePaint, new[] { (tile, new Vector4(0, 0, 1, 1)) }, _ => at,
+                        linearize: false, distance, pixelRatio);
+                }
+                continue;
+            }
             if (layer.IsSymbol)
             {
                 if (!layer.SymbolUniforms(ctx, out var paint) || !bySource.TryGetValue(layer.Layer.Source!, out var labelled)) continue;
@@ -176,7 +187,7 @@ internal static class GpuFixtureRenderer
             // row off, the top one row higher, the bottom one lower (line-miter-limit/default). Moved
             // down 1/256 px - more than this chain's float error, which hid 1/1024 - ties fall as in GL.
             projection.M32 += 2f / 256 / h;
-            gpu.Renderer.DrawFrame(cl, gpu.Context, gpu.Effect, gpu.SymbolEffect, Matrix.Identity, projection, h, frame, lift: 0, linearize: false, flat: true);
+            gpu.Renderer.DrawFrame(cl, gpu.Context, gpu.Effect, gpu.SymbolEffect, gpu.CircleEffect, Matrix.Identity, projection, h, frame, lift: 0, linearize: false, flat: true);
             var px = target.GetData<byte>(cl);
             // render.test.ts un-premultiplies by division into a Uint8Array, which truncates
             for (int i = 0; i < px.Length; i += 4)

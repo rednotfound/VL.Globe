@@ -256,10 +256,14 @@ internal sealed class MapStyleDocument
         ["symbol"] = new() { "text-color", "text-opacity", "text-halo-color", "text-halo-width", "text-halo-blur",
             // icons, milestone 4
             "icon-color", "icon-opacity", "icon-halo-color", "icon-halo-width", "icon-halo-blur" },
+        // circles, drawn by the GPU path (CircleLayout.cs)
+        ["circle"] = new() { "circle-color", "circle-opacity", "circle-radius", "circle-blur", "circle-stroke-width",
+            "circle-stroke-color", "circle-stroke-opacity", "circle-pitch-scale", "circle-pitch-alignment", "circle-translate" },
     };
     static readonly Dictionary<string, HashSet<string>> LayoutKeys = new()
     {
         ["background"] = new() { "visibility" },
+        ["circle"] = new() { "visibility" },
         ["fill"] = new() { "visibility" },
         ["fill-extrusion"] = new() { "visibility" },
         // what the layout checks for itself: symbol-placement point only, the alignments viewport/auto
@@ -446,6 +450,12 @@ internal static class MapStylePainter
         if ((layer.MinZoom > 0 && view.Zoom < layer.MinZoom) || view.Zoom >= layer.MaxZoom) return;
         if (Expression.String(Get(layer.Layout, "visibility"), ctx, "visible") == "none") return;
         if (layer.Type == "fill-extrusion") return;   // the GPU path draws it; the drape does not
+        if (layer.Type == "circle")
+        {
+            // circles are the GPU path's: the drape has none, and says so to the render tests
+            if (!style.Lenient) throw new StyleUnsupportedException("circle layer");
+            return;
+        }
         if (layer.Type == "symbol")
         {
             // labels are the GPU path's: the drape has none, and says so to the render tests

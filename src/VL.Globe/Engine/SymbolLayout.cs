@@ -15,7 +15,7 @@ namespace VL.Globe.Engine;
 // label's glyph quads into the bucket, around an anchor that is projected on the GPU; GlobeSymbol.sdsl
 // draws them in screen pixels. No collision yet (milestone 2): every label is placed.
 
-/// <summary>One corner of a glyph's quad; 28 bytes, as GlobeSymbol.sdsl reads it.</summary>
+/// <summary>One corner of a glyph's or an icon's quad; 36 bytes, as GlobeSymbol.sdsl reads it.</summary>
 [StructLayout(LayoutKind.Sequential, Pack = 4)]
 internal struct SymbolVertex
 {
@@ -24,14 +24,18 @@ internal struct SymbolVertex
     public short TexX, TexY;   // the corner in the atlas, pixels
     public System.Half TextSize, Opacity;   // the feature's text-size and text-opacity where they depend on it
     public uint Color;         // the feature's text-color (straight sRGB bytes) where it depends on it; else white
+    // a stretchable icon's parts that are not stretched (GL JS's a_pixeloffset): pixels x 16, and the
+    // font scale the stretched part never shrinks below, x 256. Zero for text and plain icons
+    public short PixelOffsetX, PixelOffsetY, MinFontScaleX, MinFontScaleY;
 
-    public const int Size = 28;
+    public const int Size = 36;
 
     public static readonly VertexDeclaration Layout = new(
         VertexElement.Position<Vector3>(),
         new VertexElement("TEXCOORD", 0, PixelFormat.R16G16B16A16_SInt, 12),
         new VertexElement("TEXCOORD", 1, PixelFormat.R16G16_Float, 20),
-        new VertexElement("COLOR", 0, PixelFormat.R8G8B8A8_UNorm, 24));
+        new VertexElement("COLOR", 0, PixelFormat.R8G8B8A8_UNorm, 24),
+        new VertexElement("TEXCOORD", 4, PixelFormat.R16G16B16A16_SInt, 28));
 }
 
 /// <summary>A symbol layer's paint this frame, at the camera's zoom.</summary>
@@ -153,8 +157,9 @@ internal static partial class VectorBucketBuilder
                         throw new StyleUnsupportedException($"{alignment} map");
             // icons not drawn yet: a strict parse (the render tests) says so; a real style keeps the
             // layer's text and leaves out its icons - dropping the layer lost Liberty's road names
-            string? iconsOff = Expression.String(GpuStyleLayer.Get(l.Layout, "icon-text-fit"), ctx, "none") != "none" ? "icon-text-fit"
-                : layer.IconImage != null && placement != "point" ? "an icon along a line" : null;
+            string? iconsOff = layer.IconImage != null && placement != "point" ? "an icon along a line" : null;
+            string iconTextFit = Expression.String(GpuStyleLayer.Get(l.Layout, "icon-text-fit"), ctx, "none");
+            if (iconTextFit is not ("none" or "width" or "height" or "both")) throw new StyleUnsupportedException($"icon-text-fit {iconTextFit}");
             if (iconsOff != null)
             {
                 if (!style.Lenient) throw new StyleUnsupportedException(iconsOff);
@@ -235,10 +240,9 @@ internal static partial class VectorBucketBuilder
                 SymbolBox? box = shaping is null ? null : CollisionBox(shaping.Left, shaping.Top, shaping.Right, shaping.Bottom,
                     layoutTextSize / Shaping.OneEm, (padding, padding, padding, padding), rotate);
 
-                // GL JS shaping.ts shapeIcon, quads.ts getIconQuads (no stretch: icon-text-fit is none) and
+                // GL JS shaping.ts shapeIcon (and fitIconToText round the text), quads.ts getIconQuads and
                 // collision_feature.ts's icon box: the image round the anchor in CSS pixels at icon-size 1
-                (double X, double Y)[]? iconCorners = null;
-                AtlasRect iconTex = default;
+                List<IconQuad>? iconQuads = null;
                 SymbolBox? iconBox = null;
                 float iconSize = 0, iconOpacity = 1;
                 uint iconColor = uint.MaxValue;
@@ -246,24 +250,16 @@ internal static partial class VectorBucketBuilder
                 {
                     var iconOffset = Pair(GpuStyleLayer.Get(l.Layout, "icon-offset"), ctx, "icon-offset");
                     var iconAnchor = ParseAnchor(Expression.String(GpuStyleLayer.Get(l.Layout, "icon-anchor"), ctx, "center"));
-                    var (horizontalAlign, verticalAlign) = Shaping.GetAnchorAlignment(iconAnchor);
-                    var (dw, dh) = img.DisplaySize;
-                    double left = iconOffset.X - dw * horizontalAlign, top = iconOffset.Y - dh * verticalAlign;
-                    double right = left + dw, bottom = top + dh;
+                    var shapedIcon = IconShaping.ShapeIcon(img, iconOffset, iconAnchor);
+                    if (iconTextFit != "none" && shaping != null)
+                        shapedIcon = IconShaping.FitIconToText(shapedIcon, shaping, iconTextFit,
+                            Padding(GpuStyleLayer.Get(l.Layout, "icon-text-fit-padding"), ctx, 0, "icon-text-fit-padding"),
+                            iconOffset, layoutTextSize / Shaping.OneEm, layoutIconSize);
                     double iconRotate = Expression.Number(iconRotateValue, ctx, 0);
-                    // makeBox({0, -1}, {0, -1}, {0, w + 1}, {0, h + 1}): the quad takes in the 1-px padding
-                    int iw = img.Image.Width, ih = img.Image.Height;
-                    double x1 = -1.0 / iw * (right - left) + left, y1 = -1.0 / ih * (bottom - top) + top;
-                    double x2 = (iw + 1.0) / iw * (right - left) + left, y2 = (ih + 1.0) / ih * (bottom - top) + top;
-                    iconCorners = new[] { (x1, y1), (x2, y1), (x1, y2), (x2, y2) };
-                    if (iconRotate != 0)
-                    {
-                        // Point._matMult([cos, -sin, sin, cos])
-                        double a = iconRotate * Math.PI / 180, sin = Math.Sin(a), cos = Math.Cos(a);
-                        for (int c = 0; c < 4; c++) iconCorners[c] = (cos * iconCorners[c].X - sin * iconCorners[c].Y, sin * iconCorners[c].X + cos * iconCorners[c].Y);
-                    }
-                    iconTex = img.PaddedRect;
-                    iconBox = CollisionBox(left, top, right, bottom, layoutIconSize, IconPadding(GpuStyleLayer.Get(l.Layout, "icon-padding"), ctx), iconRotate * Math.PI / 180);
+                    iconQuads = IconShaping.GetIconQuads(shapedIcon, iconRotate, iconTextFit != "none", layoutIconSize);
+                    var (bx1, by1, bx2, by2) = IconShaping.CollisionBox(shapedIcon, layoutIconSize,
+                        Padding(GpuStyleLayer.Get(l.Layout, "icon-padding"), ctx, 2, "icon-padding"));
+                    iconBox = CollisionBox(bx1, by1, bx2, by2, 1, (0, 0, 0, 0), iconRotate * Math.PI / 180);
                     iconSize = layer.IconSizePerFeature ? (float)Expression.Number(layer.IconSize, ctx, 1) : 0;
                     iconOpacity = layer.IconOpacityPerFeature ? (float)Expression.Number(layer.IconOpacity, ctx, 1) : 1;
                     iconColor = layer.IconColorPerFeature ? Pack(Expression.Color(layer.IconColor, ctx, StyleColor.Black)) : uint.MaxValue;
@@ -281,7 +277,7 @@ internal static partial class VectorBucketBuilder
                     var anchorPosition = Vertex(ax, ay, 0, 0, 0, 1, 0).Position;
                     // the icon first (symbol_layout.ts addSymbol), then the glyphs
                     int iconFirst = _symbolVertices.Count, iconIndexFirst = _iconIndices.Count;
-                    if (iconCorners != null) IconQuad(anchorPosition, iconCorners, iconTex, iconSize, iconOpacity, iconColor);
+                    if (iconQuads != null) foreach (var q in iconQuads) IconQuadVertices(anchorPosition, q, iconSize, iconOpacity, iconColor);
                     int textFirst = _symbolVertices.Count, textIndexFirst = _symbolIndices.Count - start;
                     if (shaping != null) GlyphQuads(anchorPosition, shaping, offset, rotate, (float)size, (float)opacity, color);
                     int textCount = _symbolVertices.Count - textFirst, iconCount = textFirst - iconFirst;
@@ -332,25 +328,28 @@ internal static partial class VectorBucketBuilder
             if (textIndices > 0) _ranges.Add(new VectorRange(layer.Index, RangeKind.Text, start, textIndices));
         }
 
-        // GL JS symbol_bucket.ts addSymbols for an icon's one quad: the corners x 32 (Math.round), the
-        // atlas rect with its padding
-        void IconQuad(Vector3 anchor, (double X, double Y)[] corners, AtlasRect tex, float size, float opacity, uint color)
+        // GL JS symbol_bucket.ts addSymbols / addVertex for one quad of an icon: the corners x 32
+        // (Math.round); the atlas corner, the pixel offsets x 16 and the min font scale x 256 into
+        // integer arrays, which truncate
+        void IconQuadVertices(Vector3 anchor, IconQuad q, float size, float opacity, uint color)
         {
             uint i = (uint)_symbolVertices.Count;
-            Corner(corners[0], tex.X, tex.Y);
-            Corner(corners[1], tex.X + tex.W, tex.Y);
-            Corner(corners[2], tex.X, tex.Y + tex.H);
-            Corner(corners[3], tex.X + tex.W, tex.Y + tex.H);
+            Corner(q.Tl, q.TexX, q.TexY, q.PixelOffsetTl.X, q.PixelOffsetTl.Y);
+            Corner(q.Tr, q.TexX + q.TexW, q.TexY, q.PixelOffsetBr.X, q.PixelOffsetTl.Y);
+            Corner(q.Bl, q.TexX, q.TexY + q.TexH, q.PixelOffsetTl.X, q.PixelOffsetBr.Y);
+            Corner(q.Br, q.TexX + q.TexW, q.TexY + q.TexH, q.PixelOffsetBr.X, q.PixelOffsetBr.Y);
             _iconIndices.Add(i); _iconIndices.Add(i + 1); _iconIndices.Add(i + 2);
             _iconIndices.Add(i + 1); _iconIndices.Add(i + 2); _iconIndices.Add(i + 3);
 
-            void Corner((double X, double Y) c, int tx, int ty) => _symbolVertices.Add(new SymbolVertex
+            void Corner((double X, double Y) c, double tx, double ty, double px, double py) => _symbolVertices.Add(new SymbolVertex
             {
                 Anchor = anchor,
                 OffsetX = (short)Math.Floor(c.X * 32 + 0.5),
                 OffsetY = (short)Math.Floor(c.Y * 32 + 0.5),
                 TexX = (short)tx, TexY = (short)ty,
                 TextSize = (System.Half)size, Opacity = (System.Half)opacity, Color = color,
+                PixelOffsetX = (short)(px * 16), PixelOffsetY = (short)(py * 16),
+                MinFontScaleX = (short)Math.Min(short.MaxValue, q.MinFontScaleX * 256), MinFontScaleY = (short)Math.Min(short.MaxValue, q.MinFontScaleY * 256),
             });
         }
 
@@ -581,9 +580,9 @@ internal static partial class VectorBucketBuilder
         }
 
         // GL JS's Padding: one to four numbers in CSS order (top, right, bottom, left)
-        static (double, double, double, double) IconPadding(JsonElement? value, StyleContext ctx)
+        static (double, double, double, double) Padding(JsonElement? value, StyleContext ctx, double fallback, string name)
         {
-            if (value is not { } v) return (2, 2, 2, 2);
+            if (value is not { } v) return (fallback, fallback, fallback, fallback);
             var numbers = new List<double>();
             object? e = v.ValueKind == JsonValueKind.Number ? v.GetDouble()
                 : v.ValueKind == JsonValueKind.Array && v.EnumerateArray().All(x => x.ValueKind == JsonValueKind.Number) ? v
@@ -594,9 +593,9 @@ internal static partial class VectorBucketBuilder
                 case JsonElement { ValueKind: JsonValueKind.Number } n: numbers.Add(n.GetDouble()); break;
                 case JsonElement { ValueKind: JsonValueKind.Array } a: numbers.AddRange(a.EnumerateArray().Select(x => x.GetDouble())); break;
                 case IEnumerable<object?> list:
-                    foreach (var x in list) numbers.Add(x is double d ? d : throw new StyleUnsupportedException("an icon-padding that is not numbers"));
+                    foreach (var x in list) numbers.Add(x is double d ? d : throw new StyleUnsupportedException($"an {name} that is not numbers"));
                     break;
-                default: throw new StyleUnsupportedException("an icon-padding that is not numbers");
+                default: throw new StyleUnsupportedException($"an {name} that is not numbers");
             }
             return numbers.Count switch
             {
@@ -604,7 +603,7 @@ internal static partial class VectorBucketBuilder
                 2 => (numbers[0], numbers[1], numbers[0], numbers[1]),
                 3 => (numbers[0], numbers[1], numbers[2], numbers[1]),
                 4 => (numbers[0], numbers[1], numbers[2], numbers[3]),
-                _ => throw new StyleUnsupportedException("an icon-padding of one to four numbers"),
+                _ => throw new StyleUnsupportedException($"an {name} of one to four numbers"),
             };
         }
 

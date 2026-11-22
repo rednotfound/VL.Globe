@@ -224,6 +224,18 @@ internal sealed class GpuVectorTiles : IDisposable
             foreach (var layer in info.Layers)
             {
                 if (doc.Lenient && doc.IsDropped(layer.Layer.Id)) continue;
+                if (layer.IsCircle)
+                {
+                    CirclePaint? circlePaint;
+                    try { circlePaint = layer.CircleUniforms(ctx); }
+                    catch (StyleUnsupportedException e) when (doc.Lenient) { doc.Drop(layer.Layer.Id, e.Message); continue; }
+                    if (circlePaint is null || layer.Layer.Source is not { } circleSource || !draws.TryGetValue(circleSource, out var circleDrawn)) continue;
+                    // as labels: only from tiles drawn whole, each once (the circle shader does not clip)
+                    var whole = new Vector4(0, 0, 1, 1);
+                    var circled = circleDrawn.Where(d => d.clip == whole).DistinctBy(d => d.built).ToList();
+                    VectorDrawList.AddCircleLayer(result.Items, layer, circlePaint, circled, World, linearize: true, cameraToCenter, 1);
+                    continue;
+                }
                 if (layer.IsSymbol)
                 {
                     SymbolPaint? paint = null, iconPaint = null;

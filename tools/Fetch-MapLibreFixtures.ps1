@@ -41,7 +41,7 @@ param(
         'tiles/extent1024-14-8802-5374.mvt', 'tiles/0-0-0.mvt', 'tiles/extent65536-0-0-0.mvt',
         'tiles/outside_ring.mvt', 'tiles/2-1-1.tms.mvt', 'tiles/2-1-2.tms.mvt', 'tiles/2-2-1.tms.mvt', 'tiles/2-2-2.tms.mvt',
         'data/feature.geojson', 'data/invalid.geojson', 'data/malformed.geojson', 'data/places.geojson',
-        'data/winding.geojson',
+        'data/winding.geojson', 'geojson/grid.json', 'geojson/anchors.json',
         # the labels' SDF glyphs (local://glyphs/{fontstack}/{range}.pbf)
         'glyphs/Open Sans Semibold,Arial Unicode MS Bold/0-255.pbf',
         'glyphs/Open Sans Semibold,Arial Unicode MS Bold/256-511.pbf',

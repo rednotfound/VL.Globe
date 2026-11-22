@@ -22,7 +22,8 @@ internal sealed class VectorRenderer : IGraphicsRendererBase
     // colour where the depth is equal, so a translucent layer is one even layer, its buildings not
     // showing through each other
     // Text: a symbol layer's glyph quads, drawn by GlobeSymbol.sdsl over everything, no depth (GL JS)
-    internal enum Pass { Triangles, LineList, ExtrusionDepth, ExtrusionColor, Text }
+    // Circle: a circle layer's quads, drawn by GlobeCircle.sdsl, no depth, as Text
+    internal enum Pass { Triangles, LineList, ExtrusionDepth, ExtrusionColor, Text, Circle }
 
     // what a Text item draws with besides its buffers: the atlas and the layer's paint this frame.
     // Icons are Text items too: IconMode 1 an image, 2 an SDF image; Nearest GL JS's gl.NEAREST
@@ -30,8 +31,12 @@ internal sealed class VectorRenderer : IGraphicsRendererBase
         float HaloWidth, float HaloBlur, bool IsHalo, bool IsPlain, float CameraToCenter, float PixelRatio, Buffer Placed, Buffer Dynamic,
         int IconMode = 0, bool Nearest = false);
 
+    // what a Circle item draws with: the layer's paint this frame, its colours premultiplied
+    internal sealed record CircleDraw(CirclePaint Paint, Vector4 Color, Vector4 StrokeColor, float CameraToCenter, float PixelRatio);
+
     internal readonly record struct Item(Buffer Vertices, Buffer Indices, int Start, int Count, Matrix World, Vector3 Centre,
-        Vector4 Color, float HalfWidth, bool IsLine, Vector4 Clip, Pass Pass = Pass.Triangles, float Tiles = 1, TextDraw? Text = null);
+        Vector4 Color, float HalfWidth, bool IsLine, Vector4 Clip, Pass Pass = Pass.Triangles, float Tiles = 1, TextDraw? Text = null,
+        CircleDraw? Circle = null);
 
     internal sealed class Frame
     {
@@ -40,6 +45,8 @@ internal sealed class VectorRenderer : IGraphicsRendererBase
         // labels to place before drawing (top of the style first), and the distance to the view's centre
         public readonly List<LabelPlacement.Layer> Labels = new();
         public float CameraToCenter = 1;
+        // device pixels per CSS pixel: labels are laid out and placed in CSS pixels, as GL JS's
+        public float PixelRatio = 1;
     }
 
     public volatile Frame? Current;
@@ -58,9 +65,9 @@ internal sealed class VectorRenderer : IGraphicsRendererBase
     // antialiased line (blended straight) is drawn: the user judged that one on screen, 2026-11-21.
     public bool GlOutlines;
 
-    DynamicEffectInstance? _effect, _symbolEffect;
-    MutablePipelineState? _pipeline, _linePipeline, _depthPipeline, _extrusionPipeline, _textPipeline;
-    readonly Dictionary<string, ParameterKey> _symbolKeys = new();
+    DynamicEffectInstance? _effect, _symbolEffect, _circleEffect;
+    MutablePipelineState? _pipeline, _linePipeline, _depthPipeline, _extrusionPipeline, _textPipeline, _circlePipeline;
+    readonly Dictionary<string, ParameterKey> _symbolKeys = new(), _circleKeys = new();
     readonly LabelPlacement _placement = new();
     bool _broken;
     readonly Dictionary<string, ParameterKey> _keys = new();
@@ -78,12 +85,15 @@ internal sealed class VectorRenderer : IGraphicsRendererBase
                 _effect.Initialize(context.RenderContext.Services);
                 _symbolEffect = new DynamicEffectInstance("GlobeSymbol");
                 _symbolEffect.Initialize(context.RenderContext.Services);
+                _circleEffect = new DynamicEffectInstance("GlobeCircle");
+                _circleEffect.Initialize(context.RenderContext.Services);
             }
             _effect.UpdateEffect(context.GraphicsDevice);
             _symbolEffect!.UpdateEffect(context.GraphicsDevice);
-            if (_effect.Effect is null || _symbolEffect.Effect is null) return;   // still compiling
+            _circleEffect!.UpdateEffect(context.GraphicsDevice);
+            if (_effect.Effect is null || _symbolEffect.Effect is null || _circleEffect.Effect is null) return;   // still compiling
             var view = context.RenderContext.RenderView;
-            DrawFrame(context.CommandList, context.GraphicsContext, _effect, _symbolEffect, view.View, view.Projection, view.ViewSize.Y, frame,
+            DrawFrame(context.CommandList, context.GraphicsContext, _effect, _symbolEffect, _circleEffect, view.View, view.Projection, view.ViewSize.Y, frame,
                 Lift, linearize: true, flat: false);
         }
         catch (Exception e)
@@ -102,10 +112,14 @@ internal sealed class VectorRenderer : IGraphicsRendererBase
     // linearize: The colours are sRGB and the target linear (vvvv); false draws in sRGB space, as GL JS blends.
     // flat: The buckets are on the Mercator plane (x east, y north, z up), not the sphere.
     internal void DrawFrame(CommandList commandList, GraphicsContext graphicsContext, EffectInstance effect, EffectInstance symbolEffect,
-        Matrix view, Matrix projection, float viewHeight, Frame frame, float lift, bool linearize, bool flat)
+        EffectInstance circleEffect, Matrix view, Matrix projection, float viewHeight, Frame frame, float lift, bool linearize, bool flat)
     {
         ItemsDrawn = 0;
         EnsurePipelines(commandList.GraphicsDevice);
+        if (_circleKeys.Count == 0)
+            foreach (var cb in circleEffect.Effect.Bytecode.Reflection.ConstantBuffers)
+                foreach (var m in cb.Members)
+                    if (m.KeyInfo.Key is { } key) _circleKeys[m.KeyInfo.KeyName] = key;
         if (_symbolKeys.Count == 0)
         {
             foreach (var cb in symbolEffect.Effect.Bytecode.Reflection.ConstantBuffers)
@@ -124,10 +138,10 @@ internal sealed class VectorRenderer : IGraphicsRendererBase
                 throw new InvalidOperationException("GlobeVector's parameters not found; the effect has: " + string.Join(", ", _keys.Keys));
         }
 
-        var pipelines = new[] { _pipeline!, _linePipeline!, _depthPipeline!, _extrusionPipeline!, _textPipeline! };
+        var pipelines = new[] { _pipeline!, _linePipeline!, _depthPipeline!, _extrusionPipeline!, _textPipeline!, _circlePipeline! };
         foreach (var p in pipelines)
         {
-            var e = p == _textPipeline ? symbolEffect : effect;
+            var e = p == _textPipeline ? symbolEffect : p == _circlePipeline ? circleEffect : effect;
             p.State.RootSignature = e.RootSignature;
             p.State.EffectBytecode = e.Effect.Bytecode;
             p.State.Output.CaptureState(commandList);
@@ -136,7 +150,8 @@ internal sealed class VectorRenderer : IGraphicsRendererBase
         // labels: placed from this camera, then the changed placements uploaded
         if (frame.Labels.Count > 0)
         {
-            _placement.Place(frame.Labels, view, projection, commandList.Viewport.Width, commandList.Viewport.Height, frame.CameraToCenter, flat);
+            _placement.Place(frame.Labels, view, projection, commandList.Viewport.Width / frame.PixelRatio, commandList.Viewport.Height / frame.PixelRatio,
+                frame.CameraToCenter, flat);
             foreach (var layer in frame.Labels)
                 foreach (var (tile, _) in layer.Tiles)
                 {
@@ -157,6 +172,11 @@ internal sealed class VectorRenderer : IGraphicsRendererBase
         SetText(symbolParameters, "GsLift", lift);
         SetText(symbolParameters, "GsFlat", flat ? 1f : 0f);
         SetText(symbolParameters, "GsLinearize", linearize ? 1f : 0f);
+        var circleParameters = circleEffect.Parameters;
+        SetCircle(circleParameters, "GcProjection", projection);
+        SetCircle(circleParameters, "GcLift", lift);
+        SetCircle(circleParameters, "GcFlat", flat ? 1f : 0f);
+        SetCircle(circleParameters, "GcLinearize", linearize ? 1f : 0f);
         Pass? pass = null;
 
         var parameters = effect.Parameters;
@@ -181,7 +201,7 @@ internal sealed class VectorRenderer : IGraphicsRendererBase
                 else if (!extrusion && sceneDepth is not null) { RestoreDepth(commandList, sceneDepth); sceneDepth = null; }
                 if (!ReferenceEquals(item.Vertices, boundVertices))
                 {
-                    commandList.SetVertexBuffer(0, item.Vertices, 0, item.Pass == Pass.Text ? SymbolVertex.Size : VectorVertex.Size);
+                    commandList.SetVertexBuffer(0, item.Vertices, 0, item.Pass switch { Pass.Text => SymbolVertex.Size, Pass.Circle => CircleVertex.Size, _ => VectorVertex.Size });
                     commandList.SetIndexBuffer(item.Indices, 0, true);
                     boundVertices = item.Vertices;
                 }
@@ -189,6 +209,35 @@ internal sealed class VectorRenderer : IGraphicsRendererBase
                 {
                     commandList.SetPipelineState(pipelines[(int)item.Pass].CurrentState);
                     pass = item.Pass;
+                }
+                if (item.Circle is { } c)
+                {
+                    var p = c.Paint;
+                    SetCircle(circleParameters, "GcWorldView", item.World * view);
+                    SetCircle(circleParameters, "GcCentre", item.Centre);
+                    SetCircle(circleParameters, "GcViewport", new Vector2(commandList.Viewport.Width, commandList.Viewport.Height));
+                    SetCircle(circleParameters, "GcCameraToCenter", c.CameraToCenter);
+                    SetCircle(circleParameters, "GcScaleWithMap", p.ScaleWithMap ? 1f : 0f);
+                    SetCircle(circleParameters, "GcDevicePixelRatio", c.PixelRatio);
+                    SetCircle(circleParameters, "GcColor", c.Color);
+                    SetCircle(circleParameters, "GcStrokeColor", c.StrokeColor);
+                    SetCircle(circleParameters, "GcRadius", (float)p.Radius);
+                    SetCircle(circleParameters, "GcBlur", (float)p.Blur);
+                    SetCircle(circleParameters, "GcOpacity", (float)p.Opacity);
+                    SetCircle(circleParameters, "GcStrokeWidth", (float)p.StrokeWidth);
+                    SetCircle(circleParameters, "GcStrokeOpacity", (float)p.StrokeOpacity);
+                    float V(CirclePerFeature bit) => (p.PerFeature & bit) != 0 ? 1f : 0f;
+                    SetCircle(circleParameters, "GcColorV", V(CirclePerFeature.Color));
+                    SetCircle(circleParameters, "GcStrokeColorV", V(CirclePerFeature.StrokeColor));
+                    SetCircle(circleParameters, "GcRadiusV", V(CirclePerFeature.Radius));
+                    SetCircle(circleParameters, "GcBlurV", V(CirclePerFeature.Blur));
+                    SetCircle(circleParameters, "GcOpacityV", V(CirclePerFeature.Opacity));
+                    SetCircle(circleParameters, "GcStrokeWidthV", V(CirclePerFeature.StrokeWidth));
+                    SetCircle(circleParameters, "GcStrokeOpacityV", V(CirclePerFeature.StrokeOpacity));
+                    circleEffect.Apply(graphicsContext);
+                    commandList.DrawIndexed(item.Count, item.Start);
+                    ItemsDrawn++;
+                    continue;
                 }
                 if (item.Text is { } t)
                 {
@@ -298,6 +347,15 @@ internal sealed class VectorRenderer : IGraphicsRendererBase
         t.DepthStencilState = DepthStencilStates.None;
         t.RasterizerState = RasterizerStates.CullNone;
         t.PrimitiveType = PrimitiveType.TriangleList;
+        // circles: as labels, over everything, premultiplied
+        _circlePipeline = new MutablePipelineState(device);
+        var c = _circlePipeline.State;
+        c.SetDefaults();
+        c.InputElements = CircleVertex.Layout.CreateInputElements();
+        c.BlendState = BlendStates.AlphaBlend;
+        c.DepthStencilState = DepthStencilStates.None;
+        c.RasterizerState = RasterizerStates.CullNone;
+        c.PrimitiveType = PrimitiveType.TriangleList;
     }
 
     // fill-extrusion needs to write depth, and vvvv's forward renderer binds the scene's depth
@@ -332,6 +390,13 @@ internal sealed class VectorRenderer : IGraphicsRendererBase
     }
 
     void RestoreDepth(CommandList commandList, Texture scene) => commandList.SetRenderTargets(scene, _targetCount, _targets);
+
+    void SetCircle<T>(ParameterCollection parameters, string name, T value) where T : struct
+    {
+        if (!_circleKeys.TryGetValue("GlobeCircle." + name, out var key)) return;   // compiled away: unused
+        if (key is ValueParameterKey<T> typed) parameters.Set(typed, value);
+        else throw new InvalidOperationException($"GlobeCircle.{name} is a {key.GetType().Name}, set as {typeof(T).Name}");
+    }
 
     void SetText<T>(ParameterCollection parameters, string name, T value) where T : struct
     {

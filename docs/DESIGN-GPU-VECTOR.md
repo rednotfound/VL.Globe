@@ -208,9 +208,25 @@ icon-size fixtures (ignored), and 10 unsupported for other reasons - an icon hal
 **Seen in vvvv on Liberty at Kyoto Station (700 m)**: bus, rail, hospital, school and shop icons with
 their names beside them, no overlaps; road names along the roads kept (their shields left out).
 
+**Step 5, the same day: icon-text-fit, stretch zones - and circle layers to see them.**
+- `IconShaping.cs` - shapeIcon, fitIconToText, applyTextFit (textFitWidth / textFitHeight), the icon
+  collision box with the content padding, getIconQuads with stretchX / stretchY / content (up to 15
+  quads an icon). `SymbolVertex` is 36 bytes now: GL JS's a_pixeloffset (x 16) and a_minFontScale
+  (x 256), the shader's `offset / 32 * max(minFontScale, fontScale) + pixelOffset / 16`.
+- Most icon-text-fit fixtures mark their anchors with a **circle layer**, so circles came first:
+  `CircleLayout.cs` (circle_bucket.ts: a quad at every point inside the tile; the seven paint
+  properties per feature in a 36-byte `CircleVertex`, or uniforms) and `GlobeCircle.sdsl` (circle
+  shaders, pitch-alignment viewport, pitch-scale map or viewport; antialiasing, blur and stroke).
+  circle-translate and pitch-alignment map are refused; circle-sort-key is not read (strict: refused).
+- **Labels in CSS pixels**: offsets in the shader and LabelPlacement's grid are CSS pixels, times the
+  device pixel ratio on the target (`Frame.PixelRatio`, 1 in vvvv) - the 2x-screen fixtures.
+- A legacy filter with an expression inside ("any" of both) is evaluated part by part, as GL JS.
+- **304 pass, 295 non-vacuous**; the icon-text-fit group: all but variable anchors, vertical text and
+  the shield along a line. Liberty uses neither icon-text-fit nor circles: nothing new to see there.
+
 ## Next
 
-1. Icons: icon-text-fit and stretch zones (step 5), then icons along lines and Liberty's shields (6).
+1. Icons along lines - Liberty's shields and one-way arrows (step 6).
 2. Labels: fades (300 ms) and labels across tiles of two zooms (CrossTileSymbolIndex), the `format`
    expression, text-size by zoom and feature, text-offset across a line.
 3. Labels and icons (RESEARCH-VECTOR stage 4: glyph PBFs, SDF, placement and collision) - the

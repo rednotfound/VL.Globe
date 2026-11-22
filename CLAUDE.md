@@ -18,9 +18,10 @@ Guidance for Claude Code working in this repository.
    Then labels (ROADMAP **4e**): point text and collision ported from GL JS, 154 fixtures pass on the
    GPU path, seen in vvvv on Liberty; then labels along lines (158 fixtures, 150 non-vacuous).
    Then icons (milestone 4), steps 1-4: sprites, point icons, the icon shader, joint placement -
-   252 fixtures pass, 243 non-vacuous.
-   **Next: icon-text-fit and stretch zones (step 5), then icons along lines / Liberty's shields
-   (step 6) - DESIGN-GPU-VECTOR.md, "Icons" and its "As built"; then label fades.**
+   252 fixtures pass, 243 non-vacuous. Then step 5, icon-text-fit and stretch zones, with circle
+   layers (needed by its fixtures) - 304 pass, 295 non-vacuous.
+   **Next: icons along lines - Liberty's shields and one-way arrows (step 6) - DESIGN-GPU-VECTOR.md,
+   "Icons" and its "As built"; then label fades.**
    Research: [docs/RESEARCH-0.1.md](docs/RESEARCH-0.1.md), [docs/RESEARCH-VECTOR.md](docs/RESEARCH-VECTOR.md).
 2. Read **[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)** — what exists and why.
 3. Read **[NOTES.md](NOTES.md)** — every failure so far, before touching the same code.

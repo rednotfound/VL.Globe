@@ -1,0 +1,107 @@
+// VL.Globe's circle layers, drawn by Engine/VectorRenderer.cs: GL JS's circle shaders for
+// circle-pitch-alignment viewport (its default). The centre is projected from its place on the globe
+// (or the Mercator plane, in MapLibre's render tests); the quad is extruded in screen pixels from
+// there by the radius and the stroke width - scaled with the perspective (circle-pitch-scale map, the
+// default) or not (viewport). Antialiasing, blur and stroke as circle.fragment.glsl.
+shader GlobeCircle : ShaderBase
+{
+    cbuffer PerDraw
+    {
+        stage float4x4 GcWorldView;     // the tile's camera-relative translation (and scale), then the view
+        stage float4x4 GcProjection;
+        stage float3 GcCentre;          // the tile's centre on the unit sphere (its up)
+        stage float2 GcViewport;        // the target in pixels
+        stage float GcCameraToCenter;   // the distance from the eye to the view's centre
+        stage float GcScaleWithMap;     // 1: circle-pitch-scale map
+        stage float GcLift;
+        stage float GcFlat;             // 1: on the Mercator plane (no far side to hide)
+        stage float GcLinearize;        // 1: vvvv's linear pipeline; 0: sRGB, as GL JS
+        stage float GcDevicePixelRatio;
+        // the layer's paint at the camera's zoom, colours premultiplied - or, where a flag is 1, the vertex's
+        stage float4 GcColor;
+        stage float4 GcStrokeColor;
+        stage float GcRadius;
+        stage float GcBlur;
+        stage float GcOpacity;
+        stage float GcStrokeWidth;
+        stage float GcStrokeOpacity;
+        stage float GcColorV;
+        stage float GcStrokeColorV;
+        stage float GcRadiusV;
+        stage float GcBlurV;
+        stage float GcOpacityV;
+        stage float GcStrokeWidthV;
+        stage float GcStrokeOpacityV;
+    }
+
+    stage stream float3 GcCenterIn : POSITION;     // on the unit sphere (or the plane), relative to the tile's centre
+    stage stream int2 GcExtrudeIn : TEXCOORD0;     // the corner: -1 or 1 on each axis
+    stage stream float4 GcColorIn : COLOR0;        // the feature's circle-color (straight sRGB)
+    stage stream float4 GcStrokeColorIn : COLOR1;  // the feature's circle-stroke-color (straight sRGB)
+    stage stream float4 GcValuesIn : TEXCOORD1;    // the feature's radius, blur, opacity, stroke width
+    stage stream float2 GcValues2In : TEXCOORD2;   // the feature's stroke opacity
+
+    stage stream float3 GcData;                    // GL JS's v_data: extrude, antialiased blur
+    stage stream float4 GcFill;                    // colour x opacity, premultiplied
+    stage stream float4 GcStroke;                  // stroke colour x stroke opacity, premultiplied
+    stage stream float2 GcShape;                   // radius, stroke width
+
+    float3 ToLinear(float3 c)
+    {
+        if (GcLinearize < 0.5) return c;
+        c = saturate(c);
+        return c <= 0.04045 ? c / 12.92 : pow((c + 0.055) / 1.055, 2.4);
+    }
+
+    // a uniform colour is premultiplied sRGB, a vertex colour straight sRGB: both to premultiplied, linear in vvvv
+    float4 Premultiplied(float4 straight)
+    {
+        return float4(ToLinear(straight.rgb) * straight.a, straight.a);
+    }
+
+    stage override void VSMain()
+    {
+        float radius = GcRadiusV > 0.5 ? streams.GcValuesIn.x : GcRadius;
+        float blur = GcBlurV > 0.5 ? streams.GcValuesIn.y : GcBlur;
+        float opacity = GcOpacityV > 0.5 ? streams.GcValuesIn.z : GcOpacity;
+        float strokeWidth = GcStrokeWidthV > 0.5 ? streams.GcValuesIn.w : GcStrokeWidth;
+        float strokeOpacity = GcStrokeOpacityV > 0.5 ? streams.GcValues2In.x : GcStrokeOpacity;
+        float4 color = GcColorV > 0.5 ? Premultiplied(streams.GcColorIn) : GcColor;
+        float4 stroke = GcStrokeColorV > 0.5 ? Premultiplied(streams.GcStrokeColorIn) : GcStrokeColor;
+
+        float4 v = mul(float4(streams.GcCenterIn, 1), GcWorldView);
+        v.xyz *= (1 - GcLift);
+        float4 clip = mul(v, GcProjection);
+        bool hidden = false;
+        if (GcFlat < 0.5)
+        {
+            float3 up = mul(float4(normalize(GcCentre + streams.GcCenterIn), 0), GcWorldView).xyz;
+            hidden = dot(up, -v.xyz) <= 0;
+        }
+        // GL JS: u_extrude_scale is pixelsToGLUnits in CSS pixels; times the camera-to-centre distance
+        // (scaled with the map) or the centre's w (not)
+        float2 extrude = float2(streams.GcExtrudeIn);
+        float2 toClip = float2(2 / GcViewport.x, -2 / GcViewport.y) * GcDevicePixelRatio;
+        clip.xy += extrude * (radius + strokeWidth) * toClip * (GcScaleWithMap > 0.5 ? GcCameraToCenter : clip.w);
+        streams.ShadingPosition = hidden ? float4(-2, -2, -2, 1) : clip;
+        float antialiasBlur = -max(1.0 / GcDevicePixelRatio / (radius + strokeWidth), blur);
+        streams.GcData = float3(extrude, antialiasBlur);
+        streams.GcFill = color * opacity;
+        streams.GcStroke = stroke * strokeOpacity;
+        streams.GcShape = float2(radius, strokeWidth);
+    }
+
+    stage override void PSMain()
+    {
+        float2 extrude = streams.GcData.xy;
+        float extrudeLength = length(extrude);
+        float antialiasedBlur = streams.GcData.z;
+        float radius = streams.GcShape.x, strokeWidth = streams.GcShape.y;
+        float opacityT = smoothstep(0.0, antialiasedBlur, extrudeLength - 1.0);
+        float colorT = strokeWidth < 0.01 ? 0.0 : smoothstep(antialiasedBlur, 0.0, extrudeLength - radius / (radius + strokeWidth));
+        float4 c = opacityT * lerp(streams.GcFill, streams.GcStroke, colorT);
+        const float epsilon = 0.5 / 255.0;
+        if (c.r < epsilon && c.g < epsilon && c.b < epsilon && c.a < epsilon) discard;
+        streams.ColorTarget = c;
+    }
+};
