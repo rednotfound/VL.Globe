@@ -55,6 +55,23 @@ internal sealed class VectorRenderer : IGraphicsRendererBase
     public string Error { get; private set; } = "";
     public int ItemsDrawn { get; private set; }
 
+    // where a frame's Draw goes (vvvv's render thread): placing the labels on the CPU, uploading the
+    // placements, and submitting the draws - max and sum since the last TakeStats, for the node's perf line
+    readonly System.Diagnostics.Stopwatch _drawTimer = new();
+    double _placeMax, _placeSum, _uploadMax, _uploadSum, _submitMax, _submitSum;
+    int _drawFrames, _labelsMax;
+
+    /// <summary>The Draw timings since the last call (ms, max/mean), and resets them.</summary>
+    public string TakeStats()
+    {
+        if (_drawFrames == 0) return "no draws";
+        var s = $"place {_placeMax:F1}/{_placeSum / _drawFrames:F1}, upload {_uploadMax:F1}/{_uploadSum / _drawFrames:F1}, " +
+                $"submit {_submitMax:F1}/{_submitSum / _drawFrames:F1} ms (max/mean), {ItemsDrawn} draws, {_labelsMax} label tiles";
+        _placeMax = _placeSum = _uploadMax = _uploadSum = _submitMax = _submitSum = 0;
+        _drawFrames = 0; _labelsMax = 0;
+        return s;
+    }
+
     // the vertices are lifted this fraction of their distance towards the eye: enough to stay over
     // the raster tiles' facets (they sag up to 0.0012 radii below the sphere at zoom 0-3, seen from
     // two radii away and more; a street-level tile's sag is far below this), too little to see
@@ -148,10 +165,14 @@ internal sealed class VectorRenderer : IGraphicsRendererBase
             p.Update();
         }
         // labels: placed from this camera, then the changed placements uploaded
+        _drawTimer.Restart();
+        double placeMs = 0;
         if (frame.Labels.Count > 0)
         {
+            _labelsMax = Math.Max(_labelsMax, frame.Labels.Sum(l => l.Tiles.Count));
             _placement.Place(frame.Labels, view, projection, commandList.Viewport.Width / frame.PixelRatio, commandList.Viewport.Height / frame.PixelRatio,
                 frame.CameraToCenter, flat);
+            placeMs = _drawTimer.Elapsed.TotalMilliseconds;
             foreach (var layer in frame.Labels)
                 foreach (var (tile, _) in layer.Tiles)
                 {
@@ -167,6 +188,7 @@ internal sealed class VectorRenderer : IGraphicsRendererBase
                     }
                 }
         }
+        double uploadMs = _drawTimer.Elapsed.TotalMilliseconds - placeMs;
         var symbolParameters = symbolEffect.Parameters;
         SetText(symbolParameters, "GsProjection", projection);
         SetText(symbolParameters, "GsLift", lift);
@@ -281,7 +303,15 @@ internal sealed class VectorRenderer : IGraphicsRendererBase
                 ItemsDrawn++;
             }
         }
-        finally { if (sceneDepth is not null) RestoreDepth(commandList, sceneDepth); }
+        finally
+        {
+            if (sceneDepth is not null) RestoreDepth(commandList, sceneDepth);
+            double submitMs = _drawTimer.Elapsed.TotalMilliseconds - placeMs - uploadMs;
+            _placeMax = Math.Max(_placeMax, placeMs); _placeSum += placeMs;
+            _uploadMax = Math.Max(_uploadMax, uploadMs); _uploadSum += uploadMs;
+            _submitMax = Math.Max(_submitMax, submitMs); _submitSum += submitMs;
+            _drawFrames++;
+        }
     }
 
     void EnsurePipelines(GraphicsDevice device)

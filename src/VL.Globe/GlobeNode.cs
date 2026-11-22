@@ -239,9 +239,12 @@ public sealed class GlobeNode : IDisposable
         if (_perfFrom < 0) { _perfFrom = now; _gen0 = GC.CollectionCount(0); _gen2 = GC.CollectionCount(2); return; }
         if (now - _perfFrom < 1000) return;
         int gen0 = GC.CollectionCount(0), gen2 = GC.CollectionCount(2);
-        if (_gpu.TilesBuilt > 0 && (_slowFrames > 0 || _perfUploads > 0 || gen2 > _gen2))
-            _logger.LogInformation("Globe perf: frame max {FrameMax:F0} ms, {Slow} over 33 ms; Update max {UpdateMax:F1} ms; uploaded {Uploads} tiles {MB:F1} MB, most {MaxMB:F1} MB in a frame; GC gen0 +{Gen0}, gen2 +{Gen2}",
-                _frameMax, _slowFrames, _updateMax, _perfUploads, _perfBytes / 1048576.0, _perfBytesMax / 1048576.0, gen0 - _gen0, gen2 - _gen2);
+        // also every second a frame takes longer than 20 ms: a steady 30 fps (vsync halving a 17-33 ms
+        // frame) had no line, and the vector draw on the render thread was in none (2026-11-22)
+        var draw = _gpu.TakeDrawStats();
+        if (_gpu.TilesBuilt > 0 && (_slowFrames > 0 || _perfUploads > 0 || gen2 > _gen2 || _frameMax > 20))
+            _logger.LogInformation("Globe perf: frame max {FrameMax:F0} ms, {Slow} over 33 ms; Update max {UpdateMax:F1} ms; uploaded {Uploads} tiles {MB:F1} MB, most {MaxMB:F1} MB in a frame; GC gen0 +{Gen0}, gen2 +{Gen2}; draw: {Draw}",
+                _frameMax, _slowFrames, _updateMax, _perfUploads, _perfBytes / 1048576.0, _perfBytesMax / 1048576.0, gen0 - _gen0, gen2 - _gen2, draw);
         _perfFrom = now; _frameMax = 0; _updateMax = 0; _slowFrames = 0; _perfUploads = 0; _perfBytes = 0; _perfBytesMax = 0;
         _gen0 = gen0; _gen2 = gen2;
     }

@@ -110,6 +110,8 @@ internal sealed class GpuVectorTiles : IDisposable
     }
 
     public string Error => _renderer.Error;
+    /// <summary>The renderer's Draw timings since the last call; resets them.</summary>
+    public string TakeDrawStats() => _renderer.TakeStats();
     public int TilesBuilt => _tilesBuilt;
 
     // counted as they change, not summed every frame
