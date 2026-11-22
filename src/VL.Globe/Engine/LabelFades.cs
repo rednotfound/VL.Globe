@@ -152,6 +152,10 @@ internal sealed class LabelFades
     /// <summary>A vertex's state: placed, 1 + the opacity reached; not placed, minus it. 0 is hidden and staying so.</summary>
     internal static float Pack(Opacity o) => o.Placed ? 1 + o.Value : -o.Value;
 
+    /// <summary>The opacity a vertex is drawn with: GlobeSymbol.sdsl's fade, the same formula (for tests).</summary>
+    internal static float Shown(float state, float fadeChange)
+        => state > 0.5f ? Math.Clamp(state - 1 + fadeChange, 0, 1) : Math.Clamp(-state - fadeChange, 0, 1);
+
     static readonly JointOpacity Duplicate = default;
 
     // GL JS updateLayerOpacities / updateBucketOpacities: every symbol vertex gets its ID's state; a

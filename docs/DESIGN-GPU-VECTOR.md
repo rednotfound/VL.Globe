@@ -275,7 +275,11 @@ placement.ts commit / updateBucketOpacities, cross_tile_symbol_index.ts; sources
   The glyphs along lines are walked when the camera moved or a state changed. Not ported: zoomAdjustment.
 - MapLibre's fixtures run with `FadeDuration = 0`, as its harness: 311 pass, 302 non-vacuous - as
   before. `LabelFadeFacts`: fade in, carry-over into a child tile, duplicates, the pause, the eye's pan.
-  Not yet seen in vvvv.
+  Seen by the user the same night: every label fading in blinked first. The renderer took the fade
+  change before the step, so a commit's new states were drawn once with the time since the commit
+  before (fading in from 0, drawn whole). Now `StepLabels` gives the change after the step
+  (`A_fade_does_not_begin_with_a_blink`). The 3D buildings' fade-out (4f) turned off the same night:
+  "还是太怪了" (`GpuVectorTiles.BuildingFade`, kept unused, as the fog).
 
 ## Next
 

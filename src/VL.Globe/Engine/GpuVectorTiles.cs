@@ -172,8 +172,8 @@ internal sealed class GpuVectorTiles : IDisposable
         var eyeUnit = eye is { } ev ? (ev * (1.0 / radius)).ToVector3() : default;
         double reach = eye is { } er ? FloorReach * (er.Length - radius) / radius : 0;
         bool InReach(TileKey g) => reach > 0 && TileSelector.DistanceToTile(g, eyeUnit) < reach;
-        // the buildings fade out over the reach's last part, so they do not end in a line
-        result.ExtrusionFade = reach > 0 ? new Vector2((float)(FadeFrom * reach * radius), (float)(reach * radius)) : default;
+        // the buildings fade out over the reach's last part, so they do not end in a line - off
+        result.ExtrusionFade = BuildingFade && reach > 0 ? new Vector2((float)(FadeFrom * reach * radius), (float)(reach * radius)) : default;
 
         foreach (var service in services.Distinct())
         {
@@ -518,6 +518,10 @@ internal sealed class GpuVectorTiles : IDisposable
     internal const double FloorReach = 5;
     /// <summary>Where in the reach the buildings begin to fade out.</summary>
     internal const double FadeFrom = 0.6;
+    /// <summary>The 3D buildings faded out towards the vector floor's reach (Mapbox's fill-extrusion-cutoff-fade-range).</summary>
+    // off: the user, 2026-11-22 night, of the fade seen tilted - "建筑物渐变消失的那一层也不要，因为还是太怪了"
+    // (as the fog before it). Kept, unused: the buildings end where the reach ends again.
+    public bool BuildingFade = false;
     internal static IEnumerable<TileKey> VectorKeys(int minZoom, int maxZoom, int tileSize, TileKey g, int floor)
     {
         if (VectorKey(minZoom, maxZoom, tileSize, g) is not { } vk) yield break;

@@ -51,6 +51,31 @@ public class LabelFadeFacts
     }
 
     [Fact]
+    public void A_fade_does_not_begin_with_a_blink()
+    {
+        // the renderer's frame: the states written by a commit drawn with the fade change of that commit.
+        // With the change taken before the step, a label placed at 500 was drawn whole for one frame
+        // (the time since the commit at 0) and then fell to 0 to fade in (the user, 2026-11-22)
+        var renderer = new VectorRenderer();
+        var frame = new VectorRenderer.Frame { CameraToCenter = Distance };
+        var kyoto = Tile(new TileKey(14, 100, 200), "Kyoto", 4096, 4096);
+        frame.Labels.AddRange(Layer(kyoto));
+        renderer.StepLabels(frame, Matrix.Identity, Projection, Width, Height, true, 0, out _);
+        Assert.Equal(0f, LabelFades.Shown(kyoto.Placed![0], renderer.StepLabels(frame, Matrix.Identity, Projection, Width, Height, true, 1, out _)), 2);
+
+        var nara = Tile(new TileKey(14, 101, 200), "Nara", 4096, 4096, SymbolFlags.TextAllowOverlap);
+        frame.Labels.Clear();
+        frame.Labels.AddRange(Layer(kyoto, nara));
+        float change = renderer.StepLabels(frame, Matrix.Identity, Projection, Width, Height, true, 500, out var did);
+        Assert.True(did.HasFlag(LabelFades.Did.Committed));
+        Assert.Equal(1f, LabelFades.Shown(kyoto.Placed[0], change));   // shown all along
+        Assert.Equal(0f, LabelFades.Shown(nara.Placed![0], change));   // from 0, not whole first
+        Assert.Equal(0.5f, LabelFades.Shown(nara.Placed[0], renderer.StepLabels(frame, Matrix.Identity, Projection, Width, Height, true, 650, out _)), 2);
+        // what the old order drew in that first frame: whole
+        Assert.Equal(1f, LabelFades.Shown(nara.Placed[0], 500 / 300f));
+    }
+
+    [Fact]
     public void With_fades_off_a_label_is_whole_at_once()
     {
         var fades = new LabelFades { FadeDuration = 0 };

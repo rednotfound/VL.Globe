@@ -35,7 +35,9 @@ Guidance for Claude Code working in this repository.
    fading out before that (seen tilted over Tokyo: "视野里面相对比较满了"; 853 MB there, over budget).
    A reported view is drawn offscreen by `ViewProbe` (VLGLOBE_PROBE=1 VLGLOBE_VIEW=#...).
    Then label fades (2026-11-22 night): CrossTileSymbolIndex, the pauseable placement (2 ms a frame),
-   300 ms fades - built and tested (259 green, fixtures unchanged at 311), **not yet seen in vvvv**.
+   300 ms fades - built and tested (260 green, fixtures unchanged at 311); the user saw every fade begin
+   with a blink (the fade change taken before the step: fixed, not yet seen again); the buildings'
+   fade-out turned off ("还是太怪了").
    **Next: the user looks at the fades in vvvv (zoom in at Kyoto: names should stay, not blink) -
    DESIGN-GPU-VECTOR.md "Label fades" and "Next" 1.**
    Research: [docs/RESEARCH-0.1.md](docs/RESEARCH-0.1.md), [docs/RESEARCH-VECTOR.md](docs/RESEARCH-VECTOR.md).

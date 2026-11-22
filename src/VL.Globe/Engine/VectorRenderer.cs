@@ -157,9 +157,20 @@ internal sealed class VectorRenderer : IGraphicsRendererBase
     internal static Fog? FogOf(Frame frame)
         => frame.Eye is { } eye && eye.Length - frame.Radius is var height && height > 0 ? Engine.Fog.For((float)height) : null;
 
-    /// <summary>One frame of labels, as DrawFrame does it (for tests): <paramref name="now"/> in ms.</summary>
-    internal LabelFades.Did StepLabels(Frame frame, Matrix view, Matrix projection, float width, float height, bool flat, double now)
-        => _fades.Step(frame.Labels, view, projection, width, height, frame.CameraToCenter, flat, frame.Eye, now);
+    /// <summary>
+    /// One frame of labels, as DrawFrame does it: <paramref name="now"/> in ms. Gives back the fade change
+    /// to draw this frame with - taken after the step, from the commit it may have made.
+    /// </summary>
+    // Taken before the step, the first frame of every commit drew the new states with the time since the
+    // commit before: labels fading in from 0 drawn whole for that frame, those fading out gone - every
+    // fade began with a blink (the user, 2026-11-22: "淡入的标签都闪了一下")
+    internal float StepLabels(Frame frame, Matrix view, Matrix projection, float width, float height, bool flat, double now, out LabelFades.Did did)
+    {
+        did = frame.Labels.Count > 0
+            ? _fades.Step(frame.Labels, view, projection, width, height, frame.CameraToCenter, flat, frame.Eye, now)
+            : LabelFades.Did.None;
+        return _fades.FadeChange(now);
+    }
 
     /// <summary>
     /// Draws a frame's items with a compiled GlobeVector effect into the targets bound on <paramref name="commandList"/>.
@@ -207,12 +218,11 @@ internal sealed class VectorRenderer : IGraphicsRendererBase
         // labels: placed from this camera, then the changed placements uploaded
         _drawTimer.Restart();
         double placeMs = 0;
-        float fadeChange = _fades.FadeChange(_clock.Elapsed.TotalMilliseconds);
+        float labelWidth = commandList.Viewport.Width / frame.PixelRatio, labelHeight = commandList.Viewport.Height / frame.PixelRatio;
+        float fadeChange = StepLabels(frame, view, projection, labelWidth, labelHeight, flat, _clock.Elapsed.TotalMilliseconds, out _);
         if (frame.Labels.Count > 0)
         {
             _labelsMax = Math.Max(_labelsMax, frame.Labels.Sum(l => l.Tiles.Count));
-            float width = commandList.Viewport.Width / frame.PixelRatio, height = commandList.Viewport.Height / frame.PixelRatio;
-            StepLabels(frame, view, projection, width, height, flat, _clock.Elapsed.TotalMilliseconds);
             placeMs = _drawTimer.Elapsed.TotalMilliseconds;
             foreach (var layer in frame.Labels)
                 foreach (var (tile, _) in layer.Tiles)
