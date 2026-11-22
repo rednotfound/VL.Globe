@@ -142,6 +142,10 @@ D:\2026_Projects\vl-overworld\tools\Capture-Renderer.ps1 -Title <window> -Out x.
 
 vvvv's log: `%USERPROFILE%\Documents\vvvv\gamma\vvvv_<time>.log`. The Globe node writes its Status
 there; Drag and ZoomByWheel write every press, release and wheel event.
+**The user names a view by its log line** (2026-11-22, asked for): after every drag, rotate and
+wheel zoom the camera nodes log `Globe view: #zoom/lat/lng/bearing/pitch - eye N m up` (MapLibre's
+URL hash, its zoom one below ours). Ask for the time; load the hash in a test with
+`GlobeView.TryApplyHash`, or paste it into a MapLibre page to see GL JS's picture of the same view.
 
 `tools\` was copied from vl-mapsui on 2026-11-09 with the package name replaced; the node table in
 `Compile-HelpPatches.ps1` is VL.Globe's own. `Test-VLPatch.ps1` and `HelpPatchGen.ps1` still carry
