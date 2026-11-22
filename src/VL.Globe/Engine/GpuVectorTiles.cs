@@ -54,9 +54,15 @@ internal sealed class GpuVectorTiles : IDisposable
     // Uploads by bytes, not by tiles: four street-level tiles arriving together were tens of MB in one
     // frame. At least one tile a frame goes up whatever its size.
     const long UploadBytesPerFrame = 8L << 20;
-    const int KeepFrames = 600, KeepTiles = 160;
+    // Kept to come back to: zooming in and out again rebuilt what had just been seen (the user,
+    // 2026-11-22: "每次zoom in zoom out都会重新加载"). The log showed why - 760-900 MB in use tilted over
+    // Tokyo against a 768 MB budget, so every tile not drawn this frame went at once, oldest first;
+    // and 160 entries (a tile and its labels are two) were ~80 tiles. GL JS keeps a source's tiles of
+    // about five zoom levels of the screen. Kept now: 1.5 GB (an 8 GB card here; a 4 GB one still
+    // has room), 800 entries, and nothing dropped for its age alone before 30 s.
+    const int KeepFrames = 1800, KeepTiles = 800;
     // kept by bytes, the least recently used out
-    const long GpuBudget = 768L << 20;
+    const long GpuBudget = 1536L << 20;
     int _frame, _built, _tilesBuilt, _running;
     long _gpuBytes;
     double _buildMs;
