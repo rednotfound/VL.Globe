@@ -146,11 +146,19 @@ fixtures, and visibility/text/visible - dozens of POIs - placed exactly as GL JS
 **Seen in vvvv on Liberty at Kyoto Station**: Latin and Japanese names, halos, transit labels in
 blue italics, no overlaps.
 
+**Milestone 3, labels along lines (2026-11-22):** `LineAnchors.cs` (getAnchors, getCenterAnchor,
+checkMaxAngle, clipLine; a subagent's port, GL JS's 24 unit tests) run at GL JS's 8192 units so anchors
+round alike; `LineLabels.cs` places each glyph along the projected line every frame
+(placeGlyphsAlongLine, keep-upright flipping) and the placement collides a row of circles along the
+label (placeCollisionCircles); GlobeSymbol.sdsl reads the placed glyphs from a third vertex slot.
+GeoJSON line-center labels sit at the middle of their geojson-vt piece (128 px buffer).
+**158 fixtures pass, 150 non-vacuous.** Seen in vvvv: river and canal names along the water.
+Not yet: text-offset across a line (findOffsetIntersectionPoint), line labels aligned to the viewport.
+
 ## Next
 
-1. Labels, milestone 3: along lines (symbol-placement line / line-center: road and river names) -
-   getAnchors, the glyphs following the line, collision circles; then fades (300 ms) and labels across
-   tiles of two zooms (CrossTileSymbolIndex), the `format` expression, text-size by zoom and feature.
+1. Labels: fades (300 ms) and labels across tiles of two zooms (CrossTileSymbolIndex), the `format`
+   expression, text-size by zoom and feature, text-offset across a line.
 2. Labels, milestone 4: icons (sprites, icon-image, text-fit) - Liberty's POI icons and road shields.
 3. Labels and icons (RESEARCH-VECTOR stage 4: glyph PBFs, SDF, placement and collision) - the
    largest piece left before 0.1's vector map reads like MapLibre's.

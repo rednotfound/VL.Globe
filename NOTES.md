@@ -413,5 +413,12 @@ looked fine - "which makes one think it works". Two causes, estimated at 100 m h
   the GPU harness's text fixtures "failed" instead of "unsupported" until each renderer said what it
   cannot draw. A subagent saw the two VectorTilesFacts it broke and reported them instead of
   "fixing" them.
+- **Placement skipped every tile without point labels** - so line labels were never placed: each
+  drew as a heap of glyphs on its anchor (the fixtures' actual.png showed it at once).
+- **geojson-vt cuts GeoJSON before GL JS places labels**: a line-center label sits at the middle of
+  the tile's piece (128 px of buffer), not of the whole line - two labels, not one, in
+  text-max-width/force-newline-line-center. Found by comparing dark-pixel columns, not by the diff.
+- **An unsupported feature found while drawing stops everything**: the renderer treats any exception
+  as a broken shader. Refuse while building, where the lenient parse drops one layer.
 - **A stand-in tile drawn once per square draws its labels once per square**: the symbol shader does
   not clip, and the copies collided with themselves. Labels come only from tiles drawn whole.

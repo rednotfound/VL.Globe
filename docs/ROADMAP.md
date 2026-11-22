@@ -304,7 +304,8 @@ dotted cracks at tile borders, the globe shaking with the pole dragged into view
 
 Ported from GL JS against its fixtures and shaping expectations (DESIGN-GPU-VECTOR.md, "Labels"):
 154 fixtures pass on the GPU path (146 non-vacuous). Seen in vvvv on Liberty, not yet judged by the
-user. **Next: milestone 3, labels along lines; then icons.**
+user. **Milestone 3, labels along lines, done the same day: 158 fixtures (150 non-vacuous).**
+**Next: icons (milestone 4), fades.**
 
 ### 5. Navigation
 
