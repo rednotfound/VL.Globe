@@ -155,6 +155,9 @@ internal static partial class VectorBucketBuilder
                 double padding = Expression.Number(GpuStyleLayer.Get(l.Layout, "text-padding"), ctx, 2);
                 if (alongLine)
                 {
+                    // checked here, while building, where a lenient parse drops the one layer: thrown
+                    // while placing, it reached the renderer, which stops on any error
+                    if (offset.Y != 0) throw new StyleUnsupportedException("text-offset across a line");
                     LineLabels(layer, f, placement, shaping, text, ctx, layoutTextSize, padding, offset, (float)size, (float)opacity, color,
                         alwaysOverlap, ignorePlacement, repeated);
                     continue;

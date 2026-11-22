@@ -60,7 +60,7 @@ internal static class LineGlyphs
 
         float fontScale = fontSize / 24;
         float lineOffsetX = label.LineOffsetX * fontScale, lineOffsetY = label.LineOffsetY * fontScale;
-        if (lineOffsetY != 0) throw new StyleUnsupportedException("text-offset across a line");
+        if (lineOffsetY != 0) return Hide(label, dynamic);   // refused while building (SymbolLayout); never here
 
         // GL JS placeGlyphsAlongLine: unflipped first; flipped when it reads backwards
         var placed = PlaceAll(false);
