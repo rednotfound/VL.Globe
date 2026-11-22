@@ -32,6 +32,7 @@ shader GlobeSymbol : ShaderBase
         stage float GsDevicePixelRatio;
         stage float GsIconMode;         // 0 text, 1 an icon (RGBA), 2 an SDF icon
         stage float GsNearest;          // 1: GL JS's gl.NEAREST for icons drawn at their own size
+        stage float GsRotateWithMap;    // 1: a point symbol turned to the map's east (rotation-alignment map)
     }
 
     stage Texture2D GsAtlas;
@@ -105,8 +106,27 @@ shader GlobeSymbol : ShaderBase
             clip = float4(px.x / GsViewport.x * 2 - 1, 1 - px.y / GsViewport.y * 2, saturate(clip.z / clip.w), 1);
         }
         else
+        {
+            if (GsRotateWithMap > 0.5)
+            {
+                // GL JS's rotateInShader: turned by the angle the map's east makes on the screen - the
+                // projection of east differentiated at the anchor (LabelPlacement.EastOnScreen, the same)
+                float3 east = float3(1, 0, 0);
+                if (GsFlat < 0.5)
+                {
+                    float3 n = normalize(GsCentre + streams.GsAnchor);
+                    float3 e = cross(float3(0, 1, 0), n);
+                    east = dot(e, e) > 1e-12 ? normalize(e) : float3(1, 0, 0);
+                }
+                float4 d = mul(mul(float4(east, 0), GsWorldView), GsProjection);
+                float2 screen = float2(GsViewport.x * (d.x * clip.w - clip.x * d.w), -GsViewport.y * (d.y * clip.w - clip.y * d.w));
+                float len = length(screen);
+                float2 cs = len > 1e-20 ? screen / len : float2(1, 0);
+                offset = float2(cs.x * offset.x - cs.y * offset.y, cs.y * offset.x + cs.x * offset.y);
+            }
             // pixels, y down, to clip space at the anchor's depth
             clip.xy += float2(2 * offset.x / GsViewport.x, -2 * offset.y / GsViewport.y) * GsDevicePixelRatio * clip.w;
+        }
         hidden = hidden || streams.GsLineIn.w < -0.5;
         streams.ShadingPosition = hidden ? float4(-2, -2, -2, 1) : clip;
         streams.GsTex = float2(streams.GsOffsetTex.zw) / GsTexSize;

@@ -186,7 +186,7 @@ internal static class VectorDrawList
                     var w = world(tile);
                     var draw = new VectorRenderer.TextDraw(texture, Premultiplied(p.Color), Premultiplied(p.HaloColor), (float)p.Size,
                         p.SizePerFeature, (float)p.Opacity, (float)p.HaloWidth, (float)p.HaloBlur, mode == 1 ? false : halo, mode == 1 || plain,
-                        (float)cameraToCenter, (float)pixelRatio, tile.PlacedBuffer!, tile.DynamicBuffer!, mode, nearest);
+                        (float)cameraToCenter, (float)pixelRatio, tile.PlacedBuffer!, tile.DynamicBuffer!, mode, nearest, p.RotateWithMap);
                     foreach (var r in ranges)
                         if (r.Kind == kind)
                             items.Add(new VectorRenderer.Item(tile.SymbolVertices, tile.SymbolIndices!, r.Start, r.Count, w,

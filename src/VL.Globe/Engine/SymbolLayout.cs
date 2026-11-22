@@ -40,7 +40,7 @@ internal struct SymbolVertex
 
 /// <summary>A symbol layer's paint this frame, at the camera's zoom.</summary>
 internal sealed record SymbolPaint(StyleColor Color, double Opacity, StyleColor HaloColor, double HaloWidth, double HaloBlur,
-    double Size, bool SizePerFeature, double LetterSpacing);
+    double Size, bool SizePerFeature, double LetterSpacing, bool RotateWithMap = false);
 
 internal sealed partial class GpuStyleLayer
 {
@@ -97,7 +97,8 @@ internal sealed partial class GpuStyleLayer
             Expression.Number(HaloBlur, ctx, 0),
             SizePerFeature ? 0 : Expression.Number(TextSize, ctx, 16),
             SizePerFeature,
-            Expression.Number(Get(l.Layout, "text-letter-spacing"), ctx, 0));
+            Expression.Number(Get(l.Layout, "text-letter-spacing"), ctx, 0),
+            RotatesWithMap(ctx, "text-rotation-alignment"));
         return true;
     }
 
@@ -117,8 +118,15 @@ internal sealed partial class GpuStyleLayer
             Expression.Number(IconHaloBlur, ctx, 0),
             IconSizePerFeature ? 0 : Expression.Number(IconSize, ctx, 1),
             IconSizePerFeature,
-            Expression.Number(Get(Layer.Layout, "text-letter-spacing"), ctx, 0));
+            Expression.Number(Get(Layer.Layout, "text-letter-spacing"), ctx, 0),
+            RotatesWithMap(ctx, "icon-rotation-alignment"));
     }
+
+    // a point symbol's quads turned with the map in the shader (GL JS's rotateInShader); along a line the
+    // glyphs are placed and turned on the CPU (LineLabels), so this is for point placement only
+    bool RotatesWithMap(StyleContext ctx, string alignment)
+        => Expression.String(Get(Layer.Layout, "symbol-placement"), ctx, "point") == "point"
+           && Expression.String(Get(Layer.Layout, alignment), ctx, "auto") == "map";
 }
 
 internal static partial class VectorBucketBuilder
@@ -148,14 +156,19 @@ internal static partial class VectorBucketBuilder
             bool alongLine = placement != "point" && rotationAlignment != "viewport";
             // ... and an icon along it when its rotation is the map's (auto: the map's on a line)
             bool iconAlongLine = placement != "point" && Expression.String(GpuStyleLayer.Get(l.Layout, "icon-rotation-alignment"), ctx, "auto") != "viewport";
+            // A point symbol turned with the map (rotation-alignment map): its quads and its collision box
+            // turned to the map's east as projected (GL JS's rotateInShader and _projectCollisionBox);
+            // viewport-glyph is the viewport's at a point. Pitched with the map: not yet - an explicit
+            // pitch-alignment map throws; auto, which GL JS resolves to map here, is drawn in the screen,
+            // turned (the same picture untilted, flat on the screen tilted)
             if (placement == "point")
-                foreach (var alignment in new[] { "text-rotation-alignment", "text-pitch-alignment" })
+                foreach (var alignment in new[] { "text-pitch-alignment", "icon-pitch-alignment" })
                     if (Expression.String(GpuStyleLayer.Get(l.Layout, alignment), ctx, "auto") is not ("auto" or "viewport"))
                         throw new StyleUnsupportedException($"{alignment} map");
-            if (placement == "point")
-                foreach (var alignment in new[] { "icon-rotation-alignment", "icon-pitch-alignment" })
-                    if (Expression.String(GpuStyleLayer.Get(l.Layout, alignment), ctx, "auto") is not ("auto" or "viewport"))
-                        throw new StyleUnsupportedException($"{alignment} map");
+            var turnedWithMap = SymbolFlags.None;
+            if (placement == "point" && rotationAlignment == "map") turnedWithMap |= SymbolFlags.TextRotateWithMap;
+            if (placement == "point" && Expression.String(GpuStyleLayer.Get(l.Layout, "icon-rotation-alignment"), ctx, "auto") == "map")
+                turnedWithMap |= SymbolFlags.IconRotateWithMap;
             // On a line: text and icon both upright at the line's anchors (Liberty's shields), or an icon
             // alone along the line (its one-way arrows). Not yet an icon beside text along a line: a strict
             // parse (the render tests) says so; a real style keeps the layer's text without its icons.
@@ -180,6 +193,7 @@ internal static partial class VectorBucketBuilder
             if (Flag("icon-ignore-placement")) flags |= SymbolFlags.IconIgnorePlacement;
             if (Flag("text-optional")) flags |= SymbolFlags.TextOptional;
             if (Flag("icon-optional")) flags |= SymbolFlags.IconOptional;
+            flags |= turnedWithMap;
             bool alwaysOverlap = (flags & SymbolFlags.TextAllowOverlap) != 0, ignorePlacement = (flags & SymbolFlags.TextIgnorePlacement) != 0;
             bool Flag(string name) => GpuStyleLayer.Get(l.Layout, name) is { } v && Expression.Evaluate(v, ctx, Expression.Kind.Any) is true;
             var iconRotateValue = GpuStyleLayer.Get(l.Layout, "icon-rotate");

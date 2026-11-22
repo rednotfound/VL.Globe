@@ -15,6 +15,8 @@ internal enum SymbolFlags
     TextOptional = 16, IconOptional = 32,
     // GL JS placement.ts alwaysShowText / alwaysShowIcon: shown even where the grid could not take it
     AlwaysShowText = 64, AlwaysShowIcon = 128,
+    // a point symbol's *-rotation-alignment map: its box turned to the map's east as projected
+    TextRotateWithMap = 256, IconRotateWithMap = 512,
 }
 
 /// <summary>
@@ -226,8 +228,20 @@ internal sealed class LabelPlacement
         float perspective = 0.5f + 0.5f * cameraToCenter / clip.W;
         bool placeText = false, placeIcon = false, offscreen = true;
         SymbolBox textBox = default, iconBox = default;
-        if (label.Text is { } t) { placeText = PlaceBox(t, (f & SymbolFlags.TextAllowOverlap) != 0, out textBox, out bool o); offscreen = o; }
-        if (label.Icon is { } i) { placeIcon = PlaceBox(i, (f & SymbolFlags.IconAllowOverlap) != 0, out iconBox, out bool o); offscreen &= o; }
+        // turned with the map: the map's east at the anchor, projected (GL JS projects a point one unit east)
+        float eastCos = 1, eastSin = 0;
+        if ((f & (SymbolFlags.TextRotateWithMap | SymbolFlags.IconRotateWithMap)) != 0)
+            (eastCos, eastSin) = EastOnScreen(label.Anchor, centre, clip, worldViewProjection, flat, _width, _height);
+        if (label.Text is { } t)
+        {
+            placeText = PlaceBox(t, allowOverlap: (f & SymbolFlags.TextAllowOverlap) != 0, turned: (f & SymbolFlags.TextRotateWithMap) != 0, box: out textBox, offscreen: out bool o);
+            offscreen = o;
+        }
+        if (label.Icon is { } i)
+        {
+            placeIcon = PlaceBox(i, allowOverlap: (f & SymbolFlags.IconAllowOverlap) != 0, turned: (f & SymbolFlags.IconRotateWithMap) != 0, box: out iconBox, offscreen: out bool o);
+            offscreen &= o;
+        }
 
         bool iconWithoutText = (f & SymbolFlags.TextOptional) != 0 || label.TextCount == 0;
         bool textWithoutIcon = (f & SymbolFlags.IconOptional) != 0 || label.IconCount == 0;
@@ -240,14 +254,53 @@ internal sealed class LabelPlacement
         return (placeText || (f & SymbolFlags.AlwaysShowText) != 0, placeIcon || (f & SymbolFlags.AlwaysShowIcon) != 0, offscreen);
 
         // placeable: inside the grid, not under the perspective cutoff, and hitting nothing (unless it may overlap)
-        bool PlaceBox(SymbolBox b, bool allowOverlap, out SymbolBox box, out bool offscreen)
+        bool PlaceBox(SymbolBox b, bool turned, bool allowOverlap, out SymbolBox box, out bool offscreen)
         {
-            box = new SymbolBox(x + b.X1 * perspective, y + b.Y1 * perspective, x + b.X2 * perspective, y + b.Y2 * perspective);
+            if (!turned)
+                box = new SymbolBox(x + b.X1 * perspective, y + b.Y1 * perspective, x + b.X2 * perspective, y + b.Y2 * perspective);
+            else
+            {
+                // GL JS _projectCollisionBox: eight points round the box, turned east and south, their bounds
+                float x1 = b.X1 * perspective, x2 = b.X2 * perspective, y1 = b.Y1 * perspective, y2 = b.Y2 * perspective;
+                float xh = (x1 + x2) / 2, yh = (y1 + y2) / 2;
+                float minX = float.MaxValue, minY = float.MaxValue, maxX = float.MinValue, maxY = float.MinValue;
+                foreach (var (ox, oy) in new[] { (x1, y1), (xh, y1), (x2, y1), (x2, yh), (x2, y2), (xh, y2), (x1, y2), (x1, yh) })
+                {
+                    float px = x + eastCos * ox - eastSin * oy, py = y + eastSin * ox + eastCos * oy;
+                    minX = Math.Min(minX, px); maxX = Math.Max(maxX, px); minY = Math.Min(minY, py); maxY = Math.Max(maxY, py);
+                }
+                box = new SymbolBox(minX, minY, maxX, maxY);
+            }
             bool unplaceable = perspective < PerspectiveCutoff
                 || !(box.X2 >= 0 && box.X1 < _width + 2 * ViewportPadding && box.Y2 >= 0 && box.Y1 < _height + 2 * ViewportPadding);
             offscreen = !unplaceable && Offscreen(box.X1, box.Y1, box.X2, box.Y2);
             return !unplaceable && (allowOverlap || !Hits(box.X1, box.Y1, box.X2, box.Y2));
         }
+    }
+
+    /// <summary>
+    /// The map's east at an anchor as a direction in screen pixels (y down): cos and sin of its angle.
+    /// East is +x on the Mercator plane, the sphere's tangent round its axis (y north) on the globe; its
+    /// projection is differentiated rather than a point stepped east (GL JS steps one tile unit), so no
+    /// step size meets float precision. GlobeSymbol.sdsl turns the quads by the same angle.
+    /// </summary>
+    internal static (float cos, float sin) EastOnScreen(Vector3 anchor, Vector3 centre, Vector4 clip, Matrix worldViewProjection, bool flat, float width, float height)
+    {
+        Vector3 east;
+        if (flat) east = Vector3.UnitX;
+        else
+        {
+            var up = centre + anchor; up.Normalize();
+            east = Vector3.Cross(Vector3.UnitY, up);
+            if (east.LengthSquared() < 1e-12f) return (1, 0);   // at a pole east is everywhere
+            east.Normalize();
+        }
+        var d = Vector4.Transform(new Vector4(east, 0), worldViewProjection);
+        float w2 = clip.W * clip.W;
+        float dx = width / 2 * (d.X * clip.W - clip.X * d.W) / w2;
+        float dy = -height / 2 * (d.Y * clip.W - clip.Y * d.W) / w2;
+        float length = MathF.Sqrt(dx * dx + dy * dy);
+        return length < 1e-20f ? (1, 0) : (dx / length, dy / length);
     }
 
     // GL JS: the glyphs placed along the projected line (projection.ts), then placeCollisionCircles - a

@@ -29,7 +29,7 @@ internal sealed class VectorRenderer : IGraphicsRendererBase
     // Icons are Text items too: IconMode 1 an image, 2 an SDF image; Nearest GL JS's gl.NEAREST
     internal sealed record TextDraw(Texture Atlas, Vector4 Color, Vector4 HaloColor, float Size, bool SizePerFeature, float Opacity,
         float HaloWidth, float HaloBlur, bool IsHalo, bool IsPlain, float CameraToCenter, float PixelRatio, Buffer Placed, Buffer Dynamic,
-        int IconMode = 0, bool Nearest = false);
+        int IconMode = 0, bool Nearest = false, bool RotateWithMap = false);
 
     // what a Circle item draws with: the layer's paint this frame, its colours premultiplied
     internal sealed record CircleDraw(CirclePaint Paint, Vector4 Color, Vector4 StrokeColor, float CameraToCenter, float PixelRatio);
@@ -335,6 +335,7 @@ internal sealed class VectorRenderer : IGraphicsRendererBase
                     SetText(symbolParameters, "GsDevicePixelRatio", t.PixelRatio);
                     SetText(symbolParameters, "GsIconMode", (float)t.IconMode);
                     SetText(symbolParameters, "GsNearest", t.Nearest ? 1f : 0f);
+                    SetText(symbolParameters, "GsRotateWithMap", t.RotateWithMap ? 1f : 0f);
                     if (_symbolKeys.TryGetValue("GlobeSymbol.GsAtlas", out var atlasKey)) symbolParameters.Set((ObjectParameterKey<Texture>)atlasKey, t.Atlas);
                     symbolEffect.Apply(graphicsContext);
                     commandList.DrawIndexed(item.Count, item.Start);

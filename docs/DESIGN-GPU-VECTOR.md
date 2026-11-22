@@ -289,6 +289,17 @@ text/icon-rotation-alignment, the code a rotated globe uses. One failed and show
 ours were turned to the line, invisible at bearing 0. Fixed (`LineLabel.RotateToLine`).
 **326 pass, 317 non-vacuous** (manifest floor 317). Pitch in the harness (7 more) not yet.
 
+**Point symbols turned with the map, 2026-11-22 night** (text/icon-rotation-alignment map at point
+placement; viewport-glyph is the viewport's there): the quads turned in GlobeSymbol.sdsl by the angle
+the map's east makes on the screen at the anchor (GL JS's rotateInShader), the collision box turned the
+same way and bounded (`_projectCollisionBox`: eight points, their AABB). East is the sphere's tangent
+round its axis, or +x on the plane; its projection is differentiated, not stepped (`EastOnScreen`).
+`MapAlignedLabelFacts`. **329 pass, 320 non-vacuous.** Not yet pitched with the map: an explicit
+*-pitch-alignment map throws; auto, which GL JS resolves to map, is drawn upright in the screen and
+turned - the same picture untilted, not lying on a tilted map. Not seen in vvvv (Liberty uses none).
+The fade facts caught a slip the fixtures did not: the two bools of the new PlaceBox passed swapped
+(both bool, so it compiled); now passed by name.
+
 ## Next
 
 0. Frame time while moving: tile uploads (50-150 MB/s at a tilt, Update 15-30 ms), 1500-2400 draws a
@@ -298,8 +309,8 @@ ours were turned to the line, invisible at bearing 0. Fixed (`LineLabel.RotateTo
    Left: 3D buildings are 76% of a tile (a 28-byte vertex; GL JS's is ~12), roads built twice (casing
    and line); the opacities written for every label tile whenever a tile comes (GL JS skips unchanged
    buckets: `_markDuplicates`' changed). A 550 ms frame at rest outside Update and Draw: not yet found.
-1. Point labels aligned to the map (text/icon-rotation-alignment map, 3 fixtures), pitch in the
-   harness (7), the `format`
+1. ~~Point labels aligned to the map (3 fixtures)~~ done, upright in the screen; pitch in the
+   harness (6, with pitched-with-map symbols), the `format`
    expression (14), text-size by zoom and feature, text-offset across a line, an icon beside text along a line.
 2. Seen in vvvv at Kyoto Station: the one-way arrows along the roads. Shields not yet seen (no road
    with a ref in that view).
