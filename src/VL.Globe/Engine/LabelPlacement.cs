@@ -4,12 +4,25 @@ using Stride.Core.Mathematics;
 
 namespace VL.Globe.Engine;
 
+/// <summary>A collision box in pixels around a symbol's anchor, at the layout's size, its padding included.</summary>
+internal readonly record struct SymbolBox(float X1, float Y1, float X2, float Y2);
+
+/// <summary>A point symbol's layout options that placement reads (GL JS's *-allow-overlap, *-ignore-placement, *-optional).</summary>
+[Flags]
+internal enum SymbolFlags
+{
+    None = 0, TextAllowOverlap = 1, TextIgnorePlacement = 2, IconAllowOverlap = 4, IconIgnorePlacement = 8,
+    TextOptional = 16, IconOptional = 32,
+    // GL JS placement.ts alwaysShowText / alwaysShowIcon: shown even where the grid could not take it
+    AlwaysShowText = 64, AlwaysShowIcon = 128,
+}
+
 /// <summary>
-/// A label's collision data, built with its glyph quads: its box in pixels around the anchor (at the
-/// layout's text size, text-padding included) and the vertices to show or hide.
+/// A point symbol's collision data, built with its quads: the text's box and the icon's (either may be
+/// absent), and the vertices of each to show or hide.
 /// </summary>
-internal readonly record struct LabelInfo(int Layer, Vector3 Anchor, float X1, float Y1, float X2, float Y2,
-    bool AlwaysOverlap, bool IgnorePlacement, int VertexStart, int VertexCount);
+internal readonly record struct LabelInfo(int Layer, Vector3 Anchor, SymbolBox? Text, int TextStart, int TextCount,
+    SymbolBox? Icon, int IconStart, int IconCount, SymbolFlags Flags);
 
 // Labels, milestone 2: GL JS's placement for point labels in the viewport (placement.ts,
 // collision_index.ts, grid_index.ts), every frame from the camera. Layers are placed from the top of
@@ -55,15 +68,24 @@ internal sealed class LabelPlacement
                 foreach (var label in tile.Labels)
                 {
                     if (label.Layer != layer.Index) continue;
-                    bool show = PlaceOne(label, worldViewProjection, worldView, up, cameraToCenter, flat);
+                    var (text, icon) = PlaceOne(label, worldViewProjection, worldView, up, cameraToCenter, flat);
+                    Show(label.TextStart, label.TextCount, text);
+                    Show(label.IconStart, label.IconCount, icon);
+                }
+
+                void Show(int start, int count, bool show)
+                {
                     float value = show ? 1 : 0;
-                    for (int v = label.VertexStart; v < label.VertexStart + label.VertexCount; v++)
+                    for (int v = start; v < start + count; v++)
                         if (placed[v] != value) { placed[v] = value; tile.PlacedDirty = true; }
                 }
             }
     }
 
-    bool PlaceOne(in LabelInfo label, Matrix worldViewProjection, Matrix worldView, Vector3 centre, float cameraToCenter, bool flat)
+    // GL JS placement.ts placeSymbol for a point symbol: the text's box and the icon's are each placed
+    // (collision_index.ts placeCollisionBox), then combined - both or neither, unless one is optional -
+    // and only then inserted; what is shown is the placement or the always-show rule, never on the far side
+    (bool text, bool icon) PlaceOne(in LabelInfo label, Matrix worldViewProjection, Matrix worldView, Vector3 centre, float cameraToCenter, bool flat)
     {
         var clip = Vector4.Transform(new Vector4(label.Anchor, 1), worldViewProjection);
         bool occluded = clip.W <= 0;
@@ -75,19 +97,34 @@ internal sealed class LabelPlacement
             var up = Vector3.TransformNormal(n, worldView);
             occluded = Vector3.Dot(up, -p) <= 0;
         }
-        if (occluded) return false;
+        if (occluded) return (false, false);
+        var f = label.Flags;
         float x = (clip.X / clip.W + 1) / 2 * _width + ViewportPadding;
         float y = (-clip.Y / clip.W + 1) / 2 * _height + ViewportPadding;
         float perspective = 0.5f + 0.5f * cameraToCenter / clip.W;
-        float x1 = x + label.X1 * perspective, y1 = y + label.Y1 * perspective;
-        float x2 = x + label.X2 * perspective, y2 = y + label.Y2 * perspective;
-        bool unplaceable = perspective < PerspectiveCutoff
-            || !(x2 >= 0 && x1 < _width + 2 * ViewportPadding && y2 >= 0 && y1 < _height + 2 * ViewportPadding);
-        // GL JS shows a label that may always overlap even when it could not be placed in the grid
-        if (unplaceable) return label.AlwaysOverlap;
-        if (!label.AlwaysOverlap && Hits(x1, y1, x2, y2)) return false;
-        if (!label.IgnorePlacement) Insert(x1, y1, x2, y2);
-        return true;
+        bool placeText = false, placeIcon = false;
+        SymbolBox textBox = default, iconBox = default;
+        if (label.Text is { } t) placeText = PlaceBox(t, (f & SymbolFlags.TextAllowOverlap) != 0, out textBox);
+        if (label.Icon is { } i) placeIcon = PlaceBox(i, (f & SymbolFlags.IconAllowOverlap) != 0, out iconBox);
+
+        bool iconWithoutText = (f & SymbolFlags.TextOptional) != 0 || label.TextCount == 0;
+        bool textWithoutIcon = (f & SymbolFlags.IconOptional) != 0 || label.IconCount == 0;
+        if (!iconWithoutText && !textWithoutIcon) placeIcon = placeText = placeIcon && placeText;
+        else if (!textWithoutIcon) placeText = placeIcon && placeText;
+        else if (!iconWithoutText) placeIcon &= placeText;
+
+        if (placeText && (f & SymbolFlags.TextIgnorePlacement) == 0) Insert(textBox.X1, textBox.Y1, textBox.X2, textBox.Y2);
+        if (placeIcon && (f & SymbolFlags.IconIgnorePlacement) == 0) Insert(iconBox.X1, iconBox.Y1, iconBox.X2, iconBox.Y2);
+        return (placeText || (f & SymbolFlags.AlwaysShowText) != 0, placeIcon || (f & SymbolFlags.AlwaysShowIcon) != 0);
+
+        // placeable: inside the grid, not under the perspective cutoff, and hitting nothing (unless it may overlap)
+        bool PlaceBox(SymbolBox b, bool allowOverlap, out SymbolBox box)
+        {
+            box = new SymbolBox(x + b.X1 * perspective, y + b.Y1 * perspective, x + b.X2 * perspective, y + b.Y2 * perspective);
+            bool unplaceable = perspective < PerspectiveCutoff
+                || !(box.X2 >= 0 && box.X1 < _width + 2 * ViewportPadding && box.Y2 >= 0 && box.Y1 < _height + 2 * ViewportPadding);
+            return !unplaceable && (allowOverlap || !Hits(box.X1, box.Y1, box.X2, box.Y2));
+        }
     }
 
     // GL JS: the glyphs placed along the projected line (projection.ts), then placeCollisionCircles - a

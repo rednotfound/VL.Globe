@@ -43,6 +43,9 @@ internal sealed partial class GpuStyleLayer
     public bool IsSymbol => Layer.Type == "symbol";
     public JsonElement? TextField, TextFont, TextSize, HaloColor, HaloWidth, HaloBlur;
     public bool SizePerFeature;
+    // icons (milestone 4)
+    public JsonElement? IconImage, IconSize, IconColor, IconOpacity, IconHaloColor, IconHaloWidth, IconHaloBlur;
+    public bool IconSizePerFeature, IconColorPerFeature, IconOpacityPerFeature;
 
     static GpuStyleLayer SymbolOf(int index, MapStyleDocument.Layer l)
     {
@@ -58,6 +61,16 @@ internal sealed partial class GpuStyleLayer
         g.ColorPerFeature = g.Color is { } c && Expression.IsFeatureDependent(c);
         g.OpacityPerFeature = g.Opacity is { } o && Expression.IsFeatureDependent(o);
         g.SizePerFeature = g.TextSize is { } s && Expression.IsFeatureDependent(s);
+        g.IconImage = Get(l.Layout, "icon-image");
+        g.IconSize = Get(l.Layout, "icon-size");
+        g.IconColor = Get(l.Paint, "icon-color");
+        g.IconOpacity = Get(l.Paint, "icon-opacity");
+        g.IconHaloColor = Get(l.Paint, "icon-halo-color");
+        g.IconHaloWidth = Get(l.Paint, "icon-halo-width");
+        g.IconHaloBlur = Get(l.Paint, "icon-halo-blur");
+        g.IconSizePerFeature = g.IconSize is { } i && Expression.IsFeatureDependent(i);
+        g.IconColorPerFeature = g.IconColor is { } ic && Expression.IsFeatureDependent(ic);
+        g.IconOpacityPerFeature = g.IconOpacity is { } io && Expression.IsFeatureDependent(io);
         return g;
     }
 
@@ -83,6 +96,25 @@ internal sealed partial class GpuStyleLayer
             Expression.Number(Get(l.Layout, "text-letter-spacing"), ctx, 0));
         return true;
     }
+
+    /// <summary>This frame's icon paint at the camera's zoom, or null when the layer has no icon-image.</summary>
+    public SymbolPaint? IconUniforms(StyleContext ctx)
+    {
+        if (IconImage is null) return null;
+        ctx.Properties = null; ctx.GeometryType = null; ctx.Id = null;
+        foreach (var v in new[] { IconHaloColor, IconHaloWidth, IconHaloBlur })
+            if (v is { } e && Expression.IsFeatureDependent(e)) throw new StyleUnsupportedException("an icon halo that depends on the feature");
+        var white = new StyleColor(1, 1, 1, 1);
+        return new SymbolPaint(
+            IconColorPerFeature ? white : Expression.Color(IconColor, ctx, StyleColor.Black),
+            IconOpacityPerFeature ? 1 : Expression.Number(IconOpacity, ctx, 1),
+            Expression.Color(IconHaloColor, ctx, StyleColor.Transparent),
+            Expression.Number(IconHaloWidth, ctx, 0),
+            Expression.Number(IconHaloBlur, ctx, 0),
+            IconSizePerFeature ? 0 : Expression.Number(IconSize, ctx, 1),
+            IconSizePerFeature,
+            Expression.Number(Get(Layer.Layout, "text-letter-spacing"), ctx, 0));
+    }
 }
 
 internal static partial class VectorBucketBuilder
@@ -93,6 +125,8 @@ internal static partial class VectorBucketBuilder
         readonly List<uint> _symbolIndices = new();
         readonly List<LabelInfo> _labels = new();
         readonly List<LineLabel> _lineLabels = new();
+        readonly List<uint> _iconIndices = new();   // a layer's icon quads, put before its text's when the layer is done
+        readonly Dictionary<int, (bool Sdf, bool NeedsLinear)> _iconModes = new();
         int _layerSymbolVertexStart, _layerSymbolIndexStart, _layerLabelStart, _layerLineLabelStart;
 
         // GL JS symbol_layout.ts performSymbolLayout + addFeature, for point placement
@@ -113,25 +147,58 @@ internal static partial class VectorBucketBuilder
                 foreach (var alignment in new[] { "text-rotation-alignment", "text-pitch-alignment" })
                     if (Expression.String(GpuStyleLayer.Get(l.Layout, alignment), ctx, "auto") is not ("auto" or "viewport"))
                         throw new StyleUnsupportedException($"{alignment} map");
+            if (placement == "point")
+                foreach (var alignment in new[] { "icon-rotation-alignment", "icon-pitch-alignment" })
+                    if (Expression.String(GpuStyleLayer.Get(l.Layout, alignment), ctx, "auto") is not ("auto" or "viewport"))
+                        throw new StyleUnsupportedException($"{alignment} map");
+            // icons not drawn yet: a strict parse (the render tests) says so; a real style keeps the
+            // layer's text and leaves out its icons - dropping the layer lost Liberty's road names
+            string? iconsOff = Expression.String(GpuStyleLayer.Get(l.Layout, "icon-text-fit"), ctx, "none") != "none" ? "icon-text-fit"
+                : layer.IconImage != null && placement != "point" ? "an icon along a line" : null;
+            if (iconsOff != null)
+            {
+                if (!style.Lenient) throw new StyleUnsupportedException(iconsOff);
+                style.Skip($"{l.Id}: {iconsOff} (its icons left out)");
+            }
             var repeated = new Dictionary<string, List<(double X, double Y)>>();   // GL JS's compareText
             var store = style.GlyphStore;
+            var sprites = style.SpriteStore;
             int start = _symbolIndices.Count;
-            bool alwaysOverlap = Flag("text-allow-overlap"), ignorePlacement = Flag("text-ignore-placement");
+            _iconIndices.Clear();
+            var flags = SymbolFlags.None;
+            if (Flag("text-allow-overlap")) flags |= SymbolFlags.TextAllowOverlap;
+            if (Flag("text-ignore-placement")) flags |= SymbolFlags.TextIgnorePlacement;
+            if (Flag("icon-allow-overlap")) flags |= SymbolFlags.IconAllowOverlap;
+            if (Flag("icon-ignore-placement")) flags |= SymbolFlags.IconIgnorePlacement;
+            if (Flag("text-optional")) flags |= SymbolFlags.TextOptional;
+            if (Flag("icon-optional")) flags |= SymbolFlags.IconOptional;
+            bool alwaysOverlap = (flags & SymbolFlags.TextAllowOverlap) != 0, ignorePlacement = (flags & SymbolFlags.TextIgnorePlacement) != 0;
             bool Flag(string name) => GpuStyleLayer.Get(l.Layout, name) is { } v && Expression.Evaluate(v, ctx, Expression.Kind.Any) is true;
+            var iconRotateValue = GpuStyleLayer.Get(l.Layout, "icon-rotate");
+            bool rotatePerFeature = iconRotateValue is { } rv && Expression.IsFeatureDependent(rv);
             double tileZoom = ctx.Zoom;
+            // GL JS symbol_bucket.ts sortFeatures: symbols that may overlap are drawn by their anchor's y
+            // (symbol-z-order auto, no sort key), so the lower one is on top; each one's index ranges
+            var instances = new List<(int Y, int Feature, int IconStart, int IconCount, int TextStart, int TextCount)>();
+            int featureIndex = -1;
             foreach (var f in features)
             {
+                featureIndex++;
                 ctx.Zoom = tileZoom;
                 ctx.Properties = f.Properties; ctx.GeometryType = f.GeometryType; ctx.Id = f.Id;
                 if (l.Filter is { } filter && !Expression.Filter(filter, ctx)) continue;
                 var text = TextOf(layer, ctx);
-                if (string.IsNullOrEmpty(text)) continue;
-                string stack = FontStack(layer, ctx);
-                if (!store.Ensure(stack, text, fetch, missing)) { complete = false; continue; }
+                string? iconName = layer.IconImage is null || iconsOff != null ? null : IconOf(layer, ctx);
+                bool hasText = !string.IsNullOrEmpty(text), hasIcon = !string.IsNullOrEmpty(iconName);
+                if (!hasText && !hasIcon) continue;
+                string stack = hasText ? FontStack(layer, ctx) : "";
+                if (hasText && !store.Ensure(stack, text!, fetch, missing)) { complete = false; continue; }
+                if (hasIcon && !sprites.Ensure(fetch, missing)) { complete = false; continue; }
 
-                // GL JS: the shaping's text size at the bucket's zoom + 1 and at its zoom
+                // GL JS: the shaping's text size at the bucket's zoom + 1 and at its zoom; icon-size too
                 ctx.Zoom = tileZoom + 1;
                 double layoutTextSize = Expression.Number(layer.TextSize, ctx, 16);
+                double layoutIconSize = Expression.Number(layer.IconSize, ctx, 1);
                 ctx.Zoom = tileZoom;
                 double layoutTextSizeThisZoom = Expression.Number(layer.TextSize, ctx, 16);
                 double maxWidth = Expression.Number(GpuStyleLayer.Get(l.Layout, "text-max-width"), ctx, 10) * Shaping.OneEm;
@@ -145,38 +212,146 @@ internal static partial class VectorBucketBuilder
                 // GL JS: a label along a line is one line, centred
                 if (alongLine) { maxWidth = double.PositiveInfinity; justify = TextJustify.Center; }
 
-                var shaping = Shaping.ShapeText(Formatted.FromString(text), store, stack, maxWidth, lineHeight, anchor, justify,
-                    spacing, (offset.X, offset.Y), WritingMode.Horizontal, false, layoutTextSize, layoutTextSizeThisZoom);
-                if (shaping is null) continue;
+                var shaping = hasText
+                    ? Shaping.ShapeText(Formatted.FromString(text!), store, stack, maxWidth, lineHeight, anchor, justify,
+                        spacing, (offset.X, offset.Y), WritingMode.Horizontal, false, layoutTextSize, layoutTextSizeThisZoom)
+                    : null;
+                ImagePosition? image = hasIcon && sprites.TryGet(iconName!, out var position) ? position : null;
+                if (shaping is null && image is null) continue;
 
                 double opacity = layer.OpacityPerFeature ? Expression.Number(layer.Opacity, ctx, 1) : 1;
                 double size = layer.SizePerFeature ? layoutTextSizeThisZoom : 0;
                 uint color = layer.ColorPerFeature ? Pack(Expression.Color(layer.Color, ctx, StyleColor.Black)) : uint.MaxValue;
                 double padding = Expression.Number(GpuStyleLayer.Get(l.Layout, "text-padding"), ctx, 2);
-                if (alongLine)
+                if (alongLine && shaping != null)
                 {
                     // checked here, while building, where a lenient parse drops the one layer: thrown
                     // while placing, it reached the renderer, which stops on any error
                     if (offset.Y != 0) throw new StyleUnsupportedException("text-offset across a line");
-                    LineLabels(layer, f, placement, shaping, text, ctx, layoutTextSize, padding, offset, (float)size, (float)opacity, color,
+                    LineLabels(layer, f, placement, shaping, text!, ctx, layoutTextSize, padding, offset, (float)size, (float)opacity, color,
                         alwaysOverlap, ignorePlacement, repeated);
                     continue;
                 }
-                var box = CollisionBox(shaping, layoutTextSize / Shaping.OneEm, padding, rotate);
+                SymbolBox? box = shaping is null ? null : CollisionBox(shaping.Left, shaping.Top, shaping.Right, shaping.Bottom,
+                    layoutTextSize / Shaping.OneEm, (padding, padding, padding, padding), rotate);
+
+                // GL JS shaping.ts shapeIcon, quads.ts getIconQuads (no stretch: icon-text-fit is none) and
+                // collision_feature.ts's icon box: the image round the anchor in CSS pixels at icon-size 1
+                (double X, double Y)[]? iconCorners = null;
+                AtlasRect iconTex = default;
+                SymbolBox? iconBox = null;
+                float iconSize = 0, iconOpacity = 1;
+                uint iconColor = uint.MaxValue;
+                if (image is { } img)
+                {
+                    var iconOffset = Pair(GpuStyleLayer.Get(l.Layout, "icon-offset"), ctx, "icon-offset");
+                    var iconAnchor = ParseAnchor(Expression.String(GpuStyleLayer.Get(l.Layout, "icon-anchor"), ctx, "center"));
+                    var (horizontalAlign, verticalAlign) = Shaping.GetAnchorAlignment(iconAnchor);
+                    var (dw, dh) = img.DisplaySize;
+                    double left = iconOffset.X - dw * horizontalAlign, top = iconOffset.Y - dh * verticalAlign;
+                    double right = left + dw, bottom = top + dh;
+                    double iconRotate = Expression.Number(iconRotateValue, ctx, 0);
+                    // makeBox({0, -1}, {0, -1}, {0, w + 1}, {0, h + 1}): the quad takes in the 1-px padding
+                    int iw = img.Image.Width, ih = img.Image.Height;
+                    double x1 = -1.0 / iw * (right - left) + left, y1 = -1.0 / ih * (bottom - top) + top;
+                    double x2 = (iw + 1.0) / iw * (right - left) + left, y2 = (ih + 1.0) / ih * (bottom - top) + top;
+                    iconCorners = new[] { (x1, y1), (x2, y1), (x1, y2), (x2, y2) };
+                    if (iconRotate != 0)
+                    {
+                        // Point._matMult([cos, -sin, sin, cos])
+                        double a = iconRotate * Math.PI / 180, sin = Math.Sin(a), cos = Math.Cos(a);
+                        for (int c = 0; c < 4; c++) iconCorners[c] = (cos * iconCorners[c].X - sin * iconCorners[c].Y, sin * iconCorners[c].X + cos * iconCorners[c].Y);
+                    }
+                    iconTex = img.PaddedRect;
+                    iconBox = CollisionBox(left, top, right, bottom, layoutIconSize, IconPadding(GpuStyleLayer.Get(l.Layout, "icon-padding"), ctx), iconRotate * Math.PI / 180);
+                    iconSize = layer.IconSizePerFeature ? (float)Expression.Number(layer.IconSize, ctx, 1) : 0;
+                    iconOpacity = layer.IconOpacityPerFeature ? (float)Expression.Number(layer.IconOpacity, ctx, 1) : 1;
+                    iconColor = layer.IconColorPerFeature ? Pack(Expression.Color(layer.IconColor, ctx, StyleColor.Black)) : uint.MaxValue;
+                    // GL JS: the bucket's first icon says SDF or not; linear sampling for another pixel ratio or a rotation
+                    bool needsLinear = img.Image.PixelRatio != style.PixelRatio || rotatePerFeature || iconRotate != 0;
+                    _iconModes[layer.Index] = _iconModes.TryGetValue(layer.Index, out var mode)
+                        ? (mode.Sdf, mode.NeedsLinear || needsLinear)
+                        : (img.Image.Sdf, needsLinear);
+                }
+
                 foreach (var (ax, ay) in Anchors(f))
                 {
                     // GL JS draws a label from the one tile its anchor is in, not from a neighbour's buffer
                     if (ax < 0 || ax >= Extent || ay < 0 || ay >= Extent) continue;
                     var anchorPosition = Vertex(ax, ay, 0, 0, 0, 1, 0).Position;
-                    int first = _symbolVertices.Count;
-                    GlyphQuads(anchorPosition, shaping, offset, rotate, (float)size, (float)opacity, color);
-                    if (_symbolVertices.Count > first)
-                        _labels.Add(new LabelInfo(layer.Index, anchorPosition, box.X1, box.Y1, box.X2, box.Y2,
-                            alwaysOverlap, ignorePlacement, first, _symbolVertices.Count - first));
+                    // the icon first (symbol_layout.ts addSymbol), then the glyphs
+                    int iconFirst = _symbolVertices.Count, iconIndexFirst = _iconIndices.Count;
+                    if (iconCorners != null) IconQuad(anchorPosition, iconCorners, iconTex, iconSize, iconOpacity, iconColor);
+                    int textFirst = _symbolVertices.Count, textIndexFirst = _symbolIndices.Count - start;
+                    if (shaping != null) GlyphQuads(anchorPosition, shaping, offset, rotate, (float)size, (float)opacity, color);
+                    int textCount = _symbolVertices.Count - textFirst, iconCount = textFirst - iconFirst;
+                    // GL JS's tile is 8192 units, ours 512: its anchor y, rounded
+                    instances.Add(((int)Math.Floor(ay * 16 + 0.5), featureIndex, iconIndexFirst, _iconIndices.Count - iconIndexFirst,
+                        textIndexFirst, _symbolIndices.Count - start - textIndexFirst));
+                    if (textCount + iconCount > 0)
+                        _labels.Add(new LabelInfo(layer.Index, anchorPosition, textCount > 0 ? box : null, textFirst, textCount,
+                            iconCount > 0 ? iconBox : null, iconFirst, iconCount, flags));
                 }
             }
             ctx.Zoom = tileZoom;
-            if (_symbolIndices.Count > start) _ranges.Add(new VectorRange(layer.Index, RangeKind.Text, start, _symbolIndices.Count - start));
+            // GL JS placement.ts alwaysShowText / alwaysShowIcon, from what the layer's bucket holds
+            bool hasIconData = false, hasTextData = false;
+            for (int i = _layerLabelStart; i < _labels.Count; i++) { hasIconData |= _labels[i].IconCount > 0; hasTextData |= _labels[i].TextCount > 0; }
+            bool textAlways = (flags & SymbolFlags.TextAllowOverlap) != 0, iconAlways = (flags & SymbolFlags.IconAllowOverlap) != 0;
+            var always = SymbolFlags.None;
+            if (textAlways && (iconAlways || !hasIconData || (flags & SymbolFlags.IconOptional) != 0)) always |= SymbolFlags.AlwaysShowText;
+            if (iconAlways && (textAlways || !hasTextData || (flags & SymbolFlags.TextOptional) != 0)) always |= SymbolFlags.AlwaysShowIcon;
+            if (always != SymbolFlags.None)
+                for (int i = _layerLabelStart; i < _labels.Count; i++) _labels[i] = _labels[i] with { Flags = _labels[i].Flags | always };
+            // canOverlap: any *-allow-overlap or *-ignore-placement. Not across line labels, whose indices are not an instance's
+            bool canOverlap = (flags & (SymbolFlags.TextAllowOverlap | SymbolFlags.IconAllowOverlap | SymbolFlags.TextIgnorePlacement | SymbolFlags.IconIgnorePlacement)) != 0;
+            if (canOverlap && _lineLabels.Count == _layerLineLabelStart && instances.Count > 1)
+            {
+                var icons = new List<uint>(_iconIndices.Count);
+                var texts = new List<uint>(_symbolIndices.Count - start);
+                foreach (var i in instances.OrderBy(i => i.Y).ThenByDescending(i => i.Feature))
+                {
+                    icons.AddRange(_iconIndices.GetRange(i.IconStart, i.IconCount));
+                    texts.AddRange(_symbolIndices.GetRange(start + i.TextStart, i.TextCount));
+                }
+                _iconIndices.Clear(); _iconIndices.AddRange(icons);
+                _symbolIndices.RemoveRange(start, _symbolIndices.Count - start); _symbolIndices.AddRange(texts);
+            }
+            // the layer's icons are drawn before its text (draw_symbol.ts): their indices go first
+            int textIndices = _symbolIndices.Count - start;
+            if (_iconIndices.Count > 0)
+            {
+                var textPart = _symbolIndices.GetRange(start, textIndices);
+                _symbolIndices.RemoveRange(start, textIndices);
+                _symbolIndices.AddRange(_iconIndices);
+                _ranges.Add(new VectorRange(layer.Index, RangeKind.Icon, start, _iconIndices.Count));
+                _symbolIndices.AddRange(textPart);
+                start += _iconIndices.Count;
+                _iconIndices.Clear();
+            }
+            if (textIndices > 0) _ranges.Add(new VectorRange(layer.Index, RangeKind.Text, start, textIndices));
+        }
+
+        // GL JS symbol_bucket.ts addSymbols for an icon's one quad: the corners x 32 (Math.round), the
+        // atlas rect with its padding
+        void IconQuad(Vector3 anchor, (double X, double Y)[] corners, AtlasRect tex, float size, float opacity, uint color)
+        {
+            uint i = (uint)_symbolVertices.Count;
+            Corner(corners[0], tex.X, tex.Y);
+            Corner(corners[1], tex.X + tex.W, tex.Y);
+            Corner(corners[2], tex.X, tex.Y + tex.H);
+            Corner(corners[3], tex.X + tex.W, tex.Y + tex.H);
+            _iconIndices.Add(i); _iconIndices.Add(i + 1); _iconIndices.Add(i + 2);
+            _iconIndices.Add(i + 1); _iconIndices.Add(i + 2); _iconIndices.Add(i + 3);
+
+            void Corner((double X, double Y) c, int tx, int ty) => _symbolVertices.Add(new SymbolVertex
+            {
+                Anchor = anchor,
+                OffsetX = (short)Math.Floor(c.X * 32 + 0.5),
+                OffsetY = (short)Math.Floor(c.Y * 32 + 0.5),
+                TexX = (short)tx, TexY = (short)ty,
+                TextSize = (System.Half)size, Opacity = (System.Half)opacity, Color = color,
+            });
         }
 
         // GL JS symbol_layout.ts addFeature for symbol-placement line / line-center, then addSymbol's text
@@ -284,10 +459,12 @@ internal static partial class VectorBucketBuilder
 
         // GL JS collision_feature.ts, for a label in the viewport: the shaping's box at the layout's text
         // size (textBoxScale, then textPixelRatio: pixels), text-padding round it, rotated with the text
-        static (float X1, float Y1, float X2, float Y2) CollisionBox(Shaping shaping, double scale, double padding, double rotate)
+        // (an icon's too: its shaped box at the layout's icon-size, icon-padding [top, right, bottom, left] round it)
+        static SymbolBox CollisionBox(double left, double top, double right, double bottom, double scale,
+            (double Top, double Right, double Bottom, double Left) padding, double rotate)
         {
-            double x1 = shaping.Left * scale - padding, y1 = shaping.Top * scale - padding;
-            double x2 = shaping.Right * scale + padding, y2 = shaping.Bottom * scale + padding;
+            double x1 = left * scale - padding.Left, y1 = top * scale - padding.Top;
+            double x2 = right * scale + padding.Right, y2 = bottom * scale + padding.Bottom;
             if (rotate != 0)
             {
                 double sin = Math.Sin(rotate), cos = Math.Cos(rotate);
@@ -296,7 +473,7 @@ internal static partial class VectorBucketBuilder
                 var ys = new[] { sin * x1 + cos * y1, sin * x2 + cos * y1, sin * x1 + cos * y2, sin * x2 + cos * y2 };
                 (x1, x2, y1, y2) = (xs.Min(), xs.Max(), ys.Min(), ys.Max());
             }
-            return ((float)x1, (float)y1, (float)x2, (float)y2);
+            return new SymbolBox((float)x1, (float)y1, (float)x2, (float)y2);
         }
 
         // GL JS quads.ts getGlyphQuads, for horizontal labels not along a line; symbol_bucket.ts addSymbols
@@ -380,6 +557,57 @@ internal static partial class VectorBucketBuilder
             };
         }
 
+        // icon-image: a string with tokens, or an expression giving a string (or an image)
+        static string? IconOf(GpuStyleLayer layer, StyleContext ctx)
+        {
+            if (layer.IconImage is not { } image) return null;
+            return image.ValueKind == JsonValueKind.String
+                ? ResolveTokens(image.GetString()!, ctx.Properties)
+                : ToText(Expression.Evaluate(image, ctx, Expression.Kind.Any));
+        }
+
+        // two numbers, as given (icon-offset is in pixels, not ems)
+        static (double X, double Y) Pair(JsonElement? value, StyleContext ctx, string name)
+        {
+            if (value is not { } v) return (0, 0);
+            if (v.ValueKind == JsonValueKind.Array && v.GetArrayLength() == 2 && v[0].ValueKind == JsonValueKind.Number)
+                return (v[0].GetDouble(), v[1].GetDouble());
+            return Expression.Evaluate(v, ctx, Expression.Kind.NumberArray) switch
+            {
+                JsonElement { ValueKind: JsonValueKind.Array } a when a.GetArrayLength() == 2 => (a[0].GetDouble(), a[1].GetDouble()),
+                IReadOnlyList<object?> list when list.Count == 2 && list[0] is double x && list[1] is double y => (x, y),
+                _ => throw new StyleUnsupportedException($"an {name} that is not two numbers"),
+            };
+        }
+
+        // GL JS's Padding: one to four numbers in CSS order (top, right, bottom, left)
+        static (double, double, double, double) IconPadding(JsonElement? value, StyleContext ctx)
+        {
+            if (value is not { } v) return (2, 2, 2, 2);
+            var numbers = new List<double>();
+            object? e = v.ValueKind == JsonValueKind.Number ? v.GetDouble()
+                : v.ValueKind == JsonValueKind.Array && v.EnumerateArray().All(x => x.ValueKind == JsonValueKind.Number) ? v
+                : Expression.Evaluate(v, ctx, Expression.Kind.Any);
+            switch (e)
+            {
+                case double d: numbers.Add(d); break;
+                case JsonElement { ValueKind: JsonValueKind.Number } n: numbers.Add(n.GetDouble()); break;
+                case JsonElement { ValueKind: JsonValueKind.Array } a: numbers.AddRange(a.EnumerateArray().Select(x => x.GetDouble())); break;
+                case IEnumerable<object?> list:
+                    foreach (var x in list) numbers.Add(x is double d ? d : throw new StyleUnsupportedException("an icon-padding that is not numbers"));
+                    break;
+                default: throw new StyleUnsupportedException("an icon-padding that is not numbers");
+            }
+            return numbers.Count switch
+            {
+                1 => (numbers[0], numbers[0], numbers[0], numbers[0]),
+                2 => (numbers[0], numbers[1], numbers[0], numbers[1]),
+                3 => (numbers[0], numbers[1], numbers[2], numbers[1]),
+                4 => (numbers[0], numbers[1], numbers[2], numbers[3]),
+                _ => throw new StyleUnsupportedException("an icon-padding of one to four numbers"),
+            };
+        }
+
         // the style spec's tokens: "{name}" is the feature's name property, an absent one empty
         static string ResolveTokens(string s, IReadOnlyDictionary<string, object?>? properties)
         {
@@ -429,7 +657,7 @@ internal static partial class VectorBucketBuilder
             if (value is not { } v) return (0, 0);
             if (v.ValueKind == JsonValueKind.Array && v.GetArrayLength() == 2 && v[0].ValueKind == JsonValueKind.Number)
                 return (v[0].GetDouble() * Shaping.OneEm, v[1].GetDouble() * Shaping.OneEm);
-            var e = Expression.Evaluate(v, ctx, Expression.Kind.Any);
+            var e = Expression.Evaluate(v, ctx, Expression.Kind.NumberArray);
             return e switch
             {
                 JsonElement { ValueKind: JsonValueKind.Array } a when a.GetArrayLength() == 2 => (a[0].GetDouble() * Shaping.OneEm, a[1].GetDouble() * Shaping.OneEm),

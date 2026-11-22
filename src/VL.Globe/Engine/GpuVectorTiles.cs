@@ -40,6 +40,8 @@ internal sealed class GpuVectorTiles : IDisposable
         public string? BackgroundSource;                                   // whose tiles carry the background grid
         public Texture? Atlas;                                             // the labels' glyphs on the GPU, and the atlas version it shows
         public int AtlasVersion = -1;
+        public Texture? Images;                                            // the icons on the GPU, and the image atlas version it shows
+        public int ImagesVersion = -1;
     }
 
     readonly Dictionary<(VectorTileService service, string source, TileKey key), Entry> _entries = new();
@@ -209,6 +211,14 @@ internal sealed class GpuVectorTiles : IDisposable
                 info.Atlas = Texture.New2D(device, GlyphAtlas.Width, atlasHeight, PixelFormat.R8_UNorm, pixels);
                 info.AtlasVersion = version;
             }
+            // the icons: uploaded again when the image atlas has grown
+            if (info.Layers.Any(l => l.IconImage != null) && doc.SpriteStore.Atlas.Version != info.ImagesVersion)
+            {
+                var (pixels, imagesHeight, version) = doc.SpriteStore.Atlas.Snapshot();
+                info.Images?.Dispose();
+                info.Images = Texture.New2D(device, ImageAtlas.Width, imagesHeight, PixelFormat.R8G8B8A8_UNorm, pixels);
+                info.ImagesVersion = version;
+            }
             var ctx = new StyleContext { Zoom = zoom, GlobalState = doc.GlobalState };
             Matrix World(Built tile) => Matrix.Scaling(radius) * Matrix.Translation(TileGeometry.Translation(tile.Bucket.Centre, radius, eye));
             foreach (var layer in info.Layers)
@@ -216,16 +226,16 @@ internal sealed class GpuVectorTiles : IDisposable
                 if (doc.Lenient && doc.IsDropped(layer.Layer.Id)) continue;
                 if (layer.IsSymbol)
                 {
-                    SymbolPaint? paint = null;
-                    try { if (!layer.SymbolUniforms(ctx, out paint)) continue; }
+                    SymbolPaint? paint = null, iconPaint = null;
+                    try { if (!layer.SymbolUniforms(ctx, out paint)) continue; iconPaint = layer.IconUniforms(ctx); }
                     catch (StyleUnsupportedException e) when (doc.Lenient) { doc.Drop(layer.Layer.Id, e.Message); continue; }
-                    if (info.Atlas is null || layer.Layer.Source is not { } labelSource || !draws.TryGetValue(labelSource, out var drawn)) continue;
+                    if (info.Atlas is null && info.Images is null || layer.Layer.Source is not { } labelSource || !draws.TryGetValue(labelSource, out var drawn)) continue;
                     // labels only from tiles drawn whole, each once: the symbol shader does not clip, and a
                     // tile standing in for finer ones is drawn once per square - its labels drawn several
                     // times, colliding with themselves. A stand-in shows no labels; the finer tile will.
                     var full = new Vector4(0, 0, 1, 1);
                     var labelled = drawn.Where(d => d.clip == full && d.built.PlacedBuffer != null).DistinctBy(d => d.built).ToList();
-                    VectorDrawList.AddSymbolLayer(result.Items, layer, paint!, labelled, World, linearize: true, info.Atlas, cameraToCenter, 1);
+                    VectorDrawList.AddSymbolLayer(result.Items, layer, paint!, labelled, World, linearize: true, info.Atlas, cameraToCenter, 1, iconPaint, info.Images);
                     // placed from the top of the style down
                     result.Labels.Insert(0, new LabelPlacement.Layer(layer.Index, labelled.Select(d => (d.built, World(d.built))).ToList(), (float)paint!.Size));
                     continue;

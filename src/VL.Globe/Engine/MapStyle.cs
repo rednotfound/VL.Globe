@@ -245,7 +245,8 @@ internal static class Expression
         _ => false,
     };
 
-    public enum Kind { Any, Number, Color, String }
+    // NumberArray: an interpolatable array of numbers (icon-offset, text-offset); otherwise as Any
+    public enum Kind { Any, Number, Color, String, NumberArray }
 
     public static object? Evaluate(JsonElement e, StyleContext ctx, Kind want)
     {
@@ -375,7 +376,7 @@ internal static class Expression
         if (f.TryGetProperty("colorSpace", out var cs) && cs.GetString() != "rgb")
             throw new StyleUnsupportedException($"colorSpace {cs.GetString()}");
         double b = f.TryGetProperty("base", out var bb) ? bb.GetDouble() : 1;
-        bool interpolatable = want is Kind.Number or Kind.Color;
+        bool interpolatable = want is Kind.Number or Kind.Color or Kind.NumberArray;
         string type = f.TryGetProperty("type", out var t) ? t.GetString()! : interpolatable ? "exponential" : "interval";
         bool isProperty = f.TryGetProperty("property", out var prop);
         object? Default() => f.TryGetProperty("default", out var d) ? Evaluate(d, ctx, want) : null;
@@ -426,6 +427,14 @@ internal static class Expression
     static object? Interpolate(List<(double input, JsonElement output)> stops, double x, double b, Func<JsonElement, object?> eval, Kind want)
         => InterpolateValues(stops.Select(s => (s.input, eval(s.output))).ToList(), x, b, want);
 
+    static double[]? Numbers(object? v) => v switch
+    {
+        JsonElement { ValueKind: JsonValueKind.Array } a when a.EnumerateArray().All(e => e.ValueKind == JsonValueKind.Number)
+            => a.EnumerateArray().Select(e => e.GetDouble()).ToArray(),
+        IReadOnlyList<object?> l when l.All(e => e is double) => l.Select(e => (double)e!).ToArray(),
+        _ => null,
+    };
+
     static object? InterpolateValues(List<(double input, object? value)> stops, double x, double b, Kind want)
     {
         if (x <= stops[0].input) return stops[0].value;
@@ -440,6 +449,9 @@ internal static class Expression
         {
             (double a, double c) => a + (c - a) * t,
             (StyleColor a, StyleColor c) => StyleColor.Lerp(a, c, t),
+            // arrays of numbers (icon-offset, text-offset) element by element, as GL JS's interpolate.array
+            _ when Numbers(v0) is { } a && Numbers(v1) is { } c && a.Length == c.Length
+                => a.Select((ai, k) => (object?)(ai + (c[k] - ai) * t)).ToList(),
             _ => throw new StyleUnsupportedException($"interpolating {v0?.GetType().Name}"),
         };
     }

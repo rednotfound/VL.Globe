@@ -3,7 +3,9 @@
 // defaults for point placement). The anchor is projected from its place on the globe (or the
 // Mercator plane, in MapLibre's render tests); each glyph's quad is laid out in screen pixels from
 // there, so text stays upright and its size on screen fixed. Antialiasing and the halo as
-// symbol_sdf.fragment.glsl: smoothstep on the signed-distance field.
+// symbol_sdf.fragment.glsl: smoothstep on the signed-distance field. Icons (milestone 4) as
+// symbol_icon.*.glsl - the image atlas's premultiplied colour times the opacity - or, for an SDF
+// icon, as text with the field in the alpha channel and the font scale the icon-size itself.
 shader GlobeSymbol : ShaderBase
 {
     cbuffer PerDraw
@@ -27,12 +29,20 @@ shader GlobeSymbol : ShaderBase
         stage float GsFlat;             // 1: on the Mercator plane (no far side to hide)
         stage float GsLinearize;        // 1: vvvv's linear pipeline; 0: sRGB, as GL JS
         stage float GsDevicePixelRatio;
+        stage float GsIconMode;         // 0 text, 1 an icon (RGBA), 2 an SDF icon
+        stage float GsNearest;          // 1: GL JS's gl.NEAREST for icons drawn at their own size
     }
 
     stage Texture2D GsAtlas;
     stage SamplerState GsSampler
     {
         Filter = MIN_MAG_MIP_LINEAR;
+        AddressU = Clamp;
+        AddressV = Clamp;
+    };
+    stage SamplerState GsPointSampler
+    {
+        Filter = MIN_MAG_MIP_POINT;
         AddressU = Clamp;
         AddressV = Clamp;
     };
@@ -75,7 +85,7 @@ shader GlobeSymbol : ShaderBase
         // GL JS: labels in the viewport are scaled by 0.5 + 0.5 x (camera to centre / camera to anchor)
         float perspective = clamp(0.5 + 0.5 * GsCameraToCenter / max(clip.w, 1e-9), 0, 4);
         size *= perspective;
-        float fontScale = size / 24.0;
+        float fontScale = GsIconMode > 0.5 ? size : size / 24.0;
         float2 offset = float2(streams.GsOffsetTex.xy) / 32.0 * fontScale;
         if (streams.GsLineIn.w > 0.5)
         {
@@ -99,10 +109,28 @@ shader GlobeSymbol : ShaderBase
     {
         float EDGE_GAMMA = 0.105 / GsDevicePixelRatio;
         float gammaScale = streams.GsData.x, size = streams.GsData.y, opacity = streams.GsData.z;
-        float fontScale = size / 24.0;
+        // both samples, then one chosen: no texture sampling under a branch
+        float4 linearSample = GsAtlas.Sample(GsSampler, streams.GsTex);
+        float4 pointSample = GsAtlas.Sample(GsPointSampler, streams.GsTex);
+        float4 sampled = GsNearest > 0.5 ? pointSample : linearSample;
+        if (GsIconMode > 0.5 && GsIconMode < 1.5)
+        {
+            // symbol_icon.fragment.glsl: texture * v_total_opacity, premultiplied sRGB; linear in vvvv
+            float4 icon = sampled;
+            if (GsLinearize > 0.5 && icon.a > 0) icon = float4(ToLinear(icon.rgb / icon.a) * icon.a, icon.a);
+            streams.ColorTarget = icon * opacity;
+        }
+        else
+            streams.ColorTarget = Sdf(sampled, size, opacity, gammaScale, EDGE_GAMMA);
+    }
+
+    // symbol_sdf.fragment.glsl, for text and SDF icons
+    float4 Sdf(float4 sampled, float size, float opacity, float gammaScale, float EDGE_GAMMA)
+    {
+        float fontScale = GsIconMode > 0.5 ? size : size / 24.0;
         float gamma = EDGE_GAMMA / fontScale;
         float innerEdge = (256.0 - 64.0) / 256.0;
-        float dist = GsAtlas.Sample(GsSampler, streams.GsTex).r;
+        float dist = GsIconMode > 0.5 ? sampled.a : sampled.r;
         float4 fill = streams.GsFill * GsColor;
         float4 text = 0, halo = 0;
         if (GsIsPlain > 0.5)
@@ -122,8 +150,8 @@ shader GlobeSymbol : ShaderBase
             alphaHalo = min(smoothstep(haloEdge - gammaScaledHalo, haloEdge + gammaScaledHalo, dist), 1.0 - alphaHalo);
             halo = opacity * alphaHalo * GsHaloColor;
         }
-        if (GsIsPlain > 0.5 && GsIsHalo > 0.5) streams.ColorTarget = text + (1 - text.a) * halo;
-        else if (GsIsHalo > 0.5) streams.ColorTarget = halo;
-        else streams.ColorTarget = text;
+        if (GsIsPlain > 0.5 && GsIsHalo > 0.5) return text + (1 - text.a) * halo;
+        if (GsIsHalo > 0.5) return halo;
+        return text;
     }
 };

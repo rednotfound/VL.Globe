@@ -422,3 +422,19 @@ looked fine - "which makes one think it works". Two causes, estimated at 100 m h
   as a broken shader. Refuse while building, where the lenient parse drops one layer.
 - **A stand-in tile drawn once per square draws its labels once per square**: the symbol shader does
   not clip, and the copies collided with themselves. Labels come only from tiles drawn whole.
+
+## 2026-11-22 — icons (milestone 4)
+
+- **`SKBitmap.Decode` premultiplies, and `CopyTo` an unpremultiplied bitmap keeps the premultiplied
+  bytes**: premultiplied again on the way to the atlas, every soft icon edge came out dark (0.7 % of
+  the pixels in a dozen fixtures). Decode with `SKCodec` straight into `Rgba8888` / `Unpremul`;
+  `IconFacts` compares against Skia's own premultiplied decode.
+- **Symbols that may overlap are drawn by their anchor's y** (GL JS `sortFeatures`: symbol-z-order
+  auto, any `*-allow-overlap` or `*-ignore-placement`; ties by feature index, higher first). In
+  source order, a cluster of overlapping POI icons showed every circle's rim.
+- **A legacy function's default type is `exponential` for arrays too** (`icon-offset` stops of
+  `[x, y]`): evaluated as `Kind.Any` it fell to `interval` and the offset jumped. `Kind.NumberArray`.
+- **A lenient style must not lose a layer for an icon it cannot draw yet**: refusing an icon along a
+  line drops the layer whole, and Liberty's road-name layers (shields along the line) would have lost
+  their text - caught reading the code before vvvv, not seen. Strict throws; lenient leaves out the
+  icons and names it in Skipped.

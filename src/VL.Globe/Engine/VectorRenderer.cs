@@ -24,9 +24,11 @@ internal sealed class VectorRenderer : IGraphicsRendererBase
     // Text: a symbol layer's glyph quads, drawn by GlobeSymbol.sdsl over everything, no depth (GL JS)
     internal enum Pass { Triangles, LineList, ExtrusionDepth, ExtrusionColor, Text }
 
-    // what a Text item draws with besides its buffers: the atlas and the layer's paint this frame
+    // what a Text item draws with besides its buffers: the atlas and the layer's paint this frame.
+    // Icons are Text items too: IconMode 1 an image, 2 an SDF image; Nearest GL JS's gl.NEAREST
     internal sealed record TextDraw(Texture Atlas, Vector4 Color, Vector4 HaloColor, float Size, bool SizePerFeature, float Opacity,
-        float HaloWidth, float HaloBlur, bool IsHalo, bool IsPlain, float CameraToCenter, float PixelRatio, Buffer Placed, Buffer Dynamic);
+        float HaloWidth, float HaloBlur, bool IsHalo, bool IsPlain, float CameraToCenter, float PixelRatio, Buffer Placed, Buffer Dynamic,
+        int IconMode = 0, bool Nearest = false);
 
     internal readonly record struct Item(Buffer Vertices, Buffer Indices, int Start, int Count, Matrix World, Vector3 Centre,
         Vector4 Color, float HalfWidth, bool IsLine, Vector4 Clip, Pass Pass = Pass.Triangles, float Tiles = 1, TextDraw? Text = null);
@@ -207,6 +209,8 @@ internal sealed class VectorRenderer : IGraphicsRendererBase
                     SetText(symbolParameters, "GsIsPlain", t.IsPlain ? 1f : 0f);
                     SetText(symbolParameters, "GsCameraToCenter", t.CameraToCenter);
                     SetText(symbolParameters, "GsDevicePixelRatio", t.PixelRatio);
+                    SetText(symbolParameters, "GsIconMode", (float)t.IconMode);
+                    SetText(symbolParameters, "GsNearest", t.Nearest ? 1f : 0f);
                     if (_symbolKeys.TryGetValue("GlobeSymbol.GsAtlas", out var atlasKey)) symbolParameters.Set((ObjectParameterKey<Texture>)atlasKey, t.Atlas);
                     symbolEffect.Apply(graphicsContext);
                     commandList.DrawIndexed(item.Count, item.Start);

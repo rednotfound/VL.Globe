@@ -130,6 +130,13 @@ internal sealed class MapStyleDocument
     /// <summary>The style's glyph ranges and their atlas (labels), made on first use.</summary>
     public GlyphStore GlyphStore => System.Threading.LazyInitializer.EnsureInitialized(ref _glyphStore, () => new GlyphStore(this))!;
     GlyphStore? _glyphStore;
+    /// <summary>The style's sprites (icons): (id, URL without extension), "default" for a plain URL.</summary>
+    public List<(string Id, string Url)> Sprites = new();
+    /// <summary>The style's sprite images and their atlas (icons), made on first use.</summary>
+    public SpriteStore SpriteStore => System.Threading.LazyInitializer.EnsureInitialized(ref _spriteStore, () => new SpriteStore(this))!;
+    SpriteStore? _spriteStore;
+    /// <summary>The device pixel ratio the sprite is chosen for: "@2x" above 1, as GL JS's.</summary>
+    public double PixelRatio = 1;
     public bool Lenient;
 
     /// <summary>What a lenient parse or draw left out, and why: "layer id: reason".</summary>
@@ -246,7 +253,9 @@ internal sealed class MapStyleDocument
         // lenient parses only (see Parse): drawn by the GPU path
         ["fill-extrusion"] = new() { "fill-extrusion-color", "fill-extrusion-opacity", "fill-extrusion-height", "fill-extrusion-base" },
         // labels, milestone 1 (ROADMAP 4e): point text, drawn by the GPU path
-        ["symbol"] = new() { "text-color", "text-opacity", "text-halo-color", "text-halo-width", "text-halo-blur" },
+        ["symbol"] = new() { "text-color", "text-opacity", "text-halo-color", "text-halo-width", "text-halo-blur",
+            // icons, milestone 4
+            "icon-color", "icon-opacity", "icon-halo-color", "icon-halo-width", "icon-halo-blur" },
     };
     static readonly Dictionary<string, HashSet<string>> LayoutKeys = new()
     {
@@ -259,7 +268,11 @@ internal sealed class MapStyleDocument
             "text-allow-overlap", "text-ignore-placement", "text-padding", "text-optional", "text-keep-upright",
             "text-rotation-alignment", "text-pitch-alignment",
             // milestone 3, labels along lines
-            "symbol-spacing", "text-max-angle" },
+            "symbol-spacing", "text-max-angle",
+            // milestone 4, icons
+            "icon-image", "icon-size", "icon-anchor", "icon-offset", "icon-rotate", "icon-padding", "icon-allow-overlap",
+            "icon-ignore-placement", "icon-optional", "icon-rotation-alignment", "icon-pitch-alignment", "icon-text-fit",
+            "icon-text-fit-padding", "icon-keep-upright" },
         ["line"] = new() { "visibility", "line-cap", "line-join", "line-miter-limit", "line-round-limit" },
     };
 
@@ -282,6 +295,14 @@ internal sealed class MapStyleDocument
         if (root.TryGetProperty("center", out var c) && c.ValueKind == JsonValueKind.Array) { doc.CenterLon = c[0].GetDouble(); doc.CenterLat = c[1].GetDouble(); }
         if (root.TryGetProperty("zoom", out var z) && z.ValueKind == JsonValueKind.Number) doc.Zoom = z.GetDouble();
         if (root.TryGetProperty("glyphs", out var glyphs) && glyphs.ValueKind == JsonValueKind.String) doc.Glyphs = glyphs.GetString();
+        // GL JS's coerceSpriteToArray: a URL is the sprite "default"
+        if (root.TryGetProperty("sprite", out var sprite))
+        {
+            if (sprite.ValueKind == JsonValueKind.String) doc.Sprites.Add(("default", sprite.GetString()!));
+            else if (sprite.ValueKind == JsonValueKind.Array)
+                foreach (var e in sprite.EnumerateArray())
+                    if (e.TryGetProperty("id", out var sid) && e.TryGetProperty("url", out var surl)) doc.Sprites.Add((sid.GetString()!, surl.GetString()!));
+        }
         if (root.TryGetProperty("state", out var state))
             foreach (var s in state.EnumerateObject())
                 if (s.Value.TryGetProperty("default", out var d)) doc.GlobalState[s.Name] = d.Clone();

@@ -104,7 +104,7 @@ internal static class VectorDrawList
                 var centre = tile.Bucket.Centre.ToVector3();
                 foreach (var r in ranges)
                 {
-                    if (r.Kind == RangeKind.Text) continue;   // AddSymbolLayer's
+                    if (r.Kind is RangeKind.Text or RangeKind.Icon) continue;   // AddSymbolLayer's
                     var (c, half, line) = r.Kind switch
                     {
                         RangeKind.Line => (color, width / 2, true),
@@ -129,33 +129,58 @@ internal static class VectorDrawList
     // A symbol layer's draw items (labels, 4e): GL JS's draw_symbol.ts - the halo and the text in one
     // pass, or in two (halo, then text) where glyphs overlap: letter spacing below 0 or a halo wider
     // than 1 px. Colours premultiplied, as GL JS's uniforms are.
-    public static void AddSymbolLayer(List<VectorRenderer.Item> items, GpuStyleLayer layer, SymbolPaint paint,
+    // Icons (milestone 4) first, from the image atlas, then the text: each tile's icons are an image or
+    // an SDF (the bucket's first icon decides, as GL JS's bucket.sdfIcons), sampled NEAREST where GL JS
+    // does - an icon at its own size and pixel ratio, unrotated - when nearest is allowed (the render tests).
+    public static void AddSymbolLayer(List<VectorRenderer.Item> items, GpuStyleLayer layer, SymbolPaint? paint,
         IReadOnlyList<(GpuTile tile, Vector4 clip)> tiles, Func<GpuTile, Matrix> world, bool linearize,
-        Texture atlas, double cameraToCenter, double pixelRatio)
+        Texture? atlas, double cameraToCenter, double pixelRatio, SymbolPaint? iconPaint = null, Texture? images = null, bool allowNearest = false)
     {
+        if (iconPaint != null && images != null) Add(iconPaint, RangeKind.Icon, images);
+        if (paint != null && atlas != null) Add(paint, RangeKind.Text, atlas);
+
+        void Add(SymbolPaint p, RangeKind kind, Texture texture)
+        {
+            foreach (var (halo, plain) in Passes(p, kind == RangeKind.Text || System.Linq.Enumerable.Any(tiles, t => t.tile.Bucket.IconModes.GetValueOrDefault(layer.Index).Sdf)))
+                foreach (var (tile, clip) in tiles)
+                {
+                    if (tile.SymbolVertices is null || !tile.ByLayer.TryGetValue(layer.Index, out var ranges)) continue;
+                    int mode = 0;
+                    bool nearest = false;
+                    if (kind == RangeKind.Icon)
+                    {
+                        var m = tile.Bucket.IconModes.GetValueOrDefault(layer.Index);
+                        if (!m.Sdf && halo && !plain) continue;   // an image has no halo pass
+                        mode = m.Sdf ? 2 : 1;
+                        nearest = allowNearest && !m.Sdf && !m.NeedsLinear && !p.SizePerFeature && p.Size == 1;
+                    }
+                    var w = world(tile);
+                    var draw = new VectorRenderer.TextDraw(texture, Premultiplied(p.Color), Premultiplied(p.HaloColor), (float)p.Size,
+                        p.SizePerFeature, (float)p.Opacity, (float)p.HaloWidth, (float)p.HaloBlur, mode == 1 ? false : halo, mode == 1 || plain,
+                        (float)cameraToCenter, (float)pixelRatio, tile.PlacedBuffer!, tile.DynamicBuffer!, mode, nearest);
+                    foreach (var r in ranges)
+                        if (r.Kind == kind)
+                            items.Add(new VectorRenderer.Item(tile.SymbolVertices, tile.SymbolIndices!, r.Start, r.Count, w,
+                                tile.Bucket.Centre.ToVector3(), default, 0, false, Widen(clip), VectorRenderer.Pass.Text, 1 << tile.Bucket.Key.Zoom, draw));
+                }
+        }
+
         Vector4 Premultiplied(StyleColor c)
         {
             var v = linearize ? Linear(c) : new Vector4((float)c.R, (float)c.G, (float)c.B, (float)c.A);
             return new Vector4(v.X * v.W, v.Y * v.W, v.Z * v.W, v.W);
         }
-        bool hasHalo = paint.HaloWidth != 0;
-        bool twoPass = paint.LetterSpacing * Shaping.OneEm < 0 || paint.HaloWidth > 1;
-        var passes = !hasHalo ? new[] { (halo: false, plain: true) }
-            : twoPass ? new[] { (halo: true, plain: false), (halo: false, plain: true) }
-            : new[] { (halo: true, plain: true) };
-        foreach (var (halo, plain) in passes)
-            foreach (var (tile, clip) in tiles)
-            {
-                if (tile.SymbolVertices is null || !tile.ByLayer.TryGetValue(layer.Index, out var ranges)) continue;
-                var w = world(tile);
-                var text = new VectorRenderer.TextDraw(atlas, Premultiplied(paint.Color), Premultiplied(paint.HaloColor), (float)paint.Size,
-                    paint.SizePerFeature, (float)paint.Opacity, (float)paint.HaloWidth, (float)paint.HaloBlur, halo, plain,
-                    (float)cameraToCenter, (float)pixelRatio, tile.PlacedBuffer!, tile.DynamicBuffer!);
-                foreach (var r in ranges)
-                    if (r.Kind == RangeKind.Text)
-                        items.Add(new VectorRenderer.Item(tile.SymbolVertices, tile.SymbolIndices!, r.Start, r.Count, w,
-                            tile.Bucket.Centre.ToVector3(), default, 0, false, Widen(clip), VectorRenderer.Pass.Text, 1 << tile.Bucket.Key.Zoom, text));
-            }
+    }
+
+    // GL JS draw_symbol.ts: the halo and the fill in one pass, or in two (halo, then fill) where glyphs
+    // overlap - text-letter-spacing below 0 or a halo wider than 1 px; no halo without an SDF
+    static (bool halo, bool plain)[] Passes(SymbolPaint p, bool sdf)
+    {
+        bool hasHalo = sdf && p.HaloWidth != 0;
+        bool twoPass = p.LetterSpacing * Shaping.OneEm < 0 || p.HaloWidth > 1;
+        return !hasHalo ? new[] { (false, true) }
+            : twoPass ? new[] { (true, false), (false, true) }
+            : new[] { (true, true) };
     }
 
     // neighbours clipped to the same edge each discarded some pixels on it (interpolated in float): a

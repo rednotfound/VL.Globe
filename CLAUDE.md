@@ -17,8 +17,10 @@ Guidance for Claude Code working in this repository.
    vertex, MapLibre's render tests on the GPU path (97 pass offscreen in `dotnet test`).
    Then labels (ROADMAP **4e**): point text and collision ported from GL JS, 154 fixtures pass on the
    GPU path, seen in vvvv on Liberty; then labels along lines (158 fixtures, 150 non-vacuous).
-   **Next: icons (milestone 4) - the plan and its 6 steps are in DESIGN-GPU-VECTOR.md, "Icons";
-   the fixtures and sprites are fetched; then label fades.**
+   Then icons (milestone 4), steps 1-4: sprites, point icons, the icon shader, joint placement -
+   252 fixtures pass, 243 non-vacuous.
+   **Next: icon-text-fit and stretch zones (step 5), then icons along lines / Liberty's shields
+   (step 6) - DESIGN-GPU-VECTOR.md, "Icons" and its "As built"; then label fades.**
    Research: [docs/RESEARCH-0.1.md](docs/RESEARCH-0.1.md), [docs/RESEARCH-VECTOR.md](docs/RESEARCH-VECTOR.md).
 2. Read **[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)** — what exists and why.
 3. Read **[NOTES.md](NOTES.md)** — every failure so far, before touching the same code.
@@ -56,7 +58,7 @@ at country scale; judge every change at the lowest height.
 | `VectorTiles [Globe.Layers]` | built 2026-11-21: a MapLibre style's fills/lines/background from vector tiles, with or without a Tile Source; `Rendering` GPU (default, judged by the user moving) or Draped (seen standing still, "不太行") |
 | `ToGlobe`, `ToGlobe (Coordinate)`, `FromGlobe [Globe]` | built, 4 rungs, **absolute** — right under OrbitCamera; under GlobeCamera use GlobePositionComponent |
 
-182 tests green (incl. MapLibre v6.19.0's render tests — 164 fixtures, fetched by script — run twice: on the drape and, offscreen on a D3D11 device of the test's own, on the GPU path). Branch `feature/camera-relative`, pushed to `github.com/rednotfound/VL.Globe`
+224 tests green (incl. MapLibre v6.19.0's render tests — 409 fixtures, fetched by script — run twice: on the drape and, offscreen on a D3D11 device of the test's own, on the GPU path). Branch `feature/camera-relative`, pushed to `github.com/rednotfound/VL.Globe`
 (public); not merged, not published. Verified on vvvv **7.4 (LTS)**; `Find-Vvvv.ps1` stays below 8.0.
 
 ## Facts this repo paid for (details in NOTES.md)

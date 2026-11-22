@@ -67,6 +67,7 @@ internal static class GpuFixtureRenderer
     static byte[] RenderCore(MapStyleDocument style, int width, int height, double pixelRatio)
     {
         var gpu = Shared.Value;
+        style.PixelRatio = pixelRatio;   // the sprite's @2x
         int w = (int)Math.Floor(width * pixelRatio), h = (int)Math.Floor(height * pixelRatio);
         double zoom = style.Zoom;
         double worldSize = 512 * Math.Pow(2, zoom) * pixelRatio;                // device px per world (1 wide)
@@ -118,6 +119,13 @@ internal static class GpuFixtureRenderer
             var (pixels, atlasHeight, _) = style.GlyphStore.Atlas.Snapshot();
             atlas = Texture.New2D(gpu.Device, GlyphAtlas.Width, atlasHeight, PixelFormat.R8_UNorm, pixels);
         }
+        // the icons they placed, one image atlas
+        Texture? images = null;
+        if (layers.Any(l => l.IconImage != null))
+        {
+            var (pixels, imagesHeight, _) = style.SpriteStore.Atlas.Snapshot();
+            images = Texture.New2D(gpu.Device, ImageAtlas.Width, imagesHeight, PixelFormat.R8G8B8A8_UNorm, pixels);
+        }
 
         var frame = new VectorRenderer.Frame { Radius = 1, CameraToCenter = (float)distance };
         foreach (var layer in layers)
@@ -125,12 +133,13 @@ internal static class GpuFixtureRenderer
             if (layer.IsSymbol)
             {
                 if (!layer.SymbolUniforms(ctx, out var paint) || !bySource.TryGetValue(layer.Layer.Source!, out var labelled)) continue;
+                var iconPaint = layer.IconUniforms(ctx);
                 var placing = new List<(GpuTile, Matrix)>();
                 foreach (var (tile, shift) in labelled)
                 {
                     var at = Matrix.Translation((float)(tile.Bucket.Centre.X + shift - cx), (float)(tile.Bucket.Centre.Y + cy), (float)(tile.Bucket.Centre.Z - distance));
                     VectorDrawList.AddSymbolLayer(frame.Items, layer, paint, new[] { (tile, new Vector4(0, 0, 1, 1)) }, _ => at,
-                        linearize: false, atlas!, distance, pixelRatio);
+                        linearize: false, atlas, distance, pixelRatio, iconPaint, images, allowNearest: true);
                     placing.Add((tile, at));
                 }
                 // placed from the top of the style down
@@ -183,6 +192,7 @@ internal static class GpuFixtureRenderer
             target.Dispose();
             depth.Dispose();
             atlas?.Dispose();
+            images?.Dispose();
             foreach (var t in tiles) t.Dispose();
         }
     }

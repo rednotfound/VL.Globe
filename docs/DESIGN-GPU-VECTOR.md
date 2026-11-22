@@ -179,9 +179,38 @@ Steps, each against the fixtures:
 6. Liberty in vvvv: POI icons, road shields (line placement, viewport-aligned: needs "line labels
    aligned to the viewport" too), one-way arrows.
 
+**As built, 2026-11-22 - steps 1 to 4 (point icons):**
+- `SpriteStore.cs` - the style's `sprite` (a URL or a list of {id, url}; "<id>:<name>" for a sprite
+  other than "default"), `.json` + `.png` (`@2x` when `MapStyleDocument.PixelRatio` is above 1)
+  through Load / Peek / Pending as the glyphs; decoded unpremultiplied with SkiaSharp, premultiplied
+  as GL JS's texture.ts (`Math.round(c * a / 255)`); `ImageAtlas` - RGBA, shelves 2048 wide, 1-px
+  padding, one per style, an image never moves.
+- `SymbolLayout.cs` - icon-image (tokens, expressions), icon-size (layout at zoom + 1; per feature in
+  the vertex), icon-anchor, icon-offset, icon-rotate, icon-padding (1-4 numbers, CSS order); shapeIcon
+  and getIconQuads' one quad (the padding inside it), in the same SymbolVertex stream as text, an icon
+  range before the layer's text range. The bucket's first icon decides SDF or not (GL JS's
+  `sdfIcons`) and GL JS's `iconsNeedLinear` is kept per layer. Overlap-able layers are drawn sorted by
+  anchor y (`sortFeatures`).
+- `GlobeSymbol.sdsl` - `GsIconMode` 1: the atlas colour x opacity (unpremultiplied, linearised and
+  premultiplied again in vvvv); 2: the SDF path with the field in alpha and the font scale the
+  icon-size itself. `GsNearest` - gl.NEAREST where GL JS uses it (icon-size 1, the device pixel ratio,
+  no rotation), in the render tests only: on the globe always linear.
+- `LabelPlacement.cs` - a point symbol has a text box and an icon box; each placed, then GL JS's joint
+  rule (both or neither unless *-optional), then inserted (unless *-ignore-placement); shown when
+  placed or by alwaysShowText / alwaysShowIcon.
+- Not yet: icon-text-fit (step 5), icons along lines (6), icon-size by zoom and feature (one size
+  per vertex, as text-size). A lenient style leaves those icons out and keeps the layer's text.
+
+**MapLibre's fixtures on the GPU path: 252 pass, 243 non-vacuous** (158 / 150 before icons): 54 of
+the 111 icon-* fixtures. Not passing: icon-text-fit (45 unsupported, 1 passes), the two composite
+icon-size fixtures (ignored), and 10 unsupported for other reasons - an icon halo per feature (3), the
+`image` expression, circle layers (2), pitch, collision debug boxes (3).
+**Seen in vvvv on Liberty at Kyoto Station (700 m)**: bus, rail, hospital, school and shop icons with
+their names beside them, no overlaps; road names along the roads kept (their shields left out).
+
 ## Next
 
-1. Icons (above).
+1. Icons: icon-text-fit and stretch zones (step 5), then icons along lines and Liberty's shields (6).
 2. Labels: fades (300 ms) and labels across tiles of two zooms (CrossTileSymbolIndex), the `format`
    expression, text-size by zoom and feature, text-offset across a line.
 3. Labels and icons (RESEARCH-VECTOR stage 4: glyph PBFs, SDF, placement and collision) - the

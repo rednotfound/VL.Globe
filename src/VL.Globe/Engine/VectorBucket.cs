@@ -71,7 +71,7 @@ internal struct VectorVertex
 // Outline is a line list (GL JS's gl.LINES, one device pixel); the rest are triangle lists. Extrusion
 // is fill-extrusion: roofs and walls in 3D, drawn in two passes (depth, then colour). Text is a
 // symbol layer's glyph quads, in the bucket's symbol arrays (SymbolLayout.cs)
-internal enum RangeKind { Fill, Outline, Line, Background, Extrusion, Text }
+internal enum RangeKind { Fill, Outline, Line, Background, Extrusion, Text, Icon }
 
 /// <summary>A layer's part of a bucket: <see cref="Count"/> indices from <see cref="Start"/>.</summary>
 internal readonly record struct VectorRange(int Layer, RangeKind Kind, int Start, int Count);
@@ -95,6 +95,9 @@ internal sealed class VectorBucket
     public uint[] SymbolIndices = Array.Empty<uint>();
     public List<LabelInfo> Labels = new();
     public List<LineLabel> LineLabels = new();
+    // icons, per symbol layer: an SDF or an image (the layer's first icon decides, as GL JS's
+    // bucket.sdfIcons), and whether GL JS's iconsNeedLinear holds (another pixel ratio, a rotation)
+    public Dictionary<int, (bool Sdf, bool NeedsLinear)> IconModes = new();
     public double Ms;
 
     public ReadOnlySpan<VectorVertex> VertexSpan => Vertices.AsSpan(0, VertexCount);
@@ -298,6 +301,7 @@ internal static partial class VectorBucketBuilder
                 Key = _key, Centre = _centre, Vertices = vertices, Indices = indices,
                 VertexCount = _vertices.Count, IndexCount = _indices.Count, Ranges = _ranges.ToList(),
                 SymbolVertices = _symbolVertices.ToArray(), SymbolIndices = _symbolIndices.ToArray(), Labels = _labels.ToList(), LineLabels = _lineLabels.ToList(),
+                IconModes = new Dictionary<int, (bool, bool)>(_iconModes),
             };
         }
 
