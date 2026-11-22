@@ -52,25 +52,47 @@ function tiles() {
   if (!caches) return '';
   return Object.entries(caches).map(([id, c]) => `${id} ${Object.keys(c._tiles || {}).length}`).join(', ');
 }
+// ?w=1250&h=800: the map at the size of VL.Globe's window (its client area), not the browser's
+const q = new URLSearchParams(location.search);
+if (q.has('w')) Object.assign(document.getElementById('map').style, { width: q.get('w') + 'px', height: q.get('h') + 'px' });
+map.resize();
+// lines go to the page, the console, and - served by the bench server - POST /log
+function report(line) {
+  console.log(line);
+  const log = document.getElementById('log');
+  log.textContent = line + '\n' + log.textContent;
+  fetch('/log', { method: 'POST', body: line }).catch(() => {});
+}
+// pans east at 300 px/s by the clock, as VL.Globe's bench does (VLGLOBE_BENCH=pan): a slow frame
+// moves the map further, not less far
+const SPEED = 300;
 let panUntil = 0;
 function frame(t) {
   if (last >= 0) intervals.push(t - last);
+  if (t < panUntil && last >= 0) map.panBy([SPEED * (t - last) / 1000, 0], { animate: false });
   last = t;
-  if (t < panUntil) map.panBy([5, 0], { animate: false });   // 300 px/s at 60 fps
   if (t - secondFrom >= 1000) {
-    if (intervals.length && (moved || intervals.some(x => x > MISSED))) {
-      const line = `GLJS perf: ${summarise(intervals)}, ${moved ? 'moving' : 'still'}; tiles: ${tiles()}`;
-      console.log(line);
-      const log = document.getElementById('log');
-      log.textContent = line + '\n' + log.textContent;
-    }
+    if (intervals.length && (moved || intervals.some(x => x > MISSED)))
+      report(`GLJS perf: ${summarise(intervals)}, ${moved ? 'moving' : 'still'}; tiles: ${tiles()}`);
     intervals = []; moved = false; secondFrom = t;
   }
   document.getElementById('state').textContent = map.areTilesLoaded() ? 'tiles loaded' : 'loading';
   requestAnimationFrame(frame);
 }
 requestAnimationFrame(frame);
-document.getElementById('pan').onclick = () => { panUntil = performance.now() + 10000; };
+function pan(seconds) { panUntil = performance.now() + seconds * 1000; }
+document.getElementById('pan').onclick = () => pan(10);
+// ?bench=1&wait=20&pan=10&runs=2&gap=5: wait for loading, then pan `runs` times
+if (q.get('bench') === '1') {
+  const wait = +(q.get('wait') || 20), secs = +(q.get('pan') || 10), runs = +(q.get('runs') || 2), gap = +(q.get('gap') || 5);
+  report(`GLJS bench: ${location.hash}, ${innerWidth}x${innerHeight} window, map ${map.getCanvas().clientWidth}x${map.getCanvas().clientHeight}, dpr ${devicePixelRatio}, ${navigator.userAgent}`);
+  for (let i = 0; i < runs; i++) {
+    const at = (wait + i * (secs + gap)) * 1000;
+    setTimeout(() => { report(`GLJS bench: pan ${i + 1} begins`); pan(secs); }, at);
+    setTimeout(() => report(`GLJS bench: pan ${i + 1} ends`), at + secs * 1000);
+  }
+  setTimeout(() => report('GLJS bench: done'), (wait + runs * (secs + gap)) * 1000);
+}
 document.getElementById('clear').onclick = () => { document.getElementById('log').textContent = ''; };
 </script>
 </body>

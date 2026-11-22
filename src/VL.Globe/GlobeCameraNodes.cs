@@ -31,9 +31,13 @@ public sealed class GlobeCameraNode
     readonly CameraComponent _camera = new() { UseCustomViewMatrix = true, UseCustomAspectRatio = false };
     readonly Engine.GlobeCameraFrame _frame = new();
     bool _initialised;
+    readonly ILogger _logger;
+    // ROADMAP 4g: GL JS's bench motion, only when vvvv was started with VLGLOBE_BENCH=pan
+    readonly Engine.CameraBench? _bench = Engine.CameraBench.FromEnvironment();
 
-    public GlobeCameraNode()
+    public GlobeCameraNode(NodeContext nodeContext)
     {
+        _logger = nodeContext.GetLogger();
         _entity.Add(_camera);
         _entity.Add(_frame);
     }
@@ -74,6 +78,7 @@ public sealed class GlobeCameraNode
             _view.SetHeight(initialHeight);
         }
         else _view.SetHeight(_view.Height);   // a changed Min/Max applies at once
+        _bench?.Step(_view, _logger);
 
         // Camera-relative (ROADMAP item 1): the eye stays in double in the frame component, the view
         // is rotation only. An absolute view put the eye at ~1.0 in float - a 0.4 m lattice.

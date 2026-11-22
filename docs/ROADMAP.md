@@ -390,8 +390,21 @@ while no tiles arrive" (4e) was read off that instrument and does not hold.
 reads `N frames, fps, mean p50 p95 p99 max ms, M over 20 ms, moving|still`, and every second the
 camera moved is logged, smooth or not. `tools/GLJS-Yardstick.html`: GL JS 6.19.0 on the globe with
 Liberty, the same summary each second as `GLJS perf:` (on the page and in the console), a view
-hash as ours, "Pan 10 s" at 300 px/s. Not yet run: the browser extension was not connected. Left:
-the same view and motion in both, side by side - the numbers this item is judged by.
+hash as ours, "Pan 10 s" at 300 px/s.
+
+**First numbers, the same night** (`tools/Summarize-Perf.py`, seconds the camera moved):
+- *VL.Globe, the user moving by hand at Tokyo* (23:32-23:34, `HowTo Draw vector tiles`, 1250 x 800):
+  68 s, 52.9 fps, **17.4% of frames over 20 ms**, p95 median 23.9 ms, uploads 52 MB/s mean, submit
+  5.8 ms mean, 2330 draws.
+- *GL JS 6.19.0, the same view* (`#14.82/35.68778/139.76758/-78.6/54.5`, map 1250 x 800 at device
+  pixel ratio 1.26, Chrome 157, the user's vvvv running beside it), two scripted pans of 10 s:
+  **every second 60 fps, 0 frames over 20 ms** while panning (its first loading seconds aside).
+  Seen in a screenshot: Tokyo tilted, 3D buildings, labels - not an empty map.
+Run with `tools/Yardstick-Server.py` (serves tools/, takes the page's POSTs - no browser extension)
+and a separate Chrome profile: `--user-data-dir=<temp> --app=http://127.0.0.1:8765/GLJS-Yardstick.html?bench=1&w=1250&h=800#<hash>`.
+The same motion in vvvv: `Engine/CameraBench.cs`, started by `VLGLOBE_BENCH=pan VLGLOBE_VIEW=#...`
+(25 s wait, two pans of 10 s at 300 px/s by the clock); `CameraBenchFacts` checks it pans east as
+panBy does. Not yet run: the user's vvvv was open.
 
 ### 5. Navigation
 
