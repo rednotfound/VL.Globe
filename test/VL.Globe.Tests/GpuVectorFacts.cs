@@ -185,6 +185,29 @@ public class GpuVectorFacts
     }
 
     [Fact]
+    public void ALayerHiddenAtTheTilesZoomIsNotBuilt()
+    {
+        // GL JS's worker_tile.ts: `zoom >= maxzoom` skips the layer. Liberty's flat building (maxzoom 14)
+        // was a quarter of a street-level tile's bytes, uploaded and never drawn.
+        var tiles = Tiles();
+        using var json = JsonDocument.Parse($$"""
+            {
+              "version": 8,
+              "sources": { "berlin": { "type": "vector", "maxzoom": 14, "tiles": [{{JsonSerializer.Serialize(Path.Combine(tiles, "{z}-{x}-{y}.mvt"))}}] } },
+              "layers": [
+                { "id": "below-14", "type": "fill", "source": "berlin", "source-layer": "water", "maxzoom": 14, "paint": { "fill-color": "#0000ff" } },
+                { "id": "below-15", "type": "fill", "source": "berlin", "source-layer": "water", "maxzoom": 15, "paint": { "fill-color": "#0000ff" } }
+              ]
+            }
+            """);
+        var doc = MapStyleDocument.Parse(json.RootElement.Clone(), lenient: true);
+        doc.Load = url => File.Exists(url) ? File.ReadAllBytes(url) : null;
+        var b = VectorBucketBuilder.Build(doc, (VectorSource)doc.Sources["berlin"], Layers(doc), false, new TileKey(14, 8802, 5374), true, null, out _)!;
+        Assert.NotEmpty(b.Ranges);
+        Assert.All(b.Ranges, r => Assert.Equal(1, r.Layer));
+    }
+
+    [Fact]
     public void ATileNotHereYetBuildsNothingAndNamesWhatItWaitsFor()
     {
         var tiles = Tiles();

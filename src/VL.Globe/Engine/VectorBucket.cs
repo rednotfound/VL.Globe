@@ -210,6 +210,12 @@ internal static partial class VectorBucketBuilder
         foreach (var layer in layers)
         {
             if (layer.Type == "background") continue;
+            // GL JS's worker_tile.ts skips a layer hidden at the tile's (overscaled) zoom, `zoom >= maxzoom`:
+            // Liberty's flat `building` (maxzoom 14) was a quarter of every street-level tile's bytes, built
+            // and uploaded, never drawn (2026-11-22). Overscaled further, the zoom only grows: still hidden.
+            // Its other half, `zoom < floor(minzoom)`, is not followed: a tilted view draws the far z13
+            // tiles at the camera's zoom, and their 3D buildings (minzoom 14) are wanted there (ROADMAP 4f).
+            if (key.Zoom + (layer.IsSymbol ? Math.Log2(b.Overscale) : 0) >= layer.Layer.MaxZoom) continue;
             List<StyleFeature>? features = geo;
             if (features is null && (data is null || layer.Layer.SourceLayer is not { } sl || !data.TryGetValue(sl, out features))) continue;
             try

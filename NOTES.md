@@ -474,4 +474,10 @@ looked fine - "which makes one think it works". Two causes, estimated at 100 m h
   seconds of loading (atlases 0 and 2 ms there). What is left while tiles load: frames 40-80 ms with
   Update 20-30 ms (single tiles of 20-30 MB uploaded in one frame), label placement up to 38 ms, submit
   up to 22 ms.
+- **What a street-level tile is made of** (`TileSizeProbe`, by hand: `VLGLOBE_PROBE=1`): Liberty's
+  z14 tile at Kyoto Station was 9.1 MB on the GPU - 3D buildings 5.1, the flat `building` fill and
+  outline 2.3, every road twice (casing and line, the same geometry) ~0.8. The flat building has
+  maxzoom 14: never drawn from a z14 tile, built and uploaded anyway. GL JS's worker skips a layer at
+  `zoom >= maxzoom`; so now do we: 6.7 MB, built in 194 ms instead of 251. Its `zoom < floor(minzoom)`
+  half is deliberately not followed - the far z13 tiles of a tilted view keep their 3D buildings (4f).
 - Open: one frame of 550 ms at rest (13:20:20) with Update 10 ms and Draw ~1.5 ms - outside both.
