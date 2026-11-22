@@ -498,4 +498,8 @@ looked fine - "which makes one think it works". Two causes, estimated at 100 m h
   glyph only for what is shown. So now: 6.7 ms. GL JS's other remedy, a placement paused after 2 ms a
   frame (PauseablePlacement), it uses only with fades: at fadeDuration 0 it forces a full placement,
   so newly loaded tiles show their labels in their first frame. It comes with the fades.
+  Seen in vvvv the same day (the user tilting at Kyoto, ~900 label tiles): at rest the slowest
+  placement a second is 6-9 ms; while tiles load still 17-50 ms, as before. Offline is warm, 500
+  label tiles, no occlusion test, no six workers allocating beside it - which of these it is was not
+  measured. The 2-ms-a-frame placement bounds it whatever it is.
 - Open: one frame of 550 ms at rest (13:20:20) with Update 10 ms and Draw ~1.5 ms - outside both.

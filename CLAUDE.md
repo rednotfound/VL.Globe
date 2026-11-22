@@ -25,8 +25,12 @@ Guidance for Claude Code working in this repository.
    Then symbols past the source's maxzoom (laid out at the overscaled zoom, as GL JS) - street
    names along every street at Kyoto Station in vvvv.
    Labels now placed as GL JS (every 300 ms while moving): 60 fps tilted while no tiles arrive.
-   **Next: frame time while tiles load, and a one-off 170-190 ms hitch (DESIGN-GPU-VECTOR.md, "Next" 0);
-   then label fades; then ROADMAP 4f (the tilted distance).**
+   2026-11-22 afternoon (NOTES.md, the last entries): the one-off hitch was the atlases (fixed, seen
+   gone); layers hidden at a tile's zoom no longer built (Kyoto z14 9.1 -> 6.7 MB); line labels no
+   longer step while panning close (the eye counts as a move); lines collide by first/last glyph.
+   Placement still spikes 17-50 ms while tiles load in vvvv.
+   **Next: label fades with GL JS's pauseable placement (2 ms a frame) and CrossTileSymbolIndex -
+   DESIGN-GPU-VECTOR.md "Next" 1; then ROADMAP 4f (the tilted distance).**
    Research: [docs/RESEARCH-0.1.md](docs/RESEARCH-0.1.md), [docs/RESEARCH-VECTOR.md](docs/RESEARCH-VECTOR.md).
 2. Read **[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)** — what exists and why.
 3. Read **[NOTES.md](NOTES.md)** — every failure so far, before touching the same code.
