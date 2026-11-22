@@ -65,10 +65,16 @@ internal sealed class GpuVectorTiles : IDisposable
     // where this frame's Update went (ms): finish+upload, tiles+jobs, resolve, backgrounds, draw list,
     // evict - logged by the node when an Update is long (two of 200 and 330 ms on 2026-11-21, all here)
     readonly System.Diagnostics.Stopwatch _timer = new();
-    readonly double[] _ms = new double[6];
+    readonly double[] _ms = new double[8];
+    // the draw list's slowest layer this frame, and whether the item list had to grow (a reallocation
+    // of a large-object-heap array, which can wait for a background GC)
+    string _slowLayer = "";
+    double _slowLayerMs;
+    int _itemsGrewFrom = -1, _itemsGrewTo;
     double _lapAt;
     void Lap(int stage) { double t = _timer.Elapsed.TotalMilliseconds; if (stage == 0) _lapAt = 0; _ms[stage] += t - _lapAt; _lapAt = t; }
-    public string Breakdown => $"finish+upload {_ms[0]:F0}, tiles+jobs {_ms[1]:F0}, resolve {_ms[2]:F0}, backgrounds {_ms[3]:F0}, draw list {_ms[4]:F0}, evict {_ms[5]:F0}";
+    public string Breakdown => $"finish+upload {_ms[0]:F0}, tiles+jobs {_ms[1]:F0}, resolve {_ms[2]:F0}, backgrounds {_ms[3]:F0}, atlases {_ms[4]:F0}, symbol layers {_ms[5]:F0}, other layers {_ms[6]:F0}" +
+        $" (slowest {_slowLayer} {_slowLayerMs:F0}{(_itemsGrewFrom >= 0 ? $", items grew {_itemsGrewFrom} -> {_itemsGrewTo}" : "")}), evict {_ms[7]:F0}";
 
     /// <summary>Bytes uploaded in this frame's Update, and buckets: for the node's measurements.</summary>
     public long UploadedBytes { get; private set; }
@@ -128,12 +134,14 @@ internal sealed class GpuVectorTiles : IDisposable
         _frame = frame;
         _timer.Restart();
         Array.Clear(_ms);
+        _slowLayer = ""; _slowLayerMs = 0; _itemsGrewFrom = -1;
         // two frames, reused in turn: the draw list of a globe view is thousands of items (~140 bytes
         // each), a new list every frame was large-object-heap garbage - gen-2 collections, and an
         // allocation that waited ~200 ms for one in the background (2026-11-21: Updates of 200-330 ms
         // with 2 ms of counted GC pause, every one in a second with a gen-2 collection). Draw runs
         // after Update on the same thread, so the other frame is free here.
         var result = _frames[_frame & 1];
+        int itemsCapacity = result.Items.Capacity;
         result.Items.Clear();
         result.Labels.Clear();
         result.CameraToCenter = (float)cameraToCenter;
@@ -236,29 +244,42 @@ internal sealed class GpuVectorTiles : IDisposable
                 info.Images = Texture.New2D(device, ImageAtlas.Width, imagesHeight, PixelFormat.R8G8B8A8_UNorm, pixels);
                 info.ImagesVersion = version;
             }
+            Lap(4);
             var ctx = new StyleContext { Zoom = zoom, GlobalState = doc.GlobalState };
             Matrix World(Built tile) => Matrix.Scaling(radius) * Matrix.Translation(TileGeometry.Translation(tile.Bucket.Centre, radius, eye));
             foreach (var layer in info.Layers)
             {
-                if (doc.Lenient && doc.IsDropped(layer.Layer.Id)) continue;
+                double layerAt = _timer.Elapsed.TotalMilliseconds;
+                try { AddToDrawList(layer); }
+                finally
+                {
+                    double ms = _timer.Elapsed.TotalMilliseconds - layerAt;
+                    if (ms > _slowLayerMs) { _slowLayerMs = ms; _slowLayer = layer.Layer.Id; }
+                    Lap(layer.IsSymbol ? 5 : 6);
+                }
+            }
+
+            void AddToDrawList(GpuStyleLayer layer)
+            {
+                if (doc.Lenient && doc.IsDropped(layer.Layer.Id)) return;
                 if (layer.IsCircle)
                 {
                     CirclePaint? circlePaint;
                     try { circlePaint = layer.CircleUniforms(ctx); }
-                    catch (StyleUnsupportedException e) when (doc.Lenient) { doc.Drop(layer.Layer.Id, e.Message); continue; }
-                    if (circlePaint is null || layer.Layer.Source is not { } circleSource || !draws.TryGetValue(circleSource, out var circleDrawn)) continue;
+                    catch (StyleUnsupportedException e) when (doc.Lenient) { doc.Drop(layer.Layer.Id, e.Message); return; }
+                    if (circlePaint is null || layer.Layer.Source is not { } circleSource || !draws.TryGetValue(circleSource, out var circleDrawn)) return;
                     // as labels: only from tiles drawn whole, each once (the circle shader does not clip)
                     var whole = new Vector4(0, 0, 1, 1);
                     var circled = circleDrawn.Where(d => d.clip == whole).DistinctBy(d => d.built).ToList();
                     VectorDrawList.AddCircleLayer(result.Items, layer, circlePaint, circled, World, linearize: true, cameraToCenter, 1);
-                    continue;
+                    return;
                 }
                 if (layer.IsSymbol)
                 {
                     SymbolPaint? paint = null, iconPaint = null;
-                    try { if (!layer.SymbolUniforms(ctx, out paint)) continue; iconPaint = layer.IconUniforms(ctx); }
-                    catch (StyleUnsupportedException e) when (doc.Lenient) { doc.Drop(layer.Layer.Id, e.Message); continue; }
-                    if (info.Atlas is null && info.Images is null || layer.Layer.Source is not { } labelSource || !symbolDraws.TryGetValue(labelSource, out var drawn)) continue;
+                    try { if (!layer.SymbolUniforms(ctx, out paint)) return; iconPaint = layer.IconUniforms(ctx); }
+                    catch (StyleUnsupportedException e) when (doc.Lenient) { doc.Drop(layer.Layer.Id, e.Message); return; }
+                    if (info.Atlas is null && info.Images is null || layer.Layer.Source is not { } labelSource || !symbolDraws.TryGetValue(labelSource, out var drawn)) return;
                     // labels only from tiles drawn whole, each once: the symbol shader does not clip, and a
                     // tile standing in for finer ones is drawn once per square - its labels drawn several
                     // times, colliding with themselves. A stand-in shows no labels; the finer tile will.
@@ -267,22 +288,23 @@ internal sealed class GpuVectorTiles : IDisposable
                     VectorDrawList.AddSymbolLayer(result.Items, layer, paint!, labelled, World, linearize: true, info.Atlas, cameraToCenter, 1, iconPaint, info.Images);
                     // placed from the top of the style down
                     result.Labels.Insert(0, new LabelPlacement.Layer(layer.Index, labelled.Select(d => (d.built, World(d.built))).ToList(), (float)paint!.Size));
-                    continue;
+                    return;
                 }
                 bool visible;
                 StyleColor color, outline; double width;
                 try { visible = layer.Uniforms(ctx, out color, out width, out outline); }
-                catch (StyleUnsupportedException e) when (doc.Lenient) { doc.Drop(layer.Layer.Id, e.Message); continue; }
-                if (!visible) continue;
+                catch (StyleUnsupportedException e) when (doc.Lenient) { doc.Drop(layer.Layer.Id, e.Message); return; }
+                if (!visible) return;
                 List<(Built built, Vector4 clip)>? list = backgroundDraws;
-                if (layer.Type != "background" && (layer.Layer.Source is not { } source || !draws.TryGetValue(source, out list))) continue;
+                if (layer.Type != "background" && (layer.Layer.Source is not { } source || !draws.TryGetValue(source, out list))) return;
                 VectorDrawList.AddLayer(result.Items, layer, color, width, outline, list, World, linearize: true);
             }
         }
-        Lap(4);
+        if (result.Items.Capacity > itemsCapacity) (_itemsGrewFrom, _itemsGrewTo) = (itemsCapacity, result.Items.Capacity);
+        Lap(6);
         _renderer.Current = result;
         if (_frame % 30 == 0) Evict();
-        Lap(5);
+        Lap(7);
     }
 
     StyleInfo? Analyse(VectorTileService service)
