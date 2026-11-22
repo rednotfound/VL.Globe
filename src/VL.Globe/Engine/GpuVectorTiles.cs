@@ -118,6 +118,9 @@ internal sealed class GpuVectorTiles : IDisposable
     /// <summary>The renderer's Draw timings since the last call; resets them.</summary>
     public string TakeDrawStats() => _renderer.TakeStats();
     public int TilesBuilt => _tilesBuilt;
+    /// <summary>Tiles being built now; with <see cref="Frame"/>, for drawing a view offscreen in a test.</summary>
+    internal int Building => _running;
+    internal VectorRenderer.Frame? Frame => _renderer.Current;
 
     // counted as they change, not summed every frame
     public string Status => _styles.Count == 0 ? "" :
@@ -152,6 +155,17 @@ internal sealed class GpuVectorTiles : IDisposable
         foreach (var e in _entries.Values) Finish(device, e, ref budget);
         Lap(0);
 
+        // ROADMAP 4f step 3: the fog's reach, in globe radii. A tilted view drew the tiles a little way off
+        // a level coarser than the camera's zoom, and a vector source's tile one level down is another
+        // map: OpenMapTiles' z13 buildings are merged and without heights, so Liberty's 3D buildings
+        // ended in a straight line across the screen 6 km off (the user over Tokyo, 2026-11-22,
+        // #13.82/35.69555/139.75982/-9.9/57.3). Up to where the fog is whole the camera's own zoom is
+        // kept; past it the fog hides where the detail ends. The reach goes with the eye's height, as
+        // the tiles' size does, so the tiles it adds are about as many at every height.
+        var eyeUnit = eye is { } ev ? (ev * (1.0 / radius)).ToVector3() : default;
+        double reach = eye is { } er ? Engine.Fog.EndFactor * (er.Length - radius) / radius : 0;
+        bool InReach(TileKey g) => reach > 0 && TileSelector.DistanceToTile(g, eyeUnit) < reach;
+
         foreach (var service in services.Distinct())
         {
             var info = Analyse(service);
@@ -176,16 +190,28 @@ internal sealed class GpuVectorTiles : IDisposable
                 // overscale its symbols are laid out at (the finest any of them is shown at)
                 var needed = new Dictionary<TileKey, List<TileKey>>();
                 var scales = new Dictionary<TileKey, int>();
+                // ROADMAP 4f step 3: inside the fog's reach no tile coarser than the camera's own zoom
+                int floor = Math.Min(maxZoom, (int)Math.Floor(zoom + Math.Log2(512.0 / tileSize)));
+                // served: the squares a vector tile draws, each a globe tile or, split for the floor, a
+                // part of one; a square fetches when its globe tile is wanted
+                var fetching = new HashSet<TileKey>();
+                void Need(TileKey vk, TileKey square, TileKey g)
+                {
+                    if (!needed.TryGetValue(vk, out var served)) needed[vk] = served = new List<TileKey>();
+                    served.Add(square);
+                    if (wanted.Contains(g)) fetching.Add(square);
+                    scales[vk] = Math.Max(scales.GetValueOrDefault(vk, 1), Overscale(tileSize, vk, g));
+                }
                 foreach (var g in shown)
-                    if (VectorKey(minZoom, maxZoom, tileSize, g) is { } vk)
+                    foreach (var vk in VectorKeys(minZoom, maxZoom, tileSize, g, InReach(g) ? floor : -1))
                     {
-                        if (!needed.TryGetValue(vk, out var served)) needed[vk] = served = new List<TileKey>();
-                        served.Add(g);
-                        scales[vk] = Math.Max(scales.GetValueOrDefault(vk, 1), Overscale(tileSize, vk, g));
+                        // a part of g at the floor: only where it is itself in reach - g's own tile draws the rest
+                        if (vk.Zoom > g.Zoom && !InReach(vk) && VectorKey(minZoom, maxZoom, tileSize, g) is { } coarse) Need(coarse, vk, g);
+                        else Need(vk, vk.Zoom > g.Zoom ? vk : g, g);
                     }
                 var symbolLayers = info.SymbolsBySource.GetValueOrDefault(sourceId);
                 // the tiles wanted globe tiles need build first
-                foreach (var (vk, served) in needed.OrderByDescending(n => n.Value.Any(wanted.Contains)))
+                foreach (var (vk, served) in needed.OrderByDescending(n => n.Value.Any(fetching.Contains)))
                 {
                     if (layers.Count > 0) Schedule(vk, served, 0, layers);
                     if (symbolLayers != null) Schedule(vk, served, scales[vk], symbolLayers);
@@ -197,7 +223,7 @@ internal sealed class GpuVectorTiles : IDisposable
                     // not built, or built without a glyph range that has come since
                     if ((e.Built is null || e.Incomplete && e.Missing.Any(service.IsHere)) && e.Job is null && _running < Workers.Count)
                     {
-                        bool fetch = served.Any(wanted.Contains);
+                        bool fetch = served.Any(fetching.Contains);
                         bool retry = e.Built != null || e.Missing.Length == 0 || e.Missing.Any(service.IsHere) || (fetch && !e.Fetched);
                         if (retry)
                         {
@@ -473,6 +499,21 @@ internal sealed class GpuVectorTiles : IDisposable
         if (ideal < minZoom) return null;
         int z = Math.Min(Math.Min(ideal, maxZoom), g.Zoom);
         return new TileKey(z, g.X >> (g.Zoom - z), g.Y >> (g.Zoom - z));
+    }
+
+    // The vector tiles one globe tile g draws: GL JS's choice (VectorKey), or, where that is coarser than
+    // floor (the camera's own zoom near the eye; -1 for none), the tile at floor holding g, or the
+    // tiles at floor inside g when g is coarser still - at most MaxFloorSplit levels below it.
+    internal const int MaxFloorSplit = 3;
+    internal static IEnumerable<TileKey> VectorKeys(int minZoom, int maxZoom, int tileSize, TileKey g, int floor)
+    {
+        if (VectorKey(minZoom, maxZoom, tileSize, g) is not { } vk) yield break;
+        if (floor <= vk.Zoom || floor < minZoom) { yield return vk; yield break; }
+        if (floor <= g.Zoom) { yield return new TileKey(floor, g.X >> (g.Zoom - floor), g.Y >> (g.Zoom - floor)); yield break; }
+        int z = Math.Min(floor, g.Zoom + MaxFloorSplit), n = 1 << (z - g.Zoom);
+        for (int y = 0; y < n; y++)
+            for (int x = 0; x < n; x++)
+                yield return new TileKey(z, g.X * n + x, g.Y * n + y);
     }
 
     static TileKey[] Children(TileKey k) => new[]

@@ -341,6 +341,16 @@ pixel (no depth), from 3 to 16 eye heights, the sky within ~3 degrees of the lim
 (`FogFacts` render it offscreen). Step 3 waits for the user's look: with the fog whole at 16 eye
 heights (2.4 km tilted 60 degrees from 300 m), the vector tiles inside it are z14 already.
 
+**Step 3 built the same evening, from the user's look** ("有雾没雾完全没有关系啊，tiles被截得很厉害",
+`#13.82/35.69555/139.75982/-9.9/57.3`, Tokyo, 2.3 km up): the 3D buildings ended in a straight line
+6 km off, where the vector tiles fell from z14 to z13 - and z13's buildings are merged, without
+heights. Not a floor at z13 but at the camera's own zoom: inside the fog's reach no vector tile is
+coarser (`GpuVectorTiles.VectorKeys`, parts of a coarse globe tile only where they are themselves in
+reach); the fog now 2 to 5 eye heights, so it is whole where the floor ends. Rendered offscreen from
+the user's view (`ViewProbe`): no line, buildings into the haze. Cost there: 39 z14 tiles with
+buildings, 853 MB on the GPU (658 before) - over the 768 MB budget; the compact extrusion vertex
+(C) is what brings it down.
+
 ### 5. Navigation
 
 - `CenterOn`, `ZoomToLevel`, `ZoomIn`, `ZoomOut`.

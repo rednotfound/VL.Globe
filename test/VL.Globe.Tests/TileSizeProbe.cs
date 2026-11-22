@@ -9,7 +9,13 @@ namespace VL.Globe.Tests;
 public class TileSizeProbe(ITestOutputHelper output)
 {
     [Fact]
-    public void Kyoto_station_z14_on_liberty()
+    public void Kyoto_station_z14_on_liberty() => Measure(new TileKey(14, 14371, 6491));
+
+    // the far tiles of the user's tilted view over Tokyo (2026-11-22): do z13 tiles hold buildings?
+    [Fact]
+    public void Kanda_z13_on_liberty() => Measure(new TileKey(13, 7276, 3225));
+
+    void Measure(TileKey key)
     {
         if (Environment.GetEnvironmentVariable("VLGLOBE_PROBE") != "1") return;
         using var service = new VectorTileService("https://tiles.openfreemap.org/styles/liberty");
@@ -20,7 +26,6 @@ public class TileSizeProbe(ITestOutputHelper output)
         var (sourceId, source) = doc.Sources.First(s => s.Value is VectorSource);
         var layers = Enumerable.Range(0, doc.Layers.Count).Select(i => GpuStyleLayer.Of(doc, i)).Where(l => l != null && l.Layer.Source == sourceId && !l.IsSymbol).Select(l => l!).ToList();
 
-        var key = new TileKey(14, 14371, 6491);   // Kyoto Station
         VectorBucket? b = null;
         while (DateTime.UtcNow < until)
         {
@@ -29,6 +34,12 @@ public class TileSizeProbe(ITestOutputHelper output)
             Thread.Sleep(200);
         }
         Assert.NotNull(b);
+        bool here = true;
+        if (doc.Tile((VectorSource)source, key, ref here, false, null) is { } data && data.TryGetValue("building", out var buildings))
+        {
+            var heights = buildings.Select(f => f.Properties.GetValueOrDefault("render_height")).ToList();
+            output.WriteLine($"{buildings.Count} buildings, {heights.Count(h => h is null)} without render_height; first: {string.Join(" ", heights.Take(12))}");
+        }
         output.WriteLine($"{key}: {b!.VertexCount} vertices x {VectorVertex.Size} B + {b.IndexCount} indices x 4 B = {((long)b.VertexCount * VectorVertex.Size + b.IndexCount * 4L) / 1e6:F1} MB, built in {b.Ms:F0} ms");
         foreach (var g in b.Ranges.GroupBy(r => (r.Layer, r.Kind)).OrderByDescending(g => g.Sum(r => r.Count)))
         {

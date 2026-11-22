@@ -510,3 +510,11 @@ looked fine - "which makes one think it works". Two causes, estimated at 100 m h
   -70/-45, 300 km, tilt 30 (reachable before and after) two corner pixels get a z8 tile at 1.76-1.85
   px per texel, over the 1.6 bound - the tile selector's corner shortfall (TileCoverageFacts' 1.6
   comment) is larger than measured there. Open.
+
+- **The fog did nothing for the cut the user saw** (2026-11-22 evening, Tokyo tilted 57 degrees,
+  2.3 km up, by the view line): the 3D buildings stopped in a straight line 6 km off. Not missing
+  data in the far tiles, not a draw bug: the z13 tiles there were built and drawn with their
+  building-3d - but OpenMapTiles merges z13's buildings into one feature without `render_height`, so
+  they were 0 m tall. The fog started at 3 eye heights, whole at 16; the line was at 2.5. Found by
+  drawing the user's view offscreen (`ViewProbe`, the whole GPU path, VLGLOBE_PROBE=1) and listing
+  the draws by pass and zoom; a reading of the code had found nothing. Fixed by 4f step 3 (ROADMAP).

@@ -15,7 +15,10 @@ internal readonly record struct Fog(float Start, float End, float Horizon, Color
     // (the farthest ground is ~1.2 heights off), the whole globe from afar neither (its limb is 1.4-2.8
     // heights off from 2,000 km up), and a view tilted at street level fades out a few kilometres off,
     // where the tiles are coarse and buildings missing. Chosen for the globe; they await the user.
-    internal const float StartFactor = 3f, EndFactor = 16f;
+    // The end is also how far the vector tiles keep the camera's zoom (GpuVectorTiles, 4f step 3): at 16
+    // heights that was ~270 tiles of a wedge to the horizon, at 8 about 70; and the user saw no fog at 16
+    // (2026-11-22: the screen's top 5.7 heights off, the fog barely begun).
+    internal const float StartFactor = 2f, EndFactor = 5f;
     internal const float HorizonAngle = 0.05f;   // radians, about 3 degrees of sky over the limb
 
     /// <summary>A pale haze, linear and premultiplied.</summary>

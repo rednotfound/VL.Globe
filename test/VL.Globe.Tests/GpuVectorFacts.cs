@@ -273,6 +273,22 @@ public class GpuVectorFacts
         Assert.Equal(g.X >> (globeZoom - vectorZoom), vk.X);
     }
 
+    [Fact]
+    public void InsideTheFogsReachNoVectorTileIsCoarserThanTheCamerasZoom()
+    {
+        // ROADMAP 4f step 3: the user's tilted view over Tokyo drew z13 tiles 6 km off, whose buildings
+        // have no heights - the 3D buildings ended in a line. The floor (14) replaces them there.
+        var g14 = new TileKey(14, 14552, 6451);
+        Assert.Equal(new[] { new TileKey(13, 7276, 3225) }, GpuVectorTiles.VectorKeys(0, 14, 512, g14, -1));   // no floor: GL JS's choice
+        Assert.Equal(new[] { new TileKey(14, 14552, 6451) }, GpuVectorTiles.VectorKeys(0, 14, 512, g14, 14));  // the floor at g's own zoom
+        var g12 = new TileKey(12, 3638, 1612);
+        var parts = GpuVectorTiles.VectorKeys(0, 14, 512, g12, 14).ToList();                                    // g coarser: its parts
+        Assert.Equal(16, parts.Count);
+        Assert.All(parts, k => Assert.Equal((14, 3638, 1612), (k.Zoom, k.X >> 2, k.Y >> 2)));
+        Assert.Equal(64, GpuVectorTiles.VectorKeys(0, 14, 512, new TileKey(9, 454, 201), 14).Count());          // at most 3 levels down
+        Assert.Single(GpuVectorTiles.VectorKeys(0, 14, 512, g14, 12));                                            // a floor below the choice changes nothing
+    }
+
     [Theory]
     [InlineData(15, 1)]    // MapLibre's zoom 14 = the source's maxzoom: laid out at its own size
     [InlineData(16, 2)]    // past the maxzoom: GL JS's overscaledZ 15, overscaling 2

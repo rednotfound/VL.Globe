@@ -76,6 +76,33 @@ internal static class GpuFixtureRenderer
         }
     }
 
+    /// <summary>The test's own device, for GpuVectorTiles' uploads; use it under <see cref="Locked"/>.</summary>
+    public static GraphicsDevice Device => Shared.Value.Device;
+    public static T Locked<T>(Func<T> work) { lock (Lock) return work(); }
+
+    /// <summary>A globe frame as vvvv draws it (on the sphere, linearised, lifted, fogged) over an opaque ground, read back RGBA.</summary>
+    public static byte[] RenderGlobe(VectorRenderer.Frame frame, Matrix view, Matrix projection, int width, int height, bool fog)
+    {
+        lock (Lock)
+        {
+            var gpu = Shared.Value;
+            using var target = Texture.New2D(gpu.Device, width, height, PixelFormat.R8G8B8A8_UNorm, TextureFlags.RenderTarget | TextureFlags.ShaderResource);
+            using var depth = Texture.New2D(gpu.Device, width, height, PixelFormat.D24_UNorm_S8_UInt, TextureFlags.DepthStencil);
+            var cl = gpu.Context.CommandList;
+            cl.SetRenderTargetAndViewport(depth, target);
+            cl.Clear(target, new Color4(0.2f, 0.2f, 0.2f, 1));
+            cl.Clear(depth, DepthStencilClearOptions.DepthBuffer | DepthStencilClearOptions.Stencil, 1, 0);
+            var renderer = new VectorRenderer();
+            renderer.DrawFrame(cl, gpu.Context, gpu.Effect, gpu.SymbolEffect, gpu.CircleEffect, view, projection, height, frame, renderer.Lift, linearize: false, flat: false);
+            if (fog && VectorRenderer.FogOf(frame) is { } f)
+            {
+                using var pass = new FogPass();
+                pass.Draw(cl, gpu.Context, gpu.FogEffect, view, projection, (-frame.Eye!.Value).ToVector3(), frame.Radius, f);
+            }
+            return target.GetData<byte>(cl);
+        }
+    }
+
     public static byte[] Render(MapStyleDocument style, int width, int height, double pixelRatio)
     {
         lock (Lock) return RenderCore(style, width, height, pixelRatio);
