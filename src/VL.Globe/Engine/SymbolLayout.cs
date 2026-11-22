@@ -392,6 +392,7 @@ internal static partial class VectorBucketBuilder
             const double Up = LineUp;
             var l = layer.Layer;
             bool keepUpright = GpuStyleLayer.Get(l.Layout, "text-keep-upright") is not { } ku || Expression.Evaluate(ku, ctx, Expression.Kind.Any) is not false;
+            bool rotateToLine = Expression.String(GpuStyleLayer.Get(l.Layout, "text-rotation-alignment"), ctx, "auto") is "map" or "auto";
             double height = shaping.Bottom - shaping.Top;
             float diameter = height > 0 ? (float)(Math.Max(10, height) * layoutTextSize / Shaping.OneEm) : 0;
 
@@ -426,7 +427,7 @@ internal static partial class VectorBucketBuilder
                         {
                             Layer = layer.Index, Anchor = anchorPosition, Line = points, Segment = anchor.Segment,
                             GlyphOffsets = offsets.ToArray(), VertexStart = first,
-                            LineOffsetX = (float)offset.X, LineOffsetY = (float)offset.Y, KeepUpright = keepUpright,
+                            LineOffsetX = (float)offset.X, LineOffsetY = (float)offset.Y, KeepUpright = keepUpright, RotateToLine = rotateToLine,
                             CircleDiameter = diameter, Padding = (float)padding, FeatureSize = size,
                             AlwaysOverlap = alwaysOverlap, IgnorePlacement = ignorePlacement,
                             Key = CrossTileSymbolIndex.KeyOf(text), AnchorX = (int)Math.Floor(anchor.X), AnchorY = (int)Math.Floor(anchor.Y),

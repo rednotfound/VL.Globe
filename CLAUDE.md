@@ -37,9 +37,9 @@ Guidance for Claude Code working in this repository.
    Then label fades (2026-11-22 night): CrossTileSymbolIndex, the pauseable placement (2 ms a frame),
    300 ms fades - built and tested (260 green, fixtures unchanged at 311); the user saw every fade begin
    with a blink (the fade change taken before the step: fixed, not yet seen again); the buildings'
-   fade-out turned off ("还是太怪了").
-   **Next: the user looks at the fades in vvvv (zoom in at Kyoto: names should stay, not blink) -
-   DESIGN-GPU-VECTOR.md "Label fades" and "Next" 1.**
+   fade-out turned off ("还是太怪了"); seen again: "没什么问题". The GPU harness now turns by the
+   style's bearing: 326 fixtures pass, 317 non-vacuous (viewport-glyph labels were turned to the line).
+   **Next: DESIGN-GPU-VECTOR.md "Next" 1 - map-aligned point labels, pitch in the harness, `format`.**
    Research: [docs/RESEARCH-0.1.md](docs/RESEARCH-0.1.md), [docs/RESEARCH-VECTOR.md](docs/RESEARCH-VECTOR.md).
 2. Read **[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)** — what exists and why.
 3. Read **[NOTES.md](NOTES.md)** — every failure so far, before touching the same code.

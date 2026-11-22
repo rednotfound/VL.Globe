@@ -19,6 +19,9 @@ internal sealed class LineLabel
     public required int VertexStart;
     public float LineOffsetX, LineOffsetY;    // text-offset at 24 px (GL JS's lineOffsetX/Y)
     public bool KeepUpright = true;
+    // GL JS rotateToLine: each glyph turned to its segment (text-rotation-alignment map, or auto on a
+    // line); viewport-glyph places the glyphs along the line but keeps each upright on the screen
+    public bool RotateToLine = true;
     public float CircleDiameter;              // GL JS's collisionCircleDiameter, px at the layout's text size
     public float Padding;                     // text-padding, px
     public float FeatureSize;                 // the feature's text-size where it depends on it, else 0
@@ -149,7 +152,7 @@ internal static class LineGlyphs
             float t = (abs - fromAnchor) / segmentLength;
             var point = segment * t + previous;
             path.Add(point);
-            return new Placed(point.X, point.Y, angle + MathF.Atan2(current.Y - previous.Y, current.X - previous.X), path);
+            return new Placed(point.X, point.Y, label.RotateToLine ? angle + MathF.Atan2(current.Y - previous.Y, current.X - previous.X) : 0, path);
         }
     }
 

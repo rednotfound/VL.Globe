@@ -279,7 +279,15 @@ placement.ts commit / updateBucketOpacities, cross_tile_symbol_index.ts; sources
   change before the step, so a commit's new states were drawn once with the time since the commit
   before (fading in from 0, drawn whole). Now `StepLabels` gives the change after the step
   (`A_fade_does_not_begin_with_a_blink`). The 3D buildings' fade-out (4f) turned off the same night:
-  "还是太怪了" (`GpuVectorTiles.BuildingFade`, kept unused, as the fog).
+  "还是太怪了" (`GpuVectorTiles.BuildingFade`, kept unused, as the fog). Seen again after the fix:
+  "看起来没什么问题".
+
+**Bearing in the render tests, the same night.** The GPU harness turns its view by the style's
+`bearing` (the drape still refuses it): 18 fixtures that were unsupported now run - mostly
+text/icon-rotation-alignment, the code a rotated globe uses. One failed and showed a fault: with
+`viewport-glyph` the glyphs are placed along the line but stay upright (GL JS `rotateToLine` false);
+ours were turned to the line, invisible at bearing 0. Fixed (`LineLabel.RotateToLine`).
+**326 pass, 317 non-vacuous** (manifest floor 317). Pitch in the harness (7 more) not yet.
 
 ## Next
 
@@ -290,8 +298,9 @@ placement.ts commit / updateBucketOpacities, cross_tile_symbol_index.ts; sources
    Left: 3D buildings are 76% of a tile (a 28-byte vertex; GL JS's is ~12), roads built twice (casing
    and line); the opacities written for every label tile whenever a tile comes (GL JS skips unchanged
    buckets: `_markDuplicates`' changed). A 550 ms frame at rest outside Update and Draw: not yet found.
-1. Fades: to be seen in vvvv (zooming in at Kyoto: names should stay, not blink). Then the `format`
-   expression, text-size by zoom and feature, text-offset across a line, an icon beside text along a line.
+1. Point labels aligned to the map (text/icon-rotation-alignment map, 3 fixtures), pitch in the
+   harness (7), the `format`
+   expression (14), text-size by zoom and feature, text-offset across a line, an icon beside text along a line.
 2. Seen in vvvv at Kyoto Station: the one-way arrows along the roads. Shields not yet seen (no road
    with a ref in that view).
 3. 16-bit indices where a range allows, and dashes (line-dasharray) - drawn solid today.

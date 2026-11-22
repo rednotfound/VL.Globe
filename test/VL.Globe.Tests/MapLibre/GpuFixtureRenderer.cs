@@ -118,7 +118,12 @@ internal static class GpuFixtureRenderer
         double worldSize = 512 * Math.Pow(2, zoom) * pixelRatio;                // device px per world (1 wide)
         double cx = (style.CenterLon + 180) / 360, cy = TileGeometry.MercatorY(style.CenterLat);
         double distance = h / 2.0 / Math.Tan(Fov / 2) / worldSize;                // the eye above the plane, in world units
-        double halfW = w / 2.0 / worldSize, halfH = h / 2.0 / worldSize;
+        // GL JS's bearing turns the map under the camera: the view turned about the vertical through the
+        // centre (the eye is above it); the tiles cover the turned screen's bounding box
+        double bearing = style.Bearing * Math.PI / 180;
+        double screenHalfW = w / 2.0 / worldSize, screenHalfH = h / 2.0 / worldSize;
+        double halfW = Math.Abs(screenHalfW * Math.Cos(bearing)) + Math.Abs(screenHalfH * Math.Sin(bearing));
+        double halfH = Math.Abs(screenHalfW * Math.Sin(bearing)) + Math.Abs(screenHalfH * Math.Cos(bearing));
 
         var layers = Enumerable.Range(0, style.Layers.Count).Select(i => GpuStyleLayer.Of(style, i)).Where(l => l != null).Select(l => l!).ToList();
         var ctx = new StyleContext { Zoom = zoom, GlobalState = style.GlobalState };
@@ -223,7 +228,7 @@ internal static class GpuFixtureRenderer
             // row off, the top one row higher, the bottom one lower (line-miter-limit/default). Moved
             // down 1/256 px - more than this chain's float error, which hid 1/1024 - ties fall as in GL.
             projection.M32 += 2f / 256 / h;
-            gpu.Renderer.DrawFrame(cl, gpu.Context, gpu.Effect, gpu.SymbolEffect, gpu.CircleEffect, Matrix.Identity, projection, h, frame, lift: 0, linearize: false, flat: true);
+            gpu.Renderer.DrawFrame(cl, gpu.Context, gpu.Effect, gpu.SymbolEffect, gpu.CircleEffect, Matrix.RotationZ((float)bearing), projection, h, frame, lift: 0, linearize: false, flat: true);
             var px = target.GetData<byte>(cl);
             // render.test.ts un-premultiplies by division into a Uint8Array, which truncates
             for (int i = 0; i < px.Length; i += 4)

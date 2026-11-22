@@ -1,6 +1,6 @@
 {
   "tag": "v6.19.0",
-  "passedAtLeast": 302,
+  "passedAtLeast": 317,
   "ignores": {
     "fill-outline-color/multiply": "one pixel at each outer corner of a 1-px outline: D3D's line rasterisation draws a segment's start pixel there, GL's does not",
     "geojson/inline-linestring-fill": "a self-intersecting ring filled: GL JS's earcut triangulates it differently from our ear clipping",

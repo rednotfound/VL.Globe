@@ -12,5 +12,6 @@ public class MapLibreRenderFacts
 
     [Fact]
     public void RenderTestsHoldTheirGround()
-        => RenderHarness.RunAll(_out, "render-tests.json", "results", "VL.Globe's draped path", MapStylePainter.RenderStraight);
+        => RenderHarness.RunAll(_out, "render-tests.json", "results", "VL.Globe's draped path",
+            (style, w, h, ratio) => style.Bearing != 0 ? throw new StyleUnsupportedException("bearing") : MapStylePainter.RenderStraight(style, w, h, ratio));
 }

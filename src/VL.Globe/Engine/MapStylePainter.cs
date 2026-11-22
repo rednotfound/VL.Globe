@@ -124,6 +124,7 @@ internal sealed class MapStyleDocument
     public Dictionary<string, StyleSource> Sources = new();
     public Dictionary<string, JsonElement> GlobalState = new();
     public double CenterLon, CenterLat, Zoom;
+    public double Bearing;   // degrees clockwise from north the camera faces (a render test's camera)
     /// <summary>The style's glyph URL template ({fontstack}/{range}.pbf), or null: labels need it.</summary>
     public string? Glyphs;
 
@@ -292,12 +293,13 @@ internal sealed class MapStyleDocument
             if (!RootKeys.Contains(p.Name) && !lenient) throw new StyleUnsupportedException($"style.{p.Name}");
         if (!lenient)
         {
-            // a render test's camera; on the globe the camera is the globe's
-            if (root.TryGetProperty("bearing", out var bearing) && bearing.GetDouble() != 0) throw new StyleUnsupportedException("bearing");
+            // a render test's camera; on the globe the camera is the globe's. The bearing is read (the GPU
+            // path's harness turns its view by it); the drape has none
             if (root.TryGetProperty("pitch", out var pitch) && pitch.GetDouble() != 0) throw new StyleUnsupportedException("pitch");
         }
         if (root.TryGetProperty("center", out var c) && c.ValueKind == JsonValueKind.Array) { doc.CenterLon = c[0].GetDouble(); doc.CenterLat = c[1].GetDouble(); }
         if (root.TryGetProperty("zoom", out var z) && z.ValueKind == JsonValueKind.Number) doc.Zoom = z.GetDouble();
+        if (root.TryGetProperty("bearing", out var b) && b.ValueKind == JsonValueKind.Number) doc.Bearing = b.GetDouble();
         if (root.TryGetProperty("glyphs", out var glyphs) && glyphs.ValueKind == JsonValueKind.String) doc.Glyphs = glyphs.GetString();
         // GL JS's coerceSpriteToArray: a URL is the sprite "default"
         if (root.TryGetProperty("sprite", out var sprite))
