@@ -47,6 +47,9 @@ internal sealed class VectorRenderer : IGraphicsRendererBase
         // labels to place before drawing (top of the style first), and the distance to the view's centre
         public readonly List<LabelPlacement.Layer> Labels = new();
         public float CameraToCenter = 1;
+        // the eye the world matrices are relative to: the view is a rotation only, so a pan at street
+        // level can leave it bit for bit the same while every world matrix has moved
+        public D3? Eye;
         // device pixels per CSS pixel: labels are laid out and placed in CSS pixels, as GL JS's
         public float PixelRatio = 1;
     }
@@ -95,6 +98,7 @@ internal sealed class VectorRenderer : IGraphicsRendererBase
     readonly System.Diagnostics.Stopwatch _clock = System.Diagnostics.Stopwatch.StartNew();
     Matrix _placedViewProjection;
     Vector2 _placedSize;
+    D3? _placedEye;
     long _placedTiles;
     double _placedAt = double.NegativeInfinity;
     bool _restingPlacementDue;
@@ -140,6 +144,27 @@ internal sealed class VectorRenderer : IGraphicsRendererBase
     /// </summary>
     // linearize: The colours are sRGB and the target linear (vvvv); false draws in sRGB space, as GL JS blends.
     // flat: The buckets are on the Mercator plane (x east, y north, z up), not the sphere.
+    internal enum LabelStep { None, Place, UpdateLines }
+
+    /// <summary>What the labels need this frame: a placement, the glyphs along lines walked again, or nothing.</summary>
+    internal LabelStep NextLabelStep(Matrix viewProjection, Vector2 size, D3? eye, long tiles, double now)
+    {
+        // moved: the view, the viewport or the eye. With the eye left out, a pan at street level kept
+        // the rotation-only view bit for bit in many frames: the glyphs along lines stood still while
+        // the roads under them moved, and caught up in steps ("一顿一顿", the user, 2026-11-22)
+        bool moved = viewProjection != _placedViewProjection || size != _placedSize || eye != _placedEye;
+        LabelStep step;
+        if (tiles != _placedTiles || (moved && now - _placedAt >= PlacementInterval) || (!moved && _restingPlacementDue))
+        {
+            step = LabelStep.Place;
+            _placedAt = now; _placedTiles = tiles; _restingPlacementDue = false;
+        }
+        else if (moved) { step = LabelStep.UpdateLines; _restingPlacementDue = true; }
+        else return LabelStep.None;
+        _placedViewProjection = viewProjection; _placedSize = size; _placedEye = eye;
+        return step;
+    }
+
     internal void DrawFrame(CommandList commandList, GraphicsContext graphicsContext, EffectInstance effect, EffectInstance symbolEffect,
         EffectInstance circleEffect, Matrix view, Matrix projection, float viewHeight, Frame frame, float lift, bool linearize, bool flat)
     {
@@ -190,20 +215,9 @@ internal sealed class VectorRenderer : IGraphicsRendererBase
             long tiles = 17;
             foreach (var layer in frame.Labels)
                 foreach (var (tile, _) in layer.Tiles) tiles = tiles * 31 + System.Runtime.CompilerServices.RuntimeHelpers.GetHashCode(tile);
-            bool moved = viewProjection != _placedViewProjection || size != _placedSize;
-            double now = _clock.Elapsed.TotalMilliseconds;
-            if (tiles != _placedTiles || (moved && now - _placedAt >= PlacementInterval) || (!moved && _restingPlacementDue))
-            {
-                _placement.Place(frame.Labels, view, projection, width, height, frame.CameraToCenter, flat);
-                _placedAt = now; _placedTiles = tiles; _restingPlacementDue = false;
-                _placedViewProjection = viewProjection; _placedSize = size;
-            }
-            else if (moved)
-            {
-                _placement.UpdateLines(frame.Labels, view, projection, width, height, frame.CameraToCenter, flat);
-                _restingPlacementDue = true;
-                _placedViewProjection = viewProjection; _placedSize = size;
-            }
+            var step = NextLabelStep(viewProjection, size, frame.Eye, tiles, _clock.Elapsed.TotalMilliseconds);
+            if (step == LabelStep.Place) _placement.Place(frame.Labels, view, projection, width, height, frame.CameraToCenter, flat);
+            else if (step == LabelStep.UpdateLines) _placement.UpdateLines(frame.Labels, view, projection, width, height, frame.CameraToCenter, flat);
             placeMs = _drawTimer.Elapsed.TotalMilliseconds;
             foreach (var layer in frame.Labels)
                 foreach (var (tile, _) in layer.Tiles)

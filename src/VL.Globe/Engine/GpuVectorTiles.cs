@@ -146,6 +146,7 @@ internal sealed class GpuVectorTiles : IDisposable
         result.Atlases.Clear();
         result.CameraToCenter = (float)cameraToCenter;
         result.Radius = radius;
+        result.Eye = eye;
         long budget = UploadBytesPerFrame;
         UploadedBytes = 0; Uploads = 0;
         foreach (var e in _entries.Values) Finish(device, e, ref budget);

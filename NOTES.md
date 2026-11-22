@@ -480,4 +480,13 @@ looked fine - "which makes one think it works". Two causes, estimated at 100 m h
   maxzoom 14: never drawn from a z14 tile, built and uploaded anyway. GL JS's worker skips a layer at
   `zoom >= maxzoom`; so now do we: 6.7 MB, built in 194 ms instead of 251. Its `zoom < floor(minzoom)`
   half is deliberately not followed - the far z13 tiles of a tilted view keep their 3D buildings (4f).
+- **"道路名字，或者是铁路电车名字一顿一顿" while dragging very close (the user)**: the renderer took
+  "the camera moved" from `view * projection` alone. Camera-relative, the view is a rotation only and
+  the pan lives in the world matrices: centimetres a frame at street level often left the rotation bit
+  for bit the same, so `UpdateLines` was skipped and the glyphs along lines stood still while the roads
+  under them moved, catching up when the rotation's float next changed. The frame carries the eye now
+  and it counts as a move (`VectorRenderer.NextLabelStep`, `LabelStepFacts` - red without the eye).
+  Anything else that keys on the view alone has the same flaw.
+- Labels above the 3D buildings, seen through them: Liberty's order (building-3d is layer 84, opacity
+  0.8; road names from 95) - as MapLibre draws it, not a fault.
 - Open: one frame of 550 ms at rest (13:20:20) with Update 10 ms and Draw ~1.5 ms - outside both.
