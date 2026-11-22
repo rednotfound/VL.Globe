@@ -78,6 +78,8 @@ internal sealed class GpuVectorTiles : IDisposable
     int _itemsGrewFrom = -1, _itemsGrewTo;
     double _lapAt;
     void Lap(int stage) { double t = _timer.Elapsed.TotalMilliseconds; if (stage == 0) _lapAt = 0; _ms[stage] += t - _lapAt; _lapAt = t; }
+    /// <summary>The last Update's stages, ms, in Breakdown's order (finish+upload, tiles+jobs, resolve, backgrounds, atlases, symbol layers, other layers, evict).</summary>
+    internal ReadOnlySpan<double> StageMs => _ms;
     public string Breakdown => $"finish+upload {_ms[0]:F0}, tiles+jobs {_ms[1]:F0}, resolve {_ms[2]:F0}, backgrounds {_ms[3]:F0}, atlases {_ms[4]:F0}, symbol layers {_ms[5]:F0}, other layers {_ms[6]:F0}" +
         $" (slowest {_slowLayer} {_slowLayerMs:F0}{(_itemsGrewFrom >= 0 ? $", items grew {_itemsGrewFrom} -> {_itemsGrewTo}" : "")}), evict {_ms[7]:F0}";
 
@@ -123,6 +125,7 @@ internal sealed class GpuVectorTiles : IDisposable
     public string Error => _renderer.Error;
     /// <summary>The renderer's Draw timings since the last call; resets them.</summary>
     public string TakeDrawStats() => _renderer.TakeStats();
+    internal VectorRenderer.DrawTiming LastDraw => _renderer.Last;
     public int TilesBuilt => _tilesBuilt;
     /// <summary>Tiles being built now; with <see cref="Frame"/>, for drawing a view offscreen in a test.</summary>
     internal int Building => _running;

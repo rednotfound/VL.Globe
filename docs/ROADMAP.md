@@ -441,6 +441,28 @@ Sum either log up with `tools/Summarize-Perf.py <log> --from <pan 1 begins> --to
   not known yet: the perf line sums a second. **Next: step 4 first** - every frame over 20 ms logged
   with its parts (Update, place, upload, submit, and outside the node), then whatever that names.
 
+**Step 4, the root cause found 2026-11-23: garbage from building tiles, collected on every thread.**
+- `Globe frame:` lines (`Engine/FrameAnatomy.cs`) take each missed frame apart. In one bench, 40
+  missed frames overran by 354 ms in all and were paused by gen0 collections for 397 ms; in 26 of 40
+  the pause alone was more than the overrun. 111 collections in those frames, 3.6 ms each.
+- The perf line now says who allocates: 90-955 MB a second while panning, ~50 of it on vvvv's main
+  thread (Update, Draw, the patch), the rest on the workers building tiles. A gen0 every ~8.5 MB.
+- A 64-MB gen0 (`DOTNET_GCgen0size`, vvvv started with it) made 1/8 of the collections, each 15-30
+  ms: the pause follows what survives, not the count. Misses unchanged. Not a setting to turn.
+- `AllocationProbe` (by hand), one Tokyo z14 tile: decode 17 MB, shapes 54-80 MB, symbols 122-137 MB
+  allocated for a few MB of result; a z13 tile's shapes 206 MB. One layer, `poi_r20`, 65-76 MB.
+  By type: strings, string arrays, JSON enumerators, closures, `JsonElement[]` - the style
+  expressions, interpreted from their JSON on every feature (`e[0].GetString()` allocates each call,
+  LINQ in filters, numbers boxed) - and `PositionedGlyph` objects from shaping; for lines, a new
+  `(ExtrudedVertex, bool)[]` per line.
+- **Why GL JS does not stutter:** its workers have heaps of their own - their garbage never stops
+  the page's thread - and its expressions are compiled once per layer (style-spec `createExpression`),
+  evaluated per feature without allocating. Here every worker's garbage stops vvvv's main thread.
+- **Fix order** (each measured with the bench and `AllocationProbe`): (a) the expressions compiled
+  once per layer to an evaluator that does not allocate per feature; (b) shaping's glyphs as structs,
+  the line tessellator's arrays reused; (c) the main thread's ~50 MB a second; then whatever the
+  probe names next. (Out of process tile building, GL JS's own design, only if (a)-(c) fall short.)
+
 ### 5. Navigation
 
 - `CenterOn`, `ZoomToLevel`, `ZoomIn`, `ZoomOut`.

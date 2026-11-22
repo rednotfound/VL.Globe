@@ -369,8 +369,17 @@ internal sealed class VectorRenderer : IGraphicsRendererBase
             _uploadMax = Math.Max(_uploadMax, uploadMs); _uploadSum += uploadMs;
             _submitMax = Math.Max(_submitMax, submitMs); _submitSum += submitMs;
             _drawFrames++;
+            Last = new DrawTiming(Last.Serial + 1, placeMs, uploadMs, submitMs, ItemsDrawn);
         }
     }
+
+    /// <summary>The latest Draw's parts, ms: GlobeNode logs them for a frame that missed its vsync (ROADMAP 4g step 4).</summary>
+    internal readonly record struct DrawTiming(long Serial, double Place, double Upload, double Submit, int Items)
+    {
+        public double Total => Place + Upload + Submit;
+    }
+
+    internal DrawTiming Last;
 
     void EnsurePipelines(GraphicsDevice device)
     {

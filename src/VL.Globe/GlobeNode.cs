@@ -168,6 +168,7 @@ public sealed class GlobeNode : IDisposable
     // Every second the camera moved is logged, smooth or not, so the smooth ones are counted too.
     double _perfFrom = -1, _lastUpdateAt = -1, _updateMax;
     int _perfUploads, _gen0, _gen2;
+    long _allocated, _mainAllocated;
     long _perfBytes, _perfBytesMax;
     readonly FrameStats _frames = new();
     Matrix _statsView;
@@ -207,6 +208,10 @@ public sealed class GlobeNode : IDisposable
         double updateStart = _clock.Elapsed.TotalMilliseconds;
         _stages.Clear();
         _gcPauseAtStart = GC.GetTotalPauseDuration();
+        _gen0AtStart = GC.CollectionCount(0); _gen2AtStart = GC.CollectionCount(2);
+        // the frame that just ended, taken apart if it missed its vsync (ROADMAP 4g step 4)
+        if (_lastUpdateAt >= 0 && _anatomy.Explain(updateStart - _lastUpdateAt, updateStart, _gcPauseAtStart, _gen0AtStart, _gen2AtStart, _gpu.LastDraw) is { } slow)
+            _logger.LogInformation("Globe frame: {Frame}", slow);
         try { return UpdateCore(out tilesVisible, out tilesLoading, out requestsSent, out bytesReceived, out attribution, out status,
             tileSource, camera, enabled, radius, background, maxZoom, screenSpaceError, maxRequestsInFlight, screenHeight, fadeDuration, layers); }
         finally { Measure(updateStart); }
@@ -216,6 +221,8 @@ public sealed class GlobeNode : IDisposable
     // (23:16:05 on 2026-11-21: one Update of 580 ms, a gen-2 collection in the same second)
     readonly List<(string stage, double at)> _stages = new();
     TimeSpan _gcPauseAtStart;
+    int _gen0AtStart, _gen2AtStart;
+    readonly FrameAnatomy _anatomy = new();
     void Stage(string name) => _stages.Add((name, _clock.Elapsed.TotalMilliseconds));
 
     void Measure(double updateStart)
@@ -232,21 +239,32 @@ public sealed class GlobeNode : IDisposable
                 now - updateStart, string.Join(", ", parts), (GC.GetTotalPauseDuration() - _gcPauseAtStart).TotalMilliseconds, _gpu.Breakdown);
         }
         if (_lastUpdateAt >= 0) _frames.Add(updateStart - _lastUpdateAt, _movedThisFrame);
+        _anatomy.EndOfUpdate(updateStart, now, _stages, _gpu.StageMs, _gpu.UploadedBytes, _gpu.Uploads, _gcPauseAtStart, _gen0AtStart, _gen2AtStart, _gpu.LastDraw.Serial);
         _movedThisFrame = false;
         _lastUpdateAt = updateStart;
         _perfBytes += _gpu.UploadedBytes;
         _perfBytesMax = Math.Max(_perfBytesMax, _gpu.UploadedBytes);
         _perfUploads += _gpu.Uploads;
-        if (_perfFrom < 0) { _perfFrom = now; _gen0 = GC.CollectionCount(0); _gen2 = GC.CollectionCount(2); return; }
+        if (_perfFrom < 0)
+        {
+            _perfFrom = now; _gen0 = GC.CollectionCount(0); _gen2 = GC.CollectionCount(2);
+            _allocated = GC.GetTotalAllocatedBytes(false); _mainAllocated = GC.GetAllocatedBytesForCurrentThread();
+            return;
+        }
         if (now - _perfFrom < 1000) return;
         int gen0 = GC.CollectionCount(0), gen2 = GC.CollectionCount(2);
+        // who allocates (ROADMAP 4g step 4: gen0 collections paused the missed frames): this thread is
+        // vvvv's main one, which runs Update and Draw and the patch; the rest is the workers building tiles
+        long allocated = GC.GetTotalAllocatedBytes(false), mainAllocated = GC.GetAllocatedBytesForCurrentThread();
+        double allocMB = (allocated - _allocated) / 1048576.0, mainMB = (mainAllocated - _mainAllocated) / 1048576.0;
+        _allocated = allocated; _mainAllocated = mainAllocated;
         // also every second a frame misses a vsync: a steady 30 fps (vsync halving a 17-33 ms frame)
         // had no line, and the vector draw on the render thread was in none (2026-11-22)
         var draw = _gpu.TakeDrawStats();
         var frames = _frames.Take();
         if (_gpu.TilesBuilt > 0 && (frames.Moved || frames.MissedFrames > 0 || _perfUploads > 0 || gen2 > _gen2))
-            _logger.LogInformation("Globe perf: {Frames}; Update max {UpdateMax:F1} ms; uploaded {Uploads} tiles {MB:F1} MB, most {MaxMB:F1} MB in a frame; GC gen0 +{Gen0}, gen2 +{Gen2}; draw: {Draw}",
-                frames, _updateMax, _perfUploads, _perfBytes / 1048576.0, _perfBytesMax / 1048576.0, gen0 - _gen0, gen2 - _gen2, draw);
+            _logger.LogInformation("Globe perf: {Frames}; Update max {UpdateMax:F1} ms; uploaded {Uploads} tiles {MB:F1} MB, most {MaxMB:F1} MB in a frame; GC gen0 +{Gen0}, gen2 +{Gen2}, allocated {Alloc:F0} MB ({Main:F0} on the main thread); draw: {Draw}",
+                frames, _updateMax, _perfUploads, _perfBytes / 1048576.0, _perfBytesMax / 1048576.0, gen0 - _gen0, gen2 - _gen2, allocMB, mainMB, draw);
         _perfFrom = now; _updateMax = 0; _perfUploads = 0; _perfBytes = 0; _perfBytesMax = 0;
         _gen0 = gen0; _gen2 = gen2;
     }

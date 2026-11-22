@@ -534,3 +534,12 @@ looked fine - "which makes one think it works". Two causes, estimated at 100 m h
   cost. Measure the frame that misses, by its parts, before choosing what to make smaller.
 - **A parameter set by `"prefix." + name`** allocated and hashed a string per call: 12 a draw, 3000
   draws a frame. Resolve a key once.
+
+- **The missed frames were the workers' garbage (2026-11-23, ROADMAP 4g step 4).** Taken apart frame
+  by frame (`Globe frame:`), the misses were gen0 collections - 3.6 ms each, several a frame while
+  tiles came - and the workers building tiles allocated 90-955 MB a second: 200 MB for one Tokyo z14
+  tile, most of it the style expressions interpreted from JSON per feature. In .NET every thread's
+  garbage stops every thread, the renderer's too; GL JS's workers have heaps of their own. A larger
+  gen0 does not help: 1/8 of the collections, each 4-8 times as long - the pause follows what
+  survives. Two earlier readings were wrong: "the bytes uploaded" (4g step 2) and "Update and draw"
+  (they were only where the pause happened to land).

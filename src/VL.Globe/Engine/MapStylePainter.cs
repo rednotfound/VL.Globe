@@ -178,6 +178,9 @@ internal sealed class MapStyleDocument
 
     readonly System.Collections.Concurrent.ConcurrentDictionary<(string, TileKey), object> _gates = new();
 
+    /// <summary>Drops every decoded tile (probes measure a decode as a tile coming for the first time).</summary>
+    internal void ForgetDecoded() { lock (_tiles) { _tiles.Clear(); _lru.Clear(); } }
+
     bool Cached((string, TileKey) k, out Dictionary<string, List<StyleFeature>>? layers)
     {
         lock (_tiles)
