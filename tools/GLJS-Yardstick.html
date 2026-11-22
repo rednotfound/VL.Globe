@@ -69,7 +69,12 @@ const SPEED = 300;
 let panUntil = 0;
 function frame(t) {
   if (last >= 0) intervals.push(t - last);
-  if (t < panUntil && last >= 0) map.panBy([SPEED * (t - last) / 1000, 0], { animate: false });
+  // the point SPEED x dt px right of the centre made the centre - VL.Globe's bench does the same.
+  // (panBy with animate: false was tried first: the map stayed put through 20 s of it, 2026-11-22)
+  if (t < panUntil && last >= 0) {
+    const c = map.project(map.getCenter());
+    map.jumpTo({ center: map.unproject([c.x + SPEED * (t - last) / 1000, c.y]) });
+  }
   last = t;
   if (t - secondFrom >= 1000) {
     if (intervals.length && (moved || intervals.some(x => x > MISSED)))
@@ -88,8 +93,11 @@ if (q.get('bench') === '1') {
   report(`GLJS bench: ${location.hash}, ${innerWidth}x${innerHeight} window, map ${map.getCanvas().clientWidth}x${map.getCanvas().clientHeight}, dpr ${devicePixelRatio}, ${navigator.userAgent}`);
   for (let i = 0; i < runs; i++) {
     const at = (wait + i * (secs + gap)) * 1000;
-    setTimeout(() => { report(`GLJS bench: pan ${i + 1} begins`); pan(secs); }, at);
-    setTimeout(() => report(`GLJS bench: pan ${i + 1} ends`), at + secs * 1000);
+    // where the centre is at each edge: a pan that did not move the map is not a measurement
+    const where = () => { const c = map.getCenter(); return `centre ${c.lat.toFixed(5)}, ${c.lng.toFixed(5)}`; };
+    let from;
+    setTimeout(() => { from = map.getCenter(); report(`GLJS bench: pan ${i + 1} begins, ${where()}`); pan(secs); }, at);
+    setTimeout(() => report(`GLJS bench: pan ${i + 1} ends, ${where()}, moved ${(from.distanceTo(map.getCenter()) / 1000).toFixed(2)} km`), at + secs * 1000);
   }
   setTimeout(() => report('GLJS bench: done'), (wait + runs * (secs + gap)) * 1000);
 }

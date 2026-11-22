@@ -52,8 +52,16 @@ internal sealed class CameraBench
         if (phase != _logged)
         {
             _logged = phase;
-            if (phase >= 0 && phase < 2 * Runs)
-                logger.LogInformation("Globe bench: pan {Run} {Edge}", phase / 2 + 1, phase % 2 == 0 ? "begins" : "ends");
+            // where the centre is at each edge, and how far a pan took it: a pan that did not move the
+            // view is not a measurement (GL JS's first run did not move, 2026-11-22)
+            if (phase >= 0 && phase < 2 * Runs && phase % 2 == 0)
+            {
+                _from = (view.Latitude, view.Longitude);
+                logger.LogInformation("Globe bench: pan {Run} begins, centre {Lat:F5}, {Lon:F5}", phase / 2 + 1, view.Latitude, view.Longitude);
+            }
+            else if (phase >= 0 && phase < 2 * Runs)
+                logger.LogInformation("Globe bench: pan {Run} ends, centre {Lat:F5}, {Lon:F5}, moved {Km:F2} km", phase / 2 + 1,
+                    view.Latitude, view.Longitude, Kilometres(_from, (view.Latitude, view.Longitude)));
             else if (phase == 2 * Runs) logger.LogInformation("Globe bench: done");
         }
         if (!panning || dt <= 0 || view.ProjX <= 0) return;
@@ -62,6 +70,16 @@ internal sealed class CameraBench
         double px = Speed * dt;
         if (view.PickDir(view.CameraDirectionFromProjection(2 * px / width, 0)) is { } grabbed)
             view.DragTo(grabbed, view.CameraDirectionFromProjection(0, 0));
+    }
+
+    (double Lat, double Lon) _from;
+
+    // great-circle distance on the 6371-km sphere (GL JS's LngLat.distanceTo uses 6371008.8 m)
+    static double Kilometres((double Lat, double Lon) a, (double Lat, double Lon) b)
+    {
+        double r = Math.PI / 180, dLat = (b.Lat - a.Lat) * r, dLon = (b.Lon - a.Lon) * r;
+        double h = Math.Sin(dLat / 2) * Math.Sin(dLat / 2) + Math.Cos(a.Lat * r) * Math.Cos(b.Lat * r) * Math.Sin(dLon / 2) * Math.Sin(dLon / 2);
+        return 2 * 6371.0088 * Math.Asin(Math.Min(1, Math.Sqrt(h)));
     }
 
     // -1 waiting; 2r while pan r runs, 2r + 1 after it; 2 x Runs when done

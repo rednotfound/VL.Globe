@@ -518,3 +518,11 @@ looked fine - "which makes one think it works". Two causes, estimated at 100 m h
   they were 0 m tall. The fog started at 3 eye heights, whole at 16; the line was at 2.5. Found by
   drawing the user's view offscreen (`ViewProbe`, the whole GPU path, VLGLOBE_PROBE=1) and listing
   the draws by pass and zoom; a reading of the code had found nothing. Fixed by 4f step 3 (ROADMAP).
+
+- **A yardstick that did not move (2026-11-22 night, ROADMAP 4g).** GL JS's bench page read 60 fps,
+  0 frames over 20 ms, through two 10-s pans - and the map had stayed where it began: `map.panBy([dx,
+  0], {animate: false})` called every frame did not move it in 6.19.0 (why not found). The page's own
+  "moving" flag said moving (`move` events fired). Caught only by setting its last screenshot beside
+  vvvv's after the same bench: 13 km apart. Now the page makes the point right of the centre the
+  centre (`jumpTo`), as `CameraBench` drags, and both log the centre at each pan's edges and the
+  distance (6.58 vs 6.59 km). A benchmark proves its motion before its numbers.

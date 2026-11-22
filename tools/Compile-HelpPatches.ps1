@@ -206,8 +206,20 @@ foreach ($p in $patches) {
     # `GlobeView View_62 = default(GlobeView)` - an input and an output both named View had sent the
     # link to the output - and every rung but the user's hand was green. Fields set to default in
     # Create/Dispose are `this.__p_...` and are not matched.
+    # A pin left unconnected on purpose reads default too (2026-11-22: VectorTiles' help patch, no Tile
+    # Source - the user took OpenStreetMap out): it is a dropped link only when the patch links a pin of
+    # that name (Tile_Source_24 -> "Tile Source"); with no such link it is reported, not failed. Any
+    # pin of the name, input or output: on 2026-11-09 the link had gone to the OUTPUT named View.
+    $linked = @{}
+    foreach ($l in [regex]::Matches($patchXml, '<Link [^>]*Ids="([^"]+)"')) { foreach ($id in $l.Groups[1].Value -split ',') { $linked[$id] = $true } }
     $dropped = [regex]::Matches($csharp, '(?m)^\s*n\d+\.(Globe\w*)\s+(\w+)\s*=\s*default\(n\d+\.Globe\w*\);')
     foreach ($d in $dropped) {
+        $pinName = ($d.Groups[2].Value -replace '_\d+$', '') -replace '_', ' '
+        $pinIds = @([regex]::Matches($patchXml, "<Pin Id=""([^""]+)"" Name=""$([regex]::Escape($pinName))""") | ForEach-Object { $_.Groups[1].Value })
+        if (-not ($pinIds | Where-Object { $linked.ContainsKey($_) })) {
+            Write-Host "  ok    $($d.Groups[2].Value) ($($d.Groups[1].Value)) reads default - no pin '$pinName' is linked in the patch: unconnected on purpose" -ForegroundColor DarkGray
+            continue
+        }
         $failures.Add("$($p.Name): $($d.Groups[2].Value) of type $($d.Groups[1].Value) reads default - a link to it was dropped")
         Write-Host "  FAIL  $($d.Groups[2].Value) ($($d.Groups[1].Value)) reads default(...) - a dropped link" -ForegroundColor Red
     }

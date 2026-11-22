@@ -5,6 +5,11 @@
   <NugetDependency Id="CG6grxgPPlHyEgFIMCffTY" Location="VL.Globe" Version="0.0.0" />
   <Patch Id="Lhsa7wagqJ5ZJflShLl4Xt">
     <Canvas Id="Ifu6pD2Y1gSHYcuZfkzAjv" DefaultCategory="Main" CanvasType="FullCategory" />
+    <!--
+
+    ************************ Application ************************
+
+-->
     <Node Name="Application" Bounds="100,100" Id="BxGj2WrY6HWcq3EHqoR0Xo">
       <p:NodeReference>
         <Choice Kind="ContainerDefinition" Name="Process" />
@@ -12,7 +17,7 @@
       </p:NodeReference>
       <Patch Id="LnpZflAKskyUcjKgZy5q9g">
         <Canvas Id="FxpMSXSFKQx2vmYoTj702o" CanvasType="Group">
-          <Pad Id="PyH0YllZg83jUdBjAu9Igr" Bounds="60,40,460,34" ShowValueBox="true" isIOBox="true" Value="Draw vector tiles">
+          <Pad Id="PyH0YllZg83jUdBjAu9Igr" Bounds="60,40,460,41" ShowValueBox="true" isIOBox="true" Value="Draw vector tiles">
             <p:TypeAnnotation LastCategoryFullName="Primitive" LastDependency="VL.CoreLib.vl">
               <Choice Kind="TypeFlag" Name="String" />
             </p:TypeAnnotation>
@@ -21,7 +26,7 @@
               <p:stringtype p:Assembly="VL.Core" p:Type="VL.Core.StringType">Comment</p:stringtype>
             </p:ValueBoxSettings>
           </Pad>
-          <Pad Id="OzUbPpRalgrCVjVGdcCp5R" Bounds="60,90,640,40" ShowValueBox="true" isIOBox="true" Value="Switch Enabled on. OpenFreeMap&apos;s Liberty style is drawn from vector tiles: roads, water, land use, 3D buildings, labels and icons, over OpenStreetMap&apos;s images.">
+          <Pad Id="OzUbPpRalgrCVjVGdcCp5R" Bounds="60,90,640,40" ShowValueBox="true" isIOBox="true" Value="Switch Enabled on. OpenFreeMap's Liberty style is drawn from vector tiles: roads, water, land use, 3D buildings, labels and icons.">
             <p:TypeAnnotation LastCategoryFullName="Primitive" LastDependency="VL.CoreLib.vl">
               <Choice Kind="TypeFlag" Name="String" />
             </p:TypeAnnotation>
@@ -30,7 +35,7 @@
               <p:stringtype p:Assembly="VL.Core" p:Type="VL.Core.StringType">Comment</p:stringtype>
             </p:ValueBoxSettings>
           </Pad>
-          <Pad Id="T0zVQn4a9xuvhQpCnlvBNI" Comment="Enabled" Bounds="60,150,60,30" ShowValueBox="true" isIOBox="true" Value="False">
+          <Pad Id="T0zVQn4a9xuvhQpCnlvBNI" Comment="Enabled" Bounds="60,150,60,30" ShowValueBox="true" isIOBox="true" Value="false">
             <p:TypeAnnotation LastCategoryFullName="Primitive" LastDependency="VL.CoreLib.vl">
               <Choice Kind="TypeFlag" Name="Boolean" />
             </p:TypeAnnotation>
@@ -68,7 +73,7 @@
               <Choice Kind="TypeFlag" Name="Path" />
             </p:TypeAnnotation>
           </Pad>
-          <Pad Id="QN2IZ5vaGovc1OQScCkXcH" Comment="Read" Bounds="820,172,30,30" ShowValueBox="true" isIOBox="true" Value="False">
+          <Pad Id="QN2IZ5vaGovc1OQScCkXcH" Comment="Read" Bounds="820,172,35,30" ShowValueBox="true" isIOBox="true" Value="False">
             <p:TypeAnnotation LastCategoryFullName="Primitive" LastDependency="VL.CoreLib.vl">
               <Choice Kind="TypeFlag" Name="Boolean" />
             </p:TypeAnnotation>
@@ -111,6 +116,7 @@
             <Pin Id="CWx72kLZL5EcReJgUBXoCF" Name="Output" Kind="OutputPin" />
             <Pin Id="Sx8jhJ6j1vB2A7UhLu5Jde" Name="Attribution" Kind="OutputPin" />
             <Pin Id="RolQ2zwdMUrGvltCTLdXLJ" Name="Status" Kind="OutputPin" />
+            <Pin Id="TRIOELT61KFM8FlSzowgCt" Name="Rendering" Kind="InputPin" />
           </Node>
           <Pad Id="VQ4dZbH26FFoMfZeAMOusW" Bounds="460,240,260,34" ShowValueBox="true" isIOBox="true" Value="&lt; the Status says what of the style it skips">
             <p:TypeAnnotation LastCategoryFullName="Primitive" LastDependency="VL.CoreLib.vl">
@@ -140,13 +146,6 @@
             <Pin Id="Kqptrc0rITwwK0W9FqelfK" Name="Input" Kind="InputPin" />
             <Pin Id="MrvHrgdqKGUGEf8D5tShbb" Name="Result" Kind="OutputPin" />
           </Node>
-          <Node Bounds="60,200,100,19" Id="MowljpQbgj6waa4hlRGGs0">
-            <p:NodeReference LastCategoryFullName="Globe" LastDependency="VL.Globe.vl">
-              <Choice Kind="NodeFlag" Name="Node" Fixed="true" />
-              <Choice Kind="ProcessAppFlag" Name="OpenStreetMap" />
-            </p:NodeReference>
-            <Pin Id="P0mNrFoKfdMRM8kYSCJnNI" Name="Tile Source" Kind="OutputPin" />
-          </Node>
           <Node Bounds="60,390,260,19" Id="C6dVPiwwphKIz58QY8v4by">
             <p:NodeReference LastCategoryFullName="Globe" LastDependency="VL.Globe.vl">
               <Choice Kind="NodeFlag" Name="Node" Fixed="true" />
@@ -155,16 +154,26 @@
               <PinReference Kind="InputPin" Name="Bound to Document" />
               <PinReference Kind="InputPin" Name="Layers" />
             </p:NodeReference>
-            <Pin Id="ImJ9CALmrnzpNj6bSFHcr1" Name="Bounds" Kind="InputPin" DefaultValue="926, 114, 800, 800" />
+            <Pin Id="ISbwBLntSIhMojb8xDJe3U" Name="Node Context" Kind="InputPin" IsHidden="true" />
+            <Pin Id="ImJ9CALmrnzpNj6bSFHcr1" Name="Bounds" Kind="InputPin" DefaultValue="592, 114, 1250, 800" />
             <Pin Id="TFFtrE1zxyScexNmv8lFFf" Name="Bound to Document" Kind="InputPin" DefaultValue="True" />
-            <Pin Id="BtfThqv2ap5ThhPiRVvHoD" Name="Tile Source" Kind="InputPin" />
-            <Pin Id="A4wWnK9CFnSqApz0sQFRxl" Name="Enabled" Kind="InputPin" />
             <Pin Id="P0rLUMzqnhLcXCFz1TYsWf" Name="Initial Longitude" Kind="InputPin" DefaultValue="139.7671" />
+            <Pin Id="BtfThqv2ap5ThhPiRVvHoD" Name="Tile Source" Kind="InputPin" />
             <Pin Id="J2fgywvFUYxpkQHtoDgtIj" Name="Initial Latitude" Kind="InputPin" DefaultValue="35.6812" />
+            <Pin Id="HKlMaIFwV0GP5rMYuDrO7p" Name="Input" Kind="InputPin" IsHidden="true" />
             <Pin Id="Adns35BFXNa6wH3vNYkZYh" Name="Initial Height" Kind="InputPin" DefaultValue="1500" />
+            <Pin Id="A4wWnK9CFnSqApz0sQFRxl" Name="Enabled" Kind="InputPin" />
+            <Pin Id="AFFRIwczxgfLCd8duxfzPe" Name="Min Height" Kind="InputPin" IsHidden="true" />
+            <Pin Id="D8Bv3RxATb8OsUoQuj4AHf" Name="Background" Kind="InputPin" />
             <Pin Id="FWM7Cz0RvApe4VsCicCAUI" Name="Layers" Kind="InputPin" />
             <Pin Id="FyT2kEcPVHF04NYX106UUU" Name="Title" Kind="InputPin" DefaultValue="Draw vector tiles" />
+            <Pin Id="OljP7W6xNKXQRYHZme3n9u" Name="View" Kind="OutputPin" />
+            <Pin Id="PfHABiI5MSCMMV6zv2a99g" Name="Longitude" Kind="OutputPin" />
+            <Pin Id="RnR32b5TNSjNMktYPHWyJv" Name="Latitude" Kind="OutputPin" />
+            <Pin Id="GqFz0ZlNAUiMFiDZJC8OrF" Name="Height" Kind="OutputPin" />
+            <Pin Id="E0cdzfs776LNgFeVgNFAaO" Name="Attribution" Kind="OutputPin" />
             <Pin Id="I5iFsxov69rIeDAYcKjxTK" Name="Status" Kind="OutputPin" />
+            <Pin Id="KtN3dZRlmqBMDUFtOFNvPk" Name="Cursor" Kind="OutputPin" />
           </Node>
           <Pad Id="SZcwfOYdvkPcI0kGqGH6K1" Bounds="340,388,320,20" ShowValueBox="true" isIOBox="true" Value="&lt; show the Attribution wherever the map is shown">
             <p:TypeAnnotation LastCategoryFullName="Primitive" LastDependency="VL.CoreLib.vl">
@@ -196,7 +205,6 @@
         <Link Id="S0EMaut3UeXMg8mefXviOU" Ids="RolQ2zwdMUrGvltCTLdXLJ,T5WT3F9QFyU6Aw2RYNjmZz" />
         <Link Id="S0pP7mNYb4yzzHQNvV3qJM" Ids="CWx72kLZL5EcReJgUBXoCF,Kqptrc0rITwwK0W9FqelfK" />
         <Link Id="PkBqcrXUuqitbjzlv8zkIV" Ids="MrvHrgdqKGUGEf8D5tShbb,FWM7Cz0RvApe4VsCicCAUI" />
-        <Link Id="DIFNGihOxYvC7HbaIKiwL4" Ids="P0mNrFoKfdMRM8kYSCJnNI,BtfThqv2ap5ThhPiRVvHoD" />
         <Link Id="PL8tY1QUjbuhMY9Z8R71Wa" Ids="T0zVQn4a9xuvhQpCnlvBNI,A4wWnK9CFnSqApz0sQFRxl" />
         <Link Id="MzxNmajtRsXtiohb8lBYi8" Ids="I5iFsxov69rIeDAYcKjxTK,AVJjneKTLxVSGh0nhDUjDd" />
       </Patch>
