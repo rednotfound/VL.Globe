@@ -470,4 +470,8 @@ looked fine - "which makes one think it works". Two causes, estimated at 100 m h
   atlas grows taller, from the atlas's own array under its lock; the rows placed since go into the
   same texture in the Draw (`AtlasTexture`, `SetData` with a region). Test: `AtlasTextureFacts`, red
   with the upload skipped. Not yet told apart: the clone or the texture creation - both are gone.
+  Seen again in vvvv the same day, the user tilting at Kyoto: no long Update after the first two
+  seconds of loading (atlases 0 and 2 ms there). What is left while tiles load: frames 40-80 ms with
+  Update 20-30 ms (single tiles of 20-30 MB uploaded in one frame), label placement up to 38 ms, submit
+  up to 22 ms.
 - Open: one frame of 550 ms at rest (13:20:20) with Update 10 ms and Draw ~1.5 ms - outside both.
