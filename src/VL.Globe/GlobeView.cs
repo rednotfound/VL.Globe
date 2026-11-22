@@ -46,6 +46,8 @@ public sealed class GlobeView
     public double Tilt { get; internal set; }
 
     internal double MaxTilt = 60;   // MapLibre's default maxPitch
+    // the tilt limited by the zoom (TiltLimit); off only in tests that study the geometry of any tilt
+    internal bool TiltByZoomLimit = true;
 
     internal double MinHeight = 20, MaxHeight = 4 * GlobeCoordinates.EarthRadius;
     internal float Radius = 1f;
@@ -63,6 +65,30 @@ public sealed class GlobeView
     {
         double floor = MinHeight / Math.Max(Math.Cos(Tilt * Math.PI / 180), 0.2);
         Height = Math.Clamp(metres, floor, Math.Max(floor, MaxHeight));
+        // zoomed out, the tilt comes down with its limit (Google's maps do the same)
+        double limit = TiltLimit();
+        if (Tilt > limit) { Tilt = limit; Height = Math.Max(Height, MinHeight / Math.Max(Math.Cos(Tilt * Math.PI / 180), 0.2)); }
+    }
+
+    // ROADMAP 4f step 1 (2026-11-22): the tilt allowed grows with the zoom, as Google's vector maps
+    // allow it - 30 degrees to z10, 45 at z14, 60 at z15, 67.5 from z15.5, linear between - so a tilted
+    // view far out does not reach the coarse tiles of the distance (no buildings below z13). MaxTilt
+    // stays the ceiling. The zoom is the 256-px zoom at the centre of the view, as GlobeViewInfo's.
+    static readonly (double zoom, double tilt)[] TiltByZoom = { (10, 30), (14, 45), (15, 60), (15.5, 67.5) };
+
+    /// <summary>The most this view may be tilted at its present zoom: MaxTilt or less.</summary>
+    internal double TiltLimit() => TiltByZoomLimit ? Math.Min(MaxTilt, TiltAllowedAt(ZoomOf(GroundResolution(), Latitude))) : MaxTilt;
+
+    internal static double TiltAllowedAt(double zoom)
+    {
+        if (zoom <= TiltByZoom[0].zoom) return TiltByZoom[0].tilt;
+        for (int i = 1; i < TiltByZoom.Length; i++)
+            if (zoom <= TiltByZoom[i].zoom)
+            {
+                var (z0, t0) = TiltByZoom[i - 1]; var (z1, t1) = TiltByZoom[i];
+                return t0 + (t1 - t0) * (zoom - z0) / (z1 - z0);
+            }
+        return TiltByZoom[^1].tilt;
     }
 
     // Ground resolution and web-map zoom (ROADMAP 0.1 item 2): GeoLibre's camera sync
@@ -81,11 +107,11 @@ public sealed class GlobeView
     /// <summary>The eye's height above the surface, in metres.</summary>
     internal double EyeAltitude => (Pose().eye.Length / Radius - 1) * GlobeCoordinates.EarthRadius;
 
-    /// <summary>Turn the view about the point at its centre: heading by <paramref name="degreesHeading"/>, tilt by <paramref name="degreesTilt"/>, tilt kept within 0..MaxTilt.</summary>
+    /// <summary>Turn the view about the point at its centre: heading by <paramref name="degreesHeading"/>, tilt by <paramref name="degreesTilt"/>, tilt kept within 0..TiltLimit.</summary>
     internal void RotateBy(double degreesHeading, double degreesTilt)
     {
         Heading = ((Heading + degreesHeading) % 360 + 540) % 360 - 180;
-        Tilt = Math.Clamp(Tilt + degreesTilt, 0, MaxTilt);
+        Tilt = Math.Clamp(Tilt + degreesTilt, 0, TiltLimit());
         SetHeight(Height);   // the floor moved with the tilt
     }
 

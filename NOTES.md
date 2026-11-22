@@ -503,3 +503,10 @@ looked fine - "which makes one think it works". Two causes, estimated at 100 m h
   label tiles, no occlusion test, no six workers allocating beside it - which of these it is was not
   measured. The 2-ms-a-frame placement bounds it whatever it is.
 - Open: one frame of 550 ms at rest (13:20:20) with Update 10 ms and Draw ~1.5 ms - outside both.
+
+- **4f step 1, the tilt limited by the zoom** (`GlobeView.TiltLimit`, Google's 30 to z10, 45 at z14,
+  60 at z15, 67.5 from z15.5; MaxTilt the ceiling; zooming out brings the tilt down). Tests that
+  study the geometry of any tilt switch it off (`TiltByZoomLimit`). Found by it, not caused: at
+  -70/-45, 300 km, tilt 30 (reachable before and after) two corner pixels get a z8 tile at 1.76-1.85
+  px per texel, over the 1.6 bound - the tile selector's corner shortfall (TileCoverageFacts' 1.6
+  comment) is larger than measured there. Open.

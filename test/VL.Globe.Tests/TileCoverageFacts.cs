@@ -17,7 +17,7 @@ public class TileCoverageFacts(ITestOutputHelper output)
     // covers there, measured by projecting the texel's two neighbours.
     List<(double px, double py, TileKey tile, double pixels)> Survey(double lon, double lat, double h, double tilt = 0, double heading = 0)
     {
-        var v = new GlobeView { MinHeight = 1, Longitude = lon, Latitude = lat, Width = W, Height_px = H, FovY = FovY, Tilt = tilt, Heading = heading };
+        var v = new GlobeView { MinHeight = 1, Longitude = lon, Latitude = lat, Width = W, Height_px = H, FovY = FovY, Tilt = tilt, Heading = heading, TiltByZoomLimit = false };
         v.ProjX = 1 / Math.Tan(FovY / 2) / (W / H); v.ProjY = 1 / Math.Tan(FovY / 2);
         v.SetHeight(h);
         var (eye, _, _) = v.Pose();

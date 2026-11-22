@@ -165,7 +165,9 @@ public class GlobeViewFacts
     // Tilt (2026-11-21): the state is MapLibre's - the centre point, the distance to it, heading, tilt.
     static GlobeView Tilted(double h, double tilt, double heading = 0)
     {
+        // the geometry of any tilt: the limit by zoom has facts of its own below
         var v = View(139.77, 35.68, h, heading);
+        v.TiltByZoomLimit = false;
         v.Tilt = tilt;
         v.SetHeight(h);
         return v;
@@ -194,10 +196,33 @@ public class GlobeViewFacts
     public void TiltStaysBetweenStraightDownAndTheLimit()
     {
         var v = Tilted(5000, 0);
+        v.TiltByZoomLimit = true;
         v.RotateBy(0, 500);
-        Assert.Equal(v.MaxTilt, v.Tilt);
+        Assert.Equal(v.TiltLimit(), v.Tilt);
+        Assert.True(v.Tilt <= v.MaxTilt);
         v.RotateBy(0, -500);
         Assert.Equal(0, v.Tilt);
+    }
+
+    [Theory]
+    [InlineData(5, 30)] [InlineData(10, 30)] [InlineData(12, 37.5)] [InlineData(14, 45)] [InlineData(14.5, 52.5)]
+    [InlineData(15, 60)] [InlineData(15.5, 67.5)] [InlineData(19, 67.5)]
+    public void TheTiltAllowedGrowsWithTheZoomAsGooglesMaps(double zoom, double tilt)
+        => Assert.Equal(tilt, GlobeView.TiltAllowedAt(zoom), 9);
+
+    [Fact]
+    public void ZoomingOutBringsTheTiltDownWithItsLimit()
+    {
+        var v = Tilted(300, 0);   // street level: MaxTilt (60) is the limit
+        v.TiltByZoomLimit = true;
+        v.RotateBy(0, 90);
+        Assert.Equal(60, v.Tilt, 9);
+        for (int i = 0; i < 40 && v.Height < 2e5; i++) v.SetHeight(v.Height * 1.5);
+        double zoom = GlobeView.ZoomOf(v.GroundResolution(), v.Latitude);
+        Assert.True(zoom < 10, $"zoom {zoom}");
+        Assert.Equal(30, v.Tilt, 9);   // as allowed at z10 and below
+        v.RotateBy(0, 20);
+        Assert.Equal(30, v.Tilt, 9);
     }
 
     [Fact]
