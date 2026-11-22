@@ -13,8 +13,8 @@ internal sealed class GpuTile
     public Buffer? Vertices, Indices;   // null: a tile with nothing in it
     public Buffer? SymbolVertices, SymbolIndices;   // the labels' glyph quads, null when it has none
     public Buffer? CircleVertices, CircleIndices;   // circle layers' quads, null when it has none
-    // labels, milestone 2: each label's collision data, and per symbol vertex whether it is placed
-    // (LabelPlacement writes Placed every frame, the renderer uploads it to PlacedBuffer when dirty)
+    // labels, milestone 2: each label's collision data, and per symbol vertex its fade state
+    // (LabelFades writes Placed, LabelFades.Pack; the renderer uploads it to PlacedBuffer when dirty)
     public IReadOnlyList<LabelInfo> Labels = Array.Empty<LabelInfo>();
     public float[]? Placed;
     public Buffer? PlacedBuffer;
@@ -22,6 +22,8 @@ internal sealed class GpuTile
     // labels along lines: per symbol vertex, the glyph placed this frame (x, y px, angle, 1) - or (0, 0,
     // 0, 0) for a point label's vertex, (.., -1) hidden (LabelPlacement / LineGlyphs, every frame)
     public IReadOnlyList<LineLabel> LineLabels = Array.Empty<LineLabel>();
+    // each label's cross-tile ID (CrossTileSymbolIndex), 0 until the index has seen the tile
+    public int[]? LabelIds, LineLabelIds;
 
     // each symbol layer's labels are one run in Labels and LineLabels (built layer by layer): found once
     Dictionary<int, (int Start, int Count)>? _labelRanges, _lineLabelRanges;
@@ -61,9 +63,8 @@ internal sealed class GpuTile
         Vector4[]? dynamic = null;
         if (bucket.SymbolIndices.Length > 0)
         {
-            // every label shown until the first placement
+            // every label hidden until LabelFades gives it its state (in the frame the tile is first drawn)
             placed = new float[bucket.SymbolVertices.Length];
-            Array.Fill(placed, 1f);
             placedBuffer = Buffer.New(device, System.Runtime.InteropServices.MemoryMarshal.AsBytes(placed.AsSpan()), sizeof(float), BufferFlags.VertexBuffer, PixelFormat.None, GraphicsResourceUsage.Default);
             dynamic = new Vector4[bucket.SymbolVertices.Length];
             dynamicBuffer = Buffer.New(device, System.Runtime.InteropServices.MemoryMarshal.AsBytes(dynamic.AsSpan()), 16, BufferFlags.VertexBuffer, PixelFormat.None, GraphicsResourceUsage.Default);

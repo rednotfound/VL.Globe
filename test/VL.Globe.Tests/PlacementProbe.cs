@@ -63,6 +63,8 @@ public class PlacementProbe(ITestOutputHelper output)
         var placement = new LabelPlacement();
         var layers = Layers(0);
         output.WriteLine($"{layers.Count} symbol layers shown, {layers.Sum(l => l.Tiles.Count)} label tiles");
+        // the cross-tile IDs given and the fade states written, as in a frame (fades off: placed whole)
+        new LabelFades { FadeDuration = 0 }.Step(layers, view, projection, width, height, (float)distance, flat: true, eye: null, now: 0);
         Time("Place (first)", () => placement.Place(layers, view, projection, width, height, (float)distance, flat: true), 1);
         Time("Place", () => placement.Place(layers, view, projection, width, height, (float)distance, flat: true), 20);
         Time("UpdateLines", () => placement.UpdateLines(layers, view, projection, width, height, (float)distance, flat: true), 20);

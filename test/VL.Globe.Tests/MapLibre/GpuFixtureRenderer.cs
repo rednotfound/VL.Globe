@@ -24,7 +24,8 @@ internal static class GpuFixtureRenderer
         public required GraphicsDevice Device;
         public required GraphicsContext Context;
         public required EffectInstance Effect, SymbolEffect, CircleEffect, FogEffect;
-        public readonly VectorRenderer Renderer = new() { GlOutlines = true };
+        // fades off, as MapLibre's render tests run (fadeDuration 0): every label placed in its first frame
+        public readonly VectorRenderer Renderer = new() { GlOutlines = true, FadeDuration = 0 };
     }
 
     static readonly Lazy<Gpu> Shared = new(Create);
@@ -92,7 +93,7 @@ internal static class GpuFixtureRenderer
             cl.SetRenderTargetAndViewport(depth, target);
             cl.Clear(target, new Color4(0.2f, 0.2f, 0.2f, 1));
             cl.Clear(depth, DepthStencilClearOptions.DepthBuffer | DepthStencilClearOptions.Stencil, 1, 0);
-            var renderer = new VectorRenderer();
+            var renderer = new VectorRenderer { FadeDuration = 0 };   // one frame: every label placed in it
             renderer.DrawFrame(cl, gpu.Context, gpu.Effect, gpu.SymbolEffect, gpu.CircleEffect, view, projection, height, frame, renderer.Lift, linearize: false, flat: false);
             if (fog && VectorRenderer.FogOf(frame) is { } f)
             {

@@ -34,8 +34,10 @@ Guidance for Claude Code working in this repository.
    the user ("我宁愿没有"); vector tiles kept at the camera's zoom to 5 eye heights, 3D buildings
    fading out before that (seen tilted over Tokyo: "视野里面相对比较满了"; 853 MB there, over budget).
    A reported view is drawn offscreen by `ViewProbe` (VLGLOBE_PROBE=1 VLGLOBE_VIEW=#...).
-   **Next: label fades with GL JS's pauseable placement (2 ms a frame) and CrossTileSymbolIndex -
-   DESIGN-GPU-VECTOR.md "Next" 1.**
+   Then label fades (2026-11-22 night): CrossTileSymbolIndex, the pauseable placement (2 ms a frame),
+   300 ms fades - built and tested (259 green, fixtures unchanged at 311), **not yet seen in vvvv**.
+   **Next: the user looks at the fades in vvvv (zoom in at Kyoto: names should stay, not blink) -
+   DESIGN-GPU-VECTOR.md "Label fades" and "Next" 1.**
    Research: [docs/RESEARCH-0.1.md](docs/RESEARCH-0.1.md), [docs/RESEARCH-VECTOR.md](docs/RESEARCH-VECTOR.md).
 2. Read **[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)** — what exists and why.
 3. Read **[NOTES.md](NOTES.md)** — every failure so far, before touching the same code.

@@ -23,6 +23,7 @@ internal sealed class LineLabel
     public float Padding;                     // text-padding, px
     public float FeatureSize;                 // the feature's text-size where it depends on it, else 0
     public bool AlwaysOverlap, IgnorePlacement;
+    public int Key, AnchorX, AnchorY;         // CrossTileSymbolIndex's key (the text hashed) and anchor (GL JS units)
     // an icon along a line (icon-rotation-alignment map): its quads are "glyphs" at offset 0, turned to
     // the line at the anchor; it collides as GL JS's icon box round the anchor, not as circles
     public SymbolBox? IconBox;

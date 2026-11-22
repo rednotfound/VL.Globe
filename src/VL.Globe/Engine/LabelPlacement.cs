@@ -22,15 +22,26 @@ internal enum SymbolFlags
 /// absent), and the vertices of each to show or hide.
 /// </summary>
 internal readonly record struct LabelInfo(int Layer, Vector3 Anchor, SymbolBox? Text, int TextStart, int TextCount,
-    SymbolBox? Icon, int IconStart, int IconCount, SymbolFlags Flags);
+    SymbolBox? Icon, int IconStart, int IconCount, SymbolFlags Flags)
+{
+    /// <summary>GL JS's symbolInstance.key (the text hashed) and its anchor in GL JS's 8192-unit tile: what CrossTileSymbolIndex matches.</summary>
+    public int Key { get; init; }
+    public int AnchorX { get; init; }
+    public int AnchorY { get; init; }
+}
 
 // Labels, milestone 2: GL JS's placement for point labels in the viewport (placement.ts,
-// collision_index.ts, grid_index.ts), every frame from the camera. Layers are placed from the top of
-// the style down, each tile's labels in their bucket's order; a label is placed when its box hits
-// no box placed before it (boxes touching count, within 1e-6), or always with text-allow-overlap; a
-// placed label's box goes into the grid unless text-ignore-placement. The anchor is projected; the
-// box is the layout's, times GL JS's perspective ratio. Unplaceable: behind the camera or the globe,
-// a perspective ratio under 0.6 (GL JS's cutoff), or entirely outside the grid (the view and 100 px).
+// collision_index.ts, grid_index.ts). Layers are placed from the top of the style down, each layer's
+// tiles finest first (GL JS sorts them by overscaled zoom), each tile's labels in their bucket's order;
+// a label is placed when its box hits no box placed before it (boxes touching count, within 1e-6), or
+// always with text-allow-overlap; a placed label's box goes into the grid unless text-ignore-placement.
+// The anchor is projected; the box is the layout's, times GL JS's perspective ratio. Unplaceable:
+// behind the camera or the globe, a perspective ratio under 0.6 (GL JS's cutoff), or entirely outside
+// the grid (the view and 100 px).
+// For the fades (LabelFades): what is placed is kept by cross-tile ID (CrossTileSymbolIndex) - a label
+// already placed from a finer tile of the same layer is skipped, as GL JS's seenCrossTileIDs - and a
+// placement can pause between tiles and go on in the next frame from the camera it began with (GL JS's
+// PauseablePlacement / LayerPlacement).
 internal sealed class LabelPlacement
 {
     const float ViewportPadding = 100, CellSize = 25, PerspectiveCutoff = 0.6f, Epsilon = 1e-6f;
@@ -45,51 +56,127 @@ internal sealed class LabelPlacement
     /// <summary>One layer's labels to place: its tiles, each with its world matrix, and its text-size at this zoom.</summary>
     internal readonly record struct Layer(int Index, IReadOnlyList<(GpuTile tile, Matrix world)> Tiles, float Size = 16);
 
-    /// <summary>Places every label of <paramref name="layers"/> (top of the style first) and writes each tile's per-vertex placement (0 or 1).</summary>
+    /// <summary>GL JS's JointPlacement: text and icon shown or not; SkipFade for a symbol placed just off the screen (no fade in when it comes in).</summary>
+    internal readonly record struct Joint(bool Text, bool Icon, bool SkipFade);
+
+    /// <summary>What the placement decided, by cross-tile ID.</summary>
+    public readonly Dictionary<int, Joint> Placements = new();
+
+    // the placement under way: its layers (tiles sorted), its camera, and where it paused
+    List<Layer> _layers = new();
+    Matrix _view, _viewProjection;
+    float _cameraToCenter;
+    bool _flat;
+    int _layer, _tile;
+    // the IDs placed in the layer under way, each with the tile that placed it: a wrapped copy of the
+    // same tile (the same buffers drawn elsewhere) is not a duplicate
+    readonly Dictionary<int, GpuTile> _seen = new();
+
+    public bool Done { get; private set; } = true;
+
+    /// <summary>Places every label of <paramref name="layers"/> (top of the style first) at once.</summary>
     public void Place(IReadOnlyList<Layer> layers, Matrix view, Matrix projection, float width, float height, float cameraToCenter, bool flat)
     {
-        Reset(width, height);
-        var viewProjection = view * projection;
-        foreach (var layer in layers)
-            foreach (var (tile, world) in layer.Tiles)
-            {
-                if (tile.Labels.Count == 0 && tile.LineLabels.Count == 0 || tile.Placed is not { } placed) continue;
-                var worldViewProjection = world * viewProjection;
-                var worldView = world * view;
-                var up = tile.Bucket.Centre.ToVector3();
-                // the layer's own labels: a tile holds every symbol layer's, one layer after another
-                var (lineStart, lineCount) = tile.LineLabelRange(layer.Index);
-                for (int i = lineStart; i < lineStart + lineCount; i++)
-                {
-                    var line = tile.LineLabels[i];
-                    bool show = PlaceLine(line, tile, worldViewProjection, worldView, up, layer.Size, cameraToCenter, flat, out float size);
-                    // every glyph walked only for a label shown (GL JS: updateLineLabels, at render)
-                    if (show) LineGlyphs.Place(line, worldViewProjection, _width, _height, size, tile.Dynamic!, out _, out _);
-                    float value = show ? 1 : 0;
-                    for (int v = line.VertexStart; v < line.VertexStart + line.GlyphOffsets.Length * 4; v++)
-                        if (placed[v] != value) { placed[v] = value; tile.PlacedDirty = true; }
-                }
-                var (labelStart, labelCount) = tile.LabelRange(layer.Index);
-                for (int i = labelStart; i < labelStart + labelCount; i++)
-                {
-                    var label = tile.Labels[i];
-                    var (text, icon) = PlaceOne(label, worldViewProjection, worldView, up, cameraToCenter, flat);
-                    Show(label.TextStart, label.TextCount, text);
-                    Show(label.IconStart, label.IconCount, icon);
-                }
-
-                void Show(int start, int count, bool show)
-                {
-                    float value = show ? 1 : 0;
-                    for (int v = start; v < start + count; v++)
-                        if (placed[v] != value) { placed[v] = value; tile.PlacedDirty = true; }
-                }
-            }
+        Begin(layers, view, projection, width, height, cameraToCenter, flat);
+        Continue(null);
     }
 
+    /// <summary>Starts a placement from this camera; <see cref="Continue"/> does the work.</summary>
+    public void Begin(IReadOnlyList<Layer> layers, Matrix view, Matrix projection, float width, float height, float cameraToCenter, bool flat)
+    {
+        Reset(width, height);
+        Placements.Clear();
+        _seen.Clear();
+        _layers = new List<Layer>(layers.Count);
+        foreach (var l in layers)
+        {
+            // GL JS style.ts: a source's tiles finest first, then by tile
+            var tiles = new List<(GpuTile tile, Matrix world)>(l.Tiles);
+            tiles.Sort((a, b) => Order(a.tile, b.tile));
+            _layers.Add(l with { Tiles = tiles });
+        }
+        _view = view; _viewProjection = view * projection;
+        _cameraToCenter = cameraToCenter; _flat = flat;
+        _layer = 0; _tile = 0;
+        Done = false;
+    }
+
+    /// <summary>GL JS's order of a layer's tiles: overscaled zoom, finest first, then the canonical tile (OverscaledTileID.isLessThan).</summary>
+    internal static int Order(GpuTile a, GpuTile b)
+    {
+        int c = b.Bucket.OverscaledZoom.CompareTo(a.Bucket.OverscaledZoom);
+        if (c != 0) return c;
+        var (ka, kb) = (a.Bucket.Key, b.Bucket.Key);
+        return ka.Zoom != kb.Zoom ? ka.Zoom.CompareTo(kb.Zoom) : ka.X != kb.X ? ka.X.CompareTo(kb.X) : ka.Y.CompareTo(kb.Y);
+    }
+
+    /// <summary>Places tile after tile until done, or until <paramref name="shouldPause"/> says so after a tile; true when done.</summary>
+    public bool Continue(Func<bool>? shouldPause)
+    {
+        while (_layer < _layers.Count)
+        {
+            var layer = _layers[_layer];
+            while (_tile < layer.Tiles.Count)
+            {
+                var (tile, world) = layer.Tiles[_tile++];
+                PlaceTile(layer, tile, world);
+                if (shouldPause?.Invoke() == true) return false;
+            }
+            _layer++; _tile = 0;
+            _seen.Clear();
+        }
+        Done = true;
+        return true;
+    }
+
+    void PlaceTile(Layer layer, GpuTile tile, Matrix world)
+    {
+        if (tile.Labels.Count == 0 && tile.LineLabels.Count == 0) return;
+        var worldViewProjection = world * _viewProjection;
+        var worldView = world * _view;
+        var up = tile.Bucket.Centre.ToVector3();
+        // the layer's own labels: a tile holds every symbol layer's, one layer after another
+        var (lineStart, lineCount) = tile.LineLabelRange(layer.Index);
+        for (int i = lineStart; i < lineStart + lineCount; i++)
+        {
+            if (tile.LineLabelIds is not { } lineIds || Seen(lineIds[i], tile, out bool again)) continue;
+            bool show = PlaceLine(tile.LineLabels[i], worldViewProjection, worldView, up, layer.Size, _cameraToCenter, _flat, out bool offscreen);
+            Record(lineIds[i], again, new Joint(show, show, offscreen));
+        }
+        var (labelStart, labelCount) = tile.LabelRange(layer.Index);
+        for (int i = labelStart; i < labelStart + labelCount; i++)
+        {
+            if (tile.LabelIds is not { } labelIds || Seen(labelIds[i], tile, out bool again)) continue;
+            var (text, icon, offscreen) = PlaceOne(tile.Labels[i], worldViewProjection, worldView, up, _cameraToCenter, _flat);
+            Record(labelIds[i], again, new Joint(text, icon, offscreen));
+        }
+    }
+
+    // GL JS: a symbol placed already from another tile of this layer is a duplicate. The same tile again
+    // (a wrapped copy): shown if any copy is
+    bool Seen(int id, GpuTile tile, out bool again)
+    {
+        again = false;
+        if (!_seen.TryGetValue(id, out var by)) { _seen[id] = tile; return false; }
+        if (!ReferenceEquals(by, tile)) return true;
+        again = true;
+        return false;
+    }
+
+    void Record(int id, bool again, Joint joint)
+    {
+        if (again && Placements.TryGetValue(id, out var before))
+            joint = new Joint(before.Text || joint.Text, before.Icon || joint.Icon, before.SkipFade && joint.SkipFade);
+        Placements[id] = joint;
+    }
+
+    // GL JS collision_index.ts isOffscreen: outside the viewport itself (the grid reaches 100 px further)
+    bool Offscreen(float x1, float y1, float x2, float y2)
+        => x2 < ViewportPadding || x1 >= _width + ViewportPadding || y2 < ViewportPadding || y1 > _height + ViewportPadding;
+
     /// <summary>
-    /// Between placements: only the glyphs of the labels along lines that are shown, walked along their
-    /// projected lines again - GL JS's updateLineLabels, every frame, while placement runs at most every
+    /// The glyphs of the labels along lines that are shown or fading, walked along their projected lines
+    /// again - GL JS's updateLineLabels, every frame the camera moves, while placement runs at most every
     /// few hundred milliseconds. Nothing is shown or hidden by collision here.
     /// </summary>
     public void UpdateLines(IReadOnlyList<Layer> layers, Matrix view, Matrix projection, float width, float height, float cameraToCenter, bool flat)
@@ -106,7 +193,7 @@ internal sealed class LabelPlacement
                 for (int i = lineStart; i < lineStart + lineCount; i++)
                 {
                     var line = tile.LineLabels[i];
-                    if (placed[line.VertexStart] == 0) continue;   // hidden by the last placement
+                    if (placed[line.VertexStart] == 0) continue;   // hidden, not fading out (LabelFades.Pack)
                     var clip = Vector4.Transform(new Vector4(line.Anchor, 1), worldViewProjection);
                     if (clip.W <= 0) { LineGlyphs.Hide(line, dynamic); tile.DynamicDirty = true; continue; }
                     float perspective = 0.5f + 0.5f * cameraToCenter / clip.W;
@@ -120,7 +207,7 @@ internal sealed class LabelPlacement
     // GL JS placement.ts placeSymbol for a point symbol: the text's box and the icon's are each placed
     // (collision_index.ts placeCollisionBox), then combined - both or neither, unless one is optional -
     // and only then inserted; what is shown is the placement or the always-show rule, never on the far side
-    (bool text, bool icon) PlaceOne(in LabelInfo label, Matrix worldViewProjection, Matrix worldView, Vector3 centre, float cameraToCenter, bool flat)
+    (bool text, bool icon, bool offscreen) PlaceOne(in LabelInfo label, Matrix worldViewProjection, Matrix worldView, Vector3 centre, float cameraToCenter, bool flat)
     {
         var clip = Vector4.Transform(new Vector4(label.Anchor, 1), worldViewProjection);
         bool occluded = clip.W <= 0;
@@ -132,15 +219,15 @@ internal sealed class LabelPlacement
             var up = Vector3.TransformNormal(n, worldView);
             occluded = Vector3.Dot(up, -p) <= 0;
         }
-        if (occluded) return (false, false);
+        if (occluded) return (false, false, false);
         var f = label.Flags;
         float x = (clip.X / clip.W + 1) / 2 * _width + ViewportPadding;
         float y = (-clip.Y / clip.W + 1) / 2 * _height + ViewportPadding;
         float perspective = 0.5f + 0.5f * cameraToCenter / clip.W;
-        bool placeText = false, placeIcon = false;
+        bool placeText = false, placeIcon = false, offscreen = true;
         SymbolBox textBox = default, iconBox = default;
-        if (label.Text is { } t) placeText = PlaceBox(t, (f & SymbolFlags.TextAllowOverlap) != 0, out textBox);
-        if (label.Icon is { } i) placeIcon = PlaceBox(i, (f & SymbolFlags.IconAllowOverlap) != 0, out iconBox);
+        if (label.Text is { } t) { placeText = PlaceBox(t, (f & SymbolFlags.TextAllowOverlap) != 0, out textBox, out bool o); offscreen = o; }
+        if (label.Icon is { } i) { placeIcon = PlaceBox(i, (f & SymbolFlags.IconAllowOverlap) != 0, out iconBox, out bool o); offscreen &= o; }
 
         bool iconWithoutText = (f & SymbolFlags.TextOptional) != 0 || label.TextCount == 0;
         bool textWithoutIcon = (f & SymbolFlags.IconOptional) != 0 || label.IconCount == 0;
@@ -150,14 +237,15 @@ internal sealed class LabelPlacement
 
         if (placeText && (f & SymbolFlags.TextIgnorePlacement) == 0) Insert(textBox.X1, textBox.Y1, textBox.X2, textBox.Y2);
         if (placeIcon && (f & SymbolFlags.IconIgnorePlacement) == 0) Insert(iconBox.X1, iconBox.Y1, iconBox.X2, iconBox.Y2);
-        return (placeText || (f & SymbolFlags.AlwaysShowText) != 0, placeIcon || (f & SymbolFlags.AlwaysShowIcon) != 0);
+        return (placeText || (f & SymbolFlags.AlwaysShowText) != 0, placeIcon || (f & SymbolFlags.AlwaysShowIcon) != 0, offscreen);
 
         // placeable: inside the grid, not under the perspective cutoff, and hitting nothing (unless it may overlap)
-        bool PlaceBox(SymbolBox b, bool allowOverlap, out SymbolBox box)
+        bool PlaceBox(SymbolBox b, bool allowOverlap, out SymbolBox box, out bool offscreen)
         {
             box = new SymbolBox(x + b.X1 * perspective, y + b.Y1 * perspective, x + b.X2 * perspective, y + b.Y2 * perspective);
             bool unplaceable = perspective < PerspectiveCutoff
                 || !(box.X2 >= 0 && box.X1 < _width + 2 * ViewportPadding && box.Y2 >= 0 && box.Y1 < _height + 2 * ViewportPadding);
+            offscreen = !unplaceable && Offscreen(box.X1, box.Y1, box.X2, box.Y2);
             return !unplaceable && (allowOverlap || !Hits(box.X1, box.Y1, box.X2, box.Y2));
         }
     }
@@ -165,10 +253,9 @@ internal sealed class LabelPlacement
     // GL JS: the glyphs placed along the projected line (projection.ts), then placeCollisionCircles - a
     // row of circles along the label's path, radius half the circle diameter times the perspective
     // ratio plus text-padding, 2.5 radii apart, a quarter radius in from each end
-    bool PlaceLine(LineLabel label, GpuTile tile, Matrix worldViewProjection, Matrix worldView, Vector3 centre, float layerSize, float cameraToCenter, bool flat, out float size)
+    bool PlaceLine(LineLabel label, Matrix worldViewProjection, Matrix worldView, Vector3 centre, float layerSize, float cameraToCenter, bool flat, out bool offscreen)
     {
-        tile.DynamicDirty = true;
-        size = 0;
+        offscreen = false;
         var clip = Vector4.Transform(new Vector4(label.Anchor, 1), worldViewProjection);
         bool occluded = clip.W <= 0;
         if (!flat && !occluded)
@@ -179,7 +266,7 @@ internal sealed class LabelPlacement
         }
         if (occluded) return false;
         float perspective = 0.5f + 0.5f * cameraToCenter / clip.W;
-        size = (label.FeatureSize > 0 ? label.FeatureSize : layerSize) * perspective;
+        float size = (label.FeatureSize > 0 ? label.FeatureSize : layerSize) * perspective;
         if (!LineGlyphs.PlaceEnds(label, worldViewProjection, _width, _height, size, out var first, out var last)) return false;
         if (label.IconBox is { } icon)
         {
@@ -189,6 +276,7 @@ internal sealed class LabelPlacement
             bool unplaceable = perspective < PerspectiveCutoff
                 || !(b.X2 >= 0 && b.X1 < _width + 2 * ViewportPadding && b.Y2 >= 0 && b.Y1 < _height + 2 * ViewportPadding);
             if (unplaceable) return label.AlwaysOverlap;
+            offscreen = Offscreen(b.X1, b.Y1, b.X2, b.Y2);
             if (!label.AlwaysOverlap && Hits(b.X1, b.Y1, b.X2, b.Y2)) return false;
             if (!label.IgnorePlacement) Insert(b.X1, b.Y1, b.X2, b.Y2);
             return true;
@@ -204,6 +292,9 @@ internal sealed class LabelPlacement
         foreach (var (x, y) in circles)
             inGrid |= x + radius >= 0 && x - radius < _width + 2 * ViewportPadding && y + radius >= 0 && y - radius < _height + 2 * ViewportPadding;
         if (!inGrid) return label.AlwaysOverlap;
+        // GL JS placeCollisionCircles: offscreen when every circle is
+        offscreen = true;
+        foreach (var (x, y) in circles) offscreen &= Offscreen(x - radius, y - radius, x + radius, y + radius);
         if (!label.AlwaysOverlap)
             foreach (var (x, y) in circles)
                 if (HitsCircle(x, y, radius)) return false;

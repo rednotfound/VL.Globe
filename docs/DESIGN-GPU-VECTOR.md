@@ -258,21 +258,36 @@ change of view at most every 300 ms, once more at rest, at once when the tiles c
 `LabelPlacement.UpdateLines` walks only the shown glyphs along lines. Each layer's labels are found
 as one run (`GpuTile.LabelRange`). The perf line carries the Draw's timings (place, upload, submit).
 
+**Label fades, 2026-11-22 night** (GL JS's style.ts `_updatePlacement`, pauseable_placement.ts,
+placement.ts commit / updateBucketOpacities, cross_tile_symbol_index.ts; sources read at v6.19.0):
+- `CrossTileSymbolIndex.cs`: every symbol (point label or label along a line, per layer) gets a
+  cross-tile ID when its tile comes - the same text (`LabelInfo.Key`, FNV of the shaped text; '' for an
+  icon alone) within GL JS's ~4 px rounding in an indexed parent or child tile, or a new one. A rebuilt
+  tile is matched against the tile it replaces. Not ported: KDBush for keys with >128 symbols, wrap jumps.
+- `LabelPlacement.cs`: `Begin` / `Continue(shouldPause)`; results by ID (`Joint`: text, icon, skipFade
+  for a symbol just off the screen); a layer's tiles finest first, a label placed already from a finer
+  tile skipped. `Place` = both at once. Collision no longer writes glyphs; `UpdateLines` does.
+- `LabelFades.cs`: one frame of labels. A placement 2 ms a frame (whole when FadeDuration is 0); a new
+  one once the last is done, 300 ms after its commit, and the camera or tiles changed since it began.
+  The commit makes opacity states (GL JS's OpacityState); every symbol vertex holds its ID's state
+  (`Pack`: placed 1 + opacity, else -opacity); duplicates hidden; a label with no state shown only where
+  it may overlap. GlobeSymbol.sdsl moves the state by `GsFadeChange` (time since the commit / 300 ms).
+  The glyphs along lines are walked when the camera moved or a state changed. Not ported: zoomAdjustment.
+- MapLibre's fixtures run with `FadeDuration = 0`, as its harness: 311 pass, 302 non-vacuous - as
+  before. `LabelFadeFacts`: fade in, carry-over into a child tile, duplicates, the pause, the eye's pan.
+  Not yet seen in vvvv.
+
 ## Next
 
 0. Frame time while moving: tile uploads (50-150 MB/s at a tilt, Update 15-30 ms), 1500-2400 draws a
    frame. The one-off 150-190 ms was the atlases made again per glyph (NOTES.md, 2026-11-22): fixed,
    seen gone in vvvv. Tiles: a layer hidden at the tile's zoom is not built (Kyoto 9.1 -> 6.7 MB).
-   Placement: ends-only collision for lines (11.5 -> 6.7 ms offline). Left: 3D buildings are 76% of a
-   tile (a 28-byte vertex; GL JS's is ~12), roads built twice (casing and line); placement paused
-   after 2 ms a frame, which GL JS does only with fades (item 1). A 550 ms frame at rest outside Update and Draw: not yet found.
-1. Fades (300 ms) and labels across tiles of two zooms (CrossTileSymbolIndex), the `format`
+   Placement: ends-only collision for lines (11.5 -> 6.7 ms offline), and now 2 ms a frame (the fades).
+   Left: 3D buildings are 76% of a tile (a 28-byte vertex; GL JS's is ~12), roads built twice (casing
+   and line); the opacities written for every label tile whenever a tile comes (GL JS skips unchanged
+   buckets: `_markDuplicates`' changed). A 550 ms frame at rest outside Update and Draw: not yet found.
+1. Fades: to be seen in vvvv (zooming in at Kyoto: names should stay, not blink). Then the `format`
    expression, text-size by zoom and feature, text-offset across a line, an icon beside text along a line.
 2. Seen in vvvv at Kyoto Station: the one-way arrows along the roads. Shields not yet seen (no road
    with a ref in that view).
-2. Labels: fades (300 ms) and labels across tiles of two zooms (CrossTileSymbolIndex), the `format`
-   expression, text-size by zoom and feature, text-offset across a line.
-3. Labels and icons (RESEARCH-VECTOR stage 4: glyph PBFs, SDF, placement and collision) - the
-   largest piece left before 0.1's vector map reads like MapLibre's.
 3. 16-bit indices where a range allows, and dashes (line-dasharray) - drawn solid today.
-4. MapLibre's fixtures rendered by the GPU path offscreen, the same harness as the drape's.

@@ -310,7 +310,12 @@ internal static partial class VectorBucketBuilder
                         textIndexFirst, _symbolIndices.Count - start - textIndexFirst));
                     if (textCount + iconCount > 0)
                         _labels.Add(new LabelInfo(layer.Index, anchorPosition, textCount > 0 ? box : null, textFirst, textCount,
-                            iconCount > 0 ? iconBox : null, iconFirst, iconCount, flags));
+                            iconCount > 0 ? iconBox : null, iconFirst, iconCount, flags)
+                        {
+                            // GL JS: murmur3(shaping.text), or of '' for an icon alone
+                            Key = CrossTileSymbolIndex.KeyOf(shaping != null ? text : ""),
+                            AnchorX = (int)(ax * LineUp), AnchorY = (int)(ay * LineUp),
+                        });
                 }
             }
             ctx.Zoom = tileZoom;
@@ -424,6 +429,7 @@ internal static partial class VectorBucketBuilder
                             LineOffsetX = (float)offset.X, LineOffsetY = (float)offset.Y, KeepUpright = keepUpright,
                             CircleDiameter = diameter, Padding = (float)padding, FeatureSize = size,
                             AlwaysOverlap = alwaysOverlap, IgnorePlacement = ignorePlacement,
+                            Key = CrossTileSymbolIndex.KeyOf(text), AnchorX = (int)Math.Floor(anchor.X), AnchorY = (int)Math.Floor(anchor.Y),
                         });
 
                         void Add(double x, double y, double tx, double ty) => _symbolVertices.Add(new SymbolVertex
@@ -464,6 +470,7 @@ internal static partial class VectorBucketBuilder
                     GlyphOffsets = new float[quads.Count], VertexStart = first, KeepUpright = keepUpright,
                     FeatureSize = size, IconBox = box,
                     AlwaysOverlap = (flags & SymbolFlags.IconAllowOverlap) != 0, IgnorePlacement = (flags & SymbolFlags.IconIgnorePlacement) != 0,
+                    Key = CrossTileSymbolIndex.KeyOf(""), AnchorX = (int)Math.Floor(anchor.X), AnchorY = (int)Math.Floor(anchor.Y),
                 });
             }
             return placed;

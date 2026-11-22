@@ -98,18 +98,14 @@ internal sealed class VectorRenderer : IGraphicsRendererBase
     public bool Fog = false;
     MutablePipelineState? _pipeline, _linePipeline, _depthPipeline, _extrusionPipeline, _textPipeline, _circlePipeline;
     readonly Dictionary<string, ParameterKey> _symbolKeys = new(), _circleKeys = new();
-    readonly LabelPlacement _placement = new();
-    // GL JS places labels again when the view has changed, at most every 300 ms while it moves
-    // (Placement.stillRecent), and once more when it rests; between placements only the glyphs along
-    // lines follow the camera. A placement every frame cost 2-7 ms (25 at most) tilted over Kyoto.
-    const double PlacementInterval = 300;
+    // labels: GL JS's placement and fades - a placement 2 ms a frame, begun again 300 ms after the last
+    // commit when the camera or the tiles have changed; between, only the glyphs along lines follow
+    // the camera, and the shader moves each label's opacity by the time since the commit (LabelFades)
+    readonly LabelFades _fades = new();
     readonly System.Diagnostics.Stopwatch _clock = System.Diagnostics.Stopwatch.StartNew();
-    Matrix _placedViewProjection;
-    Vector2 _placedSize;
-    D3? _placedEye;
-    long _placedTiles;
-    double _placedAt = double.NegativeInfinity;
-    bool _restingPlacementDue;
+
+    /// <summary>The labels' fade, ms (GL JS's fadeDuration, 300 by default); 0: no fades, a whole placement every frame.</summary>
+    public double FadeDuration { get => _fades.FadeDuration; set => _fades.FadeDuration = value; }
     bool _broken;
     readonly Dictionary<string, ParameterKey> _keys = new();
 
@@ -161,26 +157,9 @@ internal sealed class VectorRenderer : IGraphicsRendererBase
     internal static Fog? FogOf(Frame frame)
         => frame.Eye is { } eye && eye.Length - frame.Radius is var height && height > 0 ? Engine.Fog.For((float)height) : null;
 
-    internal enum LabelStep { None, Place, UpdateLines }
-
-    /// <summary>What the labels need this frame: a placement, the glyphs along lines walked again, or nothing.</summary>
-    internal LabelStep NextLabelStep(Matrix viewProjection, Vector2 size, D3? eye, long tiles, double now)
-    {
-        // moved: the view, the viewport or the eye. With the eye left out, a pan at street level kept
-        // the rotation-only view bit for bit in many frames: the glyphs along lines stood still while
-        // the roads under them moved, and caught up in steps ("一顿一顿", the user, 2026-11-22)
-        bool moved = viewProjection != _placedViewProjection || size != _placedSize || eye != _placedEye;
-        LabelStep step;
-        if (tiles != _placedTiles || (moved && now - _placedAt >= PlacementInterval) || (!moved && _restingPlacementDue))
-        {
-            step = LabelStep.Place;
-            _placedAt = now; _placedTiles = tiles; _restingPlacementDue = false;
-        }
-        else if (moved) { step = LabelStep.UpdateLines; _restingPlacementDue = true; }
-        else return LabelStep.None;
-        _placedViewProjection = viewProjection; _placedSize = size; _placedEye = eye;
-        return step;
-    }
+    /// <summary>One frame of labels, as DrawFrame does it (for tests): <paramref name="now"/> in ms.</summary>
+    internal LabelFades.Did StepLabels(Frame frame, Matrix view, Matrix projection, float width, float height, bool flat, double now)
+        => _fades.Step(frame.Labels, view, projection, width, height, frame.CameraToCenter, flat, frame.Eye, now);
 
     /// <summary>
     /// Draws a frame's items with a compiled GlobeVector effect into the targets bound on <paramref name="commandList"/>.
@@ -228,19 +207,12 @@ internal sealed class VectorRenderer : IGraphicsRendererBase
         // labels: placed from this camera, then the changed placements uploaded
         _drawTimer.Restart();
         double placeMs = 0;
+        float fadeChange = _fades.FadeChange(_clock.Elapsed.TotalMilliseconds);
         if (frame.Labels.Count > 0)
         {
             _labelsMax = Math.Max(_labelsMax, frame.Labels.Sum(l => l.Tiles.Count));
             float width = commandList.Viewport.Width / frame.PixelRatio, height = commandList.Viewport.Height / frame.PixelRatio;
-            var viewProjection = view * projection;
-            var size = new Vector2(width, height);
-            // the tiles placed: a new or rebuilt tile needs a placement at once
-            long tiles = 17;
-            foreach (var layer in frame.Labels)
-                foreach (var (tile, _) in layer.Tiles) tiles = tiles * 31 + System.Runtime.CompilerServices.RuntimeHelpers.GetHashCode(tile);
-            var step = NextLabelStep(viewProjection, size, frame.Eye, tiles, _clock.Elapsed.TotalMilliseconds);
-            if (step == LabelStep.Place) _placement.Place(frame.Labels, view, projection, width, height, frame.CameraToCenter, flat);
-            else if (step == LabelStep.UpdateLines) _placement.UpdateLines(frame.Labels, view, projection, width, height, frame.CameraToCenter, flat);
+            StepLabels(frame, view, projection, width, height, flat, _clock.Elapsed.TotalMilliseconds);
             placeMs = _drawTimer.Elapsed.TotalMilliseconds;
             foreach (var layer in frame.Labels)
                 foreach (var (tile, _) in layer.Tiles)
@@ -344,6 +316,7 @@ internal sealed class VectorRenderer : IGraphicsRendererBase
                     SetText(symbolParameters, "GsSize", t.Size);
                     SetText(symbolParameters, "GsSizeFromVertex", t.SizePerFeature ? 1f : 0f);
                     SetText(symbolParameters, "GsOpacity", t.Opacity);
+                    SetText(symbolParameters, "GsFadeChange", fadeChange);
                     SetText(symbolParameters, "GsHaloWidth", t.HaloWidth);
                     SetText(symbolParameters, "GsHaloBlur", t.HaloBlur);
                     SetText(symbolParameters, "GsIsHalo", t.IsHalo ? 1f : 0f);

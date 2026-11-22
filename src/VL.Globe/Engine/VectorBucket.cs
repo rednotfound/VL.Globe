@@ -82,6 +82,7 @@ internal enum VectorProjection { Sphere, Mercator }
 internal sealed class VectorBucket
 {
     public TileKey Key;
+    public int OverscaledZoom;   // Key.Zoom, plus the levels it is overscaled by (GL JS's overscaledZ)
     public D3 Centre;
     // rented from the shared pool, longer than the counts: a street-level tile's arrays are megabytes,
     // and dropped after each upload they were large-object-heap garbage, collected in gen 2 - a pause
@@ -320,7 +321,7 @@ internal static partial class VectorBucketBuilder
             System.Runtime.InteropServices.CollectionsMarshal.AsSpan(_indices).CopyTo(indices);
             return new()
             {
-                Key = _key, Centre = _centre, Vertices = vertices, Indices = indices,
+                Key = _key, OverscaledZoom = _key.Zoom + System.Numerics.BitOperations.Log2((uint)Overscale), Centre = _centre, Vertices = vertices, Indices = indices,
                 VertexCount = _vertices.Count, IndexCount = _indices.Count, Ranges = _ranges.ToList(),
                 SymbolVertices = _symbolVertices.ToArray(), SymbolIndices = _symbolIndices.ToArray(), Labels = _labels.ToList(), LineLabels = _lineLabels.ToList(),
                 IconModes = new Dictionary<int, (bool, bool)>(_iconModes),

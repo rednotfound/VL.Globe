@@ -20,6 +20,7 @@ shader GlobeSymbol : ShaderBase
         stage float GsSize;             // text-size in px, when it does not depend on the feature
         stage float GsSizeFromVertex;   // 1: the size is per vertex
         stage float GsOpacity;          // text-opacity when it does not depend on the feature (else 1)
+        stage float GsFadeChange;       // GL JS's u_fade_change: the time since the placement's commit, in fades
         stage float GsHaloWidth;
         stage float GsHaloBlur;
         stage float GsIsHalo;           // GL JS's u_is_halo and u_is_plain
@@ -51,7 +52,7 @@ shader GlobeSymbol : ShaderBase
     stage stream int4 GsOffsetTex : TEXCOORD0;    // xy: the corner's offset x 32 at 24 px (GL JS's a_offset); zw: the atlas pixel
     stage stream float2 GsSizeOpacity : TEXCOORD1; // the feature's size and opacity where they depend on it
     stage stream float4 GsColorIn : COLOR0;       // the feature's colour (sRGB, straight) where it depends on it, else white
-    stage stream float GsPlacedIn : TEXCOORD2;    // slot 1: 1 placed, 0 not (LabelPlacement, every frame)
+    stage stream float GsPlacedIn : TEXCOORD2;    // slot 1: the fade state - placed: 1 + opacity, not: -opacity (LabelFades.Pack)
     stage stream float4 GsLineIn : TEXCOORD3;     // slot 2: a glyph along a line - x, y px, angle, 1; -1 hidden; 0 a point label
     stage stream int4 GsPixelIn : TEXCOORD4;      // a stretchable icon: xy pixels x 16 not stretched, zw the min font scale x 256
 
@@ -80,8 +81,12 @@ shader GlobeSymbol : ShaderBase
             float3 up = mul(float4(normalize(GsCentre + streams.GsAnchor), 0), GsWorldView).xyz;
             hidden = dot(up, -v.xyz) <= 0;
         }
-        float opacity = streams.GsSizeOpacity.y * GsOpacity * streams.GsPlacedIn;
-        hidden = hidden || opacity < 0.1;
+        float opacity = streams.GsSizeOpacity.y * GsOpacity;
+        // GL JS: the opacity at the commit, moved towards placed or not by the time since
+        float state = streams.GsPlacedIn;
+        float fade = state > 0.5 ? saturate(state - 1 + GsFadeChange) : saturate(-state - GsFadeChange);
+        hidden = hidden || opacity < 0.1 || fade <= 0;
+        opacity *= fade;
         float size = GsSizeFromVertex > 0.5 ? streams.GsSizeOpacity.x : GsSize;
         // GL JS: labels in the viewport are scaled by 0.5 + 0.5 x (camera to centre / camera to anchor)
         float perspective = clamp(0.5 + 0.5 * GsCameraToCenter / max(clip.w, 1e-9), 0, 4);
