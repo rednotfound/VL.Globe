@@ -17,7 +17,8 @@ Guidance for Claude Code working in this repository.
    vertex, MapLibre's render tests on the GPU path (97 pass offscreen in `dotnet test`).
    Then labels (ROADMAP **4e**): point text and collision ported from GL JS, 154 fixtures pass on the
    GPU path, seen in vvvv on Liberty; then labels along lines (158 fixtures, 150 non-vacuous).
-   **Next: icons (milestone 4), label fades.**
+   **Next: icons (milestone 4) - the plan and its 6 steps are in DESIGN-GPU-VECTOR.md, "Icons";
+   the fixtures and sprites are fetched; then label fades.**
    Research: [docs/RESEARCH-0.1.md](docs/RESEARCH-0.1.md), [docs/RESEARCH-VECTOR.md](docs/RESEARCH-VECTOR.md).
 2. Read **[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)** — what exists and why.
 3. Read **[NOTES.md](NOTES.md)** — every failure so far, before touching the same code.

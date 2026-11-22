@@ -155,11 +155,35 @@ GeoJSON line-center labels sit at the middle of their geojson-vt piece (128 px b
 **158 fixtures pass, 150 non-vacuous.** Seen in vvvv: river and canal names along the water.
 Not yet: text-offset across a line (findOffsetIntersectionPoint), line labels aligned to the viewport.
 
+## Icons (milestone 4) - the plan, 2026-11-22
+
+Ready: `tools\Fetch-MapLibreFixtures.ps1` fetches the 12 icon-* groups (111 fixtures; all
+"unsupported" now) and the sprites they load (`_assets\sprites\<name>.json/.png`, `@2x` beside).
+GL JS sources to port (download as for the labels, into the scratchpad's maplibre-src):
+`src/style/load_sprite.ts`, `src/render/image_atlas.ts` (IMAGE_PADDING 1), `src/render/image_manager.ts`,
+`src/symbol/shaping.ts` shapeIcon / fitIconToText, `src/symbol/quads.ts` getIconQuads (stretch zones),
+`src/webgl/draw/draw_symbol.ts` (icon program), `symbol_icon.vertex/fragment.glsl` (non-SDF) and the
+SDF program for sdf icons, `placement.ts` (icon/text joint placement: icon-optional, text-optional,
+icon-allow-overlap / ignore-placement), `collision_feature.ts` (icon boxes).
+Steps, each against the fixtures:
+1. Sprites: the style's `sprite` (a URL or a list of {id, url}), `.json` + `.png` (decode with
+   SkiaSharp, which the library already has), `@2x` when the pixel ratio is 2; an image atlas per style
+   (RGBA, 1-px padding, premultiplied), uploaded as the glyph atlas is.
+2. Layout: icon-image (tokens / expressions), icon-size, icon-anchor, icon-offset, icon-rotate,
+   shapeIcon and getIconQuads; icons in the same SymbolVertex stream as text (a flag for the
+   fragment path: RGBA sample vs SDF), drawn before the layer's text.
+3. Shader: GlobeSymbol gains the icon path - non-SDF: the atlas colour x opacity; SDF: as text, with
+   icon-color / icon-halo-*.
+4. Placement: icon boxes, the joint rule (both placed or neither, unless one is optional).
+5. icon-text-fit (shields): fitIconToText, then stretch zones (the `stretch` sprite's 17 fixtures).
+6. Liberty in vvvv: POI icons, road shields (line placement, viewport-aligned: needs "line labels
+   aligned to the viewport" too), one-way arrows.
+
 ## Next
 
-1. Labels: fades (300 ms) and labels across tiles of two zooms (CrossTileSymbolIndex), the `format`
+1. Icons (above).
+2. Labels: fades (300 ms) and labels across tiles of two zooms (CrossTileSymbolIndex), the `format`
    expression, text-size by zoom and feature, text-offset across a line.
-2. Labels, milestone 4: icons (sprites, icon-image, text-fit) - Liberty's POI icons and road shields.
 3. Labels and icons (RESEARCH-VECTOR stage 4: glyph PBFs, SDF, placement and collision) - the
    largest piece left before 0.1's vector map reads like MapLibre's.
 3. 16-bit indices where a range allows, and dashes (line-dasharray) - drawn solid today.
