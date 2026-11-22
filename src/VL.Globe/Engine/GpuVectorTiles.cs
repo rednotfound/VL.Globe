@@ -36,7 +36,8 @@ internal sealed class GpuVectorTiles : IDisposable
     {
         public required MapStyleDocument Document;
         public required List<GpuStyleLayer> Layers;                         // style order
-        public required Dictionary<string, List<GpuStyleLayer>> BySource;   // vector sources only
+        public required Dictionary<string, List<GpuStyleLayer>> BySource;   // vector sources only; no symbol layers
+        public required Dictionary<string, List<GpuStyleLayer>> SymbolsBySource;   // their symbol layers, built apart
         public string? BackgroundSource;                                   // whose tiles carry the background grid
         public Texture? Atlas;                                             // the labels' glyphs on the GPU, and the atlas version it shows
         public int AtlasVersion = -1;
@@ -44,7 +45,9 @@ internal sealed class GpuVectorTiles : IDisposable
         public int ImagesVersion = -1;
     }
 
-    readonly Dictionary<(VectorTileService service, string source, TileKey key), Entry> _entries = new();
+    // keyed by Scale too: 0 the tile's fills, lines and circles; 1, 2, 4... its symbols, laid out at that
+    // overscale (GL JS lays symbols out again past the source's maxzoom: spacing in the shown pixels)
+    readonly Dictionary<(VectorTileService service, string source, TileKey key, int scale), Entry> _entries = new();
     readonly Dictionary<VectorTileService, StyleInfo> _styles = new();
     readonly VectorRenderer.Frame[] _frames = { new(), new() };
     // the background grids, by tile: no data in them, built at once on this thread
@@ -144,6 +147,7 @@ internal sealed class GpuVectorTiles : IDisposable
             if (info is null) continue;
             var doc = info.Document;
             var draws = new Dictionary<string, List<(Built built, Vector4 clip)>>();
+            var symbolDraws = new Dictionary<string, List<(Built built, Vector4 clip)>>();
             var backgroundDraws = new List<(Built built, Vector4 clip)>();
             foreach (var (sourceId, layers) in info.BySource)
             {
@@ -157,18 +161,28 @@ internal sealed class GpuVectorTiles : IDisposable
                     _ => (-1, -1, -1),
                 };
                 if (minZoom < 0) continue;
-                // the vector tile each shown globe tile needs, and the globe tiles each serves
+                // the vector tile each shown globe tile needs, the globe tiles each serves, and the
+                // overscale its symbols are laid out at (the finest any of them is shown at)
                 var needed = new Dictionary<TileKey, List<TileKey>>();
+                var scales = new Dictionary<TileKey, int>();
                 foreach (var g in shown)
                     if (VectorKey(minZoom, maxZoom, tileSize, g) is { } vk)
                     {
                         if (!needed.TryGetValue(vk, out var served)) needed[vk] = served = new List<TileKey>();
                         served.Add(g);
+                        scales[vk] = Math.Max(scales.GetValueOrDefault(vk, 1), Overscale(tileSize, vk, g));
                     }
+                var symbolLayers = info.SymbolsBySource.GetValueOrDefault(sourceId);
                 // the tiles wanted globe tiles need build first
                 foreach (var (vk, served) in needed.OrderByDescending(n => n.Value.Any(wanted.Contains)))
                 {
-                    var e = Ensure(service, sourceId, vk);
+                    if (layers.Count > 0) Schedule(vk, served, 0, layers);
+                    if (symbolLayers != null) Schedule(vk, served, scales[vk], symbolLayers);
+                }
+
+                void Schedule(TileKey vk, List<TileKey> served, int scale, List<GpuStyleLayer> built)
+                {
+                    var e = Ensure(service, sourceId, vk, scale);
                     // not built, or built without a glyph range that has come since
                     if ((e.Built is null || e.Incomplete && e.Missing.Any(service.IsHere)) && e.Job is null && _running < Workers.Count)
                     {
@@ -177,11 +191,11 @@ internal sealed class GpuVectorTiles : IDisposable
                         if (retry)
                         {
                             e.Fetched |= fetch;
-                            var key = vk;
                             e.Job = Workers.Run(() =>
                             {
                                 var missing = new List<string>();
-                                var bucket = VectorBucketBuilder.Build(doc, source, layers, false, key, fetch, missing, out bool complete);
+                                var bucket = VectorBucketBuilder.Build(doc, source, built, false, vk, fetch, missing, out bool complete,
+                                    overscale: Math.Max(1, scale));
                                 return (bucket, complete, missing.ToArray());
                             });
                             _running++;
@@ -189,7 +203,8 @@ internal sealed class GpuVectorTiles : IDisposable
                     }
                 }
                 Lap(1);
-                draws[sourceId] = Resolve(service, sourceId, needed);
+                draws[sourceId] = layers.Count > 0 ? Resolve(service, sourceId, needed) : new List<(Built, Vector4)>();
+                if (symbolLayers != null) symbolDraws[sourceId] = ResolveSymbols(service, sourceId, needed, scales);
                 Lap(2);
                 // the background is drawn on every needed tile from the first frame, built or not:
                 // the style's ground colour, not the globe's dark one, while the data comes
@@ -241,7 +256,7 @@ internal sealed class GpuVectorTiles : IDisposable
                     SymbolPaint? paint = null, iconPaint = null;
                     try { if (!layer.SymbolUniforms(ctx, out paint)) continue; iconPaint = layer.IconUniforms(ctx); }
                     catch (StyleUnsupportedException e) when (doc.Lenient) { doc.Drop(layer.Layer.Id, e.Message); continue; }
-                    if (info.Atlas is null && info.Images is null || layer.Layer.Source is not { } labelSource || !draws.TryGetValue(labelSource, out var drawn)) continue;
+                    if (info.Atlas is null && info.Images is null || layer.Layer.Source is not { } labelSource || !symbolDraws.TryGetValue(labelSource, out var drawn)) continue;
                     // labels only from tiles drawn whole, each once: the symbol shader does not clip, and a
                     // tile standing in for finer ones is drawn once per square - its labels drawn several
                     // times, colliding with themselves. A stand-in shows no labels; the finer tile will.
@@ -277,24 +292,30 @@ internal sealed class GpuVectorTiles : IDisposable
         foreach (var k in _entries.Keys.Where(k => k.service == service).ToList()) Drop(k);
         var layers = Enumerable.Range(0, doc.Layers.Count).Select(i => GpuStyleLayer.Of(doc, i)).Where(l => l != null).Select(l => l!).ToList();
         var bySource = new Dictionary<string, List<GpuStyleLayer>>();
+        var symbolsBySource = new Dictionary<string, List<GpuStyleLayer>>();
         foreach (var l in layers)
             if (l.Type != "background" && l.Layer.Source is { } s && doc.Sources.GetValueOrDefault(s) is VectorSource or GeoJsonSource)
             {
                 if (!bySource.TryGetValue(s, out var list)) bySource[s] = list = new List<GpuStyleLayer>();
-                list.Add(l);
+                if (l.IsSymbol)
+                {
+                    if (!symbolsBySource.TryGetValue(s, out var symbols)) symbolsBySource[s] = symbols = new List<GpuStyleLayer>();
+                    symbols.Add(l);
+                }
+                else list.Add(l);
             }
         string? background = layers.Any(l => l.Type == "background")
             ? bySource.Keys.FirstOrDefault() ?? doc.Sources.FirstOrDefault(s => s.Value is VectorSource).Key
             : null;
         if (background != null && !bySource.ContainsKey(background)) bySource[background] = new List<GpuStyleLayer>();
-        info = new StyleInfo { Document = doc, Layers = layers, BySource = bySource, BackgroundSource = background };
+        info = new StyleInfo { Document = doc, Layers = layers, BySource = bySource, SymbolsBySource = symbolsBySource, BackgroundSource = background };
         _styles[service] = info;
         return info;
     }
 
-    Entry Ensure(VectorTileService service, string source, TileKey key)
+    Entry Ensure(VectorTileService service, string source, TileKey key, int scale)
     {
-        if (!_entries.TryGetValue((service, source, key), out var e)) _entries[(service, source, key)] = e = new Entry();
+        if (!_entries.TryGetValue((service, source, key, scale), out var e)) _entries[(service, source, key, scale)] = e = new Entry();
         e.LastUsed = _frame;
         return e;
     }
@@ -342,7 +363,7 @@ internal sealed class GpuVectorTiles : IDisposable
         _gpuBytes += built.Bytes;
     }
 
-    void Drop((VectorTileService, string, TileKey) k)
+    void Drop((VectorTileService, string, TileKey, int) k)
     {
         var e = _entries[k];
         if (e.Built is { } b) { _tilesBuilt--; _gpuBytes -= b.Bytes; b.Dispose(); }
@@ -359,7 +380,7 @@ internal sealed class GpuVectorTiles : IDisposable
         var full = new Vector4(0, 0, 1, 1);
         foreach (var (vk, served) in needed)
         {
-            var e = _entries[(service, source, vk)];
+            var e = _entries[(service, source, vk, 0)];
             if (e.Built is { } built)
             {
                 bool finerInside = needed.Keys.Any(o => o.Zoom > vk.Zoom && Contains(vk, o));
@@ -368,13 +389,13 @@ internal sealed class GpuVectorTiles : IDisposable
                 continue;
             }
             // zooming out: finer tiles already built cover it (MapLibre keeps children for this too)
-            bool Here(TileKey k) => _entries.TryGetValue((service, source, k), out var c) && c.Built != null;
+            bool Here(TileKey k) => _entries.TryGetValue((service, source, k, 0), out var c) && c.Built != null;
             bool Covered(TileKey k, int depth) => (k != vk && Here(k)) || (depth > 0 && Children(k).All(c => Covered(c, depth - 1)));
             if (Covered(vk, 2))
             {
                 void Add(TileKey k, int depth)
                 {
-                    if (k != vk && _entries.TryGetValue((service, source, k), out var c) && c.Built is { } cb)
+                    if (k != vk && _entries.TryGetValue((service, source, k, 0), out var c) && c.Built is { } cb)
                     {
                         c.LastUsed = _frame;
                         if (!needed.ContainsKey(k)) list.Add((cb, full));   // a needed one draws itself
@@ -388,7 +409,7 @@ internal sealed class GpuVectorTiles : IDisposable
             for (int z = vk.Zoom - 1; z >= 0; z--)
             {
                 var a = new TileKey(z, vk.X >> (vk.Zoom - z), vk.Y >> (vk.Zoom - z));
-                if (_entries.TryGetValue((service, source, a), out var ae) && ae.Built is { } ab)
+                if (_entries.TryGetValue((service, source, a, 0), out var ae) && ae.Built is { } ab)
                 {
                     ae.LastUsed = _frame;
                     list.Add((ab, Rect(a, vk)));
@@ -397,6 +418,34 @@ internal sealed class GpuVectorTiles : IDisposable
             }
         }
         return list;
+    }
+
+    // a needed tile's symbols, drawn whole (labels come only from whole tiles): laid out at its overscale,
+    // or - while that layout is built - at the nearest other one already here, so zooming in past the
+    // source's maxzoom does not blank the labels
+    List<(Built, Vector4)> ResolveSymbols(VectorTileService service, string source, Dictionary<TileKey, List<TileKey>> needed, Dictionary<TileKey, int> scales)
+    {
+        var list = new List<(Built, Vector4)>();
+        var full = new Vector4(0, 0, 1, 1);
+        foreach (var vk in needed.Keys)
+        {
+            int scale = scales[vk];
+            Entry? best = _entries.TryGetValue((service, source, vk, scale), out var exact) && exact.Built != null ? exact : null;
+            if (best is null)
+                for (int step = 1; step <= 5 && best is null; step++)
+                    foreach (int other in new[] { scale >> step, scale << step })
+                        if (other >= 1 && _entries.TryGetValue((service, source, vk, other), out var near) && near.Built != null) { best = near; break; }
+            if (best?.Built is { } built) { best.LastUsed = _frame; list.Add((built, full)); }
+        }
+        return list;
+    }
+
+    // GL JS's overscaling: how many times its own size the vector tile vk is shown at in globe tile g
+    // (the ideal zoom past the source's maxzoom)
+    internal static int Overscale(int tileSize, TileKey vk, TileKey g)
+    {
+        int ideal = Math.Max(0, (int)Math.Floor(g.Zoom - 1 + Math.Log2(512.0 / tileSize)));
+        return ideal > vk.Zoom ? 1 << Math.Min(ideal - vk.Zoom, 8) : 1;
     }
 
     // GL JS's choice: the floored zoom for the source's tile size (a 256-px globe tile at zoom z is

@@ -449,5 +449,8 @@ looked fine - "which makes one think it works". Two causes, estimated at 100 m h
   diff the current upstream file before suspecting the inputs.
 - **Line-placed icons sample linear in GL JS**: pitch-alignment auto follows the map there, which
   counts as "transformed" - NEAREST drew the rotated arrows jagged.
-- **Symbols past the source's maxzoom are laid out per overscaled tile in GL JS**; ours use the
-  maxzoom tile's layout. The *-overscaled fixtures say so (ignored, with the reason).
+- **Symbols past the source's maxzoom are laid out at the overscaled zoom in GL JS** (one bucket for
+  the maxzoom tile, spacing in the shown pixels). Built as a separate symbol entry per overscale now.
+  Two hypotheses for the remaining half-spacing offset on some lines were refuted by the fixtures
+  (integer line coordinates; and overscaling 1 in getAnchors, which came closer but contradicts GL
+  JS's own unit tests) - not kept.

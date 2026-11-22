@@ -479,9 +479,11 @@ internal static partial class VectorBucketBuilder
         {
             const double Up = LineUp, GlExtent = Extent * Up;
             var l = layer.Layer;
-            double spacing = Expression.Number(GpuStyleLayer.Get(l.Layout, "symbol-spacing"), ctx, 250) * Up;
+            // GL JS's tilePixelRatio, EXTENT / (512 x overscaling): tile units a pixel of the overscaled tile
+            double tilePixelRatio = Up / Overscale;
+            double spacing = Expression.Number(GpuStyleLayer.Get(l.Layout, "symbol-spacing"), ctx, 250) * tilePixelRatio;
             double maxAngle = Expression.Number(GpuStyleLayer.Get(l.Layout, "text-max-angle"), ctx, 45) / 180 * Math.PI;
-            double boxScale = Up * layoutTextSize / Shaping.OneEm;   // textMaxBoxScale: no composite text-size here
+            double boxScale = tilePixelRatio * layoutTextSize / Shaping.OneEm;   // textMaxBoxScale: no composite text-size here
             var result = new List<(IReadOnlyList<(double X, double Y)> line, LineAnchor anchor)>();
             foreach (var part in f.Parts)
                 foreach (var ring in part)
@@ -492,7 +494,7 @@ internal static partial class VectorBucketBuilder
                     if (placement == "line")
                     {
                         foreach (var clipped in LineAnchors.ClipLine(new[] { line }, 0, 0, GlExtent, GlExtent))
-                            foreach (var a in LineAnchors.GetAnchors(clipped, spacing, maxAngle, shapedText, shapedIcon, Shaping.OneEm, boxScale, 1, GlExtent))
+                            foreach (var a in LineAnchors.GetAnchors(clipped, spacing, maxAngle, shapedText, shapedIcon, Shaping.OneEm, boxScale, Overscale, GlExtent))
                                 if (text is null || !TooClose(a)) placements.Add((clipped, a));
                     }
                     else

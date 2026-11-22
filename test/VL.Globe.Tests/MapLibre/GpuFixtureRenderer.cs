@@ -100,7 +100,8 @@ internal static class GpuFixtureRenderer
                     var key = new TileKey(z, ((tx % n) + n) % n, ty);
                     var bucket = background
                         ? VectorBucketBuilder.BackgroundBucket(key, VectorProjection.Mercator)
-                        : VectorBucketBuilder.Build(style, source, sourceLayers, false, key, true, null, out _, VectorProjection.Mercator);
+                        : VectorBucketBuilder.Build(style, source, sourceLayers, false, key, true, null, out _, VectorProjection.Mercator,
+                            overscale: 1 << (ideal - z));   // GL JS's overscaling past the source's maxzoom
                     if (bucket is null) continue;
                     var tile = GpuTile.Upload(gpu.Device, bucket);
                     tiles.Add(tile);

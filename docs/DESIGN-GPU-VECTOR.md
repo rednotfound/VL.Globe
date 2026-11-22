@@ -240,12 +240,23 @@ their names beside them, no overlaps; road names along the roads kept (their shi
   alignment groups all need `bearing`). **311 pass, 302 non-vacuous.** Not passing: the two
   *-overscaled fixtures (ignored) - below.
 
+**Symbols past the source's maxzoom, the same day.** GL JS (default options) lays the maxzoom tile's
+symbols out again at the overscaled zoom: one bucket, `tilePixelRatio = 8192 / (512 x overscaling)`,
+layout properties at that zoom (MapLibre slices real sub-tiles only with the experimental
+`zoomLevelsToOverscale`). Here: `Build(..., overscale)`; `GpuVectorTiles` builds a tile's symbol
+layers as an entry of their own keyed by the overscale (the finest of the globe tiles it serves), so
+fills and lines are not rebuilt when zooming in, and while a new layout builds the nearest one built
+is shown. Seen in vvvv at Kyoto Station (700 m, overscale 4): street names along Karasuma, Muromachi,
+Higashinotoin, Shinmachi and the North-South Free Passage, where only Shiokoji and Hachijo had one.
+The two *-overscaled fixtures are much closer (26% -> 20%, 5.5% -> 4.9% of pixels) but stay ignored:
+on some lines the anchors sit about half the spacing off GL JS's, cause not found (getAnchors and
+clipLine match line by line; integer coordinates changed nothing; overscaling 1 in getAnchors came
+closer, 5.7% - yet GL JS's own tests pass it as we do).
+
 ## Next
 
-1. **Symbols past the source's maxzoom.** GL JS lays symbols out again for each overscaled tile
-   (OpenFreeMap stops at z14; street level is z16-18), so spacing, repeat distance and collision boxes
-   are in that tile's pixels; the GPU path draws the z14 tile's layout - line symbols 4-16x sparser.
-   A bucket per overscaled tile for symbol layers only (fills and lines are right as they are).
+1. Fades (300 ms) and labels across tiles of two zooms (CrossTileSymbolIndex), the `format`
+   expression, text-size by zoom and feature, text-offset across a line, an icon beside text along a line.
 2. Seen in vvvv at Kyoto Station: the one-way arrows along the roads. Shields not yet seen (no road
    with a ref in that view).
 2. Labels: fades (300 ms) and labels across tiles of two zooms (CrossTileSymbolIndex), the `format`

@@ -8,7 +8,7 @@
     "text-size/composite-function-line-placement": "the same text-size by zoom and feature, along a line",
     "icon-size/composite-function-plain": "an icon-size by zoom and feature: GL JS interpolates between two zoom stops stored per vertex; one size per vertex here, as for text-size",
     "icon-size/composite-function-sdf": "the same icon-size by zoom and feature, an SDF icon",
-    "symbol-placement/line-overscaled": "symbols past the source's maxzoom: GL JS lays them out again for each overscaled tile (spacing in its pixels); the GPU path draws the maxzoom tile's layout, 8x sparser at z17",
+    "symbol-placement/line-overscaled": "symbols past the source's maxzoom, laid out for the overscaled zoom as GL JS (the density is right: 26% -> 20% of pixels differ in symbol-spacing, 5.5% -> 4.9% in symbol-placement); on some lines the anchors sit about half the spacing off GL JS's - not found yet: getAnchors and clipLine match GL JS line by line, integer coordinates changed nothing",
     "symbol-spacing/line-overscaled": "the same overscaled symbol layout"
   }
 }

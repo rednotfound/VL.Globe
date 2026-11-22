@@ -22,8 +22,9 @@ Guidance for Claude Code working in this repository.
    layers (needed by its fixtures) - 304 pass, 295 non-vacuous.
    Then step 6, symbols on lines (shields upright at line anchors, icons along lines) - 311 pass,
    302 non-vacuous; one-way arrows seen in vvvv at Kyoto Station, shields not yet seen.
-   **Next: symbols past the source's maxzoom
-   (DESIGN-GPU-VECTOR.md, "Next" 1); then label fades.**
+   Then symbols past the source's maxzoom (laid out at the overscaled zoom, as GL JS) - street
+   names along every street at Kyoto Station in vvvv.
+   **Next: label fades (DESIGN-GPU-VECTOR.md, "Next" 1); then ROADMAP 4f (the tilted distance).**
    Research: [docs/RESEARCH-0.1.md](docs/RESEARCH-0.1.md), [docs/RESEARCH-VECTOR.md](docs/RESEARCH-VECTOR.md).
 2. Read **[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)** — what exists and why.
 3. Read **[NOTES.md](NOTES.md)** — every failure so far, before touching the same code.

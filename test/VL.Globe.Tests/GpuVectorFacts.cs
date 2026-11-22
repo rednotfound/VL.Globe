@@ -250,6 +250,18 @@ public class GpuVectorFacts
         Assert.Equal(g.X >> (globeZoom - vectorZoom), vk.X);
     }
 
+    [Theory]
+    [InlineData(15, 1)]    // MapLibre's zoom 14 = the source's maxzoom: laid out at its own size
+    [InlineData(16, 2)]    // past the maxzoom: GL JS's overscaledZ 15, overscaling 2
+    [InlineData(18, 8)]    // street level, zoom 17: 8 - symbol spacing in the shown pixels
+    public void SymbolsPastTheMaxzoomAreLaidOutForTheZoomTheyAreSeenAt(int globeZoom, int overscale)
+    {
+        var source = new VectorSource { MaxZoom = 14, TileSize = 512 };
+        var g = new TileKey(globeZoom, 0, 0);
+        var vk = GpuVectorTiles.VectorKey(source, g)!.Value;
+        Assert.Equal(overscale, GpuVectorTiles.Overscale(source.TileSize, vk, g));
+    }
+
     [Fact]
     public void AStandInIsClippedToTheSquareItStandsFor()
     {

@@ -184,7 +184,8 @@ internal static partial class VectorBucketBuilder
     /// (<paramref name="complete"/> false then, the URL in <paramref name="missing"/>) or has no data.
     /// </summary>
     public static VectorBucket? Build(MapStyleDocument style, StyleSource source, IReadOnlyList<GpuStyleLayer> layers, bool withBackground,
-        TileKey key, bool fetch, ICollection<string>? missing, out bool complete, VectorProjection projection = VectorProjection.Sphere)
+        TileKey key, bool fetch, ICollection<string>? missing, out bool complete, VectorProjection projection = VectorProjection.Sphere,
+        int overscale = 1)
     {
         complete = true;
         var clock = Stopwatch.StartNew();
@@ -203,7 +204,7 @@ internal static partial class VectorBucketBuilder
             if (!complete) return null;
         }
 
-        var b = new Builder(key, projection, grid: source is GeoJsonSource);
+        var b = new Builder(key, projection, grid: source is GeoJsonSource) { Overscale = Math.Max(1, overscale) };
         var ctx = new StyleContext { Zoom = key.Zoom, GlobalState = style.GlobalState };
         if (withBackground) b.Background();
         foreach (var layer in layers)
@@ -213,7 +214,13 @@ internal static partial class VectorBucketBuilder
             if (features is null && (data is null || layer.Layer.SourceLayer is not { } sl || !data.TryGetValue(sl, out features))) continue;
             try
             {
-                if (layer.IsSymbol) b.Symbol(layer, features, ctx, style, fetch, missing, ref complete);
+                if (layer.IsSymbol)
+                {
+                    // GL JS lays symbols out at the overscaled tile's zoom (past the source's maxzoom)
+                    ctx.Zoom = key.Zoom + Math.Log2(b.Overscale);
+                    try { b.Symbol(layer, features, ctx, style, fetch, missing, ref complete); }
+                    finally { ctx.Zoom = key.Zoom; }
+                }
                 else if (layer.IsCircle) b.Circle(layer, features, ctx);
                 else b.Layer(layer, features, ctx);
             }
@@ -262,6 +269,9 @@ internal static partial class VectorBucketBuilder
         readonly Dictionary<ExtrudedVertex, uint> _seen = new();
 
         readonly bool _flat, _grid;
+        // GL JS's overscaling: the tile is shown this many times its own size (past the source's
+        // maxzoom), and symbols are laid out for that - spacing and label lengths in its pixels
+        public int Overscale = 1;
 
         public Builder(TileKey key, VectorProjection projection = VectorProjection.Sphere, bool grid = false)
         {

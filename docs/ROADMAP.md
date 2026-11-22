@@ -307,7 +307,7 @@ Ported from GL JS against its fixtures and shaping expectations (DESIGN-GPU-VECT
 user. **Milestone 3, labels along lines, done the same day: 158 fixtures (150 non-vacuous).**
 **Milestone 4, icons, steps 1-6 done the same day: 311 fixtures (302 non-vacuous)** - sprites,
 point icons, icon-text-fit and stretch zones, circle layers, shields and icons along lines.
-**Next: symbols past the source's maxzoom (DESIGN-GPU-VECTOR.md, "Next" 1), then fades.**
+Symbols past the source's maxzoom laid out at the overscaled zoom, the same day. **Next: fades.**
 
 ### 4f. The distance in a tilted view — asked by the user 2026-11-22, to do after 4e
 
