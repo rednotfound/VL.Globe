@@ -137,9 +137,11 @@ internal sealed class VectorRenderer : IGraphicsRendererBase
                 DrawFrame(context.CommandList, context.GraphicsContext, _effect, _symbolEffect, _circleEffect, view.View, view.Projection, view.ViewSize.Y, frame,
                     Lift, linearize: true, flat: false);
             // last, over the tiles, the vector layers and the labels (ROADMAP 4f step 2)
-            if (Fog && frame.Eye is { } eye)
+            // by the eye's own height, in double: CameraToCenter comes from the tile selection, which does
+            // not run while the Globe is off - it was 1e-9 then, and the fog covered the whole window
+            if (Fog && FogOf(frame) is { } fog)
                 _fog.Draw(context.CommandList, context.GraphicsContext, _fogEffect, view.View, view.Projection,
-                    (-eye).ToVector3(), frame.Radius, Engine.Fog.For(frame.CameraToCenter));
+                    (-frame.Eye!.Value).ToVector3(), frame.Radius, fog);
         }
         catch (Exception e)
         {
@@ -156,6 +158,10 @@ internal sealed class VectorRenderer : IGraphicsRendererBase
     /// </summary>
     // linearize: The colours are sRGB and the target linear (vvvv); false draws in sRGB space, as GL JS blends.
     // flat: The buckets are on the Mercator plane (x east, y north, z up), not the sphere.
+    /// <summary>The fog for a frame: by the eye's height above the globe; none without an eye or below the ground.</summary>
+    internal static Fog? FogOf(Frame frame)
+        => frame.Eye is { } eye && eye.Length - frame.Radius is var height && height > 0 ? Engine.Fog.For((float)height) : null;
+
     internal enum LabelStep { None, Place, UpdateLines }
 
     /// <summary>What the labels need this frame: a placement, the glyphs along lines walked again, or nothing.</summary>

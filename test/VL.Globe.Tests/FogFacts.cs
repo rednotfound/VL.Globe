@@ -23,6 +23,18 @@ public class FogFacts
 
     static int Alpha(byte[] px, int x, int y) => px[(y * W + x) * 4 + 3];
 
+    [Fact]
+    public void TheFogGoesByTheEyeItselfNotTheTileSelection()
+    {
+        // the Globe off: no tile selection, CameraToCenter left at 1e-9 - the fog then covered the whole
+        // window in vvvv (2026-11-22). The eye, 1,500 m up, is what it goes by.
+        double up = 1 + 1500 / GlobeCoordinates.EarthRadius;
+        var frame = new VectorRenderer.Frame { Radius = 1, CameraToCenter = 1e-9f, Eye = new D3(0, 0, up) };
+        var fog = VectorRenderer.FogOf(frame)!.Value;
+        Assert.Equal(Fog.StartFactor * 1500 / GlobeCoordinates.EarthRadius, fog.Start, 9);
+        Assert.Null(VectorRenderer.FogOf(new VectorRenderer.Frame { Radius = 1 }));
+    }
+
     [Theory]
     [InlineData(300)] [InlineData(1.5e7)]
     public void LookingStraightDownNothingIsFogged(double height)
