@@ -30,10 +30,12 @@ Guidance for Claude Code working in this repository.
    longer step while panning close (the eye counts as a move); lines collide by first/last glyph.
    Placement still spikes 17-50 ms while tiles load in vvvv.
    Then: the style is a node (`MapLibreStyle (URL)` / `(File)`, Maputnik named for editing, the
-   user's decision); 4f steps 1-2 built - the tilt limited by the zoom, fog towards the horizon -
-   waiting for the user's look (ROADMAP 4f).
+   user's decision); 4f built - the tilt limited by the zoom; the fog built and then turned off by
+   the user ("我宁愿没有"); vector tiles kept at the camera's zoom to 5 eye heights, 3D buildings
+   fading out before that (seen tilted over Tokyo: "视野里面相对比较满了"; 853 MB there, over budget).
+   A reported view is drawn offscreen by `ViewProbe` (VLGLOBE_PROBE=1 VLGLOBE_VIEW=#...).
    **Next: label fades with GL JS's pauseable placement (2 ms a frame) and CrossTileSymbolIndex -
-   DESIGN-GPU-VECTOR.md "Next" 1; 4f step 3 only if the user's look asks for it.**
+   DESIGN-GPU-VECTOR.md "Next" 1.**
    Research: [docs/RESEARCH-0.1.md](docs/RESEARCH-0.1.md), [docs/RESEARCH-VECTOR.md](docs/RESEARCH-VECTOR.md).
 2. Read **[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)** — what exists and why.
 3. Read **[NOTES.md](NOTES.md)** — every failure so far, before touching the same code.
