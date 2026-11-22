@@ -141,4 +141,31 @@ public class VectorTilesFacts
     public void AttributionHtmlBecomesText()
         => Assert.Equal("© OpenMapTiles Data from OpenStreetMap",
             VectorTileService.PlainText("<a href=\"https://www.openmaptiles.org/\" target=\"_blank\">&copy; OpenMapTiles</a> Data from <a href=\"https://www.openstreetmap.org/copyright\" target=\"_blank\">OpenStreetMap</a>"));
+    [Fact]
+    public void ReloadReadsAStyleFileAgainAfterItWasSaved()
+    {
+        // the Maputnik loop: the style is a file, edited and saved beside vvvv, read again on Reload
+        var file = Path.Combine(Path.GetTempPath(), $"vlglobe-reload-{Environment.ProcessId}.json");
+        string Style(string colour) => $$"""{ "version": 8, "sources": {}, "layers": [ { "id": "bg", "type": "background", "paint": { "background-color": "{{colour}}" } } ] }""";
+        string Colour(VectorTileService s)
+        {
+            var until = DateTime.UtcNow.AddSeconds(10);
+            while (s.Document is null && DateTime.UtcNow < until) Thread.Sleep(20);
+            return s.Document!.Layers[0].Paint.GetProperty("background-color").GetString()!;
+        }
+        try
+        {
+            File.WriteAllText(file, Style("#ff0000"));
+            using var node = new GlobeVectorTilesNode();
+            var layer = node.Update(out _, out _, file, reload: false, enabled: true);
+            Assert.Equal("#ff0000", Colour(layer.Vector!));
+
+            File.WriteAllText(file, Style("#00ff00"));
+            layer = node.Update(out _, out _, file, reload: false, enabled: true);
+            Assert.Equal("#ff0000", Colour(layer.Vector!));   // not read again unasked
+            layer = node.Update(out _, out _, file, reload: true, enabled: true);
+            Assert.Equal("#00ff00", Colour(layer.Vector!));
+        }
+        finally { File.Delete(file); }
+    }
 }

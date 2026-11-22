@@ -21,7 +21,7 @@
               <p:stringtype p:Assembly="VL.Core" p:Type="VL.Core.StringType">Comment</p:stringtype>
             </p:ValueBoxSettings>
           </Pad>
-          <Pad Id="OzUbPpRalgrCVjVGdcCp5R" Bounds="60,90,640,40" ShowValueBox="true" isIOBox="true" Value="Switch Enabled on. OpenFreeMap&apos;s Liberty style is drawn into the tiles from vector tiles: roads, water, land use, buildings, over OpenStreetMap&apos;s images. Labels and icons are not drawn yet.">
+          <Pad Id="OzUbPpRalgrCVjVGdcCp5R" Bounds="60,90,640,40" ShowValueBox="true" isIOBox="true" Value="Switch Enabled on. OpenFreeMap&apos;s Liberty style is drawn from vector tiles: roads, water, land use, 3D buildings, labels and icons, over OpenStreetMap&apos;s images.">
             <p:TypeAnnotation LastCategoryFullName="Primitive" LastDependency="VL.CoreLib.vl">
               <Choice Kind="TypeFlag" Name="String" />
             </p:TypeAnnotation>
@@ -52,6 +52,23 @@
               <Choice Kind="TypeFlag" Name="String" />
             </p:TypeAnnotation>
           </Pad>
+          <Pad Id="WsgASTOFGI4e94XOglSeNj" Comment="Reload" Bounds="620,190,30,30" ShowValueBox="true" isIOBox="true" Value="False">
+            <p:TypeAnnotation LastCategoryFullName="Primitive" LastDependency="VL.CoreLib.vl">
+              <Choice Kind="TypeFlag" Name="Boolean" />
+            </p:TypeAnnotation>
+            <p:ValueBoxSettings>
+              <p:buttonmode p:Assembly="VL.UI.Forms" p:Type="VL.HDE.PatchEditor.Editors.ButtonModeEnum">Bang</p:buttonmode>
+            </p:ValueBoxSettings>
+          </Pad>
+          <Pad Id="DFnseqcnyjjMLkv4fA7l5W" Bounds="660,190,320,34" ShowValueBox="true" isIOBox="true" Value="&lt; to edit a style: open its .json file in Maputnik (maplibre.org/maputnik), save, then press Reload">
+            <p:TypeAnnotation LastCategoryFullName="Primitive" LastDependency="VL.CoreLib.vl">
+              <Choice Kind="TypeFlag" Name="String" />
+            </p:TypeAnnotation>
+            <p:ValueBoxSettings>
+              <p:fontsize p:Type="Int32">9</p:fontsize>
+              <p:stringtype p:Assembly="VL.Core" p:Type="VL.Core.StringType">Comment</p:stringtype>
+            </p:ValueBoxSettings>
+          </Pad>
           <Node Bounds="300,240,140,19" Id="BJul0qbH6T2iwJsJ78apPi">
             <p:NodeReference LastCategoryFullName="Globe.Layers" LastDependency="VL.Globe.vl">
               <Choice Kind="NodeFlag" Name="Node" Fixed="true" />
@@ -61,13 +78,14 @@
               <Choice Kind="ProcessAppFlag" Name="VectorTiles" />
             </p:NodeReference>
             <Pin Id="QuTrCUs1nkkev5vof0Wb4m" Name="Style" Kind="InputPin" />
+            <Pin Id="8ntyvgYT19ZLeUMwTpCFQL" Name="Reload" Kind="InputPin" />
             <Pin Id="MuCJLUCfL92QRygdEuC3bj" Name="Enabled" Kind="InputPin" />
             <Pin Id="NeWCjiDv66ute8muzXJzsW" Name="Name" Kind="InputPin" />
             <Pin Id="CWx72kLZL5EcReJgUBXoCF" Name="Output" Kind="OutputPin" />
             <Pin Id="Sx8jhJ6j1vB2A7UhLu5Jde" Name="Attribution" Kind="OutputPin" />
             <Pin Id="RolQ2zwdMUrGvltCTLdXLJ" Name="Status" Kind="OutputPin" />
           </Node>
-          <Pad Id="VQ4dZbH26FFoMfZeAMOusW" Bounds="460,240,260,34" ShowValueBox="true" isIOBox="true" Value="&lt; a MapLibre style by URL or file; fills, lines and the background are drawn">
+          <Pad Id="VQ4dZbH26FFoMfZeAMOusW" Bounds="460,240,260,34" ShowValueBox="true" isIOBox="true" Value="&lt; a MapLibre style by URL or file; the Status says what it skips">
             <p:TypeAnnotation LastCategoryFullName="Primitive" LastDependency="VL.CoreLib.vl">
               <Choice Kind="TypeFlag" Name="String" />
             </p:TypeAnnotation>
@@ -143,6 +161,7 @@
           <Fragment Id="Dv1fJDuXFftBW1Lty7Wx9s" Patch="M93iQrHy9TUtSgQhirv1JI" Enabled="true" />
         </ProcessDefinition>
         <Link Id="DEtMzcBCV4FbRMXXXkuzmU" Ids="NtB85HBsIRdyabqQsLa7KR,QuTrCUs1nkkev5vof0Wb4m" />
+        <Link Id="as6JOycV89NHCj9jQL2kd4" Ids="WsgASTOFGI4e94XOglSeNj,8ntyvgYT19ZLeUMwTpCFQL" />
         <Link Id="E6THipl6Ninhe06jfmPImG" Ids="T0zVQn4a9xuvhQpCnlvBNI,MuCJLUCfL92QRygdEuC3bj" />
         <Link Id="Dd7Dd76gA9Muaids53JEQT" Ids="Sx8jhJ6j1vB2A7UhLu5Jde,MXNiXOLu0xxrFFQ4QBcOnC" />
         <Link Id="S0EMaut3UeXMg8mefXviOU" Ids="RolQ2zwdMUrGvltCTLdXLJ,T5WT3F9QFyU6Aw2RYNjmZz" />

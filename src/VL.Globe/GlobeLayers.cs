@@ -133,7 +133,7 @@ public enum GlobeVectorRendering
 }
 
 /// <summary>A MapLibre style's vector tiles, drawn on the globe.</summary>
-/// <remarks>Put Output into Globe's or GlobeWindow's Layers. Fetches only while Enabled is on. Show the Attribution. Labels and icons are not drawn yet.</remarks>
+/// <remarks>Put Output into Globe's or GlobeWindow's Layers. Fetches only while Enabled is on. Show the Attribution. To edit a style, save it as a .json file, open that in Maputnik, and press Reload after each save.</remarks>
 [ProcessNode(Name = "VectorTiles", Category = "Globe.Layers")]
 public sealed class GlobeVectorTilesNode : IDisposable
 {
@@ -143,16 +143,18 @@ public sealed class GlobeVectorTilesNode : IDisposable
     /// <param name="attribution">The credit the style's tile sources require.</param>
     /// <param name="status">What is drawn, what is skipped, and the tiles loading.</param>
     /// <param name="style">A MapLibre style: its URL, or the path of a style .json file.</param>
+    /// <param name="reload">Reads the style again, as after it was edited and saved.</param>
     /// <param name="enabled">Fetches and draws while on.</param>
     /// <param name="name">The layer's name.</param>
     /// <param name="rendering">GPU: geometry drawn every frame. Draped: drawn into the tiles' images.</param>
     [return: Pin(Name = "Output")]
     public GlobeLayer Update(out string attribution, out string status,
-        string style = "https://tiles.openfreemap.org/styles/liberty", bool enabled = false, string name = "VectorTiles",
+        string style = "https://tiles.openfreemap.org/styles/liberty", bool reload = false, bool enabled = false, string name = "VectorTiles",
         GlobeVectorRendering rendering = GlobeVectorRendering.GPU)
     {
         style = (style ?? "").Trim();
-        if (_service?.StyleUrl != style)
+        // read again on Reload, as FileTexture's Reload: the style's own tiles come from the disk cache
+        if (_service?.StyleUrl != style || reload)
         {
             _service?.Dispose();
             _service = style.Length == 0 ? null : new Engine.VectorTileService(style);

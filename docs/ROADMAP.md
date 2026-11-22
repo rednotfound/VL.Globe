@@ -309,6 +309,12 @@ user. **Milestone 3, labels along lines, done the same day: 158 fixtures (150 no
 point icons, icon-text-fit and stretch zones, circle layers, shields and icons along lines.
 Symbols past the source's maxzoom laid out at the overscaled zoom, the same day. **Next: fades.**
 
+**Authoring a style — decided 2026-11-22 (the user):** no editor and no style nodes of our own.
+Maputnik, MapLibre's own editor, already writes the style JSON ("社区已经做到的事情我们可能就不用做了");
+it is named in the README and the help patch. `VectorTiles` got a `Reload` input - VL's convention
+for a file read again (FileTexture, TextureReader, GameAsset), not a file watch (only Stride's
+project loader has an `Auto Reload`). Survey: RESEARCH-VECTOR.md, "Authoring a style in vvvv".
+
 ### 4f. The distance in a tilted view — asked by the user 2026-11-22, to do after 4e
 
 "斜视的时候，远处的建筑就很少加载了…缺的会比较明显". Why: far tiles are chosen coarser (screen-space
