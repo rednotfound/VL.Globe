@@ -96,7 +96,7 @@ internal sealed class GpuTile
             Bucket = bucket,
             ByLayer = byLayer,
             Vertices = Buffer.New(device, vertices, VectorVertex.Size, BufferFlags.VertexBuffer, PixelFormat.None, GraphicsResourceUsage.Immutable),
-            Indices = Buffer.New(device, indices, sizeof(uint), BufferFlags.IndexBuffer, PixelFormat.None, GraphicsResourceUsage.Immutable),
+            Indices = Buffer.New(device, indices, sizeof(ushort), BufferFlags.IndexBuffer, PixelFormat.None, GraphicsResourceUsage.Immutable),
             SymbolVertices = symbolVertices,
             SymbolIndices = symbolIndices,
             CircleVertices = circleVertices,
@@ -150,7 +150,7 @@ internal static class VectorDrawList
                     // an extrusion is lit in sRGB as GL JS lights it, then linearised in the shader
                     var tint = r.Kind == RangeKind.Extrusion || !linearize ? new Vector4((float)c.R, (float)c.G, (float)c.B, (float)c.A) : Linear(c);
                     items.Add(new VectorRenderer.Item(tile.Vertices, tile.Indices!, r.Start, r.Count, w, centre,
-                        tint, (float)half, line, Widen(clip), kind, 1 << tile.Bucket.Key.Zoom));
+                        tint, (float)half, line, Widen(clip), kind, 1 << tile.Bucket.Key.Zoom, Geo: tile.Bucket.Geo, BaseVertex: r.BaseVertex));
                 }
             }
     }

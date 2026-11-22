@@ -526,3 +526,11 @@ looked fine - "which makes one think it works". Two causes, estimated at 100 m h
   vvvv's after the same bench: 13 km apart. Now the page makes the point right of the centre the
   centre (`jumpTo`), as `CameraBench` drags, and both log the centre at each pan's edges and the
   distance (6.58 vs 6.59 km). A benchmark proves its motion before its numbers.
+
+- **Halving the bytes did not halve the misses (2026-11-23, ROADMAP 4g step 2).** The misses sat in
+  the seconds that uploaded tiles, so the bytes were taken for the cause; tiles went to half their size
+  (16-byte vertex, shared casings, 16-bit indices) and the bench missed more frames (5-7% against
+  3.5-4.2%), because each draw now set two more parameters. A correlation named the second, not the
+  cost. Measure the frame that misses, by its parts, before choosing what to make smaller.
+- **A parameter set by `"prefix." + name`** allocated and hashed a string per call: 12 a draw, 3000
+  draws a frame. Resolve a key once.

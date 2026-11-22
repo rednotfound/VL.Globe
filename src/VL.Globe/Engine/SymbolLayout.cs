@@ -312,7 +312,7 @@ internal static partial class VectorBucketBuilder
                     // GL JS keeps the anchor in Int16 arrays of its 8192-unit tile: a polygon's pole or a line's
                     // anchor, fractional, is truncated to whole units (symbol-placement/point-polygon)
                     double ax = Math.Floor(exactX * LineUp) / LineUp, ay = Math.Floor(exactY * LineUp) / LineUp;
-                    var anchorPosition = Vertex(ax, ay, 0, 0, 0, 1, 0).Position;
+                    var anchorPosition = Relative(ax, ay);
                     // the icon first (symbol_layout.ts addSymbol), then the glyphs
                     int iconFirst = _symbolVertices.Count, iconIndexFirst = _iconIndices.Count;
                     if (iconQuads != null) foreach (var q in iconQuads) IconQuadVertices(anchorPosition, q, iconSize, iconOpacity, iconColor);
@@ -412,8 +412,8 @@ internal static partial class VectorBucketBuilder
 
                     foreach (var (used, anchor) in LinePlacements(layer, f, placement, ctx, (shaping.Left, shaping.Right), null, layoutTextSize, text, repeated))
                     {
-                        var anchorPosition = Vertex(anchor.X / Up, anchor.Y / Up, 0, 0, 0, 1, 0).Position;
-                        var points = used.Select(p => Vertex(p.X / Up, p.Y / Up, 0, 0, 0, 1, 0).Position).ToArray();
+                        var anchorPosition = Relative(anchor.X / Up, anchor.Y / Up);
+                        var points = used.Select(p => Relative(p.X / Up, p.Y / Up)).ToArray();
                         int first = _symbolVertices.Count;
                         var offsets = new List<float>();
                         foreach (var lineGlyphs in shaping.PositionedLines)
@@ -474,14 +474,14 @@ internal static partial class VectorBucketBuilder
             bool keepUpright = GpuStyleLayer.Get(l.Layout, "icon-keep-upright") is { } ku && Expression.Evaluate(ku, ctx, Expression.Kind.Any) is true;
             foreach (var (used, anchor) in LinePlacements(layer, f, placement, ctx, null, extent, layoutTextSize, null, repeated))
             {
-                var anchorPosition = Vertex(anchor.X / LineUp, anchor.Y / LineUp, 0, 0, 0, 1, 0).Position;
+                var anchorPosition = Relative(anchor.X / LineUp, anchor.Y / LineUp);
                 int first = _symbolVertices.Count, iconIndexFirst = _iconIndices.Count;
                 foreach (var q in quads) IconQuadVertices(anchorPosition, q, size, opacity, color);
                 placed.Add(((int)Math.Floor(anchor.Y + 0.5), iconIndexFirst, _iconIndices.Count - iconIndexFirst));
                 _lineLabels.Add(new LineLabel
                 {
                     Layer = layer.Index, Anchor = anchorPosition, Segment = anchor.Segment,
-                    Line = used.Select(p => Vertex(p.X / LineUp, p.Y / LineUp, 0, 0, 0, 1, 0).Position).ToArray(),
+                    Line = used.Select(p => Relative(p.X / LineUp, p.Y / LineUp)).ToArray(),
                     GlyphOffsets = new float[quads.Count], VertexStart = first, KeepUpright = keepUpright,
                     FeatureSize = size, IconBox = box,
                     AlwaysOverlap = (flags & SymbolFlags.IconAllowOverlap) != 0, IgnorePlacement = (flags & SymbolFlags.IconIgnorePlacement) != 0,

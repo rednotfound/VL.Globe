@@ -36,7 +36,7 @@ internal sealed class VectorRenderer : IGraphicsRendererBase
 
     internal readonly record struct Item(Buffer Vertices, Buffer Indices, int Start, int Count, Matrix World, Vector3 Centre,
         Vector4 Color, float HalfWidth, bool IsLine, Vector4 Clip, Pass Pass = Pass.Triangles, float Tiles = 1, TextDraw? Text = null,
-        CircleDraw? Circle = null);
+        CircleDraw? Circle = null, TileProjection.Geo Geo = default, int BaseVertex = 0);
 
     internal sealed class Frame
     {
@@ -276,7 +276,8 @@ internal sealed class VectorRenderer : IGraphicsRendererBase
                 if (!ReferenceEquals(item.Vertices, boundVertices))
                 {
                     commandList.SetVertexBuffer(0, item.Vertices, 0, item.Pass switch { Pass.Text => SymbolVertex.Size, Pass.Circle => CircleVertex.Size, _ => VectorVertex.Size });
-                    commandList.SetIndexBuffer(item.Indices, 0, true);
+                    // a vector bucket's indices are 16-bit, each range's from its BaseVertex; labels' and circles' 32-bit
+                    commandList.SetIndexBuffer(item.Indices, 0, item.Pass is Pass.Text or Pass.Circle);
                     boundVertices = item.Vertices;
                 }
                 if (pass != item.Pass)
@@ -347,13 +348,16 @@ internal sealed class VectorRenderer : IGraphicsRendererBase
                 Set(parameters, "GvClip", item.Clip);
                 Set(parameters, "GvCentre", item.Centre);
                 Set(parameters, "GvTiles", item.Tiles);
+                // the bucket's projection (TileProjection): its vertices hold their place in the tile
+                Set(parameters, "GvTileTrig", item.Geo.Trig);
+                Set(parameters, "GvTileMercatorY", item.Geo.MercatorY);
                 Set(parameters, "GvHalfWidth", item.HalfWidth);
                 Set(parameters, "GvIsLine", item.IsLine ? 1f : 0f);
                 Set(parameters, "GvStraight", item.Pass == Pass.LineList && !GlOutlines ? 1f : 0f);
                 Set(parameters, "GvGlOutline", item.Pass == Pass.LineList && GlOutlines ? 1f : 0f);
                 Set(parameters, "GvExtrusion", extrusion ? 1f : 0f);
                 effect.Apply(graphicsContext);
-                commandList.DrawIndexed(item.Count, item.Start);
+                commandList.DrawIndexed(item.Count, item.Start, item.BaseVertex);
                 ItemsDrawn++;
             }
         }
@@ -476,23 +480,34 @@ internal sealed class VectorRenderer : IGraphicsRendererBase
     void RestoreDepth(CommandList commandList, Texture scene) => commandList.SetRenderTargets(scene, _targetCount, _targets);
 
     void SetCircle<T>(ParameterCollection parameters, string name, T value) where T : struct
-    {
-        if (!_circleKeys.TryGetValue("GlobeCircle." + name, out var key)) return;   // compiled away: unused
-        if (key is ValueParameterKey<T> typed) parameters.Set(typed, value);
-        else throw new InvalidOperationException($"GlobeCircle.{name} is a {key.GetType().Name}, set as {typeof(T).Name}");
-    }
+        => SetBy(parameters, _circleKeys, _circleResolved, "GlobeCircle.", name, value);
 
     void SetText<T>(ParameterCollection parameters, string name, T value) where T : struct
-    {
-        if (!_symbolKeys.TryGetValue("GlobeSymbol." + name, out var key)) return;   // compiled away: unused
-        if (key is ValueParameterKey<T> typed) parameters.Set(typed, value);
-        else throw new InvalidOperationException($"GlobeSymbol.{name} is a {key.GetType().Name}, set as {typeof(T).Name}");
-    }
+        => SetBy(parameters, _symbolKeys, _symbolResolved, "GlobeSymbol.", name, value);
 
     void Set<T>(ParameterCollection parameters, string name, T value) where T : struct
+        => SetBy(parameters, _keys, _resolved, "GlobeVector.", name, value);
+
+    // A parameter's key, found once per name. Every draw set a dozen parameters, each by a new string
+    // ("GlobeVector." + name) looked up in the effect's keys: 3000 draws a frame, ~40,000 strings made
+    // and hashed a frame (ROADMAP 4g step 4, found 2026-11-23 when two more per-draw parameters cost
+    // the frame 1.3 ms). The names are literals, one object each: looked up by reference. The effect's
+    // keys are read once (the first Draw), so a key found stays right.
+    readonly Dictionary<object, ParameterKey?> _resolved = new(ReferenceEqualityComparer.Instance),
+        _symbolResolved = new(ReferenceEqualityComparer.Instance), _circleResolved = new(ReferenceEqualityComparer.Instance);
+
+    static void SetBy<T>(ParameterCollection parameters, Dictionary<string, ParameterKey> keys, Dictionary<object, ParameterKey?> resolved,
+        string prefix, string name, T value) where T : struct
     {
-        if (!_keys.TryGetValue("GlobeVector." + name, out var key)) return;   // compiled away: unused
+        if (!resolved.TryGetValue(name, out var key))
+        {
+            if (keys.Count == 0) return;   // the effect not read yet: nothing to set, nothing remembered
+            resolved[name] = key = keys.TryGetValue(prefix + name, out var found) ? found : null;
+            // a name made at run time would be a new object every call, and this table would grow
+            if (resolved.Count > 256) throw new InvalidOperationException($"{prefix}{name}: parameter names must be string literals");
+        }
+        if (key is null) return;   // compiled away: unused
         if (key is ValueParameterKey<T> typed) parameters.Set(typed, value);
-        else throw new InvalidOperationException($"GlobeVector.{name} is a {key.GetType().Name}, set as {typeof(T).Name}");
+        else throw new InvalidOperationException($"{prefix}{name} is a {key.GetType().Name}, set as {typeof(T).Name}");
     }
 }

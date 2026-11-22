@@ -12,30 +12,33 @@ using Stride.Graphics;
 
 namespace VL.Globe.Engine;
 
-// The GPU path's data (docs/DESIGN-GPU-VECTOR.md): one vector tile's fills and lines as vertices on
-// the unit sphere, built once on a worker thread, drawn every frame by VectorRenderer. GL JS's
-// buckets, with the globe's projection done here per vertex in double instead of in the shader.
+// The GPU path's data (docs/DESIGN-GPU-VECTOR.md): one vector tile's fills and lines, built once on a
+// worker thread, drawn every frame by VectorRenderer. GL JS's buckets: a vertex holds its place in the
+// tile, and the shader projects it - onto the sphere, or the Mercator plane (ROADMAP 4g step 2).
 
-/// <summary>One vertex; 28 bytes, as GlobeVector.sdsl reads it.</summary>
-// Packed as GL JS packs its buckets (2026-11-21: 40 bytes, and 3D buildings doubled a street-level
-// tile to 22 MB): only the position needs 32-bit floats - it is on the unit sphere, where a z14 tile
-// is 0.0004 wide. The extrusion is GL JS's own: two signed bytes k, e = k / 63, exact for a line
-// (line_bucket stores exactly these); a wall's normal and a round cap's slice to 1/63. (As 16-bit
-// e / 4 it was within 6e-5, enough to move a bevel's flat edge across a row of pixel centres:
-// line-miter-limit/default, 2026-11-22.) uv is a 16-bit unsigned pair over -0.5..1.5 (a 512-px
-// tile's square to 0.016 px, the buffer around it included); N and the width half floats.
+/// <summary>One vertex; 16 bytes, as GlobeVector.sdsl reads it.</summary>
+// Packed as GL JS packs its buckets. 2026-11-21: 40 bytes, and 3D buildings doubled a street-level
+// tile to 22 MB; then 28, a position on the unit sphere in three floats beside its place in the tile.
+// 2026-11-23 (ROADMAP 4g: GL JS 0 frames over 20 ms panning, ours 3.5%, the misses in the seconds that
+// upload tiles): the place alone, as GL JS keeps it, the shader projecting it (VectorProjection.cs).
+// The place is in 1/32768 of the tile from -0.5 to 1.5: MVT's 4096 grid and the tile's edges exactly,
+// 6 cm in a z14 tile at Tokyo. The extrusion is GL JS's own: two signed bytes k, e = k / 63, exact for
+// a line (line_bucket stores exactly these); a wall's normal and a round cap's slice to 1/63. (As
+// 16-bit e / 4 it was within 6e-5, enough to move a bevel's flat edge across a row of pixel centres:
+// line-miter-limit/default, 2026-11-22.) N and Width are half floats; Width is a line's width scale,
+// or for fill-extrusion the metres the vertex is raised by (its roof or its floor).
 [StructLayout(LayoutKind.Sequential, Pack = 2)]
 internal struct VectorVertex
 {
-    public Vector3 Position;   // on the unit sphere, relative to the bucket's centre
+    ushort _u, _v;             // (uv + 0.5) x 32768
     sbyte _ex, _ey;            // the extrusion x 63, rounded as GL JS rounds it
     short _spare;              // Stride wants every element a multiple of 4 bytes: R8G8B8A8_SInt, .xy read
-    ushort _u, _v;             // (uv + 0.5) / 2, unorm
     System.Half _n, _width;
     public uint Color;         // the feature's colour, straight sRGB bytes R G B A, where it depends on the feature; else white
 
-    public const int Size = 28;
-    const float ExtrudeScale = 63, UvLow = -0.5f, UvSpan = 2;
+    public const int Size = 16;
+    public const float UvUnits = 32768;
+    const float ExtrudeScale = 63, UvLow = -0.5f;
 
     /// <summary>GL JS's extrusion in units of the outset, in the tile's plane (x east, y south); a wall's outward normal.</summary>
     public Vector2 Extrude
@@ -44,28 +47,30 @@ internal struct VectorVertex
         set { _ex = Byte(value.X); _ey = Byte(value.Y); }
     }
 
-    /// <summary>In the tile's square, 0..1: the shader clips to it.</summary>
+    /// <summary>The vertex's place in the tile's square, 0..1 inside it (-0.5..1.5 kept): the shader projects it and clips to the square.</summary>
     public Vector2 Uv
     {
-        readonly get => new(_u / 65535f * UvSpan + UvLow, _v / 65535f * UvSpan + UvLow);
-        set { _u = Unorm((value.X - UvLow) / UvSpan); _v = Unorm((value.Y - UvLow) / UvSpan); }
+        readonly get => new(_u / UvUnits + UvLow, _v / UvUnits + UvLow);
+        set { _u = Units(value.X); _v = Units(value.Y); }
     }
 
     /// <summary>-1..1 across a line, 0..1 out from a round cap's centre, 0 for a fill; a wall's vertical gradient.</summary>
     public float N { readonly get => (float)_n; set => _n = (System.Half)value; }
 
-    /// <summary>The feature's line width in px where it depends on the feature, else 1; a building's height.</summary>
+    /// <summary>The feature's line width scale where it depends on the feature, else 1; for fill-extrusion the metres the vertex is raised by.</summary>
     public float Width { readonly get => (float)_width; set => _width = (System.Half)value; }
 
     static sbyte Byte(float x) => (sbyte)Math.Clamp((int)Math.Floor(x * ExtrudeScale + 0.5f), -128, 127);
-    static ushort Unorm(float x) => (ushort)Math.Round(Math.Clamp(x, 0f, 1f) * 65535f);
+    static ushort Units(double x) => (ushort)Math.Clamp(Math.Round((x - UvLow) * UvUnits), 0, ushort.MaxValue);
+
+    /// <summary>The place set from the tile's own units without going through float: GL JS's integer grid stays exact.</summary>
+    public void SetUv(double u, double v) { _u = Units(u); _v = Units(v); }
 
     public static readonly VertexDeclaration Layout = new(
-        VertexElement.Position<Vector3>(),
-        new VertexElement("TEXCOORD", 0, PixelFormat.R8G8B8A8_SInt, 12),
-        new VertexElement("TEXCOORD", 1, PixelFormat.R16G16_UNorm, 16),
-        new VertexElement("TEXCOORD", 2, PixelFormat.R16G16_Float, 20),
-        new VertexElement("COLOR", 0, PixelFormat.R8G8B8A8_UNorm, 24));
+        new VertexElement("TEXCOORD", 1, PixelFormat.R16G16_UInt, 0),
+        new VertexElement("TEXCOORD", 0, PixelFormat.R8G8B8A8_SInt, 4),
+        new VertexElement("TEXCOORD", 2, PixelFormat.R16G16_Float, 8),
+        new VertexElement("COLOR", 0, PixelFormat.R8G8B8A8_UNorm, 12));
 }
 
 // Outline is a line list (GL JS's gl.LINES, one device pixel); the rest are triangle lists. Extrusion
@@ -73,8 +78,8 @@ internal struct VectorVertex
 // symbol layer's glyph quads, in the bucket's symbol arrays (SymbolLayout.cs)
 internal enum RangeKind { Fill, Outline, Line, Background, Extrusion, Text, Icon, Circle }
 
-/// <summary>A layer's part of a bucket: <see cref="Count"/> indices from <see cref="Start"/>.</summary>
-internal readonly record struct VectorRange(int Layer, RangeKind Kind, int Start, int Count);
+/// <summary>A layer's part of a bucket: <see cref="Count"/> indices from <see cref="Start"/>, each <see cref="BaseVertex"/> plus the 16-bit index.</summary>
+internal readonly record struct VectorRange(int Layer, RangeKind Kind, int Start, int Count, int BaseVertex = 0);
 
 /// <summary>Where a bucket's vertices go: on the unit sphere (the globe), or on the Web Mercator plane (MapLibre's render tests).</summary>
 internal enum VectorProjection { Sphere, Mercator }
@@ -84,11 +89,15 @@ internal sealed class VectorBucket
     public TileKey Key;
     public int OverscaledZoom;   // Key.Zoom, plus the levels it is overscaled by (GL JS's overscaledZ)
     public D3 Centre;
+    /// <summary>What GlobeVector.sdsl projects this bucket's vertices with (TileProjection).</summary>
+    public TileProjection.Geo Geo => _geo ??= TileProjection.Of(Key);
+    TileProjection.Geo? _geo;
     // rented from the shared pool, longer than the counts: a street-level tile's arrays are megabytes,
     // and dropped after each upload they were large-object-heap garbage, collected in gen 2 - a pause
     // on vvvv's main thread (2026-11-21, "偶尔在运动加载的时候会卡一下")
     public VectorVertex[] Vertices = Array.Empty<VectorVertex>();
-    public uint[] Indices = Array.Empty<uint>();
+    // 16-bit, each range's relative to its BaseVertex (GL JS's segments): half the bytes of 32-bit
+    public ushort[] Indices = Array.Empty<ushort>();
     public int VertexCount, IndexCount;
     public List<VectorRange> Ranges = new();
     // labels: few beside the lines and fills, so plain arrays
@@ -105,15 +114,18 @@ internal sealed class VectorBucket
     public double Ms;
 
     public ReadOnlySpan<VectorVertex> VertexSpan => Vertices.AsSpan(0, VertexCount);
-    public ReadOnlySpan<uint> IndexSpan => Indices.AsSpan(0, IndexCount);
+    public ReadOnlySpan<ushort> IndexSpan => Indices.AsSpan(0, IndexCount);
+
+    /// <summary>The vertex the index at <paramref name="position"/> of <paramref name="range"/> names.</summary>
+    public VectorVertex VertexAt(VectorRange range, int position) => Vertices[range.BaseVertex + Indices[position]];
 
     /// <summary>The arrays go back to the pool (once uploaded); the ranges stay.</summary>
     public void Release()
     {
         if (Vertices.Length > 0) ArrayPool<VectorVertex>.Shared.Return(Vertices);
-        if (Indices.Length > 0) ArrayPool<uint>.Shared.Return(Indices);
+        if (Indices.Length > 0) ArrayPool<ushort>.Shared.Return(Indices);
         Vertices = Array.Empty<VectorVertex>();
-        Indices = Array.Empty<uint>();
+        Indices = Array.Empty<ushort>();
     }
 }
 
@@ -175,6 +187,10 @@ internal sealed partial class GpuStyleLayer
 
 internal static partial class VectorBucketBuilder
 {
+    /// <summary>The 16-bit segmenting <see cref="Builder.Finish"/> does (tests).</summary>
+    internal static List<VectorRange> Segments(Span<uint> source, ushort[] target, List<VectorRange> ranges, List<VectorVertex> vertices)
+        => Builder.Segments(source, target, ranges, vertices);
+
     /// <summary>Tile-local units per tile side: GL JS's tile seen at its own zoom, 512 px.</summary>
     public const double Extent = 512;
     const double NominalOutset = 10;          // slices round caps for lines up to ~20 px wide
@@ -273,6 +289,7 @@ internal static partial class VectorBucketBuilder
         // fill-extrusion: the height (in metres) every vertex is raised by, and the N a roof carries
         double _raise;
         float _fillN;
+        bool _extruding;   // Width carries _raise (VectorVertex)
         readonly Dictionary<ExtrudedVertex, uint> _seen = new();
 
         readonly bool _flat, _grid;
@@ -313,16 +330,75 @@ internal static partial class VectorBucketBuilder
             RewindCircles();
         }
 
+        /// <summary>
+        /// The 32-bit indices as 16-bit ones, each range cut into segments whose vertices lie within
+        /// 65536 of their lowest - its BaseVertex (GL JS's SegmentVector; ROADMAP 4g: indices were 37%
+        /// of a street-level tile). Cut between primitives (2 indices an outline segment, 3 a triangle);
+        /// a span two layers share (ShareOrKeep) is cut once, and both get the same segments.
+        /// </summary>
+        /// <remarks>
+        /// A primitive whose own vertices lie further apart (a triangle of a polygon of more than 65536
+        /// vertices, possible in a coarse tile's coastline) gets copies of its vertices at the end of
+        /// <paramref name="vertices"/>, a segment of its own.
+        /// </remarks>
+        internal static List<VectorRange> Segments(Span<uint> source, ushort[] target, List<VectorRange> ranges, List<VectorVertex> vertices)
+        {
+            var result = new List<VectorRange>(ranges.Count);
+            var cut = new Dictionary<(int Start, int Count), List<(int Start, int Count, int Base)>>();
+            foreach (var r in ranges)
+            {
+                // labels', icons' and circles' ranges index their own 32-bit arrays
+                if (r.Kind is RangeKind.Text or RangeKind.Icon or RangeKind.Circle) { result.Add(r); continue; }
+                if (!cut.TryGetValue((r.Start, r.Count), out var segments))
+                {
+                    segments = new List<(int, int, int)>();
+                    int step = r.Kind == RangeKind.Outline ? 2 : 3;
+                    int start = r.Start, end = r.Start + r.Count;
+                    while (start < end)
+                    {
+                        uint min = uint.MaxValue, max = 0;
+                        int at = start;
+                        while (at < end)
+                        {
+                            uint lo = min, hi = max;
+                            for (int k = 0; k < step && at + k < end; k++) { lo = Math.Min(lo, source[at + k]); hi = Math.Max(hi, source[at + k]); }
+                            if (at > start && hi - lo > ushort.MaxValue) break;   // this primitive starts the next segment
+                            if (hi - lo > ushort.MaxValue)
+                            {
+                                // too wide alone: its own copies, side by side
+                                for (int k = 0; k < step && at + k < end; k++)
+                                {
+                                    vertices.Add(vertices[(int)source[at + k]]);
+                                    source[at + k] = (uint)(vertices.Count - 1);
+                                }
+                                lo = (uint)(vertices.Count - Math.Min(step, end - at)); hi = (uint)(vertices.Count - 1);
+                            }
+                            min = lo; max = hi;
+                            at += step;
+                        }
+                        at = Math.Min(at, end);
+                        for (int i = start; i < at; i++) target[i] = (ushort)(source[i] - min);
+                        segments.Add((start, at - start, (int)min));
+                        start = at;
+                    }
+                    cut[(r.Start, r.Count)] = segments;
+                }
+                foreach (var (start, count, baseVertex) in segments) result.Add(r with { Start = start, Count = count, BaseVertex = baseVertex });
+            }
+            return result;
+        }
+
         public VectorBucket Finish()
         {
+            // segments first: a primitive too wide for 16 bits adds copies of its vertices
+            var indices = _indices.Count == 0 ? Array.Empty<ushort>() : ArrayPool<ushort>.Shared.Rent(_indices.Count);
+            var ranges = Segments(CollectionsMarshal.AsSpan(_indices), indices, _ranges, _vertices);
             var vertices = _vertices.Count == 0 ? Array.Empty<VectorVertex>() : ArrayPool<VectorVertex>.Shared.Rent(_vertices.Count);
-            var indices = _indices.Count == 0 ? Array.Empty<uint>() : ArrayPool<uint>.Shared.Rent(_indices.Count);
             System.Runtime.InteropServices.CollectionsMarshal.AsSpan(_vertices).CopyTo(vertices);
-            System.Runtime.InteropServices.CollectionsMarshal.AsSpan(_indices).CopyTo(indices);
             return new()
             {
                 Key = _key, OverscaledZoom = _key.Zoom + System.Numerics.BitOperations.Log2((uint)Overscale), Centre = _centre, Vertices = vertices, Indices = indices,
-                VertexCount = _vertices.Count, IndexCount = _indices.Count, Ranges = _ranges.ToList(),
+                VertexCount = _vertices.Count, IndexCount = _indices.Count, Ranges = ranges,
                 SymbolVertices = _symbolVertices.ToArray(), SymbolIndices = _symbolIndices.ToArray(), Labels = _labels.ToList(), LineLabels = _lineLabels.ToList(),
                 IconModes = new Dictionary<int, (bool, bool)>(_iconModes),
                 CircleVertices = _circleVertices.ToArray(), CircleIndices = _circleIndices.ToArray(),
@@ -415,7 +491,49 @@ internal static partial class VectorBucketBuilder
                 foreach (var (f, color) in outlines) Outline(f, color);
                 if (_indices.Count > outlineStart) _ranges.Add(new VectorRange(layer.Index, RangeKind.Outline, outlineStart, _indices.Count - outlineStart));
             }
-            else if (_indices.Count > fillStart) _ranges.Add(new VectorRange(layer.Index, RangeKind.Line, fillStart, _indices.Count - fillStart));
+            else if (_indices.Count > fillStart)
+            {
+                _ranges.Add(new VectorRange(layer.Index, RangeKind.Line, fillStart, _indices.Count - fillStart));
+                ShareOrKeep(_layerVertexStart, fillStart);
+            }
+        }
+
+        // A line layer whose vertices and indices are those of an earlier one, byte for byte, draws that
+        // one's: Liberty's road casings and roads are the same lines twice (2026-11-23: two pairs were
+        // half of a 8.3-MB z13 tile at Kyoto). GL JS shares a bucket between layers of the same layout
+        // (groupByLayout); here the result is compared, so any difference - a filter, a cap, a colour or
+        // width per feature (both in the vertex) - keeps the layer its own.
+        readonly List<(int VStart, int VCount, int IStart, int ICount, ulong Hash)> _lineSlices = new();
+
+        void ShareOrKeep(int vStart, int iStart)
+        {
+            int vCount = _vertices.Count - vStart, iCount = _indices.Count - iStart;
+            if (vCount == 0 || iCount == 0) return;
+            var vertices = CollectionsMarshal.AsSpan(_vertices);
+            var indices = CollectionsMarshal.AsSpan(_indices);
+            ulong hash = Hash(vertices.Slice(vStart, vCount), indices.Slice(iStart, iCount), vStart);
+            foreach (var s in _lineSlices)
+            {
+                if (s.Hash != hash || s.VCount != vCount || s.ICount != iCount) continue;
+                if (!MemoryMarshal.AsBytes(vertices.Slice(s.VStart, vCount)).SequenceEqual(MemoryMarshal.AsBytes(vertices.Slice(vStart, vCount)))) continue;
+                bool same = true;
+                for (int i = 0; i < iCount && same; i++) same = indices[s.IStart + i] - s.VStart == indices[iStart + i] - vStart;
+                if (!same) continue;
+                _vertices.RemoveRange(vStart, vCount);
+                _indices.RemoveRange(iStart, iCount);
+                _ranges[^1] = _ranges[^1] with { Start = s.IStart };
+                return;
+            }
+            _lineSlices.Add((vStart, vCount, iStart, iCount, hash));
+        }
+
+        // FNV-1a over the vertices' bytes and the indices relative to the first vertex
+        static ulong Hash(ReadOnlySpan<VectorVertex> vertices, ReadOnlySpan<uint> indices, int vStart)
+        {
+            ulong h = 14695981039346656037;
+            foreach (var b in MemoryMarshal.AsBytes(vertices)) h = (h ^ b) * 1099511628211;
+            foreach (var i in indices) h = (h ^ (i - (uint)vStart)) * 1099511628211;
+            return h;
         }
 
         // GL JS's fill_extrusion_bucket: the roof is the polygon raised to its height, each edge of each
@@ -423,6 +541,13 @@ internal static partial class VectorBucketBuilder
         // does; N carries the wall's vertical gradient, computed here because it depends only on the
         // vertex: clamp((top + base) * sqrt(height / 150), 0.84, 1) with the default light intensity.
         void Extrusion(StyleFeature f, uint color, double height, double floor)
+        {
+            _extruding = true;
+            try { ExtrusionCore(f, color, height, floor); }
+            finally { _extruding = false; _raise = 0; _fillN = 0; }
+        }
+
+        void ExtrusionCore(StyleFeature f, uint color, double height, double floor)
         {
             _raise = height; _fillN = 1;
             Fill(f, color);
@@ -684,31 +809,17 @@ internal static partial class VectorBucketBuilder
             return _grid ? (Math.Round(lx * 16) / 16, Math.Round(ly * 16) / 16) : (lx, ly);
         }
 
-        const double EarthRadius = 6378137.0;
-
+        // the vertex keeps its place in the tile; GlobeVector.sdsl projects it (TileProjection). A
+        // fill-extrusion vertex carries the metres it is raised by in Width (a line's width scale else)
         VectorVertex Vertex(double lx, double ly, float qx, float qy, float n, float width, uint color)
         {
-            double wx = (_key.X + lx / Extent) / _n, wy = (_key.Y + ly / Extent) / _n;
-            double latitude = TileGeometry.LatitudeOf(Math.Clamp(wy, 0, 1));
-            D3 position;
-            if (_flat)
-                // a metre is 1 / (2 pi R cos(latitude)) of the Mercator world, as GL JS raises extrusions
-                position = new D3(wx, -wy, _raise / (2 * Math.PI * EarthRadius * Math.Cos(latitude * Math.PI / 180)));
-            else
-            {
-                var (x, y, z) = TileGeometry.OnSphere(TileGeometry.LongitudeOf(wx), latitude);
-                position = new D3(x, y, z) * (1 + _raise / EarthRadius);
-            }
-            return new VectorVertex
-            {
-                Position = (position - _centre).ToVector3(),
-                Extrude = new Vector2(qx, qy),
-                Uv = new Vector2((float)(lx / Extent), (float)(ly / Extent)),
-                N = n,
-                Width = width,
-                Color = color,
-            };
+            var v = new VectorVertex { Extrude = new Vector2(qx, qy), N = n, Width = _extruding ? (float)_raise : width, Color = color };
+            v.SetUv(lx / Extent, ly / Extent);
+            return v;
         }
+
+        /// <summary>A point of the tile (its own units) relative to the bucket's centre, in double: a symbol's anchor, a label's line.</summary>
+        Vector3 Relative(double lx, double ly) => TileProjection.RelativeExact(_key, lx / Extent, ly / Extent, 0, _flat).ToVector3();
     }
 
     // straight sRGB bytes, R in the lowest byte (R8G8B8A8_UNorm)

@@ -40,17 +40,17 @@ public class TileSizeProbe(ITestOutputHelper output)
             var heights = buildings.Select(f => f.Properties.GetValueOrDefault("render_height")).ToList();
             output.WriteLine($"{buildings.Count} buildings, {heights.Count(h => h is null)} without render_height; first: {string.Join(" ", heights.Take(12))}");
         }
-        output.WriteLine($"{key}: {b!.VertexCount} vertices x {VectorVertex.Size} B + {b.IndexCount} indices x 4 B = {((long)b.VertexCount * VectorVertex.Size + b.IndexCount * 4L) / 1e6:F1} MB, built in {b.Ms:F0} ms");
+        output.WriteLine($"{key}: {b!.VertexCount} vertices x {VectorVertex.Size} B + {b.IndexCount} indices x 2 B = {((long)b.VertexCount * VectorVertex.Size + b.IndexCount * 2L) / 1e6:F1} MB, built in {b.Ms:F0} ms");
         foreach (var g in b.Ranges.GroupBy(r => (r.Layer, r.Kind)).OrderByDescending(g => g.Sum(r => r.Count)))
         {
             int min = int.MaxValue, max = -1, count = 0;
             foreach (var r in g)
             {
                 count += r.Count;
-                for (int i = r.Start; i < r.Start + r.Count; i++) { min = Math.Min(min, (int)b.Indices[i]); max = Math.Max(max, (int)b.Indices[i]); }
+                for (int i = r.Start; i < r.Start + r.Count; i++) { min = Math.Min(min, r.BaseVertex + b.Indices[i]); max = Math.Max(max, r.BaseVertex + b.Indices[i]); }
             }
             int vertices = max < 0 ? 0 : max - min + 1;
-            output.WriteLine($"  {doc.Layers[g.Key.Layer].Id,-32} {g.Key.Kind,-10} {count,9} indices {vertices,8} vertices  {(vertices * (long)VectorVertex.Size + count * 4L) / 1e6,6:F2} MB");
+            output.WriteLine($"  {doc.Layers[g.Key.Layer].Id,-32} {g.Key.Kind,-10} {count,9} indices {vertices,8} vertices  {(vertices * (long)VectorVertex.Size + count * 2L) / 1e6,6:F2} MB");
         }
     }
 }

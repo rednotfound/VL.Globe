@@ -9,6 +9,14 @@ namespace VL.Globe.Tests;
 // shader then draws is seen in vvvv (rung 4); these are what it is given.
 public class GpuVectorFacts
 {
+    // where the GPU puts a vertex: its place in the tile projected by the shader's arithmetic
+    // (TileProjection.RelativeFloat, GlobeVector.sdsl's Relative), on the unit sphere
+    static D3 At(VectorBucket b, VectorVertex v, bool extruded = false)
+    {
+        var r = TileProjection.RelativeFloat(b.Geo, v.Uv.X, v.Uv.Y, extruded ? v.Width : 0, flat: false);
+        return new D3(b.Centre.X + r.X, b.Centre.Y + r.Y, b.Centre.Z + r.Z);
+    }
+
     static string Tiles()
     {
         for (var d = new DirectoryInfo(AppContext.BaseDirectory); d != null; d = d.Parent)
@@ -41,6 +49,39 @@ public class GpuVectorFacts
         return doc;
     }
 
+    [Fact]
+    public void A_casing_and_its_road_share_one_set_of_vertices()
+    {
+        // ROADMAP 4g step 2: Liberty's casings and roads were built twice, the same lines. A layer like
+        // an earlier one in every byte draws its span; another cap, or a colour per feature, does not
+        using var json = JsonDocument.Parse($$"""
+            {
+              "version": 8,
+              "sources": { "berlin": { "type": "vector", "maxzoom": 14, "tiles": [{{JsonSerializer.Serialize(Path.Combine(Tiles(), "{z}-{x}-{y}.mvt"))}}] } },
+              "layers": [
+                { "id": "casing", "type": "line", "source": "berlin", "source-layer": "road",
+                  "paint": { "line-width": 6, "line-color": "#999999" }, "layout": { "line-cap": "round", "line-join": "round" } },
+                { "id": "road", "type": "line", "source": "berlin", "source-layer": "road",
+                  "paint": { "line-width": 3, "line-color": "#ffffff" }, "layout": { "line-cap": "round", "line-join": "round" } },
+                { "id": "butt", "type": "line", "source": "berlin", "source-layer": "road",
+                  "paint": { "line-width": 3 }, "layout": { "line-cap": "butt", "line-join": "round" } },
+                { "id": "by-class", "type": "line", "source": "berlin", "source-layer": "road",
+                  "paint": { "line-color": ["match", ["get", "class"], "main", "#ff0000", "#880000"] }, "layout": { "line-cap": "round", "line-join": "round" } }
+              ]
+            }
+            """);
+        var doc = MapStyleDocument.Parse(json.RootElement.Clone(), lenient: true);
+        doc.Load = url => File.Exists(url) ? File.ReadAllBytes(url) : null;
+        var b = VectorBucketBuilder.Build(doc, (VectorSource)doc.Sources["berlin"], Layers(doc), false, new TileKey(14, 8802, 5374), true, null, out _)!;
+        var r = b.Ranges.ToDictionary(x => doc.Layers[x.Layer].Id);
+        Assert.Equal(r["casing"].Start, r["road"].Start);
+        Assert.Equal(r["casing"].Count, r["road"].Count);
+        Assert.NotEqual(r["casing"].Start, r["butt"].Start);
+        Assert.NotEqual(r["casing"].Start, r["by-class"].Start);
+        // three spans built, not four
+        Assert.Equal(b.IndexCount, r["casing"].Count + r["butt"].Count + r["by-class"].Count);
+    }
+
     static List<GpuStyleLayer> Layers(MapStyleDocument doc)
         => Enumerable.Range(0, doc.Layers.Count).Select(i => GpuStyleLayer.Of(doc, i)).Where(l => l != null).Select(l => l!).ToList();
 
@@ -59,16 +100,23 @@ public class GpuVectorFacts
         Assert.Contains(b.Ranges, r => r.Kind == RangeKind.Fill && r.Layer == 1);
         Assert.Contains(b.Ranges, r => r.Kind == RangeKind.Outline && r.Layer == 1);
         Assert.Contains(b.Ranges, r => r.Kind == RangeKind.Line && r.Layer == 2);
-        // the ranges tile the index buffer, in order, and every index names a vertex
+        // the ranges tile the index buffer, in order - a line layer the same as an earlier one draws that
+        // one's span (ShareOrKeep) - and every index names a vertex
         int at = 0;
-        foreach (var r in b.Ranges) { Assert.Equal(at, r.Start); Assert.Equal(0, r.Count % (r.Kind == RangeKind.Outline ? 2 : 3)); at += r.Count; }
+        foreach (var r in b.Ranges.DistinctBy(r => (r.Start, r.Count)))
+        {
+            Assert.Equal(at, r.Start);
+            Assert.Equal(0, r.Count % (r.Kind == RangeKind.Outline ? 2 : 3));
+            at += r.Count;
+        }
         Assert.Equal(b.IndexCount, at);
-        foreach (var i in b.IndexSpan) Assert.True(i < b.VertexCount);
+        foreach (var r in b.Ranges)
+            for (int i = r.Start; i < r.Start + r.Count; i++) Assert.True(r.BaseVertex + b.Indices[i] < b.VertexCount);
 
         // on the unit sphere, relative to the tile's centre (float: a z14 tile is 0.0004 radii wide)
         foreach (var v in b.VertexSpan)
         {
-            var p = new D3(b.Centre.X + v.Position.X, b.Centre.Y + v.Position.Y, b.Centre.Z + v.Position.Z);
+            var p = At(b, v);
             Assert.InRange(p.Length, 1 - 1e-6, 1 + 1e-6);
             Assert.InRange(v.Uv.X, -0.2f, 1.2f);   // the tile's buffer lies a little outside its square
             Assert.InRange(v.Uv.Y, -0.2f, 1.2f);
@@ -76,12 +124,12 @@ public class GpuVectorFacts
         }
         // the roads' colour depends on the feature: in the vertices; their width only on the zoom: a uniform
         var roads = b.Ranges.Single(r => r.Kind == RangeKind.Line);
-        var colours = Enumerable.Range(roads.Start, roads.Count).Select(i => b.Vertices[b.Indices[i]].Color).ToHashSet();
+        var colours = Enumerable.Range(roads.Start, roads.Count).Select(i => b.VertexAt(roads, i).Color).ToHashSet();
         Assert.Contains(VectorBucketBuilder.Pack(new StyleColor(0x88 / 255.0, 0, 0, 1)), colours);
-        Assert.All(Enumerable.Range(roads.Start, roads.Count), i => Assert.Equal(1f, b.Vertices[b.Indices[i]].Width));
+        Assert.All(Enumerable.Range(roads.Start, roads.Count), i => Assert.Equal(1f, b.VertexAt(roads, i).Width));
         // the water's fill: one colour, white (its colour is a uniform)
         var water = b.Ranges.Single(r => r.Kind == RangeKind.Fill);
-        Assert.All(Enumerable.Range(water.Start, water.Count), i => Assert.Equal(uint.MaxValue, b.Vertices[b.Indices[i]].Color));
+        Assert.All(Enumerable.Range(water.Start, water.Count), i => Assert.Equal(uint.MaxValue, b.VertexAt(water, i).Color));
     }
 
     [Fact]
@@ -117,8 +165,8 @@ public class GpuVectorFacts
         int roofs = 0, walls = 0;
         for (int t = range.Start; t < range.Start + range.Count; t += 3)
         {
-            var vs = new[] { b.Vertices[b.Indices[t]], b.Vertices[b.Indices[t + 1]], b.Vertices[b.Indices[t + 2]] };
-            D3 P(VectorVertex v) => new(b.Centre.X + v.Position.X, b.Centre.Y + v.Position.Y, b.Centre.Z + v.Position.Z);
+            var vs = new[] { b.VertexAt(range, t), b.VertexAt(range, t + 1), b.VertexAt(range, t + 2) };
+            D3 P(VectorVertex v) => At(b, v, extruded: true);
             if (vs.All(v => v.Extrude == default))
             {
                 roofs++;
@@ -250,9 +298,10 @@ public class GpuVectorFacts
         var b = VectorBucketBuilder.BackgroundBucket(key);
         double tile = 2 * Math.PI / (1 << zoom);
         double worst = 0;
+        var cells = Assert.Single(b.Ranges);
         for (int t = 0; t < b.IndexCount; t += 3)
         {
-            D3 P(int k) { var v = b.Vertices[b.Indices[t + k]].Position; return new D3(b.Centre.X + v.X, b.Centre.Y + v.Y, b.Centre.Z + v.Z); }
+            D3 P(int k) => At(b, b.VertexAt(cells, t + k));
             var mid = (P(0) + P(1) + P(2)) * (1.0 / 3);
             worst = Math.Max(worst, 1 - mid.Length);
         }

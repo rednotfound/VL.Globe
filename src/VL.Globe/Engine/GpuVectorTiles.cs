@@ -374,7 +374,7 @@ internal sealed class GpuVectorTiles : IDisposable
     {
         if (e.Job is not { IsCompleted: true } job) return;
         var bucket0 = job.IsCompletedSuccessfully ? job.Result.bucket : null;
-        long size = bucket0 is null ? 0 : (long)bucket0.VertexCount * VectorVertex.Size + bucket0.IndexCount * 4L;
+        long size = bucket0 is null ? 0 : (long)bucket0.VertexCount * VectorVertex.Size + bucket0.IndexCount * 2L;
         if (size > 0 && budget <= 0) return;   // next frame
         e.Job = null;
         _running--;
@@ -398,7 +398,7 @@ internal sealed class GpuVectorTiles : IDisposable
 
     Built Upload(GraphicsDevice device, VectorBucket bucket)
     {
-        long bytes = (long)bucket.VertexCount * VectorVertex.Size + bucket.IndexCount * 4L;
+        long bytes = (long)bucket.VertexCount * VectorVertex.Size + bucket.IndexCount * 2L;
         var tile = GpuTile.Upload(device, bucket);
         if (tile.Vertices is not null) { UploadedBytes += bytes; Uploads++; }
         return tile;

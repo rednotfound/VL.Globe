@@ -24,12 +24,13 @@ shader GlobeVector : ShaderBase
         stage float2 GvViewport;        // the target's size in pixels
         stage float GvTiles;            // tiles per side at the bucket's zoom (2^z): a tile is 1/GvTiles of the world
         stage float2 GvFade;            // fill-extrusion fades out between these distances from the eye (y 0: never)
+        stage float4 GvTileTrig;        // the tile centre's sin and cos of latitude, sin and cos of longitude (TileProjection.Geo)
+        stage float GvTileMercatorY;    // the tile centre's Mercator y, in radians
     }
 
-    stage stream float3 GvPosition : POSITION;
+    stage stream uint2 GvUvIn : TEXCOORD1;       // the place in the tile: (uv + 0.5) x 32768
     stage stream int4 GvExtrude : TEXCOORD0;     // GL JS's extrusion bytes in .xy: e = k / 63
-    stage stream float2 GvUvIn : TEXCOORD1;      // unorm16: (uv + 0.5) / 2
-    stage stream float2 GvEdgeIn : TEXCOORD2;  // N, the feature's width scale
+    stage stream float2 GvEdgeIn : TEXCOORD2;    // N; the feature's width scale, or for fill-extrusion the metres raised
     stage stream float4 GvColorIn : COLOR0;
 
     stage stream float2 GvUv;
@@ -45,6 +46,48 @@ shader GlobeVector : ShaderBase
         return c <= 0.04045 ? c / 12.92 : pow((c + 0.055) / 1.055, 2.4);
     }
 
+    // The place in the tile (uv, v down) to the position relative to the tile's centre, raised by
+    // metres: Engine/TileProjection.cs, whose RelativeFloat is this arithmetic in C# (tested there).
+    // Only small quantities are subtracted - floats keep a z14 tile to well under a millimetre.
+    // Small arguments by polynomial: the GPU's sin and atan are exact to ~1e-6 ABSOLUTE, a quarter of a
+    // percent of a z14 tile's 4e-4 radians - metres. Adds and multiplies are exact to float's rounding.
+    float SinS(float x) { float q = x * x; return abs(x) < 0.25 ? x * (1 - q / 6 * (1 - q / 20 * (1 - q / 42 * (1 - q / 72)))) : sin(x); }
+    float CosS(float x) { float q = x * x; return abs(x) < 0.25 ? 1 - q / 2 * (1 - q / 12 * (1 - q / 30 * (1 - q / 56))) : cos(x); }
+    float SinhS(float x) { float q = x * x; return abs(x) < 0.25 ? x * (1 + q / 6 * (1 + q / 20 * (1 + q / 42 * (1 + q / 72)))) : sinh(x); }
+    float AtanS(float t)
+    {
+        float q = t * t;
+        return abs(t) < 0.25 ? t * (1 - q * (1.0 / 3 - q * (1.0 / 5 - q * (1.0 / 7 - q * (1.0 / 9 - q * (1.0 / 11 - q / 13)))))) : atan(t);
+    }
+
+    float3 Relative(float2 uv, float raise)
+    {
+        float delta = 6.283185307 / GvTiles;
+        float du = uv.x - 0.5, dv = uv.y - 0.5;
+        float d = -dv * delta;   // Mercator y grows north, v south
+        // a buffer past the Mercator square (z0-z2) held at its edge, as the builder clamped it; only
+        // then, so the small d is never formed again as a difference of large values
+        if (GvFlat < 0.5 && abs(GvTileMercatorY + d) > 3.141592654) d = sign(GvTileMercatorY + d) * 3.141592654 - GvTileMercatorY;
+        if (GvFlat > 0.5)
+            return float3(du / GvTiles, -dv / GvTiles, raise * cosh(GvTileMercatorY + d) / (6.283185307 * 6378137.0));
+        float sinLatC = GvTileTrig.x, cosLatC = GvTileTrig.y, sinLonC = GvTileTrig.z, cosLonC = GvTileTrig.w;
+        float dLat = 2 * AtanS(SinhS(d / 2) / cosh(GvTileMercatorY + d / 2));
+        float sh = SinS(dLat / 2), ch = CosS(dLat / 2);
+        float sinMid = sinLatC * ch + cosLatC * sh, cosMid = cosLatC * ch - sinLatC * sh;
+        float cosLat = cosLatC * CosS(dLat) - sinLatC * SinS(dLat);
+        float dSinLat = 2 * cosMid * sh, dCosLat = -2 * sinMid * sh;
+        float dLon = du * delta;
+        float s = SinS(dLon / 2), oneMinusCos = 2 * s * s, sinDLon = SinS(dLon);
+        float a = dCosLat - cosLat * oneMinusCos;   // cos(lat) cos(dLon) - cos(latC)
+        float3 rel = float3(sinLonC * a + cosLat * cosLonC * sinDLon, dSinLat, cosLonC * a - cosLat * sinLonC * sinDLon);
+        if (raise != 0)
+        {
+            float3 centre = float3(cosLatC * sinLonC, sinLatC, cosLatC * cosLonC);
+            rel += (centre + rel) * (raise / 6378137.0);
+        }
+        return rel;
+    }
+
     // the vertex's up, east and north: on the sphere from its direction, on the plane fixed
     void Frame(float3 position, out float3 up, out float3 east, out float3 north)
     {
@@ -56,13 +99,15 @@ shader GlobeVector : ShaderBase
 
     stage override void VSMain()
     {
-        float4 v = mul(float4(streams.GvPosition, 1), GvWorldView);
+        float2 uvIn = float2(streams.GvUvIn) / 32768.0 - 0.5;
+        float3 position = Relative(uvIn, GvExtrusion > 0.5 ? streams.GvEdgeIn.y : 0);
+        float4 v = mul(float4(position, 1), GvWorldView);
         float outset = 0;
         float2 uvShift = 0;
         if (GvIsLine > 0.5)
         {
             float3 p, east, north;
-            Frame(streams.GvPosition, p, east, north);
+            Frame(position, p, east, north);
             float2 q = float2(streams.GvExtrude.xy) / 63.0;
             float3 dir = q.x * east - q.y * north;
             float3 dirView = mul(float4(dir, 0), GvWorldView).xyz / GvRadius;
@@ -82,7 +127,7 @@ shader GlobeVector : ShaderBase
         // in pixels, y down as SV_Position is (GL JS's v_pos, y up as gl_FragCoord is)
         float2 ndc = streams.ShadingPosition.xy / streams.ShadingPosition.w;
         streams.GvScreen = float2(ndc.x * 0.5 + 0.5, 0.5 - ndc.y * 0.5) * GvViewport;
-        streams.GvUv = streams.GvUvIn * 2 - 0.5 + uvShift;
+        streams.GvUv = uvIn + uvShift;
         streams.GvEdge = streams.GvEdgeIn.x;
         streams.GvOutset = outset;
         if (GvExtrusion > 0.5)
@@ -91,7 +136,7 @@ shader GlobeVector : ShaderBase
             // [1.15, 210, 30] (radial, azimuthal, polar) = (0.2875, -0.498, 0.996) in the map's
             // east / south / up; intensity 0.5, colour white, 0.03 ambient. In sRGB, as GL JS.
             float3 p, east, north;
-            Frame(streams.GvPosition, p, east, north);
+            Frame(position, p, east, north);
             float2 e = float2(streams.GvExtrude.xy);
             float3 n = dot(e, e) > 0 ? normalize(e.x * east - e.y * north) : p;
             float3 light = 0.2875 * east + 0.498 * north + 0.996 * p;

@@ -424,6 +424,23 @@ The same motion in vvvv: `Engine/CameraBench.cs`, started by `VLGLOBE_BENCH=pan 
 on a copy of the help patch with Enabled on; `CameraBenchFacts` checks it pans as GL JS's does.
 Sum either log up with `tools/Summarize-Perf.py <log> --from <pan 1 begins> --to <pan 2 ends> --moving`.
 
+**Step 2 built 2026-11-23 - the bytes halved, the misses not** (the same bench):
+- A vertex holds its place in the tile, 16 bytes (was 28); GlobeVector.sdsl projects it
+  (`Engine/TileProjection.cs`: only small quantities subtracted, small angles by polynomial - the
+  GPU's sin is exact to ~1e-6 absolute, metres at z14; 0.22 mm at z14, `TileProjectionFacts`).
+- A line layer the same as an earlier one in every byte draws its span (casings and roads).
+- 16-bit indices in segments of 65536 vertices with a base vertex (GL JS's SegmentVector).
+- Kyoto z13 tile 12.2 -> 4.9 MB; the Tokyo view's 102 tiles 479 -> 240 MB; uploads while panning
+  22 -> 10 MB/s. MapLibre's fixtures unchanged (329 / 320); the view drawn offscreen unchanged.
+- **Frames over 20 ms: old 3.8, 3.5, 4.2% (three runs); new 6.7, 5.2%.** Submit 6.0-6.2 -> 7.3-7.8 ms
+  mean: two more parameters a draw, 4.5% more draws (segments). The GPU (RTX 3060 Ti) is not it:
+  the projection is ~0.15 ms of arithmetic a frame.
+- Found by that: every parameter set made a string (`"GlobeVector." + name`) and looked it up -
+  ~40,000 a frame. Keys now found once per name (by the literal's reference): **4.5%**, submit 7.0 ms.
+- So the misses at tile arrival are not the bytes. What a frame that misses spends its time on is
+  not known yet: the perf line sums a second. **Next: step 4 first** - every frame over 20 ms logged
+  with its parts (Update, place, upload, submit, and outside the node), then whatever that names.
+
 ### 5. Navigation
 
 - `CenterOn`, `ZoomToLevel`, `ZoomIn`, `ZoomOut`.

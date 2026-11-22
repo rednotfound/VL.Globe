@@ -128,7 +128,7 @@ internal static partial class VectorBucketBuilder
                             var (lx, ly) = Local(x, y);
                             // isOutsideTile: drawn from the one tile the point is in
                             if (lx < 0 || lx >= Extent || ly < 0 || ly >= Extent) continue;
-                            var centre = Vertex(lx, ly, 0, 0, 0, 1, 0).Position;
+                            var centre = Relative(lx, ly);
                             uint i = (uint)_circleVertices.Count;
                             // extrudes [0, 7] on each axis, y outer: (-1,-1), (1,-1), (-1,1), (1,1)
                             for (int ey = -1; ey <= 1; ey += 2)
