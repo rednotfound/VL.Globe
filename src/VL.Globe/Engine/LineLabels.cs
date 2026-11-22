@@ -45,6 +45,18 @@ internal static class LineGlyphs
     /// </summary>
     public static bool Place(LineLabel label, Matrix worldViewProjection, float width, float height, float fontSize,
         Vector4[] dynamic, out List<Vector2> pathFirst, out List<Vector2> pathLast)
+        => Place(label, worldViewProjection, width, height, fontSize, dynamic, true, out pathFirst, out pathLast);
+
+    /// <summary>
+    /// GL JS placeFirstAndLastGlyph: only the first and the last glyph, for the collision circles; nothing
+    /// written. The glyphs between lie on the segments those two walked, so they fit when both do.
+    /// </summary>
+    public static bool PlaceEnds(LineLabel label, Matrix worldViewProjection, float width, float height, float fontSize,
+        out List<Vector2> pathFirst, out List<Vector2> pathLast)
+        => Place(label, worldViewProjection, width, height, fontSize, null, false, out pathFirst, out pathLast);
+
+    static bool Place(LineLabel label, Matrix worldViewProjection, float width, float height, float fontSize,
+        Vector4[]? dynamic, bool all, out List<Vector2> pathFirst, out List<Vector2> pathLast)
     {
         pathFirst = pathLast = null!;
         var projected = new Vector2?[label.Line.Length];
@@ -74,6 +86,7 @@ internal static class LineGlyphs
             if (placed is null || placed.Value.flip) return Hide(label, dynamic);
         }
         var glyphs = placed.Value.glyphs;
+        if (dynamic != null)
         for (int g = 0; g < glyphs.Count; g++)
             for (int k = 0; k < 4; k++)
                 dynamic[label.VertexStart + 4 * g + k] = new Vector4(glyphs[g].X, glyphs[g].Y, glyphs[g].Angle, 1);
@@ -96,7 +109,7 @@ internal static class LineGlyphs
                 if (b is { } end && anchor.X > end.X) return (new List<Placed>(), true);
             }
             var list = new List<Placed> { first.Value };
-            for (int g = 1; g < n - 1; g++)
+            for (int g = 1; all && g < n - 1; g++)
             {
                 var p = Glyph(fontScale * label.GlyphOffsets[g], flip);
                 if (p is null) return null;
@@ -139,8 +152,9 @@ internal static class LineGlyphs
         }
     }
 
-    internal static bool Hide(LineLabel label, Vector4[] dynamic)
+    internal static bool Hide(LineLabel label, Vector4[]? dynamic)
     {
+        if (dynamic is null) return false;
         for (int v = 0; v < label.GlyphOffsets.Length * 4; v++) dynamic[label.VertexStart + v] = new Vector4(0, 0, 0, -1);
         return false;
     }

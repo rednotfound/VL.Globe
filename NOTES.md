@@ -487,6 +487,15 @@ looked fine - "which makes one think it works". Two causes, estimated at 100 m h
   under them moved, catching up when the rotation's float next changed. The frame carries the eye now
   and it counts as a move (`VectorRenderer.NextLabelStep`, `LabelStepFacts` - red without the eye).
   Anything else that keys on the view alone has the same flaw.
+  Seen by the user in vvvv the same day: "顺多了".
 - Labels above the 3D buildings, seen through them: Liberty's order (building-3d is layer 84, opacity
   0.8; road names from 95) - as MapLibre draws it, not a fault.
+- **Placement's 20-38 ms while tiles came, measured offline** (`PlacementProbe`, VLGLOBE_PROBE=1:
+  Liberty, 25 z14 tiles round Kyoto Station at overscale 4, z16 pitched 60 degrees, 500 label tiles):
+  a whole placement 11.5 ms, `UpdateLines` 0.4. Lines cost 4 us each (points 0.3): every glyph of
+  every candidate was walked along its line, hidden or not. GL JS's collision walks only the first and
+  last glyph (placeFirstAndLastGlyph) - the others lie on the segments those two walked - and every
+  glyph only for what is shown. So now: 6.7 ms. GL JS's other remedy, a placement paused after 2 ms a
+  frame (PauseablePlacement), it uses only with fades: at fadeDuration 0 it forces a full placement,
+  so newly loaded tiles show their labels in their first frame. It comes with the fades.
 - Open: one frame of 550 ms at rest (13:20:20) with Update 10 ms and Draw ~1.5 ms - outside both.

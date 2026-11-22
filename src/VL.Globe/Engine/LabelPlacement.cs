@@ -62,7 +62,9 @@ internal sealed class LabelPlacement
                 for (int i = lineStart; i < lineStart + lineCount; i++)
                 {
                     var line = tile.LineLabels[i];
-                    bool show = PlaceLine(line, tile, worldViewProjection, worldView, up, layer.Size, cameraToCenter, flat);
+                    bool show = PlaceLine(line, tile, worldViewProjection, worldView, up, layer.Size, cameraToCenter, flat, out float size);
+                    // every glyph walked only for a label shown (GL JS: updateLineLabels, at render)
+                    if (show) LineGlyphs.Place(line, worldViewProjection, _width, _height, size, tile.Dynamic!, out _, out _);
                     float value = show ? 1 : 0;
                     for (int v = line.VertexStart; v < line.VertexStart + line.GlyphOffsets.Length * 4; v++)
                         if (placed[v] != value) { placed[v] = value; tile.PlacedDirty = true; }
@@ -163,10 +165,10 @@ internal sealed class LabelPlacement
     // GL JS: the glyphs placed along the projected line (projection.ts), then placeCollisionCircles - a
     // row of circles along the label's path, radius half the circle diameter times the perspective
     // ratio plus text-padding, 2.5 radii apart, a quarter radius in from each end
-    bool PlaceLine(LineLabel label, GpuTile tile, Matrix worldViewProjection, Matrix worldView, Vector3 centre, float layerSize, float cameraToCenter, bool flat)
+    bool PlaceLine(LineLabel label, GpuTile tile, Matrix worldViewProjection, Matrix worldView, Vector3 centre, float layerSize, float cameraToCenter, bool flat, out float size)
     {
-        var dynamic = tile.Dynamic!;
         tile.DynamicDirty = true;
+        size = 0;
         var clip = Vector4.Transform(new Vector4(label.Anchor, 1), worldViewProjection);
         bool occluded = clip.W <= 0;
         if (!flat && !occluded)
@@ -175,10 +177,10 @@ internal sealed class LabelPlacement
             var n = centre + label.Anchor; n.Normalize();
             occluded = Vector3.Dot(Vector3.TransformNormal(n, worldView), -p) <= 0;
         }
-        if (occluded) return LineGlyphs.Hide(label, dynamic);
+        if (occluded) return false;
         float perspective = 0.5f + 0.5f * cameraToCenter / clip.W;
-        float size = (label.FeatureSize > 0 ? label.FeatureSize : layerSize) * perspective;
-        if (!LineGlyphs.Place(label, worldViewProjection, _width, _height, size, dynamic, out var first, out var last)) return false;
+        size = (label.FeatureSize > 0 ? label.FeatureSize : layerSize) * perspective;
+        if (!LineGlyphs.PlaceEnds(label, worldViewProjection, _width, _height, size, out var first, out var last)) return false;
         if (label.IconBox is { } icon)
         {
             // GL JS placeCollisionBox for the icon's box round the projected anchor

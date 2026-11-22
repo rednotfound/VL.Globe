@@ -262,7 +262,10 @@ as one run (`GpuTile.LabelRange`). The perf line carries the Draw's timings (pla
 
 0. Frame time while moving: tile uploads (50-150 MB/s at a tilt, Update 15-30 ms), 1500-2400 draws a
    frame. The one-off 150-190 ms was the atlases made again per glyph (NOTES.md, 2026-11-22): fixed,
-   seen gone in vvvv. Left: single tiles of 20-30 MB in one frame, placement up to 38 ms. A 550 ms frame at rest outside Update and Draw: not yet found.
+   seen gone in vvvv. Tiles: a layer hidden at the tile's zoom is not built (Kyoto 9.1 -> 6.7 MB).
+   Placement: ends-only collision for lines (11.5 -> 6.7 ms offline). Left: 3D buildings are 76% of a
+   tile (a 28-byte vertex; GL JS's is ~12), roads built twice (casing and line); placement paused
+   after 2 ms a frame, which GL JS does only with fades (item 1). A 550 ms frame at rest outside Update and Draw: not yet found.
 1. Fades (300 ms) and labels across tiles of two zooms (CrossTileSymbolIndex), the `format`
    expression, text-size by zoom and feature, text-offset across a line, an icon beside text along a line.
 2. Seen in vvvv at Kyoto Station: the one-way arrows along the roads. Shields not yet seen (no road
