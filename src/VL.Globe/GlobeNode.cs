@@ -161,12 +161,17 @@ public sealed class GlobeNode : IDisposable
     double _gpuLoggedAt = -10;
 
     // Measured, once a second into the log while vector tiles are drawn by the GPU (the user,
-    // 2026-11-21: "偶尔在运动加载的时候会卡一下"): the longest frame (time between two Updates) and
-    // how many passed 33 ms, the longest this node's own Update took, bytes uploaded and the most in
-    // one frame, and garbage collections by generation - a gen-2 one pauses every thread.
-    double _perfFrom = -1, _lastUpdateAt = -1, _frameMax, _updateMax;
-    int _slowFrames, _perfUploads, _gen0, _gen2;
+    // 2026-11-21: "偶尔在运动加载的时候会卡一下"; 2026-11-22: "远远不如 GL JS 流畅", ROADMAP 4g): the
+    // frames (time between two Updates) as FrameStats sums them up - fps, mean, percentiles, those
+    // that missed a 60 Hz vsync - the longest this node's own Update took, bytes uploaded and the
+    // most in one frame, and garbage collections by generation - a gen-2 one pauses every thread.
+    // Every second the camera moved is logged, smooth or not, so the smooth ones are counted too.
+    double _perfFrom = -1, _lastUpdateAt = -1, _updateMax;
+    int _perfUploads, _gen0, _gen2;
     long _perfBytes, _perfBytesMax;
+    readonly FrameStats _frames = new();
+    Matrix _statsView;
+    bool _movedThisFrame;
 
     public GlobeNode(NodeContext nodeContext)
     {
@@ -226,12 +231,8 @@ public sealed class GlobeNode : IDisposable
             _logger.LogWarning("Globe perf: an Update of {Ms:F0} ms - {Stages} ms; GC paused {Pause:F0} ms in it; gpu vectors: {Gpu} ms",
                 now - updateStart, string.Join(", ", parts), (GC.GetTotalPauseDuration() - _gcPauseAtStart).TotalMilliseconds, _gpu.Breakdown);
         }
-        if (_lastUpdateAt >= 0)
-        {
-            double frame = updateStart - _lastUpdateAt;
-            _frameMax = Math.Max(_frameMax, frame);
-            if (frame > 33) _slowFrames++;
-        }
+        if (_lastUpdateAt >= 0) _frames.Add(updateStart - _lastUpdateAt, _movedThisFrame);
+        _movedThisFrame = false;
         _lastUpdateAt = updateStart;
         _perfBytes += _gpu.UploadedBytes;
         _perfBytesMax = Math.Max(_perfBytesMax, _gpu.UploadedBytes);
@@ -239,13 +240,14 @@ public sealed class GlobeNode : IDisposable
         if (_perfFrom < 0) { _perfFrom = now; _gen0 = GC.CollectionCount(0); _gen2 = GC.CollectionCount(2); return; }
         if (now - _perfFrom < 1000) return;
         int gen0 = GC.CollectionCount(0), gen2 = GC.CollectionCount(2);
-        // also every second a frame takes longer than 20 ms: a steady 30 fps (vsync halving a 17-33 ms
-        // frame) had no line, and the vector draw on the render thread was in none (2026-11-22)
+        // also every second a frame misses a vsync: a steady 30 fps (vsync halving a 17-33 ms frame)
+        // had no line, and the vector draw on the render thread was in none (2026-11-22)
         var draw = _gpu.TakeDrawStats();
-        if (_gpu.TilesBuilt > 0 && (_slowFrames > 0 || _perfUploads > 0 || gen2 > _gen2 || _frameMax > 20))
-            _logger.LogInformation("Globe perf: frame max {FrameMax:F0} ms, {Slow} over 33 ms; Update max {UpdateMax:F1} ms; uploaded {Uploads} tiles {MB:F1} MB, most {MaxMB:F1} MB in a frame; GC gen0 +{Gen0}, gen2 +{Gen2}; draw: {Draw}",
-                _frameMax, _slowFrames, _updateMax, _perfUploads, _perfBytes / 1048576.0, _perfBytesMax / 1048576.0, gen0 - _gen0, gen2 - _gen2, draw);
-        _perfFrom = now; _frameMax = 0; _updateMax = 0; _slowFrames = 0; _perfUploads = 0; _perfBytes = 0; _perfBytesMax = 0;
+        var frames = _frames.Take();
+        if (_gpu.TilesBuilt > 0 && (frames.Moved || frames.MissedFrames > 0 || _perfUploads > 0 || gen2 > _gen2))
+            _logger.LogInformation("Globe perf: {Frames}; Update max {UpdateMax:F1} ms; uploaded {Uploads} tiles {MB:F1} MB, most {MaxMB:F1} MB in a frame; GC gen0 +{Gen0}, gen2 +{Gen2}; draw: {Draw}",
+                frames, _updateMax, _perfUploads, _perfBytes / 1048576.0, _perfBytesMax / 1048576.0, gen0 - _gen0, gen2 - _gen2, draw);
+        _perfFrom = now; _updateMax = 0; _perfUploads = 0; _perfBytes = 0; _perfBytesMax = 0;
         _gen0 = gen0; _gen2 = gen2;
     }
 
@@ -391,6 +393,8 @@ public sealed class GlobeNode : IDisposable
         var view = cc is { UseCustomViewMatrix: true } ? cc.ViewMatrix : Matrix.Invert(camera.Transform.WorldMatrix);
         var frame = camera.Get<GlobeCameraFrame>();
         if (frame is not null) view = Matrix.Translation(-frame.Eye.ToVector3()) * view;
+        _movedThisFrame |= view != _statsView;
+        _statsView = view;
         var eye = Matrix.Invert(view).TranslationVector;
         _lastEye = eye;
         var fov = MathUtil.DegreesToRadians(cc?.VerticalFieldOfView ?? 45f);

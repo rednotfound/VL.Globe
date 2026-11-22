@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<!--
+  ROADMAP 4g's yardstick: MapLibre GL JS on the globe with the style VL.Globe draws (Liberty), its frames
+  summed up each second as VL.Globe's `Globe perf` line sums its own (Engine/FrameStats.cs): fps, mean,
+  p50/p95/p99, max, frames over 20 ms (a missed 60 Hz vsync). Open the view of a `Globe view: #...` log
+  line by putting the hash after the URL (MapLibre's own hash: zoom/lat/lng/bearing/pitch).
+  "Pan 10 s" pans east at a fixed speed every frame, a repeatable motion; dragging by hand works too.
+  Serve it (file:// blocks the worker): python -m http.server 8765 -d tools, then
+  http://localhost:8765/GLJS-Yardstick.html#15/34.98536/135.75880/0/60
+-->
+<html>
+<head>
+<meta charset="utf-8">
+<title>GL JS yardstick</title>
+<link rel="stylesheet" href="https://unpkg.com/maplibre-gl@6.19.0/dist/maplibre-gl.css">
+<style>
+  html, body, #map { margin: 0; height: 100%; }
+  #panel { position: absolute; top: 8px; left: 8px; z-index: 1; background: #fffd; font: 12px monospace; padding: 6px; max-width: 70ch; }
+  #log { white-space: pre; max-height: 40vh; overflow: auto; }
+</style>
+</head>
+<body>
+<div id="panel">
+  <button id="pan">Pan 10 s</button> <button id="clear">Clear</button> <span id="state"></span>
+  <div id="log"></div>
+</div>
+<div id="map"></div>
+<script type="module">
+import * as maplibregl from 'https://unpkg.com/maplibre-gl@6.19.0/dist/maplibre-gl.mjs';
+const MISSED = 20;
+const map = new maplibregl.Map({
+  container: 'map',
+  style: 'https://tiles.openfreemap.org/styles/liberty',
+  hash: true,
+  maxPitch: 85,
+  center: [135.7588, 34.98536], zoom: 15, pitch: 60,
+});
+map.on('style.load', () => map.setProjection({ type: 'globe' }));
+
+// frames: rAF intervals, as VL.Globe measures between Updates
+let intervals = [], last = -1, moved = false, secondFrom = performance.now();
+map.on('move', () => { moved = true; });
+function summarise(v) {
+  const s = [...v].sort((a, b) => a - b), n = s.length;
+  const rank = p => s[Math.min(n - 1, Math.max(0, Math.ceil(p * n) - 1))];
+  const mean = s.reduce((a, b) => a + b, 0) / n;
+  return `${n} frames, ${(1000 / mean).toFixed(0)} fps, mean ${mean.toFixed(1)} p50 ${rank(.5).toFixed(1)} p95 ${rank(.95).toFixed(1)} p99 ${rank(.99).toFixed(1)} max ${s[n - 1].toFixed(0)} ms, ${s.filter(x => x > MISSED).length} over ${MISSED} ms`;
+}
+function tiles() {
+  // the tiles each source holds (style.sourceCaches before v5, tileManagers after - whichever is there)
+  const caches = map.style && (map.style.tileManagers || map.style.sourceCaches);
+  if (!caches) return '';
+  return Object.entries(caches).map(([id, c]) => `${id} ${Object.keys(c._tiles || {}).length}`).join(', ');
+}
+let panUntil = 0;
+function frame(t) {
+  if (last >= 0) intervals.push(t - last);
+  last = t;
+  if (t < panUntil) map.panBy([5, 0], { animate: false });   // 300 px/s at 60 fps
+  if (t - secondFrom >= 1000) {
+    if (intervals.length && (moved || intervals.some(x => x > MISSED))) {
+      const line = `GLJS perf: ${summarise(intervals)}, ${moved ? 'moving' : 'still'}; tiles: ${tiles()}`;
+      console.log(line);
+      const log = document.getElementById('log');
+      log.textContent = line + '\n' + log.textContent;
+    }
+    intervals = []; moved = false; secondFrom = t;
+  }
+  document.getElementById('state').textContent = map.areTilesLoaded() ? 'tiles loaded' : 'loading';
+  requestAnimationFrame(frame);
+}
+requestAnimationFrame(frame);
+document.getElementById('pan').onclick = () => { panUntil = performance.now() + 10000; };
+document.getElementById('clear').onclick = () => { document.getElementById('log').textContent = ''; };
+</script>
+</body>
+</html>

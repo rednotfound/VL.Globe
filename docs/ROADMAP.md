@@ -386,6 +386,13 @@ while no tiles arrive" (4e) was read off that instrument and does not hold.
 4. Draw submission timed by part, then batched or its parameters cut, whichever the timing names.
 5. Drag inertia, if the feel is still behind once the frames are.
 
+**Step 1, half built 2026-11-22 night:** `Engine/FrameStats.cs` (`FrameStatsFacts`): `Globe perf` now
+reads `N frames, fps, mean p50 p95 p99 max ms, M over 20 ms, moving|still`, and every second the
+camera moved is logged, smooth or not. `tools/GLJS-Yardstick.html`: GL JS 6.19.0 on the globe with
+Liberty, the same summary each second as `GLJS perf:` (on the page and in the console), a view
+hash as ours, "Pan 10 s" at 300 px/s. Not yet run: the browser extension was not connected. Left:
+the same view and motion in both, side by side - the numbers this item is judged by.
+
 ### 5. Navigation
 
 - `CenterOn`, `ZoomToLevel`, `ZoomIn`, `ZoomOut`.
