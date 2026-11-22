@@ -127,7 +127,7 @@ internal sealed class SpriteStore
 // The icons packed into one RGBA image (premultiplied), as GL JS's image_atlas.ts packs a tile's: each
 // with a 1-px empty padding (IMAGE_PADDING), its rect that padding included. One atlas for a style,
 // shelves, an image never moves - as the GlyphAtlas, whose reasoning this follows.
-internal sealed class ImageAtlas
+internal sealed class ImageAtlas : IRowAtlas
 {
     public const int Padding = 1;
     public const int Width = 2048;
@@ -154,8 +154,33 @@ internal sealed class ImageAtlas
             _shelfX += w;
             _shelfH = Math.Max(_shelfH, h);
             _rects[image.Name] = rect;
+            _dirtyFrom = Math.Min(_dirtyFrom, rect.Y); _dirtyTo = Math.Max(_dirtyTo, rect.Y + rect.H);
             Version++;
             return rect;
+        }
+    }
+
+    // the rows placed since the last upload, [from, to): what the texture showing the atlas lacks
+    int _dirtyFrom = int.MaxValue, _dirtyTo;
+
+    public int Height { get { lock (_lock) return _height; } }
+
+    /// <summary>The whole image to <paramref name="create"/>, under the lock and not copied; every row counts as uploaded.</summary>
+    public T Upload<T>(Func<byte[], int, T> create)
+    {
+        lock (_lock) { _dirtyFrom = int.MaxValue; _dirtyTo = 0; return create(_pixels, _height); }
+    }
+
+    /// <summary>The rows placed since the last upload and below <paramref name="height"/> to <paramref name="upload"/>
+    /// (pixels, first row, rows), under the lock and not copied.</summary>
+    public void UploadChanges(int height, AtlasRows upload)
+    {
+        lock (_lock)
+        {
+            int to = Math.Min(_dirtyTo, height);
+            if (to <= _dirtyFrom) return;
+            upload(_pixels, _dirtyFrom, to - _dirtyFrom);
+            if (to >= _dirtyTo) { _dirtyFrom = int.MaxValue; _dirtyTo = 0; } else _dirtyFrom = to;
         }
     }
 

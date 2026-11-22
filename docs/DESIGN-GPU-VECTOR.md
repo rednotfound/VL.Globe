@@ -261,7 +261,8 @@ as one run (`GpuTile.LabelRange`). The perf line carries the Draw's timings (pla
 ## Next
 
 0. Frame time while moving: tile uploads (50-150 MB/s at a tilt, Update 15-30 ms), 1500-2400 draws a
-   frame, and a one-off 170-190 ms "draw list" the first time ~400 label tiles come (time it finer).
+   frame. The one-off 150-190 ms was the atlases made again per glyph (NOTES.md, 2026-11-22): fixed,
+   to be seen again in vvvv. A 550 ms frame at rest outside Update and Draw: not yet found.
 1. Fades (300 ms) and labels across tiles of two zooms (CrossTileSymbolIndex), the `format`
    expression, text-size by zoom and feature, text-offset across a line, an icon beside text along a line.
 2. Seen in vvvv at Kyoto Station: the one-way arrows along the roads. Shields not yet seen (no road

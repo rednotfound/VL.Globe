@@ -39,10 +39,9 @@ internal sealed class GpuVectorTiles : IDisposable
         public required Dictionary<string, List<GpuStyleLayer>> BySource;   // vector sources only; no symbol layers
         public required Dictionary<string, List<GpuStyleLayer>> SymbolsBySource;   // their symbol layers, built apart
         public string? BackgroundSource;                                   // whose tiles carry the background grid
-        public Texture? Atlas;                                             // the labels' glyphs on the GPU, and the atlas version it shows
-        public int AtlasVersion = -1;
-        public Texture? Images;                                            // the icons on the GPU, and the image atlas version it shows
-        public int ImagesVersion = -1;
+        public Texture? Atlas;                                             // the labels' glyphs on the GPU (AtlasTexture)
+        public Texture? Images;                                            // the icons on the GPU
+        public bool HasSymbols, HasIcons;                                  // set by Analyse
     }
 
     // keyed by Scale too: 0 the tile's fills, lines and circles; 1, 2, 4... its symbols, laid out at that
@@ -144,6 +143,7 @@ internal sealed class GpuVectorTiles : IDisposable
         int itemsCapacity = result.Items.Capacity;
         result.Items.Clear();
         result.Labels.Clear();
+        result.Atlases.Clear();
         result.CameraToCenter = (float)cameraToCenter;
         result.Radius = radius;
         long budget = UploadBytesPerFrame;
@@ -228,22 +228,11 @@ internal sealed class GpuVectorTiles : IDisposable
             }
 
             Lap(3);
-            // the labels' glyphs: uploaded again when the atlas has grown
-            if (info.Layers.Any(l => l.IsSymbol) && doc.Glyphs != null && doc.GlyphStore.Atlas.Version != info.AtlasVersion)
-            {
-                var (pixels, atlasHeight, version) = doc.GlyphStore.Atlas.Snapshot();
-                info.Atlas?.Dispose();
-                info.Atlas = Texture.New2D(device, GlyphAtlas.Width, atlasHeight, PixelFormat.R8_UNorm, pixels);
-                info.AtlasVersion = version;
-            }
-            // the icons: uploaded again when the image atlas has grown
-            if (info.Layers.Any(l => l.IconImage != null) && doc.SpriteStore.Atlas.Version != info.ImagesVersion)
-            {
-                var (pixels, imagesHeight, version) = doc.SpriteStore.Atlas.Snapshot();
-                info.Images?.Dispose();
-                info.Images = Texture.New2D(device, ImageAtlas.Width, imagesHeight, PixelFormat.R8G8B8A8_UNorm, pixels);
-                info.ImagesVersion = version;
-            }
+            // the labels' glyphs and the icons: the rows placed since go up in the Draw
+            if (info.HasSymbols && doc.Glyphs != null)
+                info.Atlas = AtlasTexture.Refresh(device, info.Atlas, doc.GlyphStore.Atlas, GlyphAtlas.Width, PixelFormat.R8_UNorm, result);
+            if (info.HasIcons)
+                info.Images = AtlasTexture.Refresh(device, info.Images, doc.SpriteStore.Atlas, ImageAtlas.Width, PixelFormat.R8G8B8A8_UNorm, result);
             Lap(4);
             var ctx = new StyleContext { Zoom = zoom, GlobalState = doc.GlobalState };
             Matrix World(Built tile) => Matrix.Scaling(radius) * Matrix.Translation(TileGeometry.Translation(tile.Bucket.Centre, radius, eye));
@@ -332,7 +321,8 @@ internal sealed class GpuVectorTiles : IDisposable
             ? bySource.Keys.FirstOrDefault() ?? doc.Sources.FirstOrDefault(s => s.Value is VectorSource).Key
             : null;
         if (background != null && !bySource.ContainsKey(background)) bySource[background] = new List<GpuStyleLayer>();
-        info = new StyleInfo { Document = doc, Layers = layers, BySource = bySource, SymbolsBySource = symbolsBySource, BackgroundSource = background };
+        info = new StyleInfo { Document = doc, Layers = layers, BySource = bySource, SymbolsBySource = symbolsBySource, BackgroundSource = background,
+            HasSymbols = layers.Any(l => l.IsSymbol), HasIcons = layers.Any(l => l.IconImage != null) };
         _styles[service] = info;
         return info;
     }

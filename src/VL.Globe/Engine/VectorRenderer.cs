@@ -41,6 +41,8 @@ internal sealed class VectorRenderer : IGraphicsRendererBase
     internal sealed class Frame
     {
         public readonly List<Item> Items = new();
+        // the atlases the labels and icons sample, with the rows placed since their last upload (AtlasTexture)
+        public readonly List<(Texture Texture, IRowAtlas Atlas)> Atlases = new();
         public float Radius = 1;
         // labels to place before drawing (top of the style first), and the distance to the view's centre
         public readonly List<LabelPlacement.Layer> Labels = new();
@@ -142,6 +144,7 @@ internal sealed class VectorRenderer : IGraphicsRendererBase
         EffectInstance circleEffect, Matrix view, Matrix projection, float viewHeight, Frame frame, float lift, bool linearize, bool flat)
     {
         ItemsDrawn = 0;
+        AtlasTexture.Flush(commandList, frame.Atlases);
         EnsurePipelines(commandList.GraphicsDevice);
         if (_circleKeys.Count == 0)
             foreach (var cb in circleEffect.Effect.Bytecode.Reflection.ConstantBuffers)

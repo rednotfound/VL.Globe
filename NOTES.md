@@ -462,3 +462,12 @@ looked fine - "which makes one think it works". Two causes, estimated at 100 m h
   0.2-2.9 ms mean, 60 fps while no tiles arrive. What is left while moving is tile loading (50-150 MB/s
   uploaded, Update 15-30 ms) and 1500-2400 draws (3-4 ms). Open: a one-off 170-190 ms "draw list" in
   the Update the first time a tilt brings ~400 label tiles - not yet timed finer.
+- **The one-off hitch was the atlases, not the draw list** (timed finer, the user tilting at Kyoto):
+  "atlases 150", "atlases 153" in two Updates 0.7 s apart, GC pause 5 ms counted. My guess - the
+  item list growing on the large-object heap - was refuted by the same lines (it grew 0 -> 4). Every
+  glyph added bumped the atlas's Version, and each new version cloned the whole image (megabytes, a
+  large-object-heap array) and made a new texture from it. Now a texture is made again only when the
+  atlas grows taller, from the atlas's own array under its lock; the rows placed since go into the
+  same texture in the Draw (`AtlasTexture`, `SetData` with a region). Test: `AtlasTextureFacts`, red
+  with the upload skipped. Not yet told apart: the clone or the texture creation - both are gone.
+- Open: one frame of 550 ms at rest (13:20:20) with Update 10 ms and Draw ~1.5 ms - outside both.

@@ -113,22 +113,12 @@ internal static class GpuFixtureRenderer
             bySource[group.Key] = Cover(style.Sources[group.Key], group.ToList(), false);
         List<(GpuTile tile, double shift)>? backgrounds = null;
 
-        // the glyphs the labels placed, one atlas for the style
-        Texture? atlas = null;
-        if (layers.Any(l => l.IsSymbol))
-        {
-            var (pixels, atlasHeight, _) = style.GlyphStore.Atlas.Snapshot();
-            atlas = Texture.New2D(gpu.Device, GlyphAtlas.Width, atlasHeight, PixelFormat.R8_UNorm, pixels);
-        }
-        // the icons they placed, one image atlas
-        Texture? images = null;
-        if (layers.Any(l => l.IconImage != null))
-        {
-            var (pixels, imagesHeight, _) = style.SpriteStore.Atlas.Snapshot();
-            images = Texture.New2D(gpu.Device, ImageAtlas.Width, imagesHeight, PixelFormat.R8G8B8A8_UNorm, pixels);
-        }
-
         var frame = new VectorRenderer.Frame { Radius = 1, CameraToCenter = (float)distance, PixelRatio = (float)pixelRatio };
+        // the glyphs the labels placed and the icons, one atlas each for the style, made as the globe makes them
+        Texture? atlas = layers.Any(l => l.IsSymbol)
+            ? AtlasTexture.Refresh(gpu.Device, null, style.GlyphStore.Atlas, GlyphAtlas.Width, PixelFormat.R8_UNorm, frame) : null;
+        Texture? images = layers.Any(l => l.IconImage != null)
+            ? AtlasTexture.Refresh(gpu.Device, null, style.SpriteStore.Atlas, ImageAtlas.Width, PixelFormat.R8G8B8A8_UNorm, frame) : null;
         foreach (var layer in layers)
         {
             if (layer.IsCircle)
