@@ -7,6 +7,7 @@ using VL.Globe.Engine;
 using Matrix = Stride.Core.Mathematics.Matrix;
 using Vector4 = Stride.Core.Mathematics.Vector4;
 using Color4 = Stride.Core.Mathematics.Color4;
+using Vector3 = Stride.Core.Mathematics.Vector3;
 
 namespace VL.Globe.Tests.MapLibre;
 
@@ -22,7 +23,7 @@ internal static class GpuFixtureRenderer
     {
         public required GraphicsDevice Device;
         public required GraphicsContext Context;
-        public required EffectInstance Effect, SymbolEffect, CircleEffect;
+        public required EffectInstance Effect, SymbolEffect, CircleEffect, FogEffect;
         public readonly VectorRenderer Renderer = new() { GlOutlines = true };
     }
 
@@ -37,7 +38,7 @@ internal static class GpuFixtureRenderer
         string repo = RenderHarness.RepoRoot();
         var dir = Path.Combine(Path.GetTempPath(), "vlglobe-shaders-" + Environment.ProcessId);
         Directory.CreateDirectory(dir);
-        foreach (var f in new[] { "GlobeVector.sdsl", "GlobeSymbol.sdsl", "GlobeCircle.sdsl" }) File.Copy(Path.Combine(repo, "shaders", f), Path.Combine(dir, f), overwrite: true);
+        foreach (var f in new[] { "GlobeVector.sdsl", "GlobeSymbol.sdsl", "GlobeCircle.sdsl", "GlobeFog.sdsl" }) File.Copy(Path.Combine(repo, "shaders", f), Path.Combine(dir, f), overwrite: true);
         var nuget = Environment.GetEnvironmentVariable("NUGET_PACKAGES") ?? Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".nuget", "packages");
         var assets = Path.Combine(nuget, "stride.graphics", "4.2.1.2487", "stride", "Assets");
         foreach (var f in new[] { "ShaderBase.sdsl", "ShaderBaseStream.sdsl" }) File.Copy(Path.Combine(assets, f), Path.Combine(dir, f), overwrite: true);
@@ -56,7 +57,23 @@ internal static class GpuFixtureRenderer
             effect.UpdateEffect(device);
             return effect;
         }
-        return new Gpu { Device = device, Context = new GraphicsContext(device), Effect = Compile("GlobeVector"), SymbolEffect = Compile("GlobeSymbol"), CircleEffect = Compile("GlobeCircle") };
+        return new Gpu { Device = device, Context = new GraphicsContext(device), Effect = Compile("GlobeVector"), SymbolEffect = Compile("GlobeSymbol"), CircleEffect = Compile("GlobeCircle"), FogEffect = Compile("GlobeFog") };
+    }
+
+    /// <summary>The fog alone over a transparent target, read back (RGBA, premultiplied).</summary>
+    public static byte[] RenderFog(Matrix view, Matrix projection, Vector3 globeCentre, float radius, Fog fog, int width, int height)
+    {
+        lock (Lock)
+        {
+            var gpu = Shared.Value;
+            using var target = Texture.New2D(gpu.Device, width, height, PixelFormat.R8G8B8A8_UNorm, TextureFlags.RenderTarget | TextureFlags.ShaderResource);
+            var cl = gpu.Context.CommandList;
+            cl.SetRenderTargetAndViewport(null, target);
+            cl.Clear(target, new Color4(0, 0, 0, 0));
+            using var pass = new FogPass();
+            pass.Draw(cl, gpu.Context, gpu.FogEffect, view, projection, globeCentre, radius, fog);
+            return target.GetData<byte>(cl);
+        }
     }
 
     public static byte[] Render(MapStyleDocument style, int width, int height, double pixelRatio)

@@ -1,0 +1,56 @@
+// VL.Globe's fog towards the horizon (ROADMAP 4f step 2), drawn by Engine/FogPass.cs over everything
+// the globe drew: Mapbox's and Cesium's answer to a tilted view's distance, where the tiles are coarse
+// and a vector source's buildings are missing. Camera-relative: the eye is at the origin, so each
+// pixel's ray meets the globe (a sphere round GfCentre) at a distance found here, without the depth
+// buffer. Ground between GfStart and GfEnd fades into GfColor; the sky just above the limb fades too
+// (over GfHorizon radians above it), so the ground's fog does not end in a hard edge against space.
+shader GlobeFog : ShaderBase
+{
+    cbuffer PerDraw
+    {
+        stage float4x4 GfInverseView;             // the camera-relative view (a rotation), inverted
+        stage float4 GfProjection;                // the projection's M11, M22, M31, M32: a pixel to a direction
+        stage float3 GfCentre;                    // the globe's centre, relative to the eye
+        stage float GfRadius;
+        stage float GfStart;                      // the distance where the fog begins
+        stage float GfEnd;                        // the distance where it is whole
+        stage float GfHorizon;                    // the angle above the limb over which the sky's fog fades out, radians
+        stage float4 GfColor;                     // premultiplied, as the target expects
+    }
+
+    stage stream float2 GfPositionIn : POSITION;  // a full-screen triangle, in clip space
+    stage stream float2 GfClip;
+
+    stage override void VSMain()
+    {
+        streams.ShadingPosition = float4(streams.GfPositionIn, 0, 1);
+        streams.GfClip = streams.GfPositionIn;
+    }
+
+    stage override void PSMain()
+    {
+        // the ray in view space, then in the world - not through an inverted projection, whose near plane
+        // at street level (1e-8 of the radius) leaves nothing of a float inverse
+        float2 slope = (streams.GfClip + GfProjection.zw) / GfProjection.xy;
+        float3 dir = normalize(mul(float4(slope, -1, 0), GfInverseView).xyz);
+        float b = dot(dir, GfCentre);                         // along the ray to the point nearest the centre
+        float c = dot(GfCentre, GfCentre) - GfRadius * GfRadius;
+        float disc = b * b - c;
+        float fog = 0;
+        if (disc >= 0 && b > 0)
+        {
+            fog = smoothstep(GfStart, GfEnd, b - sqrt(disc));   // the ground, at its distance
+        }
+        else if (c > 0)
+        {
+            // the sky: as foggy as the limb, fading with the ray's angle above the limb - its elevation
+            // plus the limb's dip below the level; a height alone was under a pixel from street level
+            float distance = length(GfCentre);
+            float elevation = asin(clamp(-b / distance, -1, 1));
+            float dip = acos(clamp(GfRadius / distance, -1, 1));
+            fog = smoothstep(GfStart, GfEnd, sqrt(c)) * (1 - smoothstep(0, GfHorizon, elevation + dip));
+        }
+        if (fog < 0.002) discard;
+        streams.ColorTarget = GfColor * fog;
+    }
+};

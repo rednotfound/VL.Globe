@@ -87,7 +87,10 @@ internal sealed class VectorRenderer : IGraphicsRendererBase
     // antialiased line (blended straight) is drawn: the user judged that one on screen, 2026-11-21.
     public bool GlOutlines;
 
-    DynamicEffectInstance? _effect, _symbolEffect, _circleEffect;
+    DynamicEffectInstance? _effect, _symbolEffect, _circleEffect, _fogEffect;
+    readonly FogPass _fog = new();
+    /// <summary>Fog towards the horizon over everything the globe draws (GlobeFog.sdsl).</summary>
+    public bool Fog = true;
     MutablePipelineState? _pipeline, _linePipeline, _depthPipeline, _extrusionPipeline, _textPipeline, _circlePipeline;
     readonly Dictionary<string, ParameterKey> _symbolKeys = new(), _circleKeys = new();
     readonly LabelPlacement _placement = new();
@@ -109,7 +112,8 @@ internal sealed class VectorRenderer : IGraphicsRendererBase
     {
         var frame = Current;
         ItemsDrawn = 0;
-        if (frame is null || frame.Items.Count == 0 || _broken) return;
+        // the fog is drawn with no vector layer too: it covers the raster tiles as well
+        if (frame is null || _broken || frame.Items.Count == 0 && frame.Eye is null) return;
         try
         {
             if (_effect is null)
@@ -120,14 +124,22 @@ internal sealed class VectorRenderer : IGraphicsRendererBase
                 _symbolEffect.Initialize(context.RenderContext.Services);
                 _circleEffect = new DynamicEffectInstance("GlobeCircle");
                 _circleEffect.Initialize(context.RenderContext.Services);
+                _fogEffect = new DynamicEffectInstance("GlobeFog");
+                _fogEffect.Initialize(context.RenderContext.Services);
             }
             _effect.UpdateEffect(context.GraphicsDevice);
             _symbolEffect!.UpdateEffect(context.GraphicsDevice);
             _circleEffect!.UpdateEffect(context.GraphicsDevice);
-            if (_effect.Effect is null || _symbolEffect.Effect is null || _circleEffect.Effect is null) return;   // still compiling
+            _fogEffect!.UpdateEffect(context.GraphicsDevice);
+            if (_effect.Effect is null || _symbolEffect.Effect is null || _circleEffect.Effect is null || _fogEffect.Effect is null) return;   // still compiling
             var view = context.RenderContext.RenderView;
-            DrawFrame(context.CommandList, context.GraphicsContext, _effect, _symbolEffect, _circleEffect, view.View, view.Projection, view.ViewSize.Y, frame,
-                Lift, linearize: true, flat: false);
+            if (frame.Items.Count > 0)
+                DrawFrame(context.CommandList, context.GraphicsContext, _effect, _symbolEffect, _circleEffect, view.View, view.Projection, view.ViewSize.Y, frame,
+                    Lift, linearize: true, flat: false);
+            // last, over the tiles, the vector layers and the labels (ROADMAP 4f step 2)
+            if (Fog && frame.Eye is { } eye)
+                _fog.Draw(context.CommandList, context.GraphicsContext, _fogEffect, view.View, view.Projection,
+                    (-eye).ToVector3(), frame.Radius, Engine.Fog.For(frame.CameraToCenter));
         }
         catch (Exception e)
         {
