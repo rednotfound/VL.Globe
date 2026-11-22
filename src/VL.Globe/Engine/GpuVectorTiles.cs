@@ -227,7 +227,7 @@ internal sealed class GpuVectorTiles : IDisposable
                     var labelled = drawn.Where(d => d.clip == full && d.built.PlacedBuffer != null).DistinctBy(d => d.built).ToList();
                     VectorDrawList.AddSymbolLayer(result.Items, layer, paint!, labelled, World, linearize: true, info.Atlas, cameraToCenter, 1);
                     // placed from the top of the style down
-                    result.Labels.Insert(0, new LabelPlacement.Layer(layer.Index, labelled.Select(d => (d.built, World(d.built))).ToList()));
+                    result.Labels.Insert(0, new LabelPlacement.Layer(layer.Index, labelled.Select(d => (d.built, World(d.built))).ToList(), (float)paint!.Size));
                     continue;
                 }
                 bool visible;

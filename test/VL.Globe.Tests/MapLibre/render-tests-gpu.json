@@ -1,9 +1,10 @@
 {
   "tag": "v6.19.0",
-  "passedAtLeast": 146,
+  "passedAtLeast": 150,
   "ignores": {
     "fill-outline-color/multiply": "one pixel at each outer corner of a 1-px outline: D3D's line rasterisation draws a segment's start pixel there, GL's does not",
     "geojson/inline-linestring-fill": "a self-intersecting ring filled: GL JS's earcut triangulates it differently from our ear clipping",
-    "text-size/composite-function": "a text-size by zoom and feature: GL JS interpolates between two zoom stops stored per vertex; one size per vertex here (labels, milestone 1)"
+    "text-size/composite-function": "a text-size by zoom and feature: GL JS interpolates between two zoom stops stored per vertex; one size per vertex here (labels, milestone 1)",
+    "text-size/composite-function-line-placement": "the same text-size by zoom and feature, along a line"
   }
 }

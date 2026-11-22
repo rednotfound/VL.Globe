@@ -94,6 +94,7 @@ internal sealed class VectorBucket
     public SymbolVertex[] SymbolVertices = Array.Empty<SymbolVertex>();
     public uint[] SymbolIndices = Array.Empty<uint>();
     public List<LabelInfo> Labels = new();
+    public List<LineLabel> LineLabels = new();
     public double Ms;
 
     public ReadOnlySpan<VectorVertex> VertexSpan => Vertices.AsSpan(0, VertexCount);
@@ -283,6 +284,7 @@ internal static partial class VectorBucketBuilder
             _symbolVertices.RemoveRange(_layerSymbolVertexStart, _symbolVertices.Count - _layerSymbolVertexStart);
             _symbolIndices.RemoveRange(_layerSymbolIndexStart, _symbolIndices.Count - _layerSymbolIndexStart);
             _labels.RemoveRange(_layerLabelStart, _labels.Count - _layerLabelStart);
+            _lineLabels.RemoveRange(_layerLineLabelStart, _lineLabels.Count - _layerLineLabelStart);
         }
 
         public VectorBucket Finish()
@@ -295,7 +297,7 @@ internal static partial class VectorBucketBuilder
             {
                 Key = _key, Centre = _centre, Vertices = vertices, Indices = indices,
                 VertexCount = _vertices.Count, IndexCount = _indices.Count, Ranges = _ranges.ToList(),
-                SymbolVertices = _symbolVertices.ToArray(), SymbolIndices = _symbolIndices.ToArray(), Labels = _labels.ToList(),
+                SymbolVertices = _symbolVertices.ToArray(), SymbolIndices = _symbolIndices.ToArray(), Labels = _labels.ToList(), LineLabels = _lineLabels.ToList(),
             };
         }
 
@@ -328,6 +330,7 @@ internal static partial class VectorBucketBuilder
         {
             _layerVertexStart = _vertices.Count; _layerIndexStart = _indices.Count; _layerRangeStart = _ranges.Count;
             _layerSymbolVertexStart = _symbolVertices.Count; _layerSymbolIndexStart = _symbolIndices.Count; _layerLabelStart = _labels.Count;
+            _layerLineLabelStart = _lineLabels.Count;
             var l = layer.Layer;
             // GL JS builds a bucket at the tile's zoom: filters and layout at it. Not the layer's zoom
             // range: one bucket serves every zoom the tile is overscaled to (z14 data at z19), so

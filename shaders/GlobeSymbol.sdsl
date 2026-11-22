@@ -42,6 +42,7 @@ shader GlobeSymbol : ShaderBase
     stage stream float2 GsSizeOpacity : TEXCOORD1; // the feature's size and opacity where they depend on it
     stage stream float4 GsColorIn : COLOR0;       // the feature's colour (sRGB, straight) where it depends on it, else white
     stage stream float GsPlacedIn : TEXCOORD2;    // slot 1: 1 placed, 0 not (LabelPlacement, every frame)
+    stage stream float4 GsLineIn : TEXCOORD3;     // slot 2: a glyph along a line - x, y px, angle, 1; -1 hidden; 0 a point label
 
     stage stream float2 GsTex;
     stage stream float3 GsData;                   // GL JS's v_data1: gamma scale, size, opacity
@@ -76,8 +77,18 @@ shader GlobeSymbol : ShaderBase
         size *= perspective;
         float fontScale = size / 24.0;
         float2 offset = float2(streams.GsOffsetTex.xy) / 32.0 * fontScale;
-        // pixels, y down, to clip space at the anchor's depth
-        clip.xy += float2(2 * offset.x / GsViewport.x, -2 * offset.y / GsViewport.y) * clip.w;
+        if (streams.GsLineIn.w > 0.5)
+        {
+            // along a line: the glyph's place in pixels, the quad turned to its segment (GL JS's
+            // a_projected_pos and segment_angle; rotation_matrix turns by the angle, y down)
+            float s = sin(streams.GsLineIn.z), c = cos(streams.GsLineIn.z);
+            float2 px = streams.GsLineIn.xy + float2(c * offset.x - s * offset.y, s * offset.x + c * offset.y);
+            clip = float4(px.x / GsViewport.x * 2 - 1, 1 - px.y / GsViewport.y * 2, saturate(clip.z / clip.w), 1);
+        }
+        else
+            // pixels, y down, to clip space at the anchor's depth
+            clip.xy += float2(2 * offset.x / GsViewport.x, -2 * offset.y / GsViewport.y) * clip.w;
+        hidden = hidden || streams.GsLineIn.w < -0.5;
         streams.ShadingPosition = hidden ? float4(-2, -2, -2, 1) : clip;
         streams.GsTex = float2(streams.GsOffsetTex.zw) / GsTexSize;
         streams.GsData = float3(1, size, opacity);   // gamma scale 1: not pitched with the map

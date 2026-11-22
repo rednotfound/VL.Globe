@@ -134,7 +134,7 @@ internal static class GpuFixtureRenderer
                     placing.Add((tile, at));
                 }
                 // placed from the top of the style down
-                frame.Labels.Insert(0, new LabelPlacement.Layer(layer.Index, placing));
+                frame.Labels.Insert(0, new LabelPlacement.Layer(layer.Index, placing, (float)paint.Size));
                 continue;
             }
             if (!layer.Uniforms(ctx, out var color, out var lineWidth, out var outline)) continue;

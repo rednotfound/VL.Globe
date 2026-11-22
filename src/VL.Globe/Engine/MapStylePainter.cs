@@ -257,7 +257,9 @@ internal sealed class MapStyleDocument
         ["symbol"] = new() { "visibility", "symbol-placement", "text-field", "text-font", "text-size", "text-max-width",
             "text-line-height", "text-letter-spacing", "text-justify", "text-anchor", "text-offset", "text-transform", "text-rotate",
             "text-allow-overlap", "text-ignore-placement", "text-padding", "text-optional", "text-keep-upright",
-            "text-rotation-alignment", "text-pitch-alignment" },
+            "text-rotation-alignment", "text-pitch-alignment",
+            // milestone 3, labels along lines
+            "symbol-spacing", "text-max-angle" },
         ["line"] = new() { "visibility", "line-cap", "line-join", "line-miter-limit", "line-round-limit" },
     };
 

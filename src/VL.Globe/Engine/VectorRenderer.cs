@@ -26,7 +26,7 @@ internal sealed class VectorRenderer : IGraphicsRendererBase
 
     // what a Text item draws with besides its buffers: the atlas and the layer's paint this frame
     internal sealed record TextDraw(Texture Atlas, Vector4 Color, Vector4 HaloColor, float Size, bool SizePerFeature, float Opacity,
-        float HaloWidth, float HaloBlur, bool IsHalo, bool IsPlain, float CameraToCenter, float PixelRatio, Buffer Placed);
+        float HaloWidth, float HaloBlur, bool IsHalo, bool IsPlain, float CameraToCenter, float PixelRatio, Buffer Placed, Buffer Dynamic);
 
     internal readonly record struct Item(Buffer Vertices, Buffer Indices, int Start, int Count, Matrix World, Vector3 Centre,
         Vector4 Color, float HalfWidth, bool IsLine, Vector4 Clip, Pass Pass = Pass.Triangles, float Tiles = 1, TextDraw? Text = null);
@@ -137,11 +137,18 @@ internal sealed class VectorRenderer : IGraphicsRendererBase
             _placement.Place(frame.Labels, view, projection, commandList.Viewport.Width, commandList.Viewport.Height, frame.CameraToCenter, flat);
             foreach (var layer in frame.Labels)
                 foreach (var (tile, _) in layer.Tiles)
+                {
                     if (tile.PlacedDirty && tile.PlacedBuffer is { } placedBuffer && tile.Placed is { } placed)
                     {
                         placedBuffer.SetData(commandList, (ReadOnlySpan<float>)placed);
                         tile.PlacedDirty = false;
                     }
+                    if (tile.DynamicDirty && tile.DynamicBuffer is { } dynamicBuffer && tile.Dynamic is { } dynamic)
+                    {
+                        dynamicBuffer.SetData(commandList, (ReadOnlySpan<Vector4>)dynamic);
+                        tile.DynamicDirty = false;
+                    }
+                }
         }
         var symbolParameters = symbolEffect.Parameters;
         SetText(symbolParameters, "GsProjection", projection);
@@ -184,6 +191,7 @@ internal sealed class VectorRenderer : IGraphicsRendererBase
                 if (item.Text is { } t)
                 {
                     commandList.SetVertexBuffer(1, t.Placed, 0, sizeof(float));
+                    commandList.SetVertexBuffer(2, t.Dynamic, 0, 16);
                     SetText(symbolParameters, "GsWorldView", item.World * view);
                     SetText(symbolParameters, "GsCentre", item.Centre);
                     SetText(symbolParameters, "GsViewport", new Vector2(commandList.Viewport.Width, commandList.Viewport.Height));
@@ -275,7 +283,13 @@ internal sealed class VectorRenderer : IGraphicsRendererBase
             SemanticName = "TEXCOORD", SemanticIndex = 2, Format = PixelFormat.R32_Float, InputSlot = 1,
             AlignedByteOffset = 0, InputSlotClass = InputClassification.Vertex, InstanceDataStepRate = 0,
         };
-        t.InputElements = SymbolVertex.Layout.CreateInputElements().Append(placedElement).ToArray();
+        // ... and in slot 2 where a glyph along a line was placed (LineGlyphs, every frame)
+        var lineElement = new InputElementDescription
+        {
+            SemanticName = "TEXCOORD", SemanticIndex = 3, Format = PixelFormat.R32G32B32A32_Float, InputSlot = 2,
+            AlignedByteOffset = 0, InputSlotClass = InputClassification.Vertex, InstanceDataStepRate = 0,
+        };
+        t.InputElements = SymbolVertex.Layout.CreateInputElements().Append(placedElement).Append(lineElement).ToArray();
         t.BlendState = BlendStates.AlphaBlend;
         t.DepthStencilState = DepthStencilStates.None;
         t.RasterizerState = RasterizerStates.CullNone;

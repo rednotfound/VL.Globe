@@ -92,7 +92,8 @@ internal static partial class VectorBucketBuilder
         readonly List<SymbolVertex> _symbolVertices = new();
         readonly List<uint> _symbolIndices = new();
         readonly List<LabelInfo> _labels = new();
-        int _layerSymbolVertexStart, _layerSymbolIndexStart, _layerLabelStart;
+        readonly List<LineLabel> _lineLabels = new();
+        int _layerSymbolVertexStart, _layerSymbolIndexStart, _layerLabelStart, _layerLineLabelStart;
 
         // GL JS symbol_layout.ts performSymbolLayout + addFeature, for point placement
         public void Symbol(GpuStyleLayer layer, List<StyleFeature> features, StyleContext ctx, MapStyleDocument style,
@@ -100,12 +101,19 @@ internal static partial class VectorBucketBuilder
         {
             _layerVertexStart = _vertices.Count; _layerIndexStart = _indices.Count; _layerRangeStart = _ranges.Count;
             _layerSymbolVertexStart = _symbolVertices.Count; _layerSymbolIndexStart = _symbolIndices.Count; _layerLabelStart = _labels.Count;
+            _layerLineLabelStart = _lineLabels.Count;
             var l = layer.Layer;
             string placement = Expression.String(GpuStyleLayer.Get(l.Layout, "symbol-placement"), ctx, "point");
-            if (placement != "point") throw new StyleUnsupportedException($"symbol-placement {placement}");
-            foreach (var alignment in new[] { "text-rotation-alignment", "text-pitch-alignment" })
-                if (Expression.String(GpuStyleLayer.Get(l.Layout, alignment), ctx, "auto") is not ("auto" or "viewport"))
-                    throw new StyleUnsupportedException($"{alignment} map");
+            if (placement is not ("point" or "line" or "line-center")) throw new StyleUnsupportedException($"symbol-placement {placement}");
+            string rotationAlignment = Expression.String(GpuStyleLayer.Get(l.Layout, "text-rotation-alignment"), ctx, "auto");
+            // GL JS: text along the line unless the rotation is the viewport's or the placement a point
+            bool alongLine = placement != "point" && rotationAlignment != "viewport";
+            if (placement != "point" && !alongLine) throw new StyleUnsupportedException("a line label aligned to the viewport");
+            if (placement == "point")
+                foreach (var alignment in new[] { "text-rotation-alignment", "text-pitch-alignment" })
+                    if (Expression.String(GpuStyleLayer.Get(l.Layout, alignment), ctx, "auto") is not ("auto" or "viewport"))
+                        throw new StyleUnsupportedException($"{alignment} map");
+            var repeated = new Dictionary<string, List<(double X, double Y)>>();   // GL JS's compareText
             var store = style.GlyphStore;
             int start = _symbolIndices.Count;
             bool alwaysOverlap = Flag("text-allow-overlap"), ignorePlacement = Flag("text-ignore-placement");
@@ -134,6 +142,8 @@ internal static partial class VectorBucketBuilder
                 var justify = justifyName == "auto" ? AnchorJustification(anchor) : ParseJustify(justifyName);
                 var offset = Offset(GpuStyleLayer.Get(l.Layout, "text-offset"), ctx);
                 double rotate = Expression.Number(GpuStyleLayer.Get(l.Layout, "text-rotate"), ctx, 0) * Math.PI / 180;
+                // GL JS: a label along a line is one line, centred
+                if (alongLine) { maxWidth = double.PositiveInfinity; justify = TextJustify.Center; }
 
                 var shaping = Shaping.ShapeText(Formatted.FromString(text), store, stack, maxWidth, lineHeight, anchor, justify,
                     spacing, (offset.X, offset.Y), WritingMode.Horizontal, false, layoutTextSize, layoutTextSizeThisZoom);
@@ -142,8 +152,14 @@ internal static partial class VectorBucketBuilder
                 double opacity = layer.OpacityPerFeature ? Expression.Number(layer.Opacity, ctx, 1) : 1;
                 double size = layer.SizePerFeature ? layoutTextSizeThisZoom : 0;
                 uint color = layer.ColorPerFeature ? Pack(Expression.Color(layer.Color, ctx, StyleColor.Black)) : uint.MaxValue;
-                var box = CollisionBox(shaping, layoutTextSize / Shaping.OneEm,
-                    Expression.Number(GpuStyleLayer.Get(l.Layout, "text-padding"), ctx, 2), rotate);
+                double padding = Expression.Number(GpuStyleLayer.Get(l.Layout, "text-padding"), ctx, 2);
+                if (alongLine)
+                {
+                    LineLabels(layer, f, placement, shaping, text, ctx, layoutTextSize, padding, offset, (float)size, (float)opacity, color,
+                        alwaysOverlap, ignorePlacement, repeated);
+                    continue;
+                }
+                var box = CollisionBox(shaping, layoutTextSize / Shaping.OneEm, padding, rotate);
                 foreach (var (ax, ay) in Anchors(f))
                 {
                     // GL JS draws a label from the one tile its anchor is in, not from a neighbour's buffer
@@ -158,6 +174,109 @@ internal static partial class VectorBucketBuilder
             }
             ctx.Zoom = tileZoom;
             if (_symbolIndices.Count > start) _ranges.Add(new VectorRange(layer.Index, RangeKind.Text, start, _symbolIndices.Count - start));
+        }
+
+        // GL JS symbol_layout.ts addFeature for symbol-placement line / line-center, then addSymbol's text
+        // along the line. GL JS's tile is 8192 units, ours 512: the anchors are found at GL JS's scale (x 16),
+        // so they round as GL JS rounds them.
+        void LineLabels(GpuStyleLayer layer, StyleFeature f, string placement, Shaping shaping, string text, StyleContext ctx,
+            double layoutTextSize, double padding, (double X, double Y) offset, float size, float opacity, uint color,
+            bool alwaysOverlap, bool ignorePlacement, Dictionary<string, List<(double X, double Y)>> repeated)
+        {
+            const double Up = 16, GlExtent = Extent * Up;
+            var l = layer.Layer;
+            double spacing = Expression.Number(GpuStyleLayer.Get(l.Layout, "symbol-spacing"), ctx, 250) * Up;
+            double maxAngle = Expression.Number(GpuStyleLayer.Get(l.Layout, "text-max-angle"), ctx, 45) / 180 * Math.PI;
+            bool keepUpright = GpuStyleLayer.Get(l.Layout, "text-keep-upright") is not { } ku || Expression.Evaluate(ku, ctx, Expression.Kind.Any) is not false;
+            double boxScale = Up * layoutTextSize / Shaping.OneEm;   // textMaxBoxScale: no composite text-size here
+            var shaped = (shaping.Left, shaping.Right);
+            double height = shaping.Bottom - shaping.Top;
+            float diameter = height > 0 ? (float)(Math.Max(10, height) * layoutTextSize / Shaping.OneEm) : 0;
+
+            foreach (var part in f.Parts)
+                foreach (var ring in part)
+                {
+                    if (f.Kind == StyleFeature.Shape.Point || ring.Length < 2) continue;
+                    var line = ring.Select(p => { var (x, y) = Local(p.X, p.Y); return (x * Up, y * Up); }).ToList();
+                    var placements = new List<(IReadOnlyList<(double X, double Y)> line, LineAnchor anchor)>();
+                    if (placement == "line")
+                    {
+                        foreach (var clipped in LineAnchors.ClipLine(new[] { line }, 0, 0, GlExtent, GlExtent))
+                            foreach (var a in LineAnchors.GetAnchors(clipped, spacing, maxAngle, shaped, null, Shaping.OneEm, boxScale, 1, GlExtent))
+                                if (!TooClose(a)) placements.Add((clipped, a));
+                    }
+                    else
+                    {
+                        // GeoJSON is cut into tiles by geojson-vt first, 128 px of buffer round each (a
+                        // quarter of a 512-px tile): a line-center label sits at the middle of the tile's
+                        // piece, not of the whole line (text-max-width/force-newline-line-center).
+                        // A vector tile's data comes cut already.
+                        const double Buffer = GlExtent / 4;
+                        var pieces = _grid ? LineAnchors.ClipLine(new[] { line }, -Buffer, -Buffer, GlExtent + Buffer, GlExtent + Buffer) : new List<List<(double X, double Y)>> { line };
+                        foreach (var piece in pieces)
+                            if (piece.Count > 1 && LineAnchors.GetCenterAnchor(piece, maxAngle, shaped, null, Shaping.OneEm, boxScale) is { } centre)
+                                placements.Add((piece, centre));
+                    }
+
+                    foreach (var (used, anchor) in placements)
+                    {
+                        // GL JS draws a label from the one tile its anchor is in
+                        if (anchor.X < 0 || anchor.X >= GlExtent || anchor.Y < 0 || anchor.Y >= GlExtent) continue;
+                        var anchorPosition = Vertex(anchor.X / Up, anchor.Y / Up, 0, 0, 0, 1, 0).Position;
+                        var points = used.Select(p => Vertex(p.X / Up, p.Y / Up, 0, 0, 0, 1, 0).Position).ToArray();
+                        int first = _symbolVertices.Count;
+                        var offsets = new List<float>();
+                        foreach (var lineGlyphs in shaping.PositionedLines)
+                            foreach (var g in lineGlyphs.PositionedGlyphs)
+                            {
+                                if (g.Rect is not { } r) continue;
+                                // GL JS getGlyphQuads along a line: the quad round the glyph's own point,
+                                // which is glyphOffset (x + half the advance) along the line, y across it
+                                double halfAdvance = g.Metrics.Advance * g.Scale / 2;
+                                offsets.Add((float)(g.X + halfAdvance));
+                                const double RectBuffer = Glyph.Border + GlyphAtlas.Padding;
+                                double x1 = (g.Metrics.Left - RectBuffer) * g.Scale - halfAdvance;
+                                double y1 = (-g.Metrics.Top - RectBuffer) * g.Scale + g.Y;
+                                double x2 = x1 + r.W * g.Scale, y2 = y1 + r.H * g.Scale;
+                                uint i = (uint)_symbolVertices.Count;
+                                Add(x1, y1, r.X, r.Y);
+                                Add(x2, y1, r.X + r.W, r.Y);
+                                Add(x1, y2, r.X, r.Y + r.H);
+                                Add(x2, y2, r.X + r.W, r.Y + r.H);
+                                _symbolIndices.Add(i); _symbolIndices.Add(i + 1); _symbolIndices.Add(i + 2);
+                                _symbolIndices.Add(i + 1); _symbolIndices.Add(i + 2); _symbolIndices.Add(i + 3);
+                            }
+                        if (offsets.Count == 0) continue;
+                        _lineLabels.Add(new LineLabel
+                        {
+                            Layer = layer.Index, Anchor = anchorPosition, Line = points, Segment = anchor.Segment,
+                            GlyphOffsets = offsets.ToArray(), VertexStart = first,
+                            LineOffsetX = (float)offset.X, LineOffsetY = (float)offset.Y, KeepUpright = keepUpright,
+                            CircleDiameter = diameter, Padding = (float)padding, FeatureSize = size,
+                            AlwaysOverlap = alwaysOverlap, IgnorePlacement = ignorePlacement,
+                        });
+
+                        void Add(double x, double y, double tx, double ty) => _symbolVertices.Add(new SymbolVertex
+                        {
+                            Anchor = anchorPosition,
+                            OffsetX = (short)Math.Floor(x * 32 + 0.5),
+                            OffsetY = (short)Math.Floor(y * 32 + 0.5),
+                            TexX = (short)tx, TexY = (short)ty,
+                            TextSize = (System.Half)size, Opacity = (System.Half)opacity, Color = color,
+                        });
+                    }
+                }
+
+            // GL JS anchorIsTooClose: the same text again within half the spacing is left out
+            bool TooClose(LineAnchor a)
+            {
+                double repeatDistance = spacing / 2;
+                if (!repeated.TryGetValue(text, out var others)) repeated[text] = others = new List<(double X, double Y)>();
+                foreach (var o in others)
+                    if (Math.Sqrt((a.X - o.X) * (a.X - o.X) + (a.Y - o.Y) * (a.Y - o.Y)) < repeatDistance) return true;
+                others.Add((a.X, a.Y));
+                return false;
+            }
         }
 
         // GL JS collision_feature.ts, for a label in the viewport: the shaping's box at the layout's text
