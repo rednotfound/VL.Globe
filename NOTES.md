@@ -454,3 +454,11 @@ looked fine - "which makes one think it works". Two causes, estimated at 100 m h
   Two hypotheses for the remaining half-spacing offset on some lines were refuted by the fixtures
   (integer line coordinates; and overscaling 1 in getAnchors, which came closer but contradicts GL
   JS's own unit tests) - not kept.
+- **"现在的帧率就只有30多" (the user, tilted over Kyoto)**: Update was 3 ms; the time was in the render
+  thread's Draw, which no perf line measured - the perf line now carries the Draw's timings. Label
+  placement every frame cost 2-7 ms (25 max) and a scan of every label per symbol layer. Placed now as
+  GL JS: on a change of view at most every 300 ms, once more at rest, at once for new tiles; between,
+  only the shown glyphs along lines follow the camera. Measured again with the user tilting: placement
+  0.2-2.9 ms mean, 60 fps while no tiles arrive. What is left while moving is tile loading (50-150 MB/s
+  uploaded, Update 15-30 ms) and 1500-2400 draws (3-4 ms). Open: a one-off 170-190 ms "draw list" in
+  the Update the first time a tilt brings ~400 label tiles - not yet timed finer.

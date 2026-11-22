@@ -253,8 +253,15 @@ on some lines the anchors sit about half the spacing off GL JS's, cause not foun
 clipLine match line by line; integer coordinates changed nothing; overscaling 1 in getAnchors came
 closer, 5.7% - yet GL JS's own tests pass it as we do).
 
+**Frame time, the same day.** Labels are placed as GL JS places them (`Placement.stillRecent`): on a
+change of view at most every 300 ms, once more at rest, at once when the tiles change; between,
+`LabelPlacement.UpdateLines` walks only the shown glyphs along lines. Each layer's labels are found
+as one run (`GpuTile.LabelRange`). The perf line carries the Draw's timings (place, upload, submit).
+
 ## Next
 
+0. Frame time while moving: tile uploads (50-150 MB/s at a tilt, Update 15-30 ms), 1500-2400 draws a
+   frame, and a one-off 170-190 ms "draw list" the first time ~400 label tiles come (time it finer).
 1. Fades (300 ms) and labels across tiles of two zooms (CrossTileSymbolIndex), the `format`
    expression, text-size by zoom and feature, text-offset across a line, an icon beside text along a line.
 2. Seen in vvvv at Kyoto Station: the one-way arrows along the roads. Shields not yet seen (no road

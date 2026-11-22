@@ -57,17 +57,20 @@ internal sealed class LabelPlacement
                 var worldViewProjection = world * viewProjection;
                 var worldView = world * view;
                 var up = tile.Bucket.Centre.ToVector3();
-                foreach (var line in tile.LineLabels)
+                // the layer's own labels: a tile holds every symbol layer's, one layer after another
+                var (lineStart, lineCount) = tile.LineLabelRange(layer.Index);
+                for (int i = lineStart; i < lineStart + lineCount; i++)
                 {
-                    if (line.Layer != layer.Index) continue;
+                    var line = tile.LineLabels[i];
                     bool show = PlaceLine(line, tile, worldViewProjection, worldView, up, layer.Size, cameraToCenter, flat);
                     float value = show ? 1 : 0;
                     for (int v = line.VertexStart; v < line.VertexStart + line.GlyphOffsets.Length * 4; v++)
                         if (placed[v] != value) { placed[v] = value; tile.PlacedDirty = true; }
                 }
-                foreach (var label in tile.Labels)
+                var (labelStart, labelCount) = tile.LabelRange(layer.Index);
+                for (int i = labelStart; i < labelStart + labelCount; i++)
                 {
-                    if (label.Layer != layer.Index) continue;
+                    var label = tile.Labels[i];
                     var (text, icon) = PlaceOne(label, worldViewProjection, worldView, up, cameraToCenter, flat);
                     Show(label.TextStart, label.TextCount, text);
                     Show(label.IconStart, label.IconCount, icon);
@@ -78,6 +81,36 @@ internal sealed class LabelPlacement
                     float value = show ? 1 : 0;
                     for (int v = start; v < start + count; v++)
                         if (placed[v] != value) { placed[v] = value; tile.PlacedDirty = true; }
+                }
+            }
+    }
+
+    /// <summary>
+    /// Between placements: only the glyphs of the labels along lines that are shown, walked along their
+    /// projected lines again - GL JS's updateLineLabels, every frame, while placement runs at most every
+    /// few hundred milliseconds. Nothing is shown or hidden by collision here.
+    /// </summary>
+    public void UpdateLines(IReadOnlyList<Layer> layers, Matrix view, Matrix projection, float width, float height, float cameraToCenter, bool flat)
+    {
+        _width = width; _height = height;
+        var viewProjection = view * projection;
+        foreach (var layer in layers)
+            foreach (var (tile, world) in layer.Tiles)
+            {
+                if (tile.LineLabels.Count == 0 || tile.Placed is not { } placed || tile.Dynamic is not { } dynamic) continue;
+                var (lineStart, lineCount) = tile.LineLabelRange(layer.Index);
+                if (lineCount == 0) continue;
+                var worldViewProjection = world * viewProjection;
+                for (int i = lineStart; i < lineStart + lineCount; i++)
+                {
+                    var line = tile.LineLabels[i];
+                    if (placed[line.VertexStart] == 0) continue;   // hidden by the last placement
+                    var clip = Vector4.Transform(new Vector4(line.Anchor, 1), worldViewProjection);
+                    if (clip.W <= 0) { LineGlyphs.Hide(line, dynamic); tile.DynamicDirty = true; continue; }
+                    float perspective = 0.5f + 0.5f * cameraToCenter / clip.W;
+                    float size = (line.FeatureSize > 0 ? line.FeatureSize : layer.Size) * perspective;
+                    LineGlyphs.Place(line, worldViewProjection, _width, _height, size, dynamic, out _, out _);
+                    tile.DynamicDirty = true;
                 }
             }
     }

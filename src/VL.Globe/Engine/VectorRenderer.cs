@@ -86,6 +86,16 @@ internal sealed class VectorRenderer : IGraphicsRendererBase
     MutablePipelineState? _pipeline, _linePipeline, _depthPipeline, _extrusionPipeline, _textPipeline, _circlePipeline;
     readonly Dictionary<string, ParameterKey> _symbolKeys = new(), _circleKeys = new();
     readonly LabelPlacement _placement = new();
+    // GL JS places labels again when the view has changed, at most every 300 ms while it moves
+    // (Placement.stillRecent), and once more when it rests; between placements only the glyphs along
+    // lines follow the camera. A placement every frame cost 2-7 ms (25 at most) tilted over Kyoto.
+    const double PlacementInterval = 300;
+    readonly System.Diagnostics.Stopwatch _clock = System.Diagnostics.Stopwatch.StartNew();
+    Matrix _placedViewProjection;
+    Vector2 _placedSize;
+    long _placedTiles;
+    double _placedAt = double.NegativeInfinity;
+    bool _restingPlacementDue;
     bool _broken;
     readonly Dictionary<string, ParameterKey> _keys = new();
 
@@ -170,8 +180,27 @@ internal sealed class VectorRenderer : IGraphicsRendererBase
         if (frame.Labels.Count > 0)
         {
             _labelsMax = Math.Max(_labelsMax, frame.Labels.Sum(l => l.Tiles.Count));
-            _placement.Place(frame.Labels, view, projection, commandList.Viewport.Width / frame.PixelRatio, commandList.Viewport.Height / frame.PixelRatio,
-                frame.CameraToCenter, flat);
+            float width = commandList.Viewport.Width / frame.PixelRatio, height = commandList.Viewport.Height / frame.PixelRatio;
+            var viewProjection = view * projection;
+            var size = new Vector2(width, height);
+            // the tiles placed: a new or rebuilt tile needs a placement at once
+            long tiles = 17;
+            foreach (var layer in frame.Labels)
+                foreach (var (tile, _) in layer.Tiles) tiles = tiles * 31 + System.Runtime.CompilerServices.RuntimeHelpers.GetHashCode(tile);
+            bool moved = viewProjection != _placedViewProjection || size != _placedSize;
+            double now = _clock.Elapsed.TotalMilliseconds;
+            if (tiles != _placedTiles || (moved && now - _placedAt >= PlacementInterval) || (!moved && _restingPlacementDue))
+            {
+                _placement.Place(frame.Labels, view, projection, width, height, frame.CameraToCenter, flat);
+                _placedAt = now; _placedTiles = tiles; _restingPlacementDue = false;
+                _placedViewProjection = viewProjection; _placedSize = size;
+            }
+            else if (moved)
+            {
+                _placement.UpdateLines(frame.Labels, view, projection, width, height, frame.CameraToCenter, flat);
+                _restingPlacementDue = true;
+                _placedViewProjection = viewProjection; _placedSize = size;
+            }
             placeMs = _drawTimer.Elapsed.TotalMilliseconds;
             foreach (var layer in frame.Labels)
                 foreach (var (tile, _) in layer.Tiles)

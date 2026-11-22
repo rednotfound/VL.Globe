@@ -22,6 +22,21 @@ internal sealed class GpuTile
     // labels along lines: per symbol vertex, the glyph placed this frame (x, y px, angle, 1) - or (0, 0,
     // 0, 0) for a point label's vertex, (.., -1) hidden (LabelPlacement / LineGlyphs, every frame)
     public IReadOnlyList<LineLabel> LineLabels = Array.Empty<LineLabel>();
+
+    // each symbol layer's labels are one run in Labels and LineLabels (built layer by layer): found once
+    Dictionary<int, (int Start, int Count)>? _labelRanges, _lineLabelRanges;
+    public (int Start, int Count) LabelRange(int layer) => (_labelRanges ??= Ranges(Labels, l => l.Layer)).GetValueOrDefault(layer);
+    public (int Start, int Count) LineLabelRange(int layer) => (_lineLabelRanges ??= Ranges(LineLabels, l => l.Layer)).GetValueOrDefault(layer);
+    static Dictionary<int, (int, int)> Ranges<T>(IReadOnlyList<T> list, Func<T, int> layerOf)
+    {
+        var ranges = new Dictionary<int, (int Start, int Count)>();
+        for (int i = 0; i < list.Count; i++)
+        {
+            int layer = layerOf(list[i]);
+            ranges[layer] = ranges.TryGetValue(layer, out var r) ? (r.Start, i - r.Start + 1) : (i, 1);
+        }
+        return ranges;
+    }
     public Vector4[]? Dynamic;
     public Buffer? DynamicBuffer;
     public bool DynamicDirty;
