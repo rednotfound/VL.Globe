@@ -47,12 +47,28 @@
               <p:stringtype p:Assembly="VL.Core" p:Type="VL.Core.StringType">Comment</p:stringtype>
             </p:ValueBoxSettings>
           </Pad>
-          <Pad Id="NtB85HBsIRdyabqQsLa7KR" Comment="Style" Bounds="300,200,300,15" ShowValueBox="true" isIOBox="true" Value="https://tiles.openfreemap.org/styles/liberty">
+          <Pad Id="NtB85HBsIRdyabqQsLa7KR" Comment="URL" Bounds="300,180,250,15" ShowValueBox="true" isIOBox="true" Value="https://tiles.openfreemap.org/styles/liberty">
             <p:TypeAnnotation LastCategoryFullName="Primitive" LastDependency="VL.CoreLib.vl">
               <Choice Kind="TypeFlag" Name="String" />
             </p:TypeAnnotation>
           </Pad>
-          <Pad Id="WsgASTOFGI4e94XOglSeNj" Comment="Reload" Bounds="620,190,30,30" ShowValueBox="true" isIOBox="true" Value="False">
+          <Node Bounds="300,207,140,19" Id="TJSa6q4olxRbIqjdqTACLc">
+            <p:NodeReference LastCategoryFullName="Globe.Styles" LastDependency="VL.Globe.vl">
+              <Choice Kind="NodeFlag" Name="Node" Fixed="true" />
+              <CategoryReference Kind="Category" Name="Styles" NeedsToBeDirectParent="true">
+                <p:OuterCategoryReference Kind="Category" Name="Globe" NeedsToBeDirectParent="true" />
+              </CategoryReference>
+              <Choice Kind="ProcessAppFlag" Name="MapLibreStyle (URL)" />
+            </p:NodeReference>
+            <Pin Id="xWjpOrnB6ytmI5ETwh29BZ" Name="URL" Kind="InputPin" />
+            <Pin Id="b2s2n28TK2sRjUoOuZy9AA" Name="Output" Kind="OutputPin" />
+          </Node>
+          <Pad Id="A51kKPfWYRD0UMzxBBGDsB" Comment="Path" Bounds="600,180,180,15" ShowValueBox="true" isIOBox="true" Value="">
+            <p:TypeAnnotation LastCategoryFullName="IO" LastDependency="VL.CoreLib.vl">
+              <Choice Kind="TypeFlag" Name="Path" />
+            </p:TypeAnnotation>
+          </Pad>
+          <Pad Id="QN2IZ5vaGovc1OQScCkXcH" Comment="Read" Bounds="820,172,30,30" ShowValueBox="true" isIOBox="true" Value="False">
             <p:TypeAnnotation LastCategoryFullName="Primitive" LastDependency="VL.CoreLib.vl">
               <Choice Kind="TypeFlag" Name="Boolean" />
             </p:TypeAnnotation>
@@ -60,7 +76,19 @@
               <p:buttonmode p:Assembly="VL.UI.Forms" p:Type="VL.HDE.PatchEditor.Editors.ButtonModeEnum">Bang</p:buttonmode>
             </p:ValueBoxSettings>
           </Pad>
-          <Pad Id="DFnseqcnyjjMLkv4fA7l5W" Bounds="660,190,320,34" ShowValueBox="true" isIOBox="true" Value="&lt; to edit a style: open its .json file in Maputnik (maplibre.org/maputnik), save, then press Reload">
+          <Node Bounds="600,215,140,19" Id="GMYWQADmwtBInR6ZfPmpka">
+            <p:NodeReference LastCategoryFullName="Globe.Styles" LastDependency="VL.Globe.vl">
+              <Choice Kind="NodeFlag" Name="Node" Fixed="true" />
+              <CategoryReference Kind="Category" Name="Styles" NeedsToBeDirectParent="true">
+                <p:OuterCategoryReference Kind="Category" Name="Globe" NeedsToBeDirectParent="true" />
+              </CategoryReference>
+              <Choice Kind="ProcessAppFlag" Name="MapLibreStyle (File)" />
+            </p:NodeReference>
+            <Pin Id="nNEM6HiCtt5GNRhfv3g9cV" Name="Path" Kind="InputPin" />
+            <Pin Id="g6tsrPEnSMKXSh1cBj5R9S" Name="Read" Kind="InputPin" />
+            <Pin Id="mEouJybD1bDEacNKlPyE6p" Name="Output" Kind="OutputPin" />
+          </Node>
+          <Pad Id="Xml4TEwrycSSmleXrDt2GC" Bounds="760,215,300,60" ShowValueBox="true" isIOBox="true" Value="&lt; or a style file, to edit it: open it in Maputnik (maplibre.org/maputnik), save there, press Read. Connect this node to Style instead">
             <p:TypeAnnotation LastCategoryFullName="Primitive" LastDependency="VL.CoreLib.vl">
               <Choice Kind="TypeFlag" Name="String" />
             </p:TypeAnnotation>
@@ -78,14 +106,13 @@
               <Choice Kind="ProcessAppFlag" Name="VectorTiles" />
             </p:NodeReference>
             <Pin Id="QuTrCUs1nkkev5vof0Wb4m" Name="Style" Kind="InputPin" />
-            <Pin Id="8ntyvgYT19ZLeUMwTpCFQL" Name="Reload" Kind="InputPin" />
             <Pin Id="MuCJLUCfL92QRygdEuC3bj" Name="Enabled" Kind="InputPin" />
             <Pin Id="NeWCjiDv66ute8muzXJzsW" Name="Name" Kind="InputPin" />
             <Pin Id="CWx72kLZL5EcReJgUBXoCF" Name="Output" Kind="OutputPin" />
             <Pin Id="Sx8jhJ6j1vB2A7UhLu5Jde" Name="Attribution" Kind="OutputPin" />
             <Pin Id="RolQ2zwdMUrGvltCTLdXLJ" Name="Status" Kind="OutputPin" />
           </Node>
-          <Pad Id="VQ4dZbH26FFoMfZeAMOusW" Bounds="460,240,260,34" ShowValueBox="true" isIOBox="true" Value="&lt; a MapLibre style by URL or file; the Status says what it skips">
+          <Pad Id="VQ4dZbH26FFoMfZeAMOusW" Bounds="460,240,260,34" ShowValueBox="true" isIOBox="true" Value="&lt; the Status says what of the style it skips">
             <p:TypeAnnotation LastCategoryFullName="Primitive" LastDependency="VL.CoreLib.vl">
               <Choice Kind="TypeFlag" Name="String" />
             </p:TypeAnnotation>
@@ -160,8 +187,10 @@
           <Fragment Id="GnOR8ZCRMkcXRSqnWTJAie" Patch="SQW9SgPdNtqbw9AVZOlb5r" Enabled="true" />
           <Fragment Id="Dv1fJDuXFftBW1Lty7Wx9s" Patch="M93iQrHy9TUtSgQhirv1JI" Enabled="true" />
         </ProcessDefinition>
-        <Link Id="DEtMzcBCV4FbRMXXXkuzmU" Ids="NtB85HBsIRdyabqQsLa7KR,QuTrCUs1nkkev5vof0Wb4m" />
-        <Link Id="as6JOycV89NHCj9jQL2kd4" Ids="WsgASTOFGI4e94XOglSeNj,8ntyvgYT19ZLeUMwTpCFQL" />
+        <Link Id="DEtMzcBCV4FbRMXXXkuzmU" Ids="NtB85HBsIRdyabqQsLa7KR,xWjpOrnB6ytmI5ETwh29BZ" />
+        <Link Id="dtIR6lWOMVOsI8jyLOPhwP" Ids="b2s2n28TK2sRjUoOuZy9AA,QuTrCUs1nkkev5vof0Wb4m" />
+        <Link Id="RMxTdQ8U5DKkP4APobHHHC" Ids="A51kKPfWYRD0UMzxBBGDsB,nNEM6HiCtt5GNRhfv3g9cV" />
+        <Link Id="MO1MvYbVGod8hGAGwLhDWg" Ids="QN2IZ5vaGovc1OQScCkXcH,g6tsrPEnSMKXSh1cBj5R9S" />
         <Link Id="E6THipl6Ninhe06jfmPImG" Ids="T0zVQn4a9xuvhQpCnlvBNI,MuCJLUCfL92QRygdEuC3bj" />
         <Link Id="Dd7Dd76gA9Muaids53JEQT" Ids="Sx8jhJ6j1vB2A7UhLu5Jde,MXNiXOLu0xxrFFQ4QBcOnC" />
         <Link Id="S0EMaut3UeXMg8mefXviOU" Ids="RolQ2zwdMUrGvltCTLdXLJ,T5WT3F9QFyU6Aw2RYNjmZz" />

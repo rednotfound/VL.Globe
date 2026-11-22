@@ -311,9 +311,13 @@ Symbols past the source's maxzoom laid out at the overscaled zoom, the same day.
 
 **Authoring a style — decided 2026-11-22 (the user):** no editor and no style nodes of our own.
 Maputnik, MapLibre's own editor, already writes the style JSON ("社区已经做到的事情我们可能就不用做了");
-it is named in the README and the help patch. `VectorTiles` got a `Reload` input - VL's convention
-for a file read again (FileTexture, TextureReader, GameAsset), not a file watch (only Stride's
-project loader has an `Auto Reload`). Survey: RESEARCH-VECTOR.md, "Authoring a style in vvvv".
+it is named in the README and the help patch. The style is a value of its own, as a texture is
+FileTexture's (the user: "vector tiles是一个节点，style json这种加载设置是一个节点"): `MapLibreStyle (URL)`
+and `MapLibreStyle (File) [Globe.Styles]` make a `MapLibreStyle`, `VectorTiles` takes it. The file
+node reads again on `Read` (vvvv's FileReader and our ReadOSM name it so), not on a file watch (only
+Stride's project loader has an `Auto Reload`). A first try put a `Reload` pin on VectorTiles itself -
+an application's shortcut, not a library's shape. Nodes that change a style (SetPaint, Visibility)
+would take one and give one. Survey: RESEARCH-VECTOR.md, "Authoring a style in vvvv".
 
 ### 4f. The distance in a tilted view — asked by the user 2026-11-22, to do after 4e
 

@@ -133,31 +133,32 @@ public enum GlobeVectorRendering
 }
 
 /// <summary>A MapLibre style's vector tiles, drawn on the globe.</summary>
-/// <remarks>Put Output into Globe's or GlobeWindow's Layers. Fetches only while Enabled is on. Show the Attribution. To edit a style, save it as a .json file, open that in Maputnik, and press Reload after each save.</remarks>
+/// <remarks>Put Output into Globe's or GlobeWindow's Layers. Fetches only while Enabled is on. Show the Attribution. The Style comes from MapLibreStyle (URL) or MapLibreStyle (File).</remarks>
 [ProcessNode(Name = "VectorTiles", Category = "Globe.Layers")]
 public sealed class GlobeVectorTilesNode : IDisposable
 {
     readonly GlobeLayer _layer = new();
     Engine.VectorTileService? _service;
+    MapLibreStyle? _style;
 
     /// <param name="attribution">The credit the style's tile sources require.</param>
     /// <param name="status">What is drawn, what is skipped, and the tiles loading.</param>
-    /// <param name="style">A MapLibre style: its URL, or the path of a style .json file.</param>
-    /// <param name="reload">Reads the style again, as after it was edited and saved.</param>
+    /// <param name="style">A MapLibre style, from MapLibreStyle (URL) or MapLibreStyle (File).</param>
     /// <param name="enabled">Fetches and draws while on.</param>
     /// <param name="name">The layer's name.</param>
     /// <param name="rendering">GPU: geometry drawn every frame. Draped: drawn into the tiles' images.</param>
     [return: Pin(Name = "Output")]
     public GlobeLayer Update(out string attribution, out string status,
-        string style = "https://tiles.openfreemap.org/styles/liberty", bool reload = false, bool enabled = false, string name = "VectorTiles",
+        MapLibreStyle? style = null, bool enabled = false, string name = "VectorTiles",
         GlobeVectorRendering rendering = GlobeVectorRendering.GPU)
     {
-        style = (style ?? "").Trim();
-        // read again on Reload, as FileTexture's Reload: the style's own tiles come from the disk cache
-        if (_service?.StyleUrl != style || reload)
+        // a new style value - another one, or the same file read again - starts over; its tiles come
+        // from the disk cache
+        if (!ReferenceEquals(style, _style))
         {
+            _style = style;
             _service?.Dispose();
-            _service = style.Length == 0 ? null : new Engine.VectorTileService(style);
+            _service = style is null ? null : new Engine.VectorTileService(style.Source);
         }
         if (enabled) _service?.Start();
         _layer.Set(null, null, enabled && _service != null, name);

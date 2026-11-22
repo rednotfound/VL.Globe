@@ -18,6 +18,7 @@ patches (`lab\Experiment globe*.vl` there).
 | `ScreenToGlobe`, `GlobeToScreen`, `GlobeViewInfo [Globe]` | built, tested |
 | `Geometry`, `FeatureLayer [Globe.Layers]`, `VectorStyle [Globe.Styles]` | built, seen in vvvv |
 | `VectorTiles [Globe.Layers]` — a MapLibre style's vector tiles, labels and icons | built, seen in vvvv |
+| `MapLibreStyle (URL)`, `MapLibreStyle (File) [Globe.Styles]` — the style it draws | built |
 | `ToGlobe [Globe]`, `ToGlobe (Coordinate) [Globe]`, `FromGlobe [Globe]` | built, tested |
 
 Requires vvvv gamma 7.4 (.NET 8, Stride 4.2). Depends on NetTopologySuite 2.6.0,
@@ -25,5 +26,5 @@ NetTopologySuite.Features 2.1.0 and BruTile 5.0.6; VL.Stride and SkiaSharp ship 
 Start with the help patch `HowTo Open a globe window`.
 
 To edit a vector-tile style, save it as a `.json` file, open it in
-[Maputnik](https://maplibre.org/maputnik/) (MapLibre's style editor), and press `VectorTiles`'s
-`Reload` after each save (help patch `HowTo Draw vector tiles`).
+[Maputnik](https://maplibre.org/maputnik/) (MapLibre's style editor), read it with
+`MapLibreStyle (File)`, and press its `Read` after each save (help patch `HowTo Draw vector tiles`).

@@ -142,9 +142,24 @@ public class VectorTilesFacts
         => Assert.Equal("© OpenMapTiles Data from OpenStreetMap",
             VectorTileService.PlainText("<a href=\"https://www.openmaptiles.org/\" target=\"_blank\">&copy; OpenMapTiles</a> Data from <a href=\"https://www.openstreetmap.org/copyright\" target=\"_blank\">OpenStreetMap</a>"));
     [Fact]
-    public void ReloadReadsAStyleFileAgainAfterItWasSaved()
+    public void AStyleUrlIsOneValueUntilTheUrlChanges()
     {
-        // the Maputnik loop: the style is a file, edited and saved beside vvvv, read again on Reload
+        // VL compares by identity: the same value every frame, or VectorTiles would start over each frame
+        var node = new MapLibreStyleUrlNode();
+        var liberty = node.Update();
+        Assert.Same(liberty, node.Update());
+        Assert.Equal("https://tiles.openfreemap.org/styles/liberty", liberty!.ToString());
+        Assert.NotSame(liberty, node.Update("https://tiles.openfreemap.org/styles/bright"));
+        Assert.Null(node.Update(" "));
+
+        // an empty Path IOBox gives the document's folder: no style from a folder
+        Assert.Null(new MapLibreStyleFileNode().Update(new VL.Lib.IO.Path(Path.GetTempPath())));
+    }
+
+    [Fact]
+    public void ReadGivesANewStyleThatVectorTilesReadsAgain()
+    {
+        // the Maputnik loop: the style is a file, edited and saved beside vvvv, read again on Read
         var file = Path.Combine(Path.GetTempPath(), $"vlglobe-reload-{Environment.ProcessId}.json");
         string Style(string colour) => $$"""{ "version": 8, "sources": {}, "layers": [ { "id": "bg", "type": "background", "paint": { "background-color": "{{colour}}" } } ] }""";
         string Colour(VectorTileService s)
@@ -156,14 +171,21 @@ public class VectorTilesFacts
         try
         {
             File.WriteAllText(file, Style("#ff0000"));
+            var path = new VL.Lib.IO.Path(file);
+            var reader = new MapLibreStyleFileNode();
             using var node = new GlobeVectorTilesNode();
-            var layer = node.Update(out _, out _, file, reload: false, enabled: true);
+            var style = reader.Update(path, read: false);
+            var layer = node.Update(out _, out _, style, enabled: true);
             Assert.Equal("#ff0000", Colour(layer.Vector!));
 
             File.WriteAllText(file, Style("#00ff00"));
-            layer = node.Update(out _, out _, file, reload: false, enabled: true);
-            Assert.Equal("#ff0000", Colour(layer.Vector!));   // not read again unasked
-            layer = node.Update(out _, out _, file, reload: true, enabled: true);
+            Assert.Same(style, reader.Update(path, read: false));   // the same value: not read again unasked
+            layer = node.Update(out _, out _, style, enabled: true);
+            Assert.Equal("#ff0000", Colour(layer.Vector!));
+            var again = reader.Update(path, read: true);
+            Assert.NotSame(style, again);
+            Assert.Same(again, reader.Update(path, read: true));    // a held Read reads once
+            layer = node.Update(out _, out _, again, enabled: true);
             Assert.Equal("#00ff00", Colour(layer.Vector!));
         }
         finally { File.Delete(file); }
