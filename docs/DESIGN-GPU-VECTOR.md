@@ -246,7 +246,8 @@ their names beside them, no overlaps; road names along the roads kept (their shi
    (OpenFreeMap stops at z14; street level is z16-18), so spacing, repeat distance and collision boxes
    are in that tile's pixels; the GPU path draws the z14 tile's layout - line symbols 4-16x sparser.
    A bucket per overscaled tile for symbol layers only (fills and lines are right as they are).
-2. Seen in vvvv: Liberty's shields and arrows (not yet looked at: a vvvv of the user's was open).
+2. Seen in vvvv at Kyoto Station: the one-way arrows along the roads. Shields not yet seen (no road
+   with a ref in that view).
 2. Labels: fades (300 ms) and labels across tiles of two zooms (CrossTileSymbolIndex), the `format`
    expression, text-size by zoom and feature, text-offset across a line.
 3. Labels and icons (RESEARCH-VECTOR stage 4: glyph PBFs, SDF, placement and collision) - the
