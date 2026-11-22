@@ -90,7 +90,9 @@ internal sealed class VectorRenderer : IGraphicsRendererBase
     DynamicEffectInstance? _effect, _symbolEffect, _circleEffect, _fogEffect;
     readonly FogPass _fog = new();
     /// <summary>Fog towards the horizon over everything the globe draws (GlobeFog.sdsl).</summary>
-    public bool Fog = true;
+    // off: the user, 2026-11-22, of the fog whole at 5 eye heights - "这么夸张得雾的话，我宁愿没有呢"
+    // (MapLibre has none by default). Kept, unused, until a thin haze at the limb is asked for.
+    public bool Fog = false;
     MutablePipelineState? _pipeline, _linePipeline, _depthPipeline, _extrusionPipeline, _textPipeline, _circlePipeline;
     readonly Dictionary<string, ParameterKey> _symbolKeys = new(), _circleKeys = new();
     readonly LabelPlacement _placement = new();

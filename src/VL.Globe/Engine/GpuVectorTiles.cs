@@ -160,10 +160,11 @@ internal sealed class GpuVectorTiles : IDisposable
         // map: OpenMapTiles' z13 buildings are merged and without heights, so Liberty's 3D buildings
         // ended in a straight line across the screen 6 km off (the user over Tokyo, 2026-11-22,
         // #13.82/35.69555/139.75982/-9.9/57.3). Up to where the fog is whole the camera's own zoom is
-        // kept; past it the fog hides where the detail ends. The reach goes with the eye's height, as
-        // the tiles' size does, so the tiles it adds are about as many at every height.
+        // kept. The reach goes with the eye's height, as the tiles' size does, so the tiles it adds are
+        // about as many at every height. It was the fog's end; the fog is off (VectorRenderer.Fog), the
+        // reach stays - past it the buildings still end (a fade there is ROADMAP 4f's next step).
         var eyeUnit = eye is { } ev ? (ev * (1.0 / radius)).ToVector3() : default;
-        double reach = eye is { } er ? Engine.Fog.EndFactor * (er.Length - radius) / radius : 0;
+        double reach = eye is { } er ? FloorReach * (er.Length - radius) / radius : 0;
         bool InReach(TileKey g) => reach > 0 && TileSelector.DistanceToTile(g, eyeUnit) < reach;
 
         foreach (var service in services.Distinct())
@@ -505,6 +506,8 @@ internal sealed class GpuVectorTiles : IDisposable
     // floor (the camera's own zoom near the eye; -1 for none), the tile at floor holding g, or the
     // tiles at floor inside g when g is coarser still - at most MaxFloorSplit levels below it.
     internal const int MaxFloorSplit = 3;
+    /// <summary>How far the camera's zoom is kept for vector tiles, in eye heights (39 z14 tiles tilted over Tokyo).</summary>
+    internal const double FloorReach = 5;
     internal static IEnumerable<TileKey> VectorKeys(int minZoom, int maxZoom, int tileSize, TileKey g, int floor)
     {
         if (VectorKey(minZoom, maxZoom, tileSize, g) is not { } vk) yield break;
