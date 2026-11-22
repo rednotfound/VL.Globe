@@ -109,3 +109,49 @@ MapLibre Native, in more detail:
 test harness.
 
 **Reuse:** NTS.IO.VectorTiles, Cutear/Earcut.NET, a vendored pixelmatch, and MapLibre's fixtures and glyph PBFs.
+
+## Authoring a style in vvvv (survey, 2026-11-22)
+
+The user's question: how to write a style "the way one writes CSS", as nodes, or with an editor
+node that writes the JSON. Today `VectorTiles` takes a style URL or a `.json` path, nothing else.
+
+**What a style is, against CSS.** A layer is a rule: `source-layer` + `filter` select, `paint` and
+`layout` declare. There is no cascade and no inheritance: the layer order is the drawing order, and
+a feature drawn twice (a road's casing and its line) is two layers. Whatever the authoring surface,
+its unit is the layer.
+
+**How others expose it**
+
+| who | surface | notes |
+|---|---|---|
+| Maputnik (MapLibre, MIT) | visual editor in the browser, or self-hosted (Docker, npm) | the open editor of the spec; keeps work in local storage; 2025 (issue #964, FileSystemFileHandle) opens a local file and saves it in place; the old Go `maputnik --watch --file style.json` (desktop v1.0.7, 2020) serves it and writes edits to the file |
+| Mapbox Studio | hosted, proprietary | Mapbox's own styles |
+| MapTiler Customize | hosted | MapTiler's styles |
+| MapLibre Native (Android, iOS) | typed layers: `FillLayer(id, source).withProperties(fillColor(...))`, expressions as builder calls | the one typed API of the spec - a model for nodes |
+| VL.Mapsui (sibling) | its own `VectorStyle` nodes on Mapsui's style model | not the MapLibre spec |
+| GeometryEditor (VL.NetTopologySuite) | a node plus an editor-extension window (Ctrl+Shift+W), Ctrl+S writes the pin's default into the .vl | the family's proof that an editor node works in vvvv 7.4 |
+
+vvvv 7.4 ships VL.ImGui (Skia and Stride) but not VL.CEF; VL.CEF (Chromium, a NuGet of its own) has
+WebBrowser / WebRenderer nodes and ExecuteJavaScript, runs out of process, and has a multi-GPU
+"no output" trap.
+
+**Options for an editor**
+
+1. **Maputnik beside vvvv, the file watched.** `VectorTiles` reloads a local style file when it
+   changes; Maputnik (browser, or self-hosted) opens that file and saves it in place. Our part is a
+   file watch and a reload; the editor is the spec's own, complete. A style edited there may use
+   what we do not draw yet - the Status pin already names skipped layers.
+2. **Maputnik inside vvvv** (VL.CEF): one window, but a Chromium dependency of hundreds of MB, an
+   extra package and its GPU traps, for what option 1 gives already.
+3. **Our own editor window** (the GeometryEditor pattern, Skia or VL.ImGui): a layer list,
+   visibility, the common paint properties, a colour picker, zoom stops; writes the JSON. Fits vvvv
+   and previews on the globe itself, but Maputnik is years of work - it would be a small subset.
+4. **Nodes** (no editor): load a style and override it (`SetPaint`, `SetLayout`, `Visibility` by
+   layer id - what a patch needs to animate or switch at run time), or typed layer nodes after
+   MapLibre Native. Both compile to the same `MapStyleDocument`, so the renderer and the MapLibre
+   tests stay the spec.
+
+**Recommended order:** 1 first (small, needed by every other option: a style that changes on disk
+must reload), then 4's override nodes for what a patch drives at run time; 3 only if working in
+Maputnik beside vvvv proves awkward in use. Unverified: which Maputnik release saves a local file
+in place, and in which browsers (the File System Access API is Chromium-only).
