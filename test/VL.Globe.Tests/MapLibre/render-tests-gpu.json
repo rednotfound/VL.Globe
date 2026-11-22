@@ -1,12 +1,14 @@
 {
   "tag": "v6.19.0",
-  "passedAtLeast": 295,
+  "passedAtLeast": 302,
   "ignores": {
     "fill-outline-color/multiply": "one pixel at each outer corner of a 1-px outline: D3D's line rasterisation draws a segment's start pixel there, GL's does not",
     "geojson/inline-linestring-fill": "a self-intersecting ring filled: GL JS's earcut triangulates it differently from our ear clipping",
     "text-size/composite-function": "a text-size by zoom and feature: GL JS interpolates between two zoom stops stored per vertex; one size per vertex here (labels, milestone 1)",
     "text-size/composite-function-line-placement": "the same text-size by zoom and feature, along a line",
     "icon-size/composite-function-plain": "an icon-size by zoom and feature: GL JS interpolates between two zoom stops stored per vertex; one size per vertex here, as for text-size",
-    "icon-size/composite-function-sdf": "the same icon-size by zoom and feature, an SDF icon"
+    "icon-size/composite-function-sdf": "the same icon-size by zoom and feature, an SDF icon",
+    "symbol-placement/line-overscaled": "symbols past the source's maxzoom: GL JS lays them out again for each overscaled tile (spacing in its pixels); the GPU path draws the maxzoom tile's layout, 8x sparser at z17",
+    "symbol-spacing/line-overscaled": "the same overscaled symbol layout"
   }
 }

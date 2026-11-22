@@ -146,7 +146,8 @@ internal static partial class VectorBucketBuilder
             string rotationAlignment = Expression.String(GpuStyleLayer.Get(l.Layout, "text-rotation-alignment"), ctx, "auto");
             // GL JS: text along the line unless the rotation is the viewport's or the placement a point
             bool alongLine = placement != "point" && rotationAlignment != "viewport";
-            if (placement != "point" && !alongLine) throw new StyleUnsupportedException("a line label aligned to the viewport");
+            // ... and an icon along it when its rotation is the map's (auto: the map's on a line)
+            bool iconAlongLine = placement != "point" && Expression.String(GpuStyleLayer.Get(l.Layout, "icon-rotation-alignment"), ctx, "auto") != "viewport";
             if (placement == "point")
                 foreach (var alignment in new[] { "text-rotation-alignment", "text-pitch-alignment" })
                     if (Expression.String(GpuStyleLayer.Get(l.Layout, alignment), ctx, "auto") is not ("auto" or "viewport"))
@@ -155,9 +156,11 @@ internal static partial class VectorBucketBuilder
                 foreach (var alignment in new[] { "icon-rotation-alignment", "icon-pitch-alignment" })
                     if (Expression.String(GpuStyleLayer.Get(l.Layout, alignment), ctx, "auto") is not ("auto" or "viewport"))
                         throw new StyleUnsupportedException($"{alignment} map");
-            // icons not drawn yet: a strict parse (the render tests) says so; a real style keeps the
-            // layer's text and leaves out its icons - dropping the layer lost Liberty's road names
-            string? iconsOff = layer.IconImage != null && placement != "point" ? "an icon along a line" : null;
+            // On a line: text and icon both upright at the line's anchors (Liberty's shields), or an icon
+            // alone along the line (its one-way arrows). Not yet an icon beside text along a line: a strict
+            // parse (the render tests) says so; a real style keeps the layer's text without its icons.
+            string? iconsOff = layer.IconImage != null && placement != "point" && layer.TextField != null && (alongLine || iconAlongLine)
+                ? "an icon with text along a line" : null;
             string iconTextFit = Expression.String(GpuStyleLayer.Get(l.Layout, "icon-text-fit"), ctx, "none");
             if (iconTextFit is not ("none" or "width" or "height" or "both")) throw new StyleUnsupportedException($"icon-text-fit {iconTextFit}");
             if (iconsOff != null)
@@ -186,6 +189,7 @@ internal static partial class VectorBucketBuilder
             // (symbol-z-order auto, no sort key), so the lower one is on top; each one's index ranges
             var instances = new List<(int Y, int Feature, int IconStart, int IconCount, int TextStart, int TextCount)>();
             int featureIndex = -1;
+            bool textAlongLineSeen = false;   // text along lines: its indices are no instance's, so no sorting
             foreach (var f in features)
             {
                 featureIndex++;
@@ -214,8 +218,9 @@ internal static partial class VectorBucketBuilder
                 var justify = justifyName == "auto" ? AnchorJustification(anchor) : ParseJustify(justifyName);
                 var offset = Offset(GpuStyleLayer.Get(l.Layout, "text-offset"), ctx);
                 double rotate = Expression.Number(GpuStyleLayer.Get(l.Layout, "text-rotate"), ctx, 0) * Math.PI / 180;
-                // GL JS: a label along a line is one line, centred
-                if (alongLine) { maxWidth = double.PositiveInfinity; justify = TextJustify.Center; }
+                // GL JS: a label on a line is one line; along it, centred
+                if (placement != "point") maxWidth = double.PositiveInfinity;
+                if (alongLine) justify = TextJustify.Center;
 
                 var shaping = hasText
                     ? Shaping.ShapeText(Formatted.FromString(text!), store, stack, maxWidth, lineHeight, anchor, justify,
@@ -235,6 +240,7 @@ internal static partial class VectorBucketBuilder
                     if (offset.Y != 0) throw new StyleUnsupportedException("text-offset across a line");
                     LineLabels(layer, f, placement, shaping, text!, ctx, layoutTextSize, padding, offset, (float)size, (float)opacity, color,
                         alwaysOverlap, ignorePlacement, repeated);
+                    textAlongLineSeen = true;
                     continue;
                 }
                 SymbolBox? box = shaping is null ? null : CollisionBox(shaping.Left, shaping.Top, shaping.Right, shaping.Bottom,
@@ -244,6 +250,7 @@ internal static partial class VectorBucketBuilder
                 // collision_feature.ts's icon box: the image round the anchor in CSS pixels at icon-size 1
                 List<IconQuad>? iconQuads = null;
                 SymbolBox? iconBox = null;
+                (double Left, double Right)? iconExtent = null;
                 float iconSize = 0, iconOpacity = 1;
                 uint iconColor = uint.MaxValue;
                 if (image is { } img)
@@ -251,12 +258,14 @@ internal static partial class VectorBucketBuilder
                     var iconOffset = Pair(GpuStyleLayer.Get(l.Layout, "icon-offset"), ctx, "icon-offset");
                     var iconAnchor = ParseAnchor(Expression.String(GpuStyleLayer.Get(l.Layout, "icon-anchor"), ctx, "center"));
                     var shapedIcon = IconShaping.ShapeIcon(img, iconOffset, iconAnchor);
+                    if (iconAlongLine && (iconOffset.X != 0 || iconOffset.Y != 0)) throw new StyleUnsupportedException("icon-offset along a line");
                     if (iconTextFit != "none" && shaping != null)
                         shapedIcon = IconShaping.FitIconToText(shapedIcon, shaping, iconTextFit,
                             Padding(GpuStyleLayer.Get(l.Layout, "icon-text-fit-padding"), ctx, 0, "icon-text-fit-padding"),
                             iconOffset, layoutTextSize / Shaping.OneEm, layoutIconSize);
                     double iconRotate = Expression.Number(iconRotateValue, ctx, 0);
                     iconQuads = IconShaping.GetIconQuads(shapedIcon, iconRotate, iconTextFit != "none", layoutIconSize);
+                    iconExtent = (shapedIcon.Left, shapedIcon.Right);
                     var (bx1, by1, bx2, by2) = IconShaping.CollisionBox(shapedIcon, layoutIconSize,
                         Padding(GpuStyleLayer.Get(l.Layout, "icon-padding"), ctx, 2, "icon-padding"));
                     iconBox = CollisionBox(bx1, by1, bx2, by2, 1, (0, 0, 0, 0), iconRotate * Math.PI / 180);
@@ -264,16 +273,31 @@ internal static partial class VectorBucketBuilder
                     iconOpacity = layer.IconOpacityPerFeature ? (float)Expression.Number(layer.IconOpacity, ctx, 1) : 1;
                     iconColor = layer.IconColorPerFeature ? Pack(Expression.Color(layer.IconColor, ctx, StyleColor.Black)) : uint.MaxValue;
                     // GL JS: the bucket's first icon says SDF or not; linear sampling for another pixel ratio or a rotation
-                    bool needsLinear = img.Image.PixelRatio != style.PixelRatio || rotatePerFeature || iconRotate != 0;
+                    // ... and along a line: pitched with the map there (icon-pitch-alignment auto), so "transformed"
+                    bool needsLinear = img.Image.PixelRatio != style.PixelRatio || rotatePerFeature || iconRotate != 0 || iconAlongLine;
                     _iconModes[layer.Index] = _iconModes.TryGetValue(layer.Index, out var mode)
                         ? (mode.Sdf, mode.NeedsLinear || needsLinear)
                         : (img.Image.Sdf, needsLinear);
                 }
 
-                foreach (var (ax, ay) in Anchors(f))
+                if (iconAlongLine && iconQuads != null && shaping is null)
+                {
+                    foreach (var (y, iconStart, iconCount) in IconsAlongLine(layer, f, placement, ctx, iconQuads, iconExtent!.Value, iconBox!.Value,
+                        layoutTextSize, iconSize, iconOpacity, iconColor, flags, repeated))
+                        instances.Add((y, featureIndex, iconStart, iconCount, 0, 0));
+                    continue;
+                }
+                // a point's anchors; on a line, upright symbols at the line's anchors (viewport alignment)
+                var anchors = placement == "point" ? Anchors(f)
+                    : LinePlacements(layer, f, placement, ctx, shaping is null ? null : (shaping.Left, shaping.Right), iconExtent, layoutTextSize, shaping is null ? null : text, repeated)
+                        .Select(p => (p.anchor.X / LineUp, p.anchor.Y / LineUp));
+                foreach (var (exactX, exactY) in anchors)
                 {
                     // GL JS draws a label from the one tile its anchor is in, not from a neighbour's buffer
-                    if (ax < 0 || ax >= Extent || ay < 0 || ay >= Extent) continue;
+                    if (exactX < 0 || exactX >= Extent || exactY < 0 || exactY >= Extent) continue;
+                    // GL JS keeps the anchor in Int16 arrays of its 8192-unit tile: a polygon's pole or a line's
+                    // anchor, fractional, is truncated to whole units (symbol-placement/point-polygon)
+                    double ax = Math.Floor(exactX * LineUp) / LineUp, ay = Math.Floor(exactY * LineUp) / LineUp;
                     var anchorPosition = Vertex(ax, ay, 0, 0, 0, 1, 0).Position;
                     // the icon first (symbol_layout.ts addSymbol), then the glyphs
                     int iconFirst = _symbolVertices.Count, iconIndexFirst = _iconIndices.Count;
@@ -299,9 +323,9 @@ internal static partial class VectorBucketBuilder
             if (iconAlways && (textAlways || !hasTextData || (flags & SymbolFlags.TextOptional) != 0)) always |= SymbolFlags.AlwaysShowIcon;
             if (always != SymbolFlags.None)
                 for (int i = _layerLabelStart; i < _labels.Count; i++) _labels[i] = _labels[i] with { Flags = _labels[i].Flags | always };
-            // canOverlap: any *-allow-overlap or *-ignore-placement. Not across line labels, whose indices are not an instance's
+            // canOverlap: any *-allow-overlap or *-ignore-placement. Not across text along lines, whose indices are not an instance's
             bool canOverlap = (flags & (SymbolFlags.TextAllowOverlap | SymbolFlags.IconAllowOverlap | SymbolFlags.TextIgnorePlacement | SymbolFlags.IconIgnorePlacement)) != 0;
-            if (canOverlap && _lineLabels.Count == _layerLineLabelStart && instances.Count > 1)
+            if (canOverlap && !textAlongLineSeen && instances.Count > 1)
             {
                 var icons = new List<uint>(_iconIndices.Count);
                 var texts = new List<uint>(_symbolIndices.Count - start);
@@ -360,45 +384,14 @@ internal static partial class VectorBucketBuilder
             double layoutTextSize, double padding, (double X, double Y) offset, float size, float opacity, uint color,
             bool alwaysOverlap, bool ignorePlacement, Dictionary<string, List<(double X, double Y)>> repeated)
         {
-            const double Up = 16, GlExtent = Extent * Up;
+            const double Up = LineUp;
             var l = layer.Layer;
-            double spacing = Expression.Number(GpuStyleLayer.Get(l.Layout, "symbol-spacing"), ctx, 250) * Up;
-            double maxAngle = Expression.Number(GpuStyleLayer.Get(l.Layout, "text-max-angle"), ctx, 45) / 180 * Math.PI;
             bool keepUpright = GpuStyleLayer.Get(l.Layout, "text-keep-upright") is not { } ku || Expression.Evaluate(ku, ctx, Expression.Kind.Any) is not false;
-            double boxScale = Up * layoutTextSize / Shaping.OneEm;   // textMaxBoxScale: no composite text-size here
-            var shaped = (shaping.Left, shaping.Right);
             double height = shaping.Bottom - shaping.Top;
             float diameter = height > 0 ? (float)(Math.Max(10, height) * layoutTextSize / Shaping.OneEm) : 0;
 
-            foreach (var part in f.Parts)
-                foreach (var ring in part)
-                {
-                    if (f.Kind == StyleFeature.Shape.Point || ring.Length < 2) continue;
-                    var line = ring.Select(p => { var (x, y) = Local(p.X, p.Y); return (x * Up, y * Up); }).ToList();
-                    var placements = new List<(IReadOnlyList<(double X, double Y)> line, LineAnchor anchor)>();
-                    if (placement == "line")
+                    foreach (var (used, anchor) in LinePlacements(layer, f, placement, ctx, (shaping.Left, shaping.Right), null, layoutTextSize, text, repeated))
                     {
-                        foreach (var clipped in LineAnchors.ClipLine(new[] { line }, 0, 0, GlExtent, GlExtent))
-                            foreach (var a in LineAnchors.GetAnchors(clipped, spacing, maxAngle, shaped, null, Shaping.OneEm, boxScale, 1, GlExtent))
-                                if (!TooClose(a)) placements.Add((clipped, a));
-                    }
-                    else
-                    {
-                        // GeoJSON is cut into tiles by geojson-vt first, 128 px of buffer round each (a
-                        // quarter of a 512-px tile): a line-center label sits at the middle of the tile's
-                        // piece, not of the whole line (text-max-width/force-newline-line-center).
-                        // A vector tile's data comes cut already.
-                        const double Buffer = GlExtent / 4;
-                        var pieces = _grid ? LineAnchors.ClipLine(new[] { line }, -Buffer, -Buffer, GlExtent + Buffer, GlExtent + Buffer) : new List<List<(double X, double Y)>> { line };
-                        foreach (var piece in pieces)
-                            if (piece.Count > 1 && LineAnchors.GetCenterAnchor(piece, maxAngle, shaped, null, Shaping.OneEm, boxScale) is { } centre)
-                                placements.Add((piece, centre));
-                    }
-
-                    foreach (var (used, anchor) in placements)
-                    {
-                        // GL JS draws a label from the one tile its anchor is in
-                        if (anchor.X < 0 || anchor.X >= GlExtent || anchor.Y < 0 || anchor.Y >= GlExtent) continue;
                         var anchorPosition = Vertex(anchor.X / Up, anchor.Y / Up, 0, 0, 0, 1, 0).Position;
                         var points = used.Select(p => Vertex(p.X / Up, p.Y / Up, 0, 0, 0, 1, 0).Position).ToArray();
                         int first = _symbolVertices.Count;
@@ -442,13 +435,88 @@ internal static partial class VectorBucketBuilder
                             TextSize = (System.Half)size, Opacity = (System.Half)opacity, Color = color,
                         });
                     }
-                }
+        }
 
-            // GL JS anchorIsTooClose: the same text again within half the spacing is left out
+        // GL JS's tile is 8192 units, ours 512: line anchors are found at GL JS's scale
+        const double LineUp = 16;
+
+        // An icon alone along a line (icon-rotation-alignment map): GL JS places it as a glyph at offset 0
+        // along the projected line, turned to it (icon-keep-upright, false by default, may flip it), and
+        // collides it as its box round the anchor
+        // Each one's anchor y (GL JS units, rounded) and its icon index range, for sortFeatures.
+        List<(int Y, int IconStart, int IconCount)> IconsAlongLine(GpuStyleLayer layer, StyleFeature f, string placement, StyleContext ctx, List<IconQuad> quads,
+            (double Left, double Right) extent, SymbolBox box, double layoutTextSize, float size, float opacity, uint color,
+            SymbolFlags flags, Dictionary<string, List<(double X, double Y)>> repeated)
+        {
+            var placed = new List<(int Y, int IconStart, int IconCount)>();
+            var l = layer.Layer;
+            bool keepUpright = GpuStyleLayer.Get(l.Layout, "icon-keep-upright") is { } ku && Expression.Evaluate(ku, ctx, Expression.Kind.Any) is true;
+            foreach (var (used, anchor) in LinePlacements(layer, f, placement, ctx, null, extent, layoutTextSize, null, repeated))
+            {
+                var anchorPosition = Vertex(anchor.X / LineUp, anchor.Y / LineUp, 0, 0, 0, 1, 0).Position;
+                int first = _symbolVertices.Count, iconIndexFirst = _iconIndices.Count;
+                foreach (var q in quads) IconQuadVertices(anchorPosition, q, size, opacity, color);
+                placed.Add(((int)Math.Floor(anchor.Y + 0.5), iconIndexFirst, _iconIndices.Count - iconIndexFirst));
+                _lineLabels.Add(new LineLabel
+                {
+                    Layer = layer.Index, Anchor = anchorPosition, Segment = anchor.Segment,
+                    Line = used.Select(p => Vertex(p.X / LineUp, p.Y / LineUp, 0, 0, 0, 1, 0).Position).ToArray(),
+                    GlyphOffsets = new float[quads.Count], VertexStart = first, KeepUpright = keepUpright,
+                    FeatureSize = size, IconBox = box,
+                    AlwaysOverlap = (flags & SymbolFlags.IconAllowOverlap) != 0, IgnorePlacement = (flags & SymbolFlags.IconIgnorePlacement) != 0,
+                });
+            }
+            return placed;
+        }
+
+        // GL JS symbol_layout.ts addFeature for symbol-placement line / line-center: the anchors along the
+        // feature's lines (GL JS units), each with the line it lies on - only those inside the tile, as GL
+        // JS draws a symbol from the one tile its anchor is in. With text, the same text again within half
+        // the spacing is left out (anchorIsTooClose).
+        List<(IReadOnlyList<(double X, double Y)> line, LineAnchor anchor)> LinePlacements(GpuStyleLayer layer, StyleFeature f, string placement,
+            StyleContext ctx, (double Left, double Right)? shapedText, (double Left, double Right)? shapedIcon, double layoutTextSize,
+            string? text, Dictionary<string, List<(double X, double Y)>> repeated)
+        {
+            const double Up = LineUp, GlExtent = Extent * Up;
+            var l = layer.Layer;
+            double spacing = Expression.Number(GpuStyleLayer.Get(l.Layout, "symbol-spacing"), ctx, 250) * Up;
+            double maxAngle = Expression.Number(GpuStyleLayer.Get(l.Layout, "text-max-angle"), ctx, 45) / 180 * Math.PI;
+            double boxScale = Up * layoutTextSize / Shaping.OneEm;   // textMaxBoxScale: no composite text-size here
+            var result = new List<(IReadOnlyList<(double X, double Y)> line, LineAnchor anchor)>();
+            foreach (var part in f.Parts)
+                foreach (var ring in part)
+                {
+                    if (f.Kind == StyleFeature.Shape.Point || ring.Length < 2) continue;
+                    var line = ring.Select(p => { var (x, y) = Local(p.X, p.Y); return (x * Up, y * Up); }).ToList();
+                    var placements = new List<(IReadOnlyList<(double X, double Y)> line, LineAnchor anchor)>();
+                    if (placement == "line")
+                    {
+                        foreach (var clipped in LineAnchors.ClipLine(new[] { line }, 0, 0, GlExtent, GlExtent))
+                            foreach (var a in LineAnchors.GetAnchors(clipped, spacing, maxAngle, shapedText, shapedIcon, Shaping.OneEm, boxScale, 1, GlExtent))
+                                if (text is null || !TooClose(a)) placements.Add((clipped, a));
+                    }
+                    else
+                    {
+                        // GeoJSON is cut into tiles by geojson-vt first, 128 px of buffer round each (a
+                        // quarter of a 512-px tile): a line-center label sits at the middle of the tile's
+                        // piece, not of the whole line (text-max-width/force-newline-line-center).
+                        // A vector tile's data comes cut already.
+                        const double Buffer = GlExtent / 4;
+                        var pieces = _grid ? LineAnchors.ClipLine(new[] { line }, -Buffer, -Buffer, GlExtent + Buffer, GlExtent + Buffer) : new List<List<(double X, double Y)>> { line };
+                        foreach (var piece in pieces)
+                            if (piece.Count > 1 && LineAnchors.GetCenterAnchor(piece, maxAngle, shapedText, shapedIcon, Shaping.OneEm, boxScale) is { } centre)
+                                placements.Add((piece, centre));
+                    }
+                    foreach (var p in placements)
+                        if (p.anchor.X >= 0 && p.anchor.X < GlExtent && p.anchor.Y >= 0 && p.anchor.Y < GlExtent) result.Add(p);
+                }
+            return result;
+
+            // GL JS anchorIsTooClose
             bool TooClose(LineAnchor a)
             {
                 double repeatDistance = spacing / 2;
-                if (!repeated.TryGetValue(text, out var others)) repeated[text] = others = new List<(double X, double Y)>();
+                if (!repeated.TryGetValue(text!, out var others)) repeated[text!] = others = new List<(double X, double Y)>();
                 foreach (var o in others)
                     if (Math.Sqrt((a.X - o.X) * (a.X - o.X) + (a.Y - o.Y) * (a.Y - o.Y)) < repeatDistance) return true;
                 others.Add((a.X, a.Y));

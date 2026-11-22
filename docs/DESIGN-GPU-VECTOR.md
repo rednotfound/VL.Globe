@@ -224,9 +224,29 @@ their names beside them, no overlaps; road names along the roads kept (their shi
 - **304 pass, 295 non-vacuous**; the icon-text-fit group: all but variable anchors, vertical text and
   the shield along a line. Liberty uses neither icon-text-fit nor circles: nothing new to see there.
 
+**Step 6, the same day: symbols on lines.**
+- `LinePlacements` (SymbolLayout.cs): the anchors along a feature's lines (getAnchors / getCenterAnchor,
+  anchorIsTooClose), shared by text along lines and the two new cases:
+  - text and icon upright at the line's anchors (text- and icon-rotation-alignment viewport; Liberty's
+    shields): point symbols there - one line of text, the joint placement of point symbols;
+  - an icon alone along the line (icon-rotation-alignment map or auto; Liberty's one-way arrows): a
+    `LineLabel` whose "glyphs" are its quads at offset 0, turned to the line every frame
+    (icon-keep-upright), colliding as GL JS's icon box round the anchor; sampled linear (pitched with
+    the map in GL JS, so "transformed"); sorted by anchor y with the point symbols where they may overlap.
+  - not yet: an icon beside text along a line (strict refuses; lenient keeps the text), icon-offset along a line.
+- Found on the way: GL JS v6.19's pole of inaccessibility prefers the centroid when it is inside and
+  within the precision (symbol-placement/point-polygon); anchors are truncated to GL JS's Int16 units.
+- Fetched: symbol-placement, symbol-spacing, text-/icon-rotation-alignment, icon-pitch-alignment (the
+  alignment groups all need `bearing`). **311 pass, 302 non-vacuous.** Not passing: the two
+  *-overscaled fixtures (ignored) - below.
+
 ## Next
 
-1. Icons along lines - Liberty's shields and one-way arrows (step 6).
+1. **Symbols past the source's maxzoom.** GL JS lays symbols out again for each overscaled tile
+   (OpenFreeMap stops at z14; street level is z16-18), so spacing, repeat distance and collision boxes
+   are in that tile's pixels; the GPU path draws the z14 tile's layout - line symbols 4-16x sparser.
+   A bucket per overscaled tile for symbol layers only (fills and lines are right as they are).
+2. Seen in vvvv: Liberty's shields and arrows (not yet looked at: a vvvv of the user's was open).
 2. Labels: fades (300 ms) and labels across tiles of two zooms (CrossTileSymbolIndex), the `format`
    expression, text-size by zoom and feature, text-offset across a line.
 3. Labels and icons (RESEARCH-VECTOR stage 4: glyph PBFs, SDF, placement and collision) - the

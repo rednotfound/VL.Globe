@@ -146,6 +146,18 @@ internal sealed class LabelPlacement
         float perspective = 0.5f + 0.5f * cameraToCenter / clip.W;
         float size = (label.FeatureSize > 0 ? label.FeatureSize : layerSize) * perspective;
         if (!LineGlyphs.Place(label, worldViewProjection, _width, _height, size, dynamic, out var first, out var last)) return false;
+        if (label.IconBox is { } icon)
+        {
+            // GL JS placeCollisionBox for the icon's box round the projected anchor
+            float x = (clip.X / clip.W + 1) / 2 * _width + ViewportPadding, y = (-clip.Y / clip.W + 1) / 2 * _height + ViewportPadding;
+            var b = new SymbolBox(x + icon.X1 * perspective, y + icon.Y1 * perspective, x + icon.X2 * perspective, y + icon.Y2 * perspective);
+            bool unplaceable = perspective < PerspectiveCutoff
+                || !(b.X2 >= 0 && b.X1 < _width + 2 * ViewportPadding && b.Y2 >= 0 && b.Y1 < _height + 2 * ViewportPadding);
+            if (unplaceable) return label.AlwaysOverlap;
+            if (!label.AlwaysOverlap && Hits(b.X1, b.Y1, b.X2, b.Y2)) return false;
+            if (!label.IgnorePlacement) Insert(b.X1, b.Y1, b.X2, b.Y2);
+            return true;
+        }
         if (perspective < PerspectiveCutoff) return label.AlwaysOverlap;
 
         var path = new List<Vector2>();

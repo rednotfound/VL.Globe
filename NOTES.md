@@ -444,3 +444,10 @@ looked fine - "which makes one think it works". Two causes, estimated at 100 m h
   the 2x-screen fixtures drew labels at half size. `Frame.PixelRatio` (1 in vvvv).
 - **The test host copies the shaders it compiles by name**: a new `.sdsl` must be added to the list
   in `GpuFixtureRenderer.Create`, or every fixture fails with "E1202 ... not in the module".
+- **Ported code drifts from GL JS's newer versions**: our pole of inaccessibility was the old one; v6.19
+  prefers the centroid within the precision ("Trap" 6 px off). When a port fails by a few pixels,
+  diff the current upstream file before suspecting the inputs.
+- **Line-placed icons sample linear in GL JS**: pitch-alignment auto follows the map there, which
+  counts as "transformed" - NEAREST drew the rotated arrows jagged.
+- **Symbols past the source's maxzoom are laid out per overscaled tile in GL JS**; ours use the
+  maxzoom tile's layout. The *-overscaled fixtures say so (ignored, with the reason).

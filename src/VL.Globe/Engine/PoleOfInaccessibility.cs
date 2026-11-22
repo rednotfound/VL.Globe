@@ -42,7 +42,8 @@ internal static class PoleOfInaccessibility
                 queue.Enqueue(c, -c.Max);
             }
 
-        var best = Centroid(polygon);
+        var centroid = Centroid(polygon);
+        var best = centroid;
         while (queue.Count > 0)
         {
             var cell = queue.Dequeue();
@@ -55,6 +56,9 @@ internal static class PoleOfInaccessibility
                 queue.Enqueue(c, -c.Max);
             }
         }
+        // GL JS (v6.19): the centroid when it is inside and within the precision of the best found -
+        // for convex or nearly convex polygons, where rounding broke the symmetry and the pole drifted
+        if (centroid.D > 0 && best.D - centroid.D <= precision) return (centroid.X, centroid.Y);
         return (best.X, best.Y);
     }
 

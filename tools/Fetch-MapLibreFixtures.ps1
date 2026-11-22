@@ -33,7 +33,9 @@ param(
         'text-max-width', 'text-letter-spacing', 'text-transform', 'text-rotate',
         # 4e, labels, milestone 4: icons
         'icon-image', 'icon-size', 'icon-anchor', 'icon-offset', 'icon-rotate', 'icon-opacity', 'icon-color',
-        'icon-halo-color', 'icon-halo-width', 'icon-halo-blur', 'icon-text-fit', 'icon-padding'),
+        'icon-halo-color', 'icon-halo-width', 'icon-halo-blur', 'icon-text-fit', 'icon-padding',
+        # ... step 6: symbols on lines - upright at the line's anchors, or icons along it
+        'symbol-placement', 'symbol-spacing', 'text-rotation-alignment', 'icon-rotation-alignment', 'icon-pitch-alignment'),
     # Files under test/integration/assets that the fixtures load as local://<path> (the Berlin
     # tiles of the line-* vector fixtures). Saved under <tag>\_assets.
     [string[]]$Assets = @(
