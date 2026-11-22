@@ -30,7 +30,10 @@ param(
         # 4e, labels, milestone 1: point labels - glyphs, shaping, size, colour, halo, anchor, offset
         'text-field', 'text-font', 'text-size', 'text-color', 'text-opacity', 'text-halo-color',
         'text-halo-width', 'text-halo-blur', 'text-anchor', 'text-offset', 'text-justify',
-        'text-max-width', 'text-letter-spacing', 'text-transform', 'text-rotate'),
+        'text-max-width', 'text-letter-spacing', 'text-transform', 'text-rotate',
+        # 4e, labels, milestone 4: icons
+        'icon-image', 'icon-size', 'icon-anchor', 'icon-offset', 'icon-rotate', 'icon-opacity', 'icon-color',
+        'icon-halo-color', 'icon-halo-width', 'icon-halo-blur', 'icon-text-fit', 'icon-padding'),
     # Files under test/integration/assets that the fixtures load as local://<path> (the Berlin
     # tiles of the line-* vector fixtures). Saved under <tag>\_assets.
     [string[]]$Assets = @(
@@ -49,7 +52,20 @@ param(
         'glyphs/Open Sans Semibold,Arial Unicode MS Bold/64256-64511.pbf',
         'glyphs/Open Sans Semibold,Arial Unicode MS Bold/65024-65279.pbf',
         # the glyph metrics MapLibre's symbol-shaping tests shape with (test/integration/symbol-shaping)
-        'glyphs/fontstack-glyphs.json'),
+        'glyphs/fontstack-glyphs.json',
+        # the icons' sprites (local://sprites/<name>, and <name>@2x where a fixture's pixel ratio is 2)
+        'sprites/sprite.json', 'sprites/sprite.png',
+        'sprites/emerald.json', 'sprites/emerald.png',
+        'sprites/emerald@2x.json', 'sprites/emerald@2x.png',
+        'sprites/icon-text-fit.json', 'sprites/icon-text-fit.png',
+        'sprites/icon-text-fit@2x.json', 'sprites/icon-text-fit@2x.png',
+        'sprites/icon-text-fit-1x@2x.json', 'sprites/icon-text-fit-1x@2x.png',
+        'sprites/icon-text-fit-2x.json', 'sprites/icon-text-fit-2x.png',
+        'sprites/stretch.json', 'sprites/stretch.png',
+        'sprites/textFit.json', 'sprites/textFit.png',
+        'sprites/2x.json', 'sprites/2x.png',
+        'sprites/2x@2x.json', 'sprites/2x@2x.png',
+        'sprites/sdf_icon_74x36.json', 'sprites/sdf_icon_74x36.png'),
     [string]$Destination = (Join-Path $PSScriptRoot '..\test\fixtures\maplibre'),
     [switch]$Force
 )
