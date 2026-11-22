@@ -334,6 +334,13 @@ away, Mapbox hiding the distance in fog; Cesium's fog coarsens and culls horizon
 3. A z13 floor for vector tiles within some distance while the camera is at street level - fills
    the buildings in; measure GPU memory and frame time tilted in vvvv before choosing the distance.
 
+**Steps 1 and 2 built 2026-11-22, not yet seen by the user moving:** `GlobeView.TiltLimit` (Google's
+numbers, `MaxTilt` the ceiling, zooming out lowers the tilt); `GlobeFog.sdsl` + `Engine/FogPass.cs`,
+one full-screen pass after everything the globe draws, the ray's distance to the sphere solved per
+pixel (no depth), from 3 to 16 eye heights, the sky within ~3 degrees of the limb fogged too
+(`FogFacts` render it offscreen). Step 3 waits for the user's look: with the fog whole at 16 eye
+heights (2.4 km tilted 60 degrees from 300 m), the vector tiles inside it are z14 already.
+
 ### 5. Navigation
 
 - `CenterOn`, `ZoomToLevel`, `ZoomIn`, `ZoomOut`.

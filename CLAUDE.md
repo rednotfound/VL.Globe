@@ -29,8 +29,11 @@ Guidance for Claude Code working in this repository.
    gone); layers hidden at a tile's zoom no longer built (Kyoto z14 9.1 -> 6.7 MB); line labels no
    longer step while panning close (the eye counts as a move); lines collide by first/last glyph.
    Placement still spikes 17-50 ms while tiles load in vvvv.
+   Then: the style is a node (`MapLibreStyle (URL)` / `(File)`, Maputnik named for editing, the
+   user's decision); 4f steps 1-2 built - the tilt limited by the zoom, fog towards the horizon -
+   waiting for the user's look (ROADMAP 4f).
    **Next: label fades with GL JS's pauseable placement (2 ms a frame) and CrossTileSymbolIndex -
-   DESIGN-GPU-VECTOR.md "Next" 1; then ROADMAP 4f (the tilted distance).**
+   DESIGN-GPU-VECTOR.md "Next" 1; 4f step 3 only if the user's look asks for it.**
    Research: [docs/RESEARCH-0.1.md](docs/RESEARCH-0.1.md), [docs/RESEARCH-VECTOR.md](docs/RESEARCH-VECTOR.md).
 2. Read **[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)** — what exists and why.
 3. Read **[NOTES.md](NOTES.md)** — every failure so far, before touching the same code.
