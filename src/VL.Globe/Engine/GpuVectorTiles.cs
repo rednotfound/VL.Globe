@@ -166,6 +166,8 @@ internal sealed class GpuVectorTiles : IDisposable
         var eyeUnit = eye is { } ev ? (ev * (1.0 / radius)).ToVector3() : default;
         double reach = eye is { } er ? FloorReach * (er.Length - radius) / radius : 0;
         bool InReach(TileKey g) => reach > 0 && TileSelector.DistanceToTile(g, eyeUnit) < reach;
+        // the buildings fade out over the reach's last part, so they do not end in a line
+        result.ExtrusionFade = reach > 0 ? new Vector2((float)(FadeFrom * reach * radius), (float)(reach * radius)) : default;
 
         foreach (var service in services.Distinct())
         {
@@ -508,6 +510,8 @@ internal sealed class GpuVectorTiles : IDisposable
     internal const int MaxFloorSplit = 3;
     /// <summary>How far the camera's zoom is kept for vector tiles, in eye heights (39 z14 tiles tilted over Tokyo).</summary>
     internal const double FloorReach = 5;
+    /// <summary>Where in the reach the buildings begin to fade out.</summary>
+    internal const double FadeFrom = 0.6;
     internal static IEnumerable<TileKey> VectorKeys(int minZoom, int maxZoom, int tileSize, TileKey g, int floor)
     {
         if (VectorKey(minZoom, maxZoom, tileSize, g) is not { } vk) yield break;

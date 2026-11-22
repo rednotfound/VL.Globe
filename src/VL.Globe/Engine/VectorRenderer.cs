@@ -52,6 +52,9 @@ internal sealed class VectorRenderer : IGraphicsRendererBase
         public D3? Eye;
         // device pixels per CSS pixel: labels are laid out and placed in CSS pixels, as GL JS's
         public float PixelRatio = 1;
+        // where 3D buildings fade out, from X to Y in scene units from the eye (0 0: they do not): they
+        // end where the vector tiles fall below the camera's zoom (GpuVectorTiles.FloorReach)
+        public Vector2 ExtrusionFade;
     }
 
     public volatile Frame? Current;
@@ -277,6 +280,7 @@ internal sealed class VectorRenderer : IGraphicsRendererBase
         Set(parameters, "GvFlat", flat ? 1f : 0f);
         var viewport = commandList.Viewport;
         Set(parameters, "GvViewport", new Vector2(viewport.Width, viewport.Height));
+        Set(parameters, "GvFade", frame.ExtrusionFade);
         Buffer? boundVertices = null;
         Texture? sceneDepth = null;
         try

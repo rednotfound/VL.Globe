@@ -23,6 +23,7 @@ shader GlobeVector : ShaderBase
         stage float GvGlOutline;        // 1: the line list as GL JS's fill_outline: aliased, alpha 1 - smoothstep(distance)
         stage float2 GvViewport;        // the target's size in pixels
         stage float GvTiles;            // tiles per side at the bucket's zoom (2^z): a tile is 1/GvTiles of the world
+        stage float2 GvFade;            // fill-extrusion fades out between these distances from the eye (y 0: never)
     }
 
     stage stream float3 GvPosition : POSITION;
@@ -101,7 +102,9 @@ shader GlobeVector : ShaderBase
             directional = lerp(0.5, max(1.5 - value, 1.0), directional);
             directional *= streams.GvEdgeIn.x;   // the wall's vertical gradient; 1 on a roof
             rgb = saturate(rgb * directional);
-            streams.GvTint = float4(ToLinear(rgb), color.a);
+            // Mapbox's fill-extrusion-cutoff-fade-range: out before the tiles fall to a zoom without heights
+            float fade = GvFade.y > 0 ? 1 - smoothstep(GvFade.x, GvFade.y, length(v.xyz)) : 1;
+            streams.GvTint = float4(ToLinear(rgb), color.a * fade);
             streams.GvEdge = 0;
         }
         else streams.GvTint = float4(ToLinear(streams.GvColorIn.rgb), streams.GvColorIn.a) * GvColor;
