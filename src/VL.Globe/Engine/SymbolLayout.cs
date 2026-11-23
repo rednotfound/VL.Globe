@@ -182,6 +182,9 @@ internal static partial class VectorBucketBuilder
                 style.Skip($"{l.Id}: {iconsOff} (its icons left out)");
             }
             var repeated = new Dictionary<string, List<(double X, double Y)>>();   // GL JS's compareText
+            // a layer's icons shaped once for each set of inputs (read only after: quads, extent, box)
+            var shapedIcons = new Dictionary<(ImagePosition, (double, double), SymbolAnchor, double, double, (double, double, double, double), bool),
+                (List<IconQuad> Quads, (double Left, double Right) Extent, SymbolBox Box)>();
             var store = style.GlyphStore;
             var sprites = style.SpriteStore;
             int start = _symbolIndices.Count;
@@ -280,18 +283,26 @@ internal static partial class VectorBucketBuilder
                 {
                     var iconOffset = Pair(GpuStyleLayer.Get(l.Layout, "icon-offset"), ctx, "icon-offset");
                     var iconAnchor = ParseAnchor(Expression.String(GpuStyleLayer.Get(l.Layout, "icon-anchor"), ctx, "center"));
-                    var shapedIcon = IconShaping.ShapeIcon(img, iconOffset, iconAnchor);
                     if (iconAlongLine && (iconOffset.X != 0 || iconOffset.Y != 0)) throw new StyleUnsupportedException("icon-offset along a line");
-                    if (iconTextFit != "none" && shaping != null)
-                        shapedIcon = IconShaping.FitIconToText(shapedIcon, shaping, iconTextFit,
-                            Padding(GpuStyleLayer.Get(l.Layout, "icon-text-fit-padding"), ctx, 0, "icon-text-fit-padding"),
-                            iconOffset, layoutTextSize / Shaping.OneEm, layoutIconSize);
                     double iconRotate = Expression.Number(iconRotateValue, ctx, 0);
-                    iconQuads = IconShaping.GetIconQuads(shapedIcon, iconRotate, iconTextFit != "none", layoutIconSize);
-                    iconExtent = (shapedIcon.Left, shapedIcon.Right);
-                    var (bx1, by1, bx2, by2) = IconShaping.CollisionBox(shapedIcon, layoutIconSize,
-                        Padding(GpuStyleLayer.Get(l.Layout, "icon-padding"), ctx, 2, "icon-padding"));
-                    iconBox = CollisionBox(bx1, by1, bx2, by2, 1, (0, 0, 0, 0), iconRotate * Math.PI / 180);
+                    var iconPadding = Padding(GpuStyleLayer.Get(l.Layout, "icon-padding"), ctx, 2, "icon-padding");
+                    bool fitted = iconTextFit != "none" && shaping != null;
+                    // the same image, offset, anchor, rotation, size and padding: the same quads and box -
+                    // every one-way arrow of a layer was shaped anew (4g step 4). Fitted to text: its own.
+                    var iconKey = (img, iconOffset, iconAnchor, iconRotate, layoutIconSize, iconPadding, iconTextFit != "none");
+                    if (fitted || !shapedIcons.TryGetValue(iconKey, out var shaped))
+                    {
+                        var shapedIcon = IconShaping.ShapeIcon(img, iconOffset, iconAnchor);
+                        if (fitted)
+                            shapedIcon = IconShaping.FitIconToText(shapedIcon, shaping!, iconTextFit,
+                                Padding(GpuStyleLayer.Get(l.Layout, "icon-text-fit-padding"), ctx, 0, "icon-text-fit-padding"),
+                                iconOffset, layoutTextSize / Shaping.OneEm, layoutIconSize);
+                        var quads = IconShaping.GetIconQuads(shapedIcon, iconRotate, iconTextFit != "none", layoutIconSize);
+                        var (bx1, by1, bx2, by2) = IconShaping.CollisionBox(shapedIcon, layoutIconSize, iconPadding);
+                        shaped = (quads, (shapedIcon.Left, shapedIcon.Right), CollisionBox(bx1, by1, bx2, by2, 1, (0, 0, 0, 0), iconRotate * Math.PI / 180));
+                        if (!fitted) shapedIcons[iconKey] = shaped;
+                    }
+                    (iconQuads, iconExtent, iconBox) = shaped;
                     iconSize = layer.IconSizePerFeature ? (float)Expression.Number(layer.IconSize, ctx, 1) : 0;
                     iconOpacity = layer.IconOpacityPerFeature ? (float)Expression.Number(layer.IconOpacity, ctx, 1) : 1;
                     iconColor = layer.IconColorPerFeature ? Pack(Expression.Color(layer.IconColor, ctx, StyleColor.Black)) : uint.MaxValue;
@@ -309,6 +320,7 @@ internal static partial class VectorBucketBuilder
                     foreach (var (y, iconStart, iconCount) in IconsAlongLine(layer, f, placement, ctx, iconQuads, iconExtent!.Value, iconBox!.Value,
                         layoutTextSize, iconSize, iconOpacity, iconColor, flags, repeated))
                         instances.Add((y, featureIndex, iconStart, iconCount, 0, 0));
+                    AllocMeter.Lap(14, "icons along line");
                     continue;
                 }
                 // a point's anchors; on a line, upright symbols at the line's anchors (viewport alignment)
@@ -424,7 +436,7 @@ internal static partial class VectorBucketBuilder
                     foreach (var (used, anchor) in LinePlacements(layer, f, placement, ctx, (shaping.Left, shaping.Right), null, layoutTextSize, text, repeated))
                     {
                         var anchorPosition = Relative(anchor.X / Up, anchor.Y / Up);
-                        var points = used.Select(p => Relative(p.X / Up, p.Y / Up)).ToArray();
+                        var points = LineOf(used, Up);
                         int first = _symbolVertices.Count;
                         var offsets = new List<float>();
                         foreach (var lineGlyphs in shaping.PositionedLines)
@@ -476,6 +488,24 @@ internal static partial class VectorBucketBuilder
         // along the projected line, turned to it (icon-keep-upright, false by default, may flip it), and
         // collides it as its box round the anchor
         // Each one's anchor y (GL JS units, rounded) and its icon index range, for sortFeatures.
+        // The line a label along a line is walked on, relative to the bucket's centre: one array for all the
+        // anchors on one clipped line, not one each (a long road's every one-way arrow held the whole road -
+        // 13.8 MB of a z12 tile, and kept with it; GL JS keeps a feature's line once, 4g step 4). Read only.
+        object? _lineOfUsed;
+        double _lineOfScale;
+        Vector3[] _lineOf = Array.Empty<Vector3>();
+
+        Vector3[] LineOf(IReadOnlyList<(double X, double Y)> used, double scale)
+        {
+            if (!ReferenceEquals(used, _lineOfUsed) || scale != _lineOfScale)
+            {
+                var line = new Vector3[used.Count];
+                for (int i = 0; i < line.Length; i++) line[i] = Relative(used[i].X / scale, used[i].Y / scale);
+                (_lineOfUsed, _lineOfScale, _lineOf) = (used, scale, line);
+            }
+            return _lineOf;
+        }
+
         List<(int Y, int IconStart, int IconCount)> IconsAlongLine(GpuStyleLayer layer, StyleFeature f, string placement, StyleContext ctx, List<IconQuad> quads,
             (double Left, double Right) extent, SymbolBox box, double layoutTextSize, float size, float opacity, uint color,
             SymbolFlags flags, Dictionary<string, List<(double X, double Y)>> repeated)
@@ -492,7 +522,7 @@ internal static partial class VectorBucketBuilder
                 _lineLabels.Add(new LineLabel
                 {
                     Layer = layer.Index, Anchor = anchorPosition, Segment = anchor.Segment,
-                    Line = used.Select(p => Relative(p.X / LineUp, p.Y / LineUp)).ToArray(),
+                    Line = LineOf(used, LineUp),
                     GlyphOffsets = new float[quads.Count], VertexStart = first, KeepUpright = keepUpright,
                     FeatureSize = size, IconBox = box,
                     AlwaysOverlap = (flags & SymbolFlags.IconAllowOverlap) != 0, IgnorePlacement = (flags & SymbolFlags.IconIgnorePlacement) != 0,
@@ -522,8 +552,11 @@ internal static partial class VectorBucketBuilder
                 foreach (var ring in part)
                 {
                     if (f.Kind == StyleFeature.Shape.Point || ring.Length < 2) continue;
-                    var line = ring.Select(p => { var (x, y) = Local(p.X, p.Y); return (x * Up, y * Up); }).ToList();
-                    var placements = new List<(IReadOnlyList<(double X, double Y)> line, LineAnchor anchor)>();
+                    // no LINQ and no list between: 1.6 KB a feature of a z12 tile's one-way arrows (4g step 4)
+                    var line = new List<(double X, double Y)>(ring.Length);
+                    foreach (var (px, py) in ring) { var (x, y) = Local(px, py); line.Add((x * Up, y * Up)); }
+                    var placements = result;
+                    int from = result.Count;
                     if (placement == "line")
                     {
                         foreach (var clipped in LineAnchors.ClipLine(new[] { line }, 0, 0, GlExtent, GlExtent))
@@ -542,8 +575,14 @@ internal static partial class VectorBucketBuilder
                             if (piece.Count > 1 && LineAnchors.GetCenterAnchor(piece, maxAngle, shapedText, shapedIcon, Shaping.OneEm, boxScale) is { } centre)
                                 placements.Add((piece, centre));
                     }
-                    foreach (var p in placements)
-                        if (p.anchor.X >= 0 && p.anchor.X < GlExtent && p.anchor.Y >= 0 && p.anchor.Y < GlExtent) result.Add(p);
+                    // only the anchors inside the tile, kept in order
+                    int to = from;
+                    for (int i = from; i < result.Count; i++)
+                    {
+                        var a = result[i].anchor;
+                        if (a.X >= 0 && a.X < GlExtent && a.Y >= 0 && a.Y < GlExtent) result[to++] = result[i];
+                    }
+                    result.RemoveRange(to, result.Count - to);
                 }
             return result;
 
@@ -686,7 +725,9 @@ internal static partial class VectorBucketBuilder
         static (double, double, double, double) Padding(JsonElement? value, StyleContext ctx, double fallback, string name)
         {
             if (value is not { } v) return (fallback, fallback, fallback, fallback);
-            var numbers = new List<double>();
+            // up to four numbers, on the stack (a list a call was in every icon's garbage, 4g step 4)
+            Span<double> buffer = stackalloc double[5];
+            var numbers = new Numbers(buffer);
             object? e = v.ValueKind == JsonValueKind.Number ? v.GetDouble()
                 : v.ValueKind == JsonValueKind.Array && v.EnumerateArray().All(x => x.ValueKind == JsonValueKind.Number) ? v
                 : Expression.Evaluate(v, ctx, Expression.Kind.Any);
@@ -694,7 +735,7 @@ internal static partial class VectorBucketBuilder
             {
                 case double d: numbers.Add(d); break;
                 case JsonElement { ValueKind: JsonValueKind.Number } n: numbers.Add(n.GetDouble()); break;
-                case JsonElement { ValueKind: JsonValueKind.Array } a: numbers.AddRange(a.EnumerateArray().Select(x => x.GetDouble())); break;
+                case JsonElement { ValueKind: JsonValueKind.Array } a: foreach (var x in a.EnumerateArray()) numbers.Add(x.GetDouble()); break;
                 case IEnumerable<object?> list:
                     foreach (var x in list) numbers.Add(x is double d ? d : throw new StyleUnsupportedException($"an {name} that is not numbers"));
                     break;
@@ -708,6 +749,15 @@ internal static partial class VectorBucketBuilder
                 4 => (numbers[0], numbers[1], numbers[2], numbers[3]),
                 _ => throw new StyleUnsupportedException($"an {name} of one to four numbers"),
             };
+        }
+
+        // a few numbers on the stack; past four only counted (a padding of five is refused all the same)
+        ref struct Numbers(Span<double> items)
+        {
+            readonly Span<double> _items = items;
+            public int Count;
+            public void Add(double d) { if (Count < _items.Length) _items[Count] = d; Count++; }
+            public double this[int i] => _items[i];
         }
 
         // the style spec's tokens: "{name}" is the feature's name property, an absent one empty

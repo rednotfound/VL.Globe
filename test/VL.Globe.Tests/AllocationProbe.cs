@@ -25,7 +25,9 @@ public class AllocationProbe(ITestOutputHelper output)
         var shapes = all.Where(l => !l.IsSymbol).ToList();
         var symbols = all.Where(l => l.IsSymbol).ToList();
 
-        foreach (var key in new[] { new TileKey(14, 14552, 6451), new TileKey(14, 14553, 6451), new TileKey(13, 7276, 3225) })
+        foreach (var key in (Environment.GetEnvironmentVariable("VLGLOBE_PROBE_TILES") == "low"
+            ? new[] { new TileKey(10, 909, 403), new TileKey(11, 1819, 806), new TileKey(12, 3638, 1612) }   // Tokyo zoomed out (the zoom bench)
+            : new[] { new TileKey(14, 14552, 6451), new TileKey(14, 14553, 6451), new TileKey(13, 7276, 3225) }))
         {
             // the bytes here first (fetched or from the disk cache), and a first build to warm the code
             while (DateTime.UtcNow < until)

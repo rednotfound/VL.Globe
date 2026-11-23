@@ -33,12 +33,30 @@ internal sealed class LineTessellator
     const double DegPerTriangle = 20;
     const double ExtrudeScale = 63;                          // GL JS stores extrusions as bytes of 1/63
 
-    readonly List<ExtrudedVertex> _triangles;
-    readonly double _outset;
+    List<ExtrudedVertex> _triangles = null!;
+    double _outset;
     readonly List<(ExtrudedVertex v, bool round)> _strip = new();
     int _e1 = -1, _e2 = -1;
 
-    LineTessellator(List<ExtrudedVertex> into, double outset) { _triangles = into; _outset = outset; }
+    // One tessellator and one array of points a thread, reset per line: a new one a line grew a new strip
+    // list each time - the (ExtrudedVertex, bool)[] at the top of a zoomed-out tile's garbage (4g step 4)
+    [ThreadStatic] static LineTessellator? t_tessellator;
+    [ThreadStatic] static V[]? t_vertices;
+
+    static LineTessellator For(List<ExtrudedVertex> into, double outset)
+    {
+        var t = t_tessellator ??= new LineTessellator();
+        t._triangles = into; t._outset = outset;
+        t._strip.Clear(); t._e1 = -1; t._e2 = -1;
+        return t;
+    }
+
+    static V[] Points(int n)
+    {
+        var a = t_vertices;
+        if (a is null || a.Length < n) t_vertices = a = new V[Math.Max(n, 2 * (a?.Length ?? 16))];
+        return a;
+    }
 
     [ThreadStatic] static List<ExtrudedVertex>? _scratch;
 
@@ -61,11 +79,11 @@ internal sealed class LineTessellator
     public static void Tessellate(IReadOnlyList<SKPoint> line, bool isPolygon, string join, string cap,
         double miterLimit, double roundLimit, double outset, double sharpCornerOffset, List<LineVertex> into)
     {
-        var vertices = new V[line.Count];
+        var vertices = Points(line.Count);
         for (int i = 0; i < line.Count; i++) vertices[i] = new V(line[i].X, line[i].Y);
         var raw = _scratch ??= new List<ExtrudedVertex>();
         raw.Clear();
-        new LineTessellator(raw, outset).AddLine(vertices, isPolygon, join, cap, miterLimit, roundLimit, sharpCornerOffset);
+        For(raw, outset).AddLine(vertices, line.Count, isPolygon, join, cap, miterLimit, roundLimit, sharpCornerOffset);
         into.Capacity = Math.Max(into.Capacity, into.Count + raw.Count);
         foreach (var r in raw) into.Add(new LineVertex(new SKPoint((float)(r.X + r.QX * outset), (float)(r.Y + r.QY * outset)), r.N));
     }
@@ -74,9 +92,9 @@ internal sealed class LineTessellator
     public static void TessellateExtruded(IReadOnlyList<(double X, double Y)> line, bool isPolygon, string join, string cap,
         double miterLimit, double roundLimit, double nominalOutset, double sharpCornerOffset, List<ExtrudedVertex> into)
     {
-        var vertices = new V[line.Count];
+        var vertices = Points(line.Count);
         for (int i = 0; i < line.Count; i++) vertices[i] = new V(line[i].X, line[i].Y);
-        new LineTessellator(into, nominalOutset).AddLine(vertices, isPolygon, join, cap, miterLimit, roundLimit, sharpCornerOffset);
+        For(into, nominalOutset).AddLine(vertices, line.Count, isPolygon, join, cap, miterLimit, roundLimit, sharpCornerOffset);
     }
 
     /// <summary>Cuts the triangles where GL JS's shader alpha bends and gives every vertex its colour: <paramref name="color"/> (straight) times that alpha.</summary>
@@ -145,9 +163,9 @@ internal sealed class LineTessellator
         return m;
     }
 
-    void AddLine(V[] vertices, bool isPolygon, string join, string cap, double miterLimit, double roundLimit, double sharpCornerOffset)
+    void AddLine(V[] vertices, int count, bool isPolygon, string join, string cap, double miterLimit, double roundLimit, double sharpCornerOffset)
     {
-        int len = vertices.Length;
+        int len = count;   // the array is the thread's, longer than the line
         while (len >= 2 && vertices[len - 1] == vertices[len - 2]) len--;
         int first = 0;
         while (first < len - 1 && vertices[first] == vertices[first + 1]) first++;

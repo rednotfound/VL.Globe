@@ -766,9 +766,12 @@ internal static partial class VectorBucketBuilder
                 }
         }
 
+        // a line's points, one list a builder (it was a new one a feature)
+        readonly List<(double X, double Y)> _linePoints = new();
+
         void Lines(StyleFeature f, bool isPolygon, string join, string cap, double miterLimit, double roundLimit, float width, uint color)
         {
-            var points = new List<(double X, double Y)>();
+            var points = _linePoints;
             foreach (var part in f.Parts)
                 foreach (var line in part)
                 {
