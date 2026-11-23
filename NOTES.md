@@ -715,3 +715,12 @@ looked fine - "which makes one think it works". Two causes, estimated at 100 m h
   the user's own (with attributes), Geometry gets a new Feature. Graticule = meridians and parallels as
   lines with a point each degree, draped. Seen in vvvv: a parallel near 45 N at the globe's limb looked
   dotted - not looked at yet.
+- **Dark holes through a style's background: depth, not data** (2026-11-23, the user: "还是非常明显，我觉得这个
+  问题需要仔细想一下对策"). MapLibre's demo tiles stop at z6; zoomed to z10-12 the background grid was the
+  z6 vector tile's - cells of a z6 eighth, ~80 m of chord sag below the sphere, more than the lift
+  (0.15% of the distance: 27-110 m at an eye 18-76 km up). The globe's own tiles then hid it by depth: a
+  dark disc round the centre of the view, where the lift is least. The gap diagnostic (every shown tile
+  got its background squares) and offscreen probes (no globe tiles, nothing to hide behind) both said
+  "fine" - the probe could not fail this way. Now the background is built per shown square at that
+  square's zoom. Still to look at: overscaled DATA layers (fills, lines from z6 at z12) have the same
+  sag; the demo's land showed whole, perhaps by luck of where its vertices fall.

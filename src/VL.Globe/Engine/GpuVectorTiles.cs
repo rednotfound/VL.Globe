@@ -282,12 +282,13 @@ internal sealed class GpuVectorTiles : IDisposable
                 // the style's ground colour, not the globe's dark one, while the data comes
                 if (sourceId == info.BackgroundSource)
                 {
-                    foreach (var (vk, served) in needed)
-                    {
-                        var bg = Background(device, vk);
-                        if (needed.Keys.Any(o => o.Zoom > vk.Zoom && Contains(vk, o))) foreach (var g in served) backgroundDraws.Add((bg, Rect(vk, g)));
-                        else backgroundDraws.Add((bg, new Vector4(0, 0, 1, 1)));
-                    }
+                    // One grid a shown square, at that square's own zoom - not the vector tile's: overscaled
+                    // (MapLibre's demo tiles stop at z6), a z6 grid's cells sagged ~80 m below the sphere,
+                    // more than the lift at a low eye, and the globe's own tiles hid the background - a dark
+                    // disc round the centre of the view (the user, 2026-11-23). The background needs no data.
+                    foreach (var (_, served) in needed)
+                        foreach (var square in served)
+                            backgroundDraws.Add((Background(device, square), new Vector4(0, 0, 1, 1)));
                     // 2026-11-23, the user: the globe's dark background showed through a style's own ("比如我现在的
                     // 画面", MapLibre's demo tiles at zoom 10), and no offscreen replay showed it. A shown globe
                     // tile no square of the background covers is said in the log, once a change.
