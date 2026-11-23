@@ -59,8 +59,11 @@ Guidance for Claude Code working in this repository.
    grab above (`GlobeView.DragSession`), centre latitude within ±85.05 - 346 green, not yet seen in vvvv.
    Then the help patches reorganised as VL.Stride/Skia's (topics + subfolders: Overview, Layers, Camera,
    Input, Objects; point + model merged into Objects\HowTo Place objects on the globe), all 11 compile.
-   **NEXT: the user's look at the drag, the attribution, the poles and the help patches; then ScaleBar,
-   ZoomButtons, Click (ROADMAP 6).**
+   Then F1 flags (tools/Set-HelpFlags.py, all 31 nodes) and cells for FeatureLayer, GlobeToScreen,
+   ToGlobe (Coordinate), Group (Spectral). F1 tried by the user: works.
+   **NOW (the user, 2026-11-23): they are arranging every help patch by hand. Do not edit help\ until
+   they say so; then Normalize-HelpPatches + Compile-HelpPatches on their saves, and re-run Set-HelpFlags.py
+   only if a flagged node moved patch. After that: ScaleBar, ZoomButtons, Click (ROADMAP 6) - not before they ask.**
    Then (2026-11-23) the node surface made vvvv's (docs/DESIGN-NODES.md): navigation nodes [Globe.Navigate], pins in vvvv's
    order, one Input + Group, GlobeCamera as OrbitCamera. Next: the user's judgement of the gestures and the help patches' layout.**
    Research: [docs/RESEARCH-0.1.md](docs/RESEARCH-0.1.md), [docs/RESEARCH-VECTOR.md](docs/RESEARCH-VECTOR.md).
