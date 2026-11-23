@@ -300,6 +300,29 @@ turned - the same picture untilted, not lying on a tilted map. Not seen in vvvv 
 The fade facts caught a slip the fixtures did not: the two bools of the new PlaceBox passed swapped
 (both bool, so it compiled); now passed by name.
 
+## Smoothness against GL JS, 2026-11-22/23 (ROADMAP 4g) - what the data now is, and why
+
+The user: "远远不如 GL JS 流畅". A bench (`VLGLOBE_BENCH=pan`, `tools/GLJS-Yardstick.html`) pans both the
+same 13 km at the same view: GL JS missed no frame, we missed 3.5-4.2%. Taken apart frame by frame
+(`Globe frame:` lines), the misses were gen0 collections caused by the workers building tiles - in
+.NET every thread's collection stops vvvv's render thread too; GL JS's workers have heaps of their own.
+What each part of the GPU path now is, and the measurement that made it so:
+- **A vertex is its place in the tile** (16 bytes, was 28): `TileProjection.cs` / GlobeVector.sdsl's
+  `Relative` project it, subtracting only small quantities, small angles by polynomial (the GPU's sin
+  is exact to 1e-6 absolute - metres at z14). 16-bit indices in segments with a base vertex; a line
+  layer equal to an earlier one shares its span. Bytes halved; **the misses did not move** - the bytes
+  were not the cause.
+- **Style expressions compile once** (`StyleExpressionCompiler.cs`), cached by the JSON element's
+  identity: no operator string, LINQ or closure per feature. Garbage halved; **misses unchanged**:
+  fewer collections, each longer.
+- **A decoded tile is a few arrays** (`FeatureGeometry.cs`): a layer's points one array, rings and
+  parts offsets; a feature's properties a view of the layer's key/value tables. A tile takes longer to
+  build than the ~50 ms between collections, so everything it is made of was copied by them - ~1.5 ms
+  of pause per promoted MB. Promoted 14 -> 7 MB a second; **misses 0.8-1.6%**.
+- The rule that came out of it: **what outlives a gen0 interval costs; what dies young is nearly free.**
+  Long-lived data as few large arrays. Measured with `AllocationProbe` (by hand) and the perf line's
+  promoted bytes; the details and the wrong turns are in ROADMAP 4g and NOTES.md.
+
 ## Next
 
 0. Frame time while moving: tile uploads (50-150 MB/s at a tilt, Update 15-30 ms), 1500-2400 draws a
