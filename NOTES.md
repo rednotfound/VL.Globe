@@ -736,3 +736,9 @@ looked fine - "which makes one think it works". Two causes, estimated at 100 m h
   too much**: tested by the fragment's own position (GL JS's), a z0 chord ~970 m under the sphere at an
   eye 94 m up lay "past the horizon" - all discarded. Cut along the ray instead: past its nearest
   approach to the centre (|p| > b). A far-side box: 284 px without the cut, 0 with it.
+- **Skia over Stride from C#** (2026-11-23, the attribution): `new VL.Stride.SkiaRenderer(nodeContext)
+  { Layer, Space }` is an `IGraphicsRendererBase` - put it in an `EntityRendererComponent`
+  (`DrawerRenderStage.AfterScene`) as the vector renderer is; in the layer, `SetMatrix(Identity)` is
+  device pixels (VL.Mapsui's PixelSpace). vvvv's SkiaSharp is 2.88: text through `SKPaint`
+  (TextSize, MeasureText, BreakText, FontMetrics) - `SKFont.MeasureText(string)`/`BreakText` do not
+  compile against it.

@@ -199,7 +199,29 @@ public sealed class GlobeNode : IDisposable
         _context = nodeContext;
         _logger = nodeContext.GetLogger();
         _root.Transform.Children.Add(_gpu.Entity.Transform);
+        // the credits, bottom right over everything (Engine/AttributionLayer.cs)
+        _skia = new VL.Stride.SkiaRenderer(nodeContext) { Layer = _attributionLayer, Space = VL.Skia.CommonSpace.PixelTopLeft };
+        _root.Transform.Children.Add(new Entity("Globe attribution")
+        {
+            new VL.Stride.Rendering.EntityRendererComponent { Renderer = _skia, RenderStage = VL.Stride.Rendering.DrawerRenderStage.AfterScene },
+        }.Transform);
     }
+
+    readonly AttributionLayer _attributionLayer = new();
+    readonly VL.Stride.SkiaRenderer _skia;
+    string _attribution = "";
+
+    // Every enabled layer's credit, the imagery's first; the same string while they do not change (VL
+    // compares by identity)
+    string Attribution(GlobeLayer? input)
+    {
+        var joined = AttributionOf(input);
+        if (joined != _attribution) _attribution = joined;
+        return _attribution;
+    }
+
+    internal static string AttributionOf(GlobeLayer? input)
+        => AttributionLayer.Join(input?.Leaves().Select(l => l.Raster?.Attribution ?? l.Vector?.Attribution) ?? Enumerable.Empty<string?>());
 
     /// <param name="input">What to draw on the surface: a layer from OpenStreetMap, XyzTiles, VectorTiles, FeatureLayer or Geometry, or several from Group.</param>
     /// <param name="camera">The camera entity the scene is rendered with.</param>
@@ -215,7 +237,7 @@ public sealed class GlobeNode : IDisposable
     /// <param name="tilesLoading">Requests not yet answered.</param>
     /// <param name="requestsSent">Requests made since the source changed - cached tiles are not requests.</param>
     /// <param name="bytesReceived">Bytes of tile data arrived, from the network or the disk cache.</param>
-    /// <param name="attribution">The credit to show.</param>
+    /// <param name="attribution">Every layer's credit, joined by " | ". Drawn bottom right of the view while Enabled.</param>
     /// <param name="status">Why nothing is drawn, or what is happening.</param>
     [return: Pin(Name = "Entity")]
     public Entity Update(
@@ -241,8 +263,10 @@ public sealed class GlobeNode : IDisposable
         layers = ShapesOnTheGpu(layers);
         try
         {
-            var entity = UpdateCore(out tilesVisible, out tilesLoading, out requestsSent, out bytesReceived, out attribution, out status,
+            var entity = UpdateCore(out tilesVisible, out tilesLoading, out requestsSent, out bytesReceived, out _, out status,
                 tileSource, camera, enabled, radius, background, maxZoom, screenSpaceError, maxRequestsInFlight, screenHeight, fadeDuration, layers);
+            attribution = Attribution(input);
+            _attributionLayer.Text = enabled ? attribution : "";
             return entity;
         }
         finally { Measure(updateStart); }
@@ -1012,6 +1036,7 @@ public sealed class GlobeNode : IDisposable
 
     public void Dispose()
     {
+        _skia.Dispose();
         _gpu.Dispose();
         Reset();
         if (_background is not null && _backgroundShown) _root.Transform.Children.Remove(_background.Transform);

@@ -604,7 +604,16 @@ overlay too, over plain tiles in the Background colour (the user: "用户知道�
 each tile's overlay in Group order (`RasterOverlay`: the source's disk cache, or fetched on the overlay
 worker for a wanted tile; a stand-in draws only what is cached and is marked incomplete). GPU vector
 tiles stay above all tile layers whatever their place in Group. Help patch `HowTo Stack tile layers`
-(XyzTiles' first). Still to do: ScaleBar, ZoomButtons, Click, the attribution in the window.
+(XyzTiles' first). Still to do: ScaleBar, ZoomButtons, Click.
+
+**The attribution in the window — built 2026-11-23** (the user: "别忘了支持Attribution的信息等等的呈现"), seen
+in vvvv by me (Tokyo, Liberty: "OpenFreeMap © OpenMapTiles Data from OpenStreetMap" bottom right), not yet
+by the user. As MapLibre's AttributionControl and Mapsui's renderer: no node, every Globe draws it while
+Enabled - `Engine/AttributionLayer.cs`, a VL.Skia layer put in the scene by VL.Stride's `SkiaRenderer`
+(made in C#, `AfterScene`), 12 px on a half-white box, cut with an ellipsis when wider than the view.
+Globe's `Attribution` output is now every enabled layer's credit once, in order, joined by " | " (was:
+the imagery's only). `AttributionFacts`. Open: an off switch (MapLibre's `attributionControl: false`) -
+not added until asked.
 
 The plan as written:
 

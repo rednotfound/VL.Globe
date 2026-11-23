@@ -51,8 +51,9 @@ Guidance for Claude Code working in this repository.
    ROADMAP 4h (the dark globe through styles past a source's maxzoom, docs/DESIGN-OVERSCALED.md):
    GL JS read - it is B; the user chose B': ground passes take the true sphere's depth, the far side
    cut along the ray. Built 2026-11-23 night, 315 green, offscreen probes now draw the globe tiles' depth.
-   Seen by the user in vvvv: "似乎成功了"; zoom bench 0.1% missed (no cost). **NEXT (the user, 2026-11-23):
-   ROADMAP 6, the attribution shown in the window first.**
+   Seen by the user in vvvv: "似乎成功了"; zoom bench 0.1% missed (no cost). Then ROADMAP 6: the
+   attribution drawn bottom right by every Globe (built 2026-11-23, seen by me, not yet by the user).
+   **NEXT: the user's look at it; then ScaleBar, ZoomButtons, Click (ROADMAP 6).**
    Then (2026-11-23) the node surface made vvvv's (docs/DESIGN-NODES.md): navigation nodes [Globe.Navigate], pins in vvvv's
    order, one Input + Group, GlobeCamera as OrbitCamera. Next: the user's judgement of the gestures and the help patches' layout.**
    Research: [docs/RESEARCH-0.1.md](docs/RESEARCH-0.1.md), [docs/RESEARCH-VECTOR.md](docs/RESEARCH-VECTOR.md).
