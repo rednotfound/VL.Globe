@@ -774,7 +774,10 @@ looked fine - "which makes one think it works". Two causes, estimated at 100 m h
 - **Hand-written IDs**: `Test-VLPatch.ps1` fails every help patch and VL.Globe.vl on "illegal IDs" -
   IDs whose first character is outside A-V (every ID in vvvv 7.4's shipped help starts A-V). They came
   in with the Navigation and GlobeCamera-as-OrbitCamera commits (2026-11-23), written by hand, not by
-  `New-VLId.ps1`. vvvv loaded and re-saved them; not yet replaced.
+  `New-VLId.ps1`. vvvv loaded and re-saved them. Replaced the same day: 240 IDs, 373 occurrences,
+  one mapping across all twelve documents. The audit had passed ~200 more: PowerShell's `-notmatch`
+  ignores case, so a-v counted as A-V (now `-cnotmatch`). GlobeWindow_P read back decompiled: every
+  link in place.
 - **Partial classes cannot span namespaces**: moving SymbolLayout.cs to `Symbols\` broke the build -
   it holds parts of the GPU bucket's `GpuStyleLayer`/`VectorBucketBuilder`. It lives in `Gpu\` as
   `VectorBucket.Symbols.cs`. And a member named `Fog` in VectorRenderer is why `Engine.Fog` was

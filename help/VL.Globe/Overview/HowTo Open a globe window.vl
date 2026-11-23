@@ -74,9 +74,9 @@
             <Pin Id="A8EWcJCu6jBtNz5HJyuXYF" Name="Bounds" Kind="InputPin" DefaultValue="926, 114, 800, 800" />
             <Pin Id="EZP6Hw2TiMLIECaLHcOXTZ" Name="Bound to Document" Kind="InputPin" DefaultValue="True" />
             <Pin Id="KIyc1orFsTdwRu5d2OOz1h" Name="Input" Kind="InputPin" />
-            <Pin Id="jzs8jaDkjQWL3Ecs0HniBx" Name="Camera" Kind="InputPin" />
+            <Pin Id="HKgG2COkFmoStCxe4V5Qhf" Name="Camera" Kind="InputPin" />
             <Pin Id="Fj5M1fIY4WK9B8oSi8VWna" Name="Title" Kind="InputPin" DefaultValue="Open a globe window" />
-            <Pin Id="XUGfzeJMH8NHH7wgaINy2z" Name="View" Kind="OutputPin" />
+            <Pin Id="ITW8SarDnFpZCVT9aUg8yx" Name="View" Kind="OutputPin" />
             <Pin Id="LlTMtJzruXMN3T9nO4ZnSh" Name="Cursor" Kind="OutputPin" />
             <Pin Id="A1tNWPIOJ84reFj6EI8zf3" Name="Attribution" Kind="OutputPin" />
             <Pin Id="MytfgT3q6LPQdKV84VjHI7" Name="Status" Kind="OutputPin" />
@@ -91,10 +91,10 @@
             </p:NodeReference>
             <p:HelpFocus p:Assembly="VL.Lang" p:Type="VL.Model.HelpPriority">Low</p:HelpFocus>
             <Pin Id="InLWfm7WxCPMoeuPDYFnVa" Name="Node Context" Kind="InputPin" IsHidden="true" />
-            <Pin Id="uXppcrSXU176W33VFoF4FB" Name="Initial Longitude" Kind="InputPin" DefaultValue="139.7" />
-            <Pin Id="7fDn1abrDUQftwH5MeDRmi" Name="Initial Latitude" Kind="InputPin" DefaultValue="35.68" />
-            <Pin Id="tmDXJTHBLv47aF1PvrCNg0" Name="Initial Height" Kind="InputPin" DefaultValue="12000000" />
-            <Pin Id="1ExqCtgfSHg0G3FH85Hw0X" Name="Output" Kind="OutputPin" />
+            <Pin Id="QFRzg6z4ADr0QTJ6m0S2g4" Name="Initial Longitude" Kind="InputPin" DefaultValue="139.7" />
+            <Pin Id="KfC56VnI1QKGZVusxcGCTp" Name="Initial Latitude" Kind="InputPin" DefaultValue="35.68" />
+            <Pin Id="PdPGh7jx9Sw6AhWLZgcUz3" Name="Initial Height" Kind="InputPin" DefaultValue="12000000" />
+            <Pin Id="Ptl2Yj9Kw5jxvcZ8nnFxI8" Name="Output" Kind="OutputPin" />
             <Pin Id="JxbH97pf5q5LQ6Zwopdqy2" Name="Initial Heading" Kind="InputPin" />
             <Pin Id="RV2PnrLltp4PZmLKuai1OG" Name="Initial Tilt" Kind="InputPin" />
             <Pin Id="QvvI2SbGUdwQEkuzg7xWkj" Name="Min Height" Kind="InputPin" />
@@ -114,7 +114,7 @@
               <Choice Kind="OperationCallFlag" Name="GlobeViewInfo" />
             </p:NodeReference>
             <p:HelpFocus p:Assembly="VL.Lang" p:Type="VL.Model.HelpPriority">Low</p:HelpFocus>
-            <Pin Id="YNHHc5cmoRq6qcXtD4wFoq" Name="View" Kind="InputPin" />
+            <Pin Id="OhAUwtWwZtXTymQBSyQHuU" Name="View" Kind="InputPin" />
             <Pin Id="HKFutafdJZPPbp6W2zl029" Name="Center Longitude" Kind="OutputPin" />
             <Pin Id="OgmnKILQTkSPkLKaAEF7pg" Name="Center Latitude" Kind="OutputPin" />
             <Pin Id="PRGd9oL1BRrTeMpNkB9nsc" Name="Height" Kind="OutputPin" />
@@ -185,8 +185,8 @@
         <Link Id="QX6jwiqZ0lo8HnJ4M9ZPLa" Ids="PRGd9oL1BRrTeMpNkB9nsc,F0e6Zr2jZj93PDaKgJgiMF" />
         <Link Id="H0N6i9BNvlws9GaUKly9Xs" Ids="A1tNWPIOJ84reFj6EI8zf3,GdgDhiI7En2smyMw1GUDej" />
         <Link Id="TFx7ZEvUjA6ChO9jXxcXaw" Ids="MytfgT3q6LPQdKV84VjHI7,VeMdG7dJEwlMbRQ4m1H0ih" />
-        <Link Id="Z7Pci4oPLMaajn5dY9DUaP" Ids="1ExqCtgfSHg0G3FH85Hw0X,jzs8jaDkjQWL3Ecs0HniBx" />
-        <Link Id="NqLJaqpQJk5JsxSssmIkhF" Ids="XUGfzeJMH8NHH7wgaINy2z,YNHHc5cmoRq6qcXtD4wFoq" />
+        <Link Id="VthHN5wIH1QM67YBs3WAmY" Ids="Ptl2Yj9Kw5jxvcZ8nnFxI8,HKgG2COkFmoStCxe4V5Qhf" />
+        <Link Id="NqLJaqpQJk5JsxSssmIkhF" Ids="ITW8SarDnFpZCVT9aUg8yx,OhAUwtWwZtXTymQBSyQHuU" />
         <Link Id="DrQNMJCqMozOJqdDvzieYj" Ids="FbmkWroyX9TOA2Vk9Vi3a6,BI49Ch5BmNkLN1CBssB30G" />
       </Patch>
     </Node>

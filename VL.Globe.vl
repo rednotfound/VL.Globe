@@ -23,14 +23,14 @@
               <Pin Id="M4TkM41hHkU4fU6wAVbsKy" Name="Output" Kind="OutputPin" />
               <Pin Id="H5AkJHbOLw97UJZDOHM05M" Name="View" Kind="OutputPin" />
             </Node>
-            <Node Bounds="100,180,170,19" Id="mDL6sbSble9uhXq2G9xrZA">
+            <Node Bounds="100,180,170,19" Id="Dg8lUO0jtLUBM0Bv5D8Aow">
               <p:NodeReference LastCategoryFullName="Globe" LastDependency="VL.Globe.dll">
                 <Choice Kind="NodeFlag" Name="Node" Fixed="true" />
                 <Choice Kind="OperationCallFlag" Name="GlobeWindowCamera" />
               </p:NodeReference>
-              <Pin Id="d3N52OWt3O2VcbNs6UPKlN" Name="Wired" Kind="InputPin" />
-              <Pin Id="fprBQuXpxxSrWLYubZWWuO" Name="Own" Kind="InputPin" />
-              <Pin Id="mtFehhIRz5S16IlLZuKSPC" Name="Output" Kind="OutputPin" />
+              <Pin Id="Eva4ik2obqnsfUFps398Lk" Name="Wired" Kind="InputPin" />
+              <Pin Id="LlCENbPo0fL7mtQXz7ZXTZ" Name="Own" Kind="InputPin" />
+              <Pin Id="B1i6tQbOBzhwq3VZf4kvJc" Name="Output" Kind="OutputPin" />
               <Pin Id="NUCzDhTCjoACmMCdN674VP" Name="View" Kind="OutputPin" />
             </Node>
             <Node Bounds="100,220,260,19" Id="UektPOe3BsYFakKhCwmkY7">
@@ -132,7 +132,7 @@
           </Patch>
           <Patch Id="AJmjIfRzBxd6Di2uELJOAG" Name="Update" ManuallySortedPins="true">
             <Pin Id="SL7eUprBCwWoGKaZjwfsAz" Name="Input" Kind="InputPin" />
-            <Pin Id="26auCJp8cHzlQEWht8NC1W" Name="Camera" Kind="InputPin" />
+            <Pin Id="S2j3SSD03BWaQq5ybjUDjA" Name="Camera" Kind="InputPin" />
             <Pin Id="MS1pSC2B5MOFVTQMvyYeRv" Name="Title" Kind="InputPin" DefaultValue="Globe">
               <p:TypeAnnotation LastCategoryFullName="Primitive" LastDependency="VL.CoreLib.vl">
                 <Choice Kind="TypeFlag" Name="String" />
@@ -182,18 +182,18 @@
           <Link Id="U2WzEfP2reh5WzImC6mz6S" Ids="NUCzDhTCjoACmMCdN674VP,DwWGxdb5qxU2W2evXCMAS6" IsHidden="true" />
           <Link Id="InFe5s5Xb3Ujm7Sng6lF1b" Ids="DMoen1SFJD8KTbd0mYms3w,SguVb9y0uMle14s2oHpS7d" IsHidden="true" />
           <Link Id="HnDfjFzNN0Plr9U7RGVQfG" Ids="OmGugU4cmf5gN3PPZrPw6B,VPSiiTNpgkx92QakAhcqf3" IsHidden="true" />
-          <Link Id="L8Cgmku9u0nwlAoLq6116j" Ids="mtFehhIRz5S16IlLZuKSPC,KWXe3p1IucPBVcA7mPJfXa" />
-          <Link Id="MDXAV74rarVeBz8lvATXdr" Ids="mtFehhIRz5S16IlLZuKSPC,KIjo7bI0f7hHD2l1jjmmEs" />
-          <Link Id="JN6pV5FcW1mv5zs1W49KKE" Ids="mtFehhIRz5S16IlLZuKSPC,VG0twrLFa8qshP5OU3XJAZ" />
-          <Link Id="N4jAYfEC5adukMLMZh88h7" Ids="mtFehhIRz5S16IlLZuKSPC,UaKsZ2eQ4LBoplN46GNEOO" />
+          <Link Id="L8Cgmku9u0nwlAoLq6116j" Ids="B1i6tQbOBzhwq3VZf4kvJc,KWXe3p1IucPBVcA7mPJfXa" />
+          <Link Id="MDXAV74rarVeBz8lvATXdr" Ids="B1i6tQbOBzhwq3VZf4kvJc,KIjo7bI0f7hHD2l1jjmmEs" />
+          <Link Id="JN6pV5FcW1mv5zs1W49KKE" Ids="B1i6tQbOBzhwq3VZf4kvJc,VG0twrLFa8qshP5OU3XJAZ" />
+          <Link Id="N4jAYfEC5adukMLMZh88h7" Ids="B1i6tQbOBzhwq3VZf4kvJc,UaKsZ2eQ4LBoplN46GNEOO" />
           <Link Id="SKpUq14KyOMUu8qusa8ccl" Ids="LPZklW1vpTnweVxfbqNlHo,GHs7btgGi1O4dffC0si7Ju" />
           <Link Id="U9NylfSTwyQwmin8I2Q8Kp" Ids="JPf4tekKYo1pUREGy0Hgmf,C57eMcGYfG5dWKorSzBKOo" />
           <Link Id="S0CfeHFFOclyupJlnfg1I4" Ids="T9A8v2DNjEc7JgoBfpKVSV,Eh9Wyjcf0x2X83eD0oN8iy" />
           <Link Id="PtzhRQCHeGjy2kcXqDF55f" Ids="GXNmRpFV6EBAqoDghzdgqn,VQ33EeMj3BXg2WUXeRfAOM" />
           <Link Id="EGWGuZ9VJjeagrptcQwqaR" Ids="Pp6fDczROXHPQ9TSXZ4FaX,SKSIvTvblRf2AXLmCSHg6J" />
           <Link Id="SZDNFzk9dM6AkFoTWPrp1L" Ids="FIurQ7sf9vJPmBbyuZXsCv,RvdwA5eS1xw3RksQPGOYup" />
-          <Link Id="AXepSpw6ACEWTNdd0WJhLO" Ids="M4TkM41hHkU4fU6wAVbsKy,fprBQuXpxxSrWLYubZWWuO" />
-          <Link Id="kXToErLugaBQ6MppmduKdM" Ids="26auCJp8cHzlQEWht8NC1W,d3N52OWt3O2VcbNs6UPKlN" IsHidden="true" />
+          <Link Id="AXepSpw6ACEWTNdd0WJhLO" Ids="M4TkM41hHkU4fU6wAVbsKy,LlCENbPo0fL7mtQXz7ZXTZ" />
+          <Link Id="GQYZzOettyyUONYN8tWu38" Ids="S2j3SSD03BWaQq5ybjUDjA,Eva4ik2obqnsfUFps398Lk" IsHidden="true" />
         </Patch>
       </Node>
     </Canvas>

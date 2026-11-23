@@ -49,8 +49,8 @@
               <Choice Kind="ProcessAppFlag" Name="MapLibreStyle (URL)" />
             </p:NodeReference>
             <p:HelpFocus p:Assembly="VL.Lang" p:Type="VL.Model.HelpPriority">High</p:HelpFocus>
-            <Pin Id="xWjpOrnB6ytmI5ETwh29BZ" Name="URL" Kind="InputPin" />
-            <Pin Id="b2s2n28TK2sRjUoOuZy9AA" Name="Output" Kind="OutputPin" />
+            <Pin Id="Q7C15vTEzPEV1cvGOrOHAf" Name="URL" Kind="InputPin" />
+            <Pin Id="ADWOLf0lZ4tp4ld93EXtj1" Name="Output" Kind="OutputPin" />
           </Node>
           <Pad Id="A51kKPfWYRD0UMzxBBGDsB" Comment="Path" Bounds="643,185,180,15" ShowValueBox="true" isIOBox="true" Value="">
             <p:TypeAnnotation LastCategoryFullName="IO" LastDependency="VL.CoreLib.vl">
@@ -74,11 +74,11 @@
               <Choice Kind="ProcessAppFlag" Name="MapLibreStyle (File)" />
             </p:NodeReference>
             <p:HelpFocus p:Assembly="VL.Lang" p:Type="VL.Model.HelpPriority">High</p:HelpFocus>
-            <Pin Id="nNEM6HiCtt5GNRhfv3g9cV" Name="Path" Kind="InputPin" />
-            <Pin Id="g6tsrPEnSMKXSh1cBj5R9S" Name="Read" Kind="InputPin" />
-            <Pin Id="mEouJybD1bDEacNKlPyE6p" Name="Output" Kind="OutputPin" />
+            <Pin Id="BqQIbqkFzqtEKLBuK1N81R" Name="Path" Kind="InputPin" />
+            <Pin Id="VhuhecNfNZBPBT1N7QBC0o" Name="Read" Kind="InputPin" />
+            <Pin Id="QjdUu6qUN7VcFjgXOzQhIt" Name="Output" Kind="OutputPin" />
           </Node>
-          <Pad Id="Xml4TEwrycSSmleXrDt2GC" Bounds="846,230,300,60" ShowValueBox="true" isIOBox="true" Value="&lt; or a style file, to edit it: open it in Maputnik (maplibre.org/maputnik), save there, press Read. Connect this node to Style instead">
+          <Pad Id="Gxk73tyDfErzUWeYAnkmns" Bounds="846,230,300,60" ShowValueBox="true" isIOBox="true" Value="&lt; or a style file, to edit it: open it in Maputnik (maplibre.org/maputnik), save there, press Read. Connect this node to Style instead">
             <p:TypeAnnotation LastCategoryFullName="Primitive" LastDependency="VL.CoreLib.vl">
               <Choice Kind="TypeFlag" Name="String" />
             </p:TypeAnnotation>
@@ -134,7 +134,7 @@
             <Pin Id="ImJ9CALmrnzpNj6bSFHcr1" Name="Bounds" Kind="InputPin" DefaultValue="592, 114, 1250, 800" />
             <Pin Id="TFFtrE1zxyScexNmv8lFFf" Name="Bound to Document" Kind="InputPin" DefaultValue="True" />
             <Pin Id="BtfThqv2ap5ThhPiRVvHoD" Name="Input" Kind="InputPin" />
-            <Pin Id="uzK8UXgrsqlvYQqGL9TMkn" Name="Camera" Kind="InputPin" />
+            <Pin Id="IoYZYMtpsCLzwfPbXrsMfK" Name="Camera" Kind="InputPin" />
             <Pin Id="FyT2kEcPVHF04NYX106UUU" Name="Title" Kind="InputPin" DefaultValue="Draw vector tiles" />
             <Pin Id="OljP7W6xNKXQRYHZme3n9u" Name="View" Kind="OutputPin" />
             <Pin Id="KtN3dZRlmqBMDUFtOFNvPk" Name="Cursor" Kind="OutputPin" />
@@ -150,8 +150,8 @@
               <Choice Kind="ProcessAppFlag" Name="GlobeCamera" />
             </p:NodeReference>
             <Pin Id="JEclVMxhIkmPwjVCJOcXxX" Name="Node Context" Kind="InputPin" IsHidden="true" />
-            <Pin Id="zqHxqcAsblDvliin8NvY40" Name="Initial Longitude" Kind="InputPin" DefaultValue="139.7671" />
-            <Pin Id="XDNXvzMWKYCBf1BTHaFiMP" Name="Initial Latitude" Kind="InputPin" DefaultValue="35.6812" />
+            <Pin Id="TQOnZqzYBvpZEawg81CO0q" Name="Initial Longitude" Kind="InputPin" DefaultValue="139.7671" />
+            <Pin Id="PLrWbJ4py72cyIwQla72pb" Name="Initial Latitude" Kind="InputPin" DefaultValue="35.6812" />
             <Pin Id="McImI4JfAPXrSLU0FhEQBK" Name="Initial Height" Kind="InputPin" DefaultValue="1500" />
             <Pin Id="P9K2zzSxxnF1eKUpTXYgwM" Name="Output" Kind="OutputPin" />
             <Pin Id="Um51avHmoeFQNQifCCA2HK" Name="Initial Heading" Kind="InputPin" />
@@ -197,15 +197,15 @@
           <Fragment Id="GnOR8ZCRMkcXRSqnWTJAie" Patch="SQW9SgPdNtqbw9AVZOlb5r" Enabled="true" />
           <Fragment Id="Dv1fJDuXFftBW1Lty7Wx9s" Patch="M93iQrHy9TUtSgQhirv1JI" Enabled="true" />
         </ProcessDefinition>
-        <Link Id="DEtMzcBCV4FbRMXXXkuzmU" Ids="NtB85HBsIRdyabqQsLa7KR,xWjpOrnB6ytmI5ETwh29BZ" />
-        <Link Id="dtIR6lWOMVOsI8jyLOPhwP" Ids="b2s2n28TK2sRjUoOuZy9AA,QuTrCUs1nkkev5vof0Wb4m" />
-        <Link Id="RMxTdQ8U5DKkP4APobHHHC" Ids="A51kKPfWYRD0UMzxBBGDsB,nNEM6HiCtt5GNRhfv3g9cV" />
-        <Link Id="MO1MvYbVGod8hGAGwLhDWg" Ids="QN2IZ5vaGovc1OQScCkXcH,g6tsrPEnSMKXSh1cBj5R9S" />
+        <Link Id="DEtMzcBCV4FbRMXXXkuzmU" Ids="NtB85HBsIRdyabqQsLa7KR,Q7C15vTEzPEV1cvGOrOHAf" />
+        <Link Id="CV9AsE48sh5Btwq6y4wRDH" Ids="ADWOLf0lZ4tp4ld93EXtj1,QuTrCUs1nkkev5vof0Wb4m" />
+        <Link Id="RMxTdQ8U5DKkP4APobHHHC" Ids="A51kKPfWYRD0UMzxBBGDsB,BqQIbqkFzqtEKLBuK1N81R" />
+        <Link Id="MO1MvYbVGod8hGAGwLhDWg" Ids="QN2IZ5vaGovc1OQScCkXcH,VhuhecNfNZBPBT1N7QBC0o" />
         <Link Id="Dd7Dd76gA9Muaids53JEQT" Ids="Sx8jhJ6j1vB2A7UhLu5Jde,MXNiXOLu0xxrFFQ4QBcOnC" />
         <Link Id="S0EMaut3UeXMg8mefXviOU" Ids="RolQ2zwdMUrGvltCTLdXLJ,T5WT3F9QFyU6Aw2RYNjmZz" />
         <Link Id="PkBqcrXUuqitbjzlv8zkIV" Ids="CWx72kLZL5EcReJgUBXoCF,BtfThqv2ap5ThhPiRVvHoD" />
         <Link Id="MzxNmajtRsXtiohb8lBYi8" Ids="I5iFsxov69rIeDAYcKjxTK,AVJjneKTLxVSGh0nhDUjDd" />
-        <Link Id="wnJNH6nysbCjCwBZWJOBrU" Ids="P9K2zzSxxnF1eKUpTXYgwM,uzK8UXgrsqlvYQqGL9TMkn" />
+        <Link Id="IxptWqQGSnS25TGwvsh1Pe" Ids="P9K2zzSxxnF1eKUpTXYgwM,IoYZYMtpsCLzwfPbXrsMfK" />
         <Link Id="PcCandoHhJuLbzBP8fRuFl" Ids="E0cdzfs776LNgFeVgNFAaO,IVlz1bt5MXgLzowHEAe4et" />
         <Link Id="BGQ5v62v0rnNpKBCbhGbQI" Ids="ENNIJhr5MEdPsPYBlQ09Mz,MuCJLUCfL92QRygdEuC3bj" />
       </Patch>

@@ -124,7 +124,7 @@
               <Choice Kind="ProcessAppFlag" Name="Group" />
             </p:NodeReference>
             <p:HelpFocus p:Assembly="VL.Lang" p:Type="VL.Model.HelpPriority">Low</p:HelpFocus>
-            <Pin Id="0lR8acRYSi4MDF8kWCBX1K" Name="Input" Kind="InputPin" />
+            <Pin Id="D123YhIFngG6HE20RAs05f" Name="Input" Kind="InputPin" />
             <Pin Id="SxGXfQ9sWc92F0ppnkRcJa" Name="Input 2" Kind="InputPin" />
             <Pin Id="VqCPV1IBu7TRog8xWads4X" Name="Input 3" Kind="InputPin" />
             <Pin Id="IAvhxROSaruxKxMy2VrKFL" Name="Output" Kind="OutputPin" />
@@ -150,7 +150,7 @@
             <Pin Id="LHG4rpPgddq5DvrnwWoUW5" Name="Bounds" Kind="InputPin" DefaultValue="926, 114, 800, 800" />
             <Pin Id="Q0lZzQg8Zg92Ajwrx8qBnW" Name="Bound to Document" Kind="InputPin" DefaultValue="True" />
             <Pin Id="SHnELELX8XX55ec8Xqjct0" Name="Input" Kind="InputPin" />
-            <Pin Id="uzK8UXgrsqlvYQqGL9TMkn" Name="Camera" Kind="InputPin" />
+            <Pin Id="IoYZYMtpsCLzwfPbXrsMfK" Name="Camera" Kind="InputPin" />
             <Pin Id="HQWIBVBdVQGwLnNojukGqN" Name="Title" Kind="InputPin" DefaultValue="Draw shapes on the globe" />
             <Pin Id="C5aQ02YadQBLqb0yzSLRiT" Name="View" Kind="OutputPin" />
             <Pin Id="R0cD8HabLsMO0xJu4WHQaS" Name="Cursor" Kind="OutputPin" />
@@ -166,8 +166,8 @@
               <Choice Kind="ProcessAppFlag" Name="GlobeCamera" />
             </p:NodeReference>
             <Pin Id="HueRjH611hcNVGttnxcWk5" Name="Node Context" Kind="InputPin" IsHidden="true" />
-            <Pin Id="zqHxqcAsblDvliin8NvY40" Name="Initial Longitude" Kind="InputPin" DefaultValue="139.7620" />
-            <Pin Id="XDNXvzMWKYCBf1BTHaFiMP" Name="Initial Latitude" Kind="InputPin" DefaultValue="35.6830" />
+            <Pin Id="TQOnZqzYBvpZEawg81CO0q" Name="Initial Longitude" Kind="InputPin" DefaultValue="139.7620" />
+            <Pin Id="PLrWbJ4py72cyIwQla72pb" Name="Initial Latitude" Kind="InputPin" DefaultValue="35.6830" />
             <Pin Id="McImI4JfAPXrSLU0FhEQBK" Name="Initial Height" Kind="InputPin" DefaultValue="3000" />
             <Pin Id="P9K2zzSxxnF1eKUpTXYgwM" Name="Output" Kind="OutputPin" />
             <Pin Id="TThQe4fOJRKLfdMAlTC1Ad" Name="Initial Heading" Kind="InputPin" />
@@ -283,9 +283,9 @@
         <Link Id="HAjSJ2sC5IOnpiOZblQ06K" Ids="UjM6h7mBAGuzk9atPBWtBl,ANKQWproSsdZMq1Oqe1zwL" />
         <Link Id="MwHNtP6rQwR4tcBcagq9EQ" Ids="STu7YzI9jmMLslRraGm2uQ,SxGXfQ9sWc92F0ppnkRcJa" />
         <Link Id="Pn3ZvyFmOjPFStoU3rY1mI" Ids="IAvhxROSaruxKxMy2VrKFL,SHnELELX8XX55ec8Xqjct0" />
-        <Link Id="CkBd9Vavq0fdy0eAF5kWHg" Ids="C3oPzM0a5NtCbFcp0dya2b,0lR8acRYSi4MDF8kWCBX1K" />
+        <Link Id="CkBd9Vavq0fdy0eAF5kWHg" Ids="C3oPzM0a5NtCbFcp0dya2b,D123YhIFngG6HE20RAs05f" />
         <Link Id="A46K1vDcLioNzR4l249jME" Ids="S6urMsRhtcrxucxhRiukoC,GqzLvqKKqdmDEmUdysaXO0" />
-        <Link Id="wnJNH6nysbCjCwBZWJOBrU" Ids="P9K2zzSxxnF1eKUpTXYgwM,uzK8UXgrsqlvYQqGL9TMkn" />
+        <Link Id="IxptWqQGSnS25TGwvsh1Pe" Ids="P9K2zzSxxnF1eKUpTXYgwM,IoYZYMtpsCLzwfPbXrsMfK" />
         <Link Id="JsLKSDD7GAy3JheX0cW8FU" Ids="KGiMdH51Wf9qAlHpuUWmn9,QauJyU2IoSL4teCyz2PIST" />
         <Link Id="O0ZbuQnBR7NVem2RNu1qFh" Ids="BpqswvaoFg0gjDB3ZUrw6y,UhZ4ypcndKXOLDcggbcKwA" />
         <Link Id="EqCtWD6qp3PlOuVXCFb3qj" Ids="E4za0KKDRmQfS2RYWzw7tn,VPThNa77Q7uWawUe6udkeR" />

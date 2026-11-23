@@ -133,9 +133,9 @@
             <Pin Id="A1BlHkhgbPJaF7fBo9Hq5S" Name="Bounds" Kind="InputPin" DefaultValue="926, 114, 800, 800" />
             <Pin Id="G7QByrgxmNUB9g3pruRh3V" Name="Bound to Document" Kind="InputPin" DefaultValue="True" />
             <Pin Id="Msk7QM2jl8FkrA8oa6tySY" Name="Input" Kind="InputPin" />
-            <Pin Id="31Vih17UJZMPFO3yadbnbJ" Name="Camera" Kind="InputPin" />
+            <Pin Id="RkWZQeITEmLzon8nqQbTO3" Name="Camera" Kind="InputPin" />
             <Pin Id="JyQ15suNRjYAWv87zuLNzi" Name="Title" Kind="InputPin" DefaultValue="Place objects on the globe" />
-            <Pin Id="gJRSnfWiQmaVg7gP6URVFq" Name="View" Kind="OutputPin" />
+            <Pin Id="V5lyaoRLzeGPpDvp2ZcSrz" Name="View" Kind="OutputPin" />
             <Pin Id="OGmvpMxZpM1OoazhCfERr1" Name="Cursor" Kind="OutputPin" />
             <Pin Id="B7lNSVdQedfOqEsXzP8R16" Name="Attribution" Kind="OutputPin" />
             <Pin Id="MejIilgQYWEz3KObypRPyZ" Name="Status" Kind="OutputPin" />
@@ -143,7 +143,7 @@
             <Pin Id="FTj6FzAVy9VsATVViGsQhU" Name="Scene" Kind="InputPin" />
             <Pin Id="UGbWykMHsz0bFUtseYNXR7" Name="Enabled" Kind="InputPin" DefaultValue="True" />
           </Node>
-          <Node Bounds="164,310,225,19" Id="8n5DW4cJ2NOTh0JKTc8uKr">
+          <Node Bounds="164,310,225,19" Id="Pl72SA61MjsWuINs82iP3S">
             <p:NodeReference LastCategoryFullName="Globe" LastDependency="VL.Globe.vl">
               <Choice Kind="NodeFlag" Name="Node" Fixed="true" />
               <Choice Kind="ProcessAppFlag" Name="GlobeCamera" />
@@ -152,7 +152,7 @@
             <Pin Id="VbJcupSsiGAaReab8TwKEr" Name="Initial Longitude" Kind="InputPin" DefaultValue="139.7671" />
             <Pin Id="DUJYsBrI3SyGk6R1mX8aZ6" Name="Initial Latitude" Kind="InputPin" DefaultValue="35.6812" />
             <Pin Id="VCsyDxdHS0ljifZN9PRncN" Name="Initial Height" Kind="InputPin" DefaultValue="3000" />
-            <Pin Id="dqPMeVy6M1IIJLgEAOptW6" Name="Output" Kind="OutputPin" />
+            <Pin Id="EpzqEhGxDVtDFRVKBD1q4e" Name="Output" Kind="OutputPin" />
             <Pin Id="INon4teqhR1MLJUUF4WOQ4" Name="Initial Heading" Kind="InputPin" />
             <Pin Id="E8lDoy8K2kJMrqF63wFmKY" Name="Initial Tilt" Kind="InputPin" />
             <Pin Id="VidfHGkqy17QFwrFl4gnS9" Name="Min Height" Kind="InputPin" />
@@ -166,16 +166,16 @@
             <Pin Id="RqYGtcm8VbrNVhID8cb7d1" Name="Enabled" Kind="InputPin" />
             <Pin Id="OyIN2c6632IN0F0rWxGuNr" Name="View" Kind="OutputPin" />
           </Node>
-          <Node Bounds="55,410,125,19" Id="9Pvp16rKa78IVYsnvLrRKG">
+          <Node Bounds="55,410,125,19" Id="Ok1DsRX3NG7VpsI8A3NHsA">
             <p:NodeReference LastCategoryFullName="Globe" LastDependency="VL.Globe.vl">
               <Choice Kind="NodeFlag" Name="Node" Fixed="true" />
               <Choice Kind="OperationCallFlag" Name="GlobeViewInfo" />
             </p:NodeReference>
             <p:HelpFocus p:Assembly="VL.Lang" p:Type="VL.Model.HelpPriority">Low</p:HelpFocus>
-            <Pin Id="h1nmrMlGNKkApFA8x5pj4e" Name="View" Kind="InputPin" />
+            <Pin Id="McDR7dn0GoaRYjsB6aOsF5" Name="View" Kind="InputPin" />
             <Pin Id="QnNkXZYUciWLD0jPxb6ptN" Name="Center Longitude" Kind="OutputPin" />
             <Pin Id="RZQEg5eZAy6MdS1i8t0yt7" Name="Center Latitude" Kind="OutputPin" />
-            <Pin Id="2Jekl5JEXhvG8sBRiz7fLm" Name="Height" Kind="OutputPin" />
+            <Pin Id="JgRwKdOYjXt4nOuNOevYb4" Name="Height" Kind="OutputPin" />
             <Pin Id="JVwwzFLCRVvLVwfSLWayqg" Name="Heading" Kind="OutputPin" />
             <Pin Id="DEjoZpR1hyjMQtFdC8Ylfy" Name="Tilt" Kind="OutputPin" />
             <Pin Id="BKhp6CIaH86Psq4FbpLmB2" Name="Resolution" Kind="OutputPin" />
@@ -354,10 +354,10 @@
         <Link Id="LqkQCsgi4Xvc6q85QVp92R" Ids="EWb3qPN2RYMMnfp6vVYXeM,IqldZs8fSeqS9CJ67PCDt2" />
         <Link Id="GkSqudHl3okkSxQEhSskhC" Ids="EDTQiSYy2AYGd9N4brvaub,FTj6FzAVy9VsATVViGsQhU" />
         <Link Id="C2YwbjXZ7hkBhHKjffOWT8" Ids="O0IDjcemAH9JJFdAEy0LPM,Msk7QM2jl8FkrA8oa6tySY" />
-        <Link Id="Ekdm8iamqmgsPzYCsTY5m4" Ids="2Jekl5JEXhvG8sBRiz7fLm,Ko3IGBwaOytQDGFWw2nEm1" />
+        <Link Id="Ekdm8iamqmgsPzYCsTY5m4" Ids="JgRwKdOYjXt4nOuNOevYb4,Ko3IGBwaOytQDGFWw2nEm1" />
         <Link Id="JQ0t6eSYZ0kBQjO2cPHa9J" Ids="MejIilgQYWEz3KObypRPyZ,E0lYYKiBRLgONqahQjait5" />
-        <Link Id="yKDk4xGj413ElCA3A03xgZ" Ids="dqPMeVy6M1IIJLgEAOptW6,31Vih17UJZMPFO3yadbnbJ" />
-        <Link Id="NPC3deX44muZFBfnKdbo18" Ids="gJRSnfWiQmaVg7gP6URVFq,h1nmrMlGNKkApFA8x5pj4e" />
+        <Link Id="V0t37EnWHQ21RKltf1YRO1" Ids="EpzqEhGxDVtDFRVKBD1q4e,RkWZQeITEmLzon8nqQbTO3" />
+        <Link Id="NPC3deX44muZFBfnKdbo18" Ids="V5lyaoRLzeGPpDvp2ZcSrz,McDR7dn0GoaRYjsB6aOsF5" />
         <Link Id="EZlpjTnqsHjUaFKJkc27Xm" Ids="N6tT5Aq1zf59iBJ1k1aa5Z,RTX5hOczMop2UQCfZooHhm" />
         <Link Id="NNiHaowxxSCrTHjDAqaX6B" Ids="TYaKadeoajFJnBlCCTDdx6,F3qYSCVN1xC5i6S2WOaUU9" />
         <Link Id="FHUevKhGYuCnUqmFp13XLo" Ids="PmTZkFXgWoxtpHepxyVHSJ,ExEh7VKGIKXBnvJTkfnMsH" />

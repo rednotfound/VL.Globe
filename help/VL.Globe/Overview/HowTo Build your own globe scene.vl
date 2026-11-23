@@ -138,23 +138,23 @@
             <Pin Id="I0u7JuaVTg9OWU35Prg0OY" Name="Field Of View" Kind="InputPin" />
             <Pin Id="MgqFkMBG673MBKaW1CK5lq" Name="Max Tilt" Kind="InputPin" />
             <Pin Id="Dt5i8YU6HgANT5QUsG0e3N" Name="Radius" Kind="InputPin" />
-            <Pin Id="aOThkmiC7XKnZAcUeWgTJ2" Name="Mouse" Kind="InputPin" DefaultValue="False" />
+            <Pin Id="AOAVGWbyLxdyBj7EfcnSo9" Name="Mouse" Kind="InputPin" DefaultValue="False" />
             <Pin Id="Tr1X3pEUFnMVSRT2xfteft" Name="Output" Kind="OutputPin" />
             <Pin Id="TJgI2PZcvOr8TmXTweToZl" Name="Screen Height" Kind="InputPin" />
             <Pin Id="UQjaIxdv8ZZNlVGhekxSZr" Name="Reset" Kind="InputPin" />
             <Pin Id="Q6BAjlznSkrP2HAEGCJ1PX" Name="Enabled" Kind="InputPin" />
             <Pin Id="KZ4MbYDrBKufVj5MpLu9XY" Name="View" Kind="OutputPin" />
           </Node>
-          <Node Bounds="453,260,125,19" Id="6RBfpDN864w7lqPIPwGC5O">
+          <Node Bounds="453,260,125,19" Id="L9BkUZm4dBcBDo5TDZGd5p">
             <p:NodeReference LastCategoryFullName="Globe" LastDependency="VL.Globe.vl">
               <Choice Kind="NodeFlag" Name="Node" Fixed="true" />
               <Choice Kind="OperationCallFlag" Name="GlobeViewInfo" />
             </p:NodeReference>
             <p:HelpFocus p:Assembly="VL.Lang" p:Type="VL.Model.HelpPriority">Low</p:HelpFocus>
-            <Pin Id="wWntOPejFuwN1x0Srplu0Y" Name="View" Kind="InputPin" />
+            <Pin Id="JKyKRQbiSHwnjqPUQgVNEB" Name="View" Kind="InputPin" />
             <Pin Id="VxbORf5BqoEPxVN5mT0jJ8" Name="Center Longitude" Kind="OutputPin" />
             <Pin Id="LlChrJm7woqMZznkoDp5Ui" Name="Center Latitude" Kind="OutputPin" />
-            <Pin Id="3OmglyZPYfOfDWZE6PWODS" Name="Height" Kind="OutputPin" />
+            <Pin Id="E3nDegqsUjtJLEcOtkZREU" Name="Height" Kind="OutputPin" />
             <Pin Id="DDcgBNkJoMjMuf0UTVrPvf" Name="Heading" Kind="OutputPin" />
             <Pin Id="MSdnaeBkP5NPxRKG5UYoEV" Name="Tilt" Kind="OutputPin" />
             <Pin Id="S9k1SxJVyXqL65nhGHrzvt" Name="Resolution" Kind="OutputPin" />
@@ -355,7 +355,7 @@
         <Link Id="TzI9kihICvm0DXit06sUky" Ids="SvYyQ7d5Aots0PpTnfz9P8,FLte66XIUu2XVUYzWsHC5Q" />
         <Link Id="RnqMy4nuT8d2yMGxUypbkC" Ids="L8AbuKhs93kaqiRojC3kCH,Lo6eX6n3UhGu7JBnzyBkW4" />
         <Link Id="SYwNd5QTVePiOWAsUi08KK" Ids="C7Z5QeWTDeq6F3Kh8fWX9g,BEmshGzzJzTNRTk8MVkXB3" />
-        <Link Id="UGz5zmaLP4REAJl9PoSzaK" Ids="3OmglyZPYfOfDWZE6PWODS,NljKtZfIt6qypxCZ78U8qV" />
+        <Link Id="UGz5zmaLP4REAJl9PoSzaK" Ids="E3nDegqsUjtJLEcOtkZREU,NljKtZfIt6qypxCZ78U8qV" />
         <Link Id="Ab5r5I1ICBlfOLeKSa6xZF" Ids="Tr1X3pEUFnMVSRT2xfteft,VkZa6ZaCY3zXbiKX0H5aRH" />
         <Link Id="GBgFhShNhYDymBSE5KA1I9" Ids="KZ4MbYDrBKufVj5MpLu9XY,SsKArKryzsYFdrUwgWhYFx" />
         <Link Id="S6P6z8CcuCRBr2Il4Y2idS" Ids="L8AbuKhs93kaqiRojC3kCH,Pk6SFmMGXsxU3vLP9EXaro" />
@@ -380,7 +380,7 @@
         <Link Id="IPY1AQKlGNBeMF5A7hzVm9" Ids="LyG5wd83vK21WEUSvEAjr1,N5G2OO9u5azORphSDEDr15" />
         <Link Id="PxAaW9b1IfYXZG7tNdTa7r" Ids="OmPLrkTiIP1rNTunc1dOrH,AQ4Mrxz3PUKBGaEcyvak8j" />
         <Link Id="BnIOfiqo3lDFzI0Efr4PGh" Ids="MXEikTxDJNorWMoCi7v5Nc,RXYHLhAWP4J9TtYgIwW2k3" />
-        <Link Id="FQvIMDtNkv9hpsSIKEOPEO" Ids="KZ4MbYDrBKufVj5MpLu9XY,wWntOPejFuwN1x0Srplu0Y" />
+        <Link Id="FQvIMDtNkv9hpsSIKEOPEO" Ids="KZ4MbYDrBKufVj5MpLu9XY,JKyKRQbiSHwnjqPUQgVNEB" />
       </Patch>
     </Node>
   </Patch>

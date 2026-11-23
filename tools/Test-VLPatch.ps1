@@ -75,7 +75,9 @@ foreach ($file in $targets) {
     # features as duplicate IDs when they were one definition and one reference each. Latent in the
     # sibling's copy too, which has no records.
     $allIds = @(([regex]'(?<![A-Za-z])Id="([^"]+)"').Matches($raw) | ForEach-Object { $_.Groups[1].Value })
-    $illegal = @($allIds | Where-Object { $_ -notmatch '^[A-V][0-9A-Za-z]{21}$' })
+    # -cnotmatch: PowerShell's -notmatch ignores case, and let a-v pass for A-V (2026-11-24: ~200
+    # hand-written IDs starting a-z went unreported; vvvv's own all start with an upper-case A-V).
+    $illegal = @($allIds | Where-Object { $_ -cnotmatch '^[A-V][0-9A-Za-z]{21}$' })
     if ($illegal.Count) { $problems.Add("illegal IDs: $($illegal -join ', ')") }
     $dupes = @($allIds | Group-Object | Where-Object Count -gt 1 | ForEach-Object Name)
     if ($dupes.Count) { $problems.Add("duplicate IDs: $($dupes -join ', ')") }
