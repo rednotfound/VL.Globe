@@ -1,0 +1,138 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Document xmlns:p="property" xmlns:r="reflection" Id="ovyrNKi1IQ8CVrqvAghVLO" LanguageVersion="2025.7.4" Version="0.128">
+  <NugetDependency Id="FlxJjMNKryvtxw66v8GMDe" Location="VL.CoreLib" Version="2025.7.4" />
+  <NugetDependency Id="lNz4n8uNxNw28jsvvQPzcH" Location="VL.Stride" Version="2025.7.4" />
+  <NugetDependency Id="vPIe1QHg3qkZFfRtkYCose" Location="VL.Globe" Version="0.0.0" />
+  <NugetDependency Id="1SommrOhOnLlEV9tDi7EzC" Location="VL.NetTopologySuite" Version="0.0.0" />
+  <Patch Id="DyxrT5WmpLHYUFGQQTN2Tv">
+    <Canvas Id="wztibe4QYsyR9s5EjS1HAK" DefaultCategory="Main" CanvasType="FullCategory" />
+    <Node Name="Application" Bounds="100,100" Id="ulqBA1djdChHtpknhX1JyG">
+      <p:NodeReference>
+        <Choice Kind="ContainerDefinition" Name="Process" />
+        <FullNameCategoryReference ID="Primitive" />
+      </p:NodeReference>
+      <Patch Id="FtMf7mj1oy3H6q79H0xYmi">
+        <Canvas Id="6nW2JgYpqcII6CgFNHl91K" CanvasType="Group">
+          <Pad Id="ErQHQwjyaxErPZDS3MoJaQ" Bounds="60,40,460,34" ShowValueBox="true" isIOBox="true" Value="Draw a graticule">
+            <p:TypeAnnotation LastCategoryFullName="Primitive" LastDependency="VL.CoreLib.vl">
+              <Choice Kind="TypeFlag" Name="String" />
+            </p:TypeAnnotation>
+            <p:ValueBoxSettings>
+              <p:fontsize p:Type="Int32">20</p:fontsize>
+              <p:stringtype p:Assembly="VL.Core" p:Type="VL.Core.StringType">Comment</p:stringtype>
+            </p:ValueBoxSettings>
+          </Pad>
+          <Pad Id="NjCxkv5ndK0meGR0vRzZ1f" Bounds="60,90,680,40" ShowValueBox="true" isIOBox="true" Value="Switch Enabled on: meridians and parallels every Spacing degrees, draped over the tiles like any other layer.">
+            <p:TypeAnnotation LastCategoryFullName="Primitive" LastDependency="VL.CoreLib.vl">
+              <Choice Kind="TypeFlag" Name="String" />
+            </p:TypeAnnotation>
+            <p:ValueBoxSettings>
+              <p:fontsize p:Type="Int32">9</p:fontsize>
+              <p:stringtype p:Assembly="VL.Core" p:Type="VL.Core.StringType">Comment</p:stringtype>
+            </p:ValueBoxSettings>
+          </Pad>
+          <Pad Id="b6d06QGofB8ChQBiIu4NJk" Comment="Enabled" Bounds="60,150,60,30" ShowValueBox="true" isIOBox="true" Value="False">
+            <p:TypeAnnotation LastCategoryFullName="Primitive" LastDependency="VL.CoreLib.vl">
+              <Choice Kind="TypeFlag" Name="Boolean" />
+            </p:TypeAnnotation>
+            <p:ValueBoxSettings>
+              <p:buttonmode p:Assembly="VL.UI.Forms" p:Type="VL.HDE.PatchEditor.Editors.ButtonModeEnum">Toggle</p:buttonmode>
+            </p:ValueBoxSettings>
+          </Pad>
+          <Pad Id="S4dJkG0fzMAQMEEMyIbPUf" Bounds="130,155,330,20" ShowValueBox="true" isIOBox="true" Value="&lt; off on open: nothing is fetched until you agree">
+            <p:TypeAnnotation LastCategoryFullName="Primitive" LastDependency="VL.CoreLib.vl">
+              <Choice Kind="TypeFlag" Name="String" />
+            </p:TypeAnnotation>
+            <p:ValueBoxSettings>
+              <p:fontsize p:Type="Int32">9</p:fontsize>
+              <p:stringtype p:Assembly="VL.Core" p:Type="VL.Core.StringType">Comment</p:stringtype>
+            </p:ValueBoxSettings>
+          </Pad>
+          <Node Bounds="60,210,100,19" Id="9mYQqw8x3SyRthqpvxxGKZ">
+            <p:NodeReference LastCategoryFullName="Globe.Layers" LastDependency="VL.Globe.vl">
+              <Choice Kind="NodeFlag" Name="Node" Fixed="true" />
+              <Choice Kind="ProcessAppFlag" Name="OpenStreetMap" />
+              <CategoryReference Kind="Category" Name="Layers" NeedsToBeDirectParent="true">
+                <p:OuterCategoryReference Kind="Category" Name="Globe" NeedsToBeDirectParent="true" />
+              </CategoryReference>
+            </p:NodeReference>
+            <Pin Id="WGlby02BcHboRBcynXMgWJ" Name="Output" Kind="OutputPin" />
+          </Node>
+          <Pad Id="oleSrcBrFwMOUdGDxnvsDE" Comment="Spacing" Bounds="200,250,50,15" ShowValueBox="true" isIOBox="true" Value="15">
+            <p:TypeAnnotation LastCategoryFullName="Primitive" LastDependency="VL.CoreLib.vl">
+              <Choice Kind="TypeFlag" Name="Float64" />
+            </p:TypeAnnotation>
+          </Pad>
+          <Node Bounds="200,280,140,19" Id="S92Ep9kD7JxlmXVo6Ma8r6">
+            <p:NodeReference LastCategoryFullName="Globe.Layers" LastDependency="VL.Globe.vl">
+              <Choice Kind="NodeFlag" Name="Node" Fixed="true" />
+              <Choice Kind="ProcessAppFlag" Name="Graticule" />
+              <CategoryReference Kind="Category" Name="Layers" NeedsToBeDirectParent="true">
+                <p:OuterCategoryReference Kind="Category" Name="Globe" NeedsToBeDirectParent="true" />
+              </CategoryReference>
+            </p:NodeReference>
+            <Pin Id="XZvlpYaGcpNhxIGjb7u4YQ" Name="Spacing" Kind="InputPin" />
+            <Pin Id="1rOhoYHGEFOwqR8C5VkCsN" Name="Line Color" Kind="InputPin" DefaultValue="1, 1, 1, 0.6" />
+            <Pin Id="3crv83GOSCTYnUsHqbRaSb" Name="Line Width" Kind="InputPin" DefaultValue="1.5" />
+            <Pin Id="iJ4rAipmBEdJKNU679qWcA" Name="Output" Kind="OutputPin" />
+          </Node>
+          <Pad Id="BLf5zYmLJwxOVyKkbSTj5b" Bounds="360,278,260,20" ShowValueBox="true" isIOBox="true" Value="&lt; degrees between the lines">
+            <p:TypeAnnotation LastCategoryFullName="Primitive" LastDependency="VL.CoreLib.vl">
+              <Choice Kind="TypeFlag" Name="String" />
+            </p:TypeAnnotation>
+            <p:ValueBoxSettings>
+              <p:fontsize p:Type="Int32">9</p:fontsize>
+              <p:stringtype p:Assembly="VL.Core" p:Type="VL.Core.StringType">Comment</p:stringtype>
+            </p:ValueBoxSettings>
+          </Pad>
+          <Node Bounds="60,330,110,19" Id="Zc5e6AImY7yYgTwmtr7YSR">
+            <p:NodeReference LastCategoryFullName="Globe.Layers" LastDependency="VL.Globe.vl">
+              <Choice Kind="NodeFlag" Name="Node" Fixed="true" />
+              <Choice Kind="ProcessAppFlag" Name="Group" />
+              <CategoryReference Kind="Category" Name="Layers" NeedsToBeDirectParent="true">
+                <p:OuterCategoryReference Kind="Category" Name="Globe" NeedsToBeDirectParent="true" />
+              </CategoryReference>
+            </p:NodeReference>
+            <Pin Id="IFNNhnIMSRzLpeAwufRvjR" Name="Input" Kind="InputPin" />
+            <Pin Id="fUttSlWRQO7BxlbnFNCFld" Name="Input 2" Kind="InputPin" />
+            <Pin Id="QMvDp4ug8oa9xxr2mSBsoH" Name="Output" Kind="OutputPin" />
+          </Node>
+          <Node Bounds="320,360,180,19" Id="6jG5SvkGDyMG1TpDDY2d1X">
+            <p:NodeReference LastCategoryFullName="Globe" LastDependency="VL.Globe.vl">
+              <Choice Kind="NodeFlag" Name="Node" Fixed="true" />
+              <Choice Kind="ProcessAppFlag" Name="GlobeCamera" />
+            </p:NodeReference>
+            <Pin Id="oAISWYzHRCQdgJKRtwWUbu" Name="Initial Longitude" Kind="InputPin" DefaultValue="10" />
+            <Pin Id="XF5xOtkiEoZIiqFcBZxsA7" Name="Initial Latitude" Kind="InputPin" DefaultValue="30" />
+            <Pin Id="OMsy03Y5MujiqPc1QMYYyA" Name="Initial Height" Kind="InputPin" DefaultValue="12000000" />
+            <Pin Id="BNQqvAXyFy8z0ZlkYn1qhr" Name="Output" Kind="OutputPin" />
+          </Node>
+          <Node Bounds="60,400,260,19" Id="H4d31P3V0TwV6tXi23t13n">
+            <p:NodeReference LastCategoryFullName="Globe" LastDependency="VL.Globe.vl">
+              <Choice Kind="NodeFlag" Name="Node" Fixed="true" />
+              <Choice Kind="ProcessAppFlag" Name="GlobeWindow" />
+            </p:NodeReference>
+            <Pin Id="V43bJtcaZkmkmTZs7mlXtI" Name="Bounds" Kind="InputPin" DefaultValue="926, 114, 800, 800" />
+            <Pin Id="3bM6gxRFImCgHaPiZzGFOs" Name="Bound to Document" Kind="InputPin" DefaultValue="True" />
+            <Pin Id="DwO1y2A5HbT2rb7jFW2xSg" Name="Input" Kind="InputPin" />
+            <Pin Id="91RYBJz9MxWe16iwdogBfZ" Name="Camera" Kind="InputPin" />
+            <Pin Id="d1a7pbhRRKN79U9PV28bLo" Name="Title" Kind="InputPin" DefaultValue="Draw a graticule" />
+            <Pin Id="L7ZEOnDWvBPI1uZpzfPMv8" Name="Enabled" Kind="InputPin" />
+          </Node>
+        </Canvas>
+        <Patch Id="dYWR7xjth7FMiQramohEBU" Name="Create" />
+        <Patch Id="v0zWuvMyW34ZFvm4NOINxe" Name="Update" />
+        <ProcessDefinition Id="12PdBtbFyw1zfeI66HDJY1">
+          <Fragment Id="5WJzIa2GxA5jbvYeHRNrto" Patch="dYWR7xjth7FMiQramohEBU" Enabled="true" />
+          <Fragment Id="tArZGVzHfXRRc3sP9xSswf" Patch="v0zWuvMyW34ZFvm4NOINxe" Enabled="true" />
+        </ProcessDefinition>
+        <Link Id="Ph0chZjeMjiY9GIklJ053w" Ids="oleSrcBrFwMOUdGDxnvsDE,XZvlpYaGcpNhxIGjb7u4YQ" />
+        <Link Id="o1zbQjsDKDSuWk0qWasBWW" Ids="WGlby02BcHboRBcynXMgWJ,IFNNhnIMSRzLpeAwufRvjR" />
+        <Link Id="Bnk9b7NwwsgNFxAwucKtI3" Ids="iJ4rAipmBEdJKNU679qWcA,fUttSlWRQO7BxlbnFNCFld" />
+        <Link Id="HNJ5atN3Jui71d6up7IQYT" Ids="QMvDp4ug8oa9xxr2mSBsoH,DwO1y2A5HbT2rb7jFW2xSg" />
+        <Link Id="5n4hf99eNlVB0RvrXcBo6x" Ids="BNQqvAXyFy8z0ZlkYn1qhr,91RYBJz9MxWe16iwdogBfZ" />
+        <Link Id="uvdO94uQSE5n3oNe0gQEF5" Ids="b6d06QGofB8ChQBiIu4NJk,L7ZEOnDWvBPI1uZpzfPMv8" />
+      </Patch>
+    </Node>
+  </Patch>
+</Document>

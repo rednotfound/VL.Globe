@@ -709,3 +709,9 @@ looked fine - "which makes one think it works". Two causes, estimated at 100 m h
   dark-matter, voyager; MapLibre demotiles (zoom 0-6 only). All draw; OpenFreeMap dark comes out nearly
   black with faint labels - to compare with GL JS. Help patch `HowTo Choose a vector tile style` picks
   them by number, a Geometry over them.
+- **Pick and Graticule** (2026-11-23): Pick = the cursor's ray to the globe, the tolerance in pixels made
+  metres at that point, each geometry moved into local metres (longitude by its cosine), NTS Contains /
+  IsWithinDistance, top layer and last feature first; FeatureLayer keeps its features so Pick hands back
+  the user's own (with attributes), Geometry gets a new Feature. Graticule = meridians and parallels as
+  lines with a point each degree, draped. Seen in vvvv: a parallel near 45 N at the globe's limb looked
+  dotted - not looked at yet.

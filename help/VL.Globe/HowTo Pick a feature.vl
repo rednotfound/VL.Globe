@@ -1,0 +1,209 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Document xmlns:p="property" xmlns:r="reflection" Id="SLmOrWpm8pGP6m4RcOdarq" LanguageVersion="2025.7.4" Version="0.128">
+  <NugetDependency Id="BbNcgoIreWf6RkJpOxEEwn" Location="VL.CoreLib" Version="2025.7.4" />
+  <NugetDependency Id="vvFVi13eZhCZ0N1XXnCBVq" Location="VL.Stride" Version="2025.7.4" />
+  <NugetDependency Id="yZjxjP1MusJWV06lBPxLgD" Location="VL.Globe" Version="0.0.0" />
+  <NugetDependency Id="4ufIfBKKF0RDt0Xaetn6QM" Location="VL.NetTopologySuite" Version="0.0.0" />
+  <Patch Id="fStFUWSus4jowQUux6huTC">
+    <Canvas Id="KM658R6rCHZtDuoz97U5Hp" DefaultCategory="Main" CanvasType="FullCategory" />
+    <Node Name="Application" Bounds="100,100" Id="fx1xbxRzLyYmVKxZyIj1LK">
+      <p:NodeReference>
+        <Choice Kind="ContainerDefinition" Name="Process" />
+        <FullNameCategoryReference ID="Primitive" />
+      </p:NodeReference>
+      <Patch Id="llfWD42sZboHdIkKs9bP1Z">
+        <Canvas Id="BeLItYIfvfrVg5ufbOPjgV" CanvasType="Group">
+          <Pad Id="C3J27XDCG2LmlZGEONYlgC" Bounds="60,40,460,34" ShowValueBox="true" isIOBox="true" Value="Pick a feature">
+            <p:TypeAnnotation LastCategoryFullName="Primitive" LastDependency="VL.CoreLib.vl">
+              <Choice Kind="TypeFlag" Name="String" />
+            </p:TypeAnnotation>
+            <p:ValueBoxSettings>
+              <p:fontsize p:Type="Int32">20</p:fontsize>
+              <p:stringtype p:Assembly="VL.Core" p:Type="VL.Core.StringType">Comment</p:stringtype>
+            </p:ValueBoxSettings>
+          </Pad>
+          <Pad Id="tjfIZ4SOcMz9CPVNPkNa1H" Bounds="60,90,680,40" ShowValueBox="true" isIOBox="true" Value="Switch Enabled on and move the mouse over the squares: Pick finds the topmost shape under the cursor. It reports continuously; for clicks, put a S+H after it, gated on a button.">
+            <p:TypeAnnotation LastCategoryFullName="Primitive" LastDependency="VL.CoreLib.vl">
+              <Choice Kind="TypeFlag" Name="String" />
+            </p:TypeAnnotation>
+            <p:ValueBoxSettings>
+              <p:fontsize p:Type="Int32">9</p:fontsize>
+              <p:stringtype p:Assembly="VL.Core" p:Type="VL.Core.StringType">Comment</p:stringtype>
+            </p:ValueBoxSettings>
+          </Pad>
+          <Pad Id="edcm4pMbXDuCL1mHoOsFaQ" Comment="Enabled" Bounds="60,150,60,30" ShowValueBox="true" isIOBox="true" Value="False">
+            <p:TypeAnnotation LastCategoryFullName="Primitive" LastDependency="VL.CoreLib.vl">
+              <Choice Kind="TypeFlag" Name="Boolean" />
+            </p:TypeAnnotation>
+            <p:ValueBoxSettings>
+              <p:buttonmode p:Assembly="VL.UI.Forms" p:Type="VL.HDE.PatchEditor.Editors.ButtonModeEnum">Toggle</p:buttonmode>
+            </p:ValueBoxSettings>
+          </Pad>
+          <Pad Id="fDPrAJ71fTquWoGsbeKXgz" Bounds="130,155,330,20" ShowValueBox="true" isIOBox="true" Value="&lt; off on open: nothing is fetched until you agree">
+            <p:TypeAnnotation LastCategoryFullName="Primitive" LastDependency="VL.CoreLib.vl">
+              <Choice Kind="TypeFlag" Name="String" />
+            </p:TypeAnnotation>
+            <p:ValueBoxSettings>
+              <p:fontsize p:Type="Int32">9</p:fontsize>
+              <p:stringtype p:Assembly="VL.Core" p:Type="VL.Core.StringType">Comment</p:stringtype>
+            </p:ValueBoxSettings>
+          </Pad>
+          <Node Bounds="60,210,100,19" Id="g2sye9b2Rann76dEyTzAeK">
+            <p:NodeReference LastCategoryFullName="Globe.Layers" LastDependency="VL.Globe.vl">
+              <Choice Kind="NodeFlag" Name="Node" Fixed="true" />
+              <Choice Kind="ProcessAppFlag" Name="OpenStreetMap" />
+              <CategoryReference Kind="Category" Name="Layers" NeedsToBeDirectParent="true">
+                <p:OuterCategoryReference Kind="Category" Name="Globe" NeedsToBeDirectParent="true" />
+              </CategoryReference>
+            </p:NodeReference>
+            <Pin Id="OmXRrvftva9AW7hipTgadD" Name="Output" Kind="OutputPin" />
+          </Node>
+          <Pad Id="ZFlRJmCGmUXiAPyhzAnar3" Comment="WKT" Bounds="200,210,640,15" ShowValueBox="true" isIOBox="true" Value="MULTIPOLYGON (((139.755 35.675, 139.765 35.675, 139.765 35.685, 139.755 35.685, 139.755 35.675)), ((139.770 35.678, 139.780 35.678, 139.780 35.688, 139.770 35.688, 139.770 35.678)))">
+            <p:TypeAnnotation LastCategoryFullName="Primitive" LastDependency="VL.CoreLib.vl">
+              <Choice Kind="TypeFlag" Name="String" />
+            </p:TypeAnnotation>
+          </Pad>
+          <Node Bounds="200,240,90,19" Id="ZLt4bnlz2MPKgcjnCqaXNv">
+            <p:NodeReference LastCategoryFullName="NetTopologySuite.IO" LastDependency="VL.NetTopologySuite.vl">
+              <Choice Kind="NodeFlag" Name="Node" Fixed="true" />
+              <Choice Kind="OperationCallFlag" Name="FromWKT" />
+            </p:NodeReference>
+            <Pin Id="1syeefnLOpaMxxNDi9LE1K" Name="WKT" Kind="InputPin" />
+            <Pin Id="i3ylOjt6o0NpUmkVO8JmR8" Name="Result" Kind="OutputPin" />
+          </Node>
+          <Node Bounds="200,270,65,19" Id="y4EMfAdggcG9qpVTzqA05M">
+            <p:NodeReference LastCategoryFullName="Collections.Spread" LastDependency="VL.Collections.vl">
+              <Choice Kind="NodeFlag" Name="Node" Fixed="true" />
+              <Choice Kind="OperationCallFlag" Name="FromValue" />
+              <CategoryReference Kind="RecordType" Name="Spread" NeedsToBeDirectParent="true" />
+            </p:NodeReference>
+            <Pin Id="FsHl7UeioEJP2NNern66nV" Name="Input" Kind="InputPin" />
+            <Pin Id="berACpdclsxHKifxi5CvQU" Name="Result" Kind="OutputPin" />
+          </Node>
+          <Node Bounds="200,300,100,19" Id="SHL8iLc7bE6wSt9cbMOeEe">
+            <p:NodeReference LastCategoryFullName="Globe.Layers" LastDependency="VL.Globe.vl">
+              <Choice Kind="NodeFlag" Name="Node" Fixed="true" />
+              <Choice Kind="ProcessAppFlag" Name="Geometry" />
+              <CategoryReference Kind="Category" Name="Layers" NeedsToBeDirectParent="true">
+                <p:OuterCategoryReference Kind="Category" Name="Globe" NeedsToBeDirectParent="true" />
+              </CategoryReference>
+            </p:NodeReference>
+            <Pin Id="UtuieeCIxVc57VVTiY96vw" Name="Geometries" Kind="InputPin" />
+            <Pin Id="fRE5e32A8Yb3FKaNQyyLaM" Name="Name" Kind="InputPin" DefaultValue="Squares" />
+            <Pin Id="effOhq4AUvy7VSLDCD1IfH" Name="Output" Kind="OutputPin" />
+          </Node>
+          <Node Bounds="60,340,110,19" Id="WGbtMfEbo9ShFXNQ6Fq5ax">
+            <p:NodeReference LastCategoryFullName="Globe.Layers" LastDependency="VL.Globe.vl">
+              <Choice Kind="NodeFlag" Name="Node" Fixed="true" />
+              <Choice Kind="ProcessAppFlag" Name="Group" />
+              <CategoryReference Kind="Category" Name="Layers" NeedsToBeDirectParent="true">
+                <p:OuterCategoryReference Kind="Category" Name="Globe" NeedsToBeDirectParent="true" />
+              </CategoryReference>
+            </p:NodeReference>
+            <Pin Id="tjRNmHkW5vQ7CF5puzQqmO" Name="Input" Kind="InputPin" />
+            <Pin Id="BZZW6m4nyoL6uniiFw152c" Name="Input 2" Kind="InputPin" />
+            <Pin Id="Te8r0khCEr7n1AyOHFRuT1" Name="Output" Kind="OutputPin" />
+          </Node>
+          <Node Bounds="320,370,180,19" Id="1NCue1cr3McRTrKwtPYKbP">
+            <p:NodeReference LastCategoryFullName="Globe" LastDependency="VL.Globe.vl">
+              <Choice Kind="NodeFlag" Name="Node" Fixed="true" />
+              <Choice Kind="ProcessAppFlag" Name="GlobeCamera" />
+            </p:NodeReference>
+            <Pin Id="izDmbX1rpXjYdOhCgOIPOZ" Name="Initial Longitude" Kind="InputPin" DefaultValue="139.7675" />
+            <Pin Id="x9eRmm0EqlTaWEITclorXw" Name="Initial Latitude" Kind="InputPin" DefaultValue="35.6815" />
+            <Pin Id="IS8HGNWkz2YS5ofA75UyiC" Name="Initial Height" Kind="InputPin" DefaultValue="3500" />
+            <Pin Id="DmO46ayJKP4GY08vDuPngU" Name="Output" Kind="OutputPin" />
+          </Node>
+          <Node Bounds="60,410,260,19" Id="30ZP7Thnp5yftIY7uq6T2b">
+            <p:NodeReference LastCategoryFullName="Globe" LastDependency="VL.Globe.vl">
+              <Choice Kind="NodeFlag" Name="Node" Fixed="true" />
+              <Choice Kind="ProcessAppFlag" Name="GlobeWindow" />
+            </p:NodeReference>
+            <Pin Id="wGfcCvJAXrF6bnZ3eBZclI" Name="Bounds" Kind="InputPin" DefaultValue="926, 114, 800, 800" />
+            <Pin Id="vRY6iEjH5UH1RSC84FL8Sf" Name="Bound to Document" Kind="InputPin" DefaultValue="True" />
+            <Pin Id="WoCHJs1UJOkHG16JqtQy92" Name="Input" Kind="InputPin" />
+            <Pin Id="35Nnt2j9IHrKFmAIhGaMyb" Name="Camera" Kind="InputPin" />
+            <Pin Id="IcH6zIZKhFfSke7IDA69Z7" Name="Title" Kind="InputPin" DefaultValue="Pick a feature" />
+            <Pin Id="zrpEFivB50756EHugmANb7" Name="Enabled" Kind="InputPin" />
+            <Pin Id="qiSXbcmjoaRsuUwpNFgFUL" Name="View" Kind="OutputPin" />
+            <Pin Id="h2GNqTmSH4BbyOA0HNkIn3" Name="Cursor" Kind="OutputPin" />
+          </Node>
+          <Node Bounds="60,470,260,19" Id="OIOnHn2INL2io6VOZw5luM">
+            <p:NodeReference LastCategoryFullName="Globe" LastDependency="VL.Globe.vl">
+              <Choice Kind="NodeFlag" Name="Node" Fixed="true" />
+              <Choice Kind="ProcessAppFlag" Name="Pick" />
+            </p:NodeReference>
+            <Pin Id="u57mnXm4gi4piUfqygB18A" Name="View" Kind="InputPin" />
+            <Pin Id="IYTimzORZbgmKRw609xhTG" Name="Input" Kind="InputPin" />
+            <Pin Id="OWvGR1mZeEgbcWJNG5KEjm" Name="Position" Kind="InputPin" />
+            <Pin Id="lhnl1ks7RgLdi8RDeWguzD" Name="Tolerance" Kind="InputPin" />
+            <Pin Id="BGwBnMxaOSc2mlADxVxz6m" Name="Output" Kind="OutputPin" />
+            <Pin Id="MkgGYau5fZ1T436O8zKMmG" Name="Hit" Kind="OutputPin" />
+            <Pin Id="LvZWqr6hVVXk07zi5v4ISx" Name="Layer" Kind="OutputPin" />
+            <Pin Id="XBWlznUleZvtEga4wO5Ndo" Name="Longitude" Kind="OutputPin" />
+            <Pin Id="r89QtvnQzKlIeyGFPnShWz" Name="Latitude" Kind="OutputPin" />
+          </Node>
+          <Pad Id="KbhNgVpqCzGdWmPyagqqr5" Bounds="340,468,360,20" ShowValueBox="true" isIOBox="true" Value="&lt; View and Cursor from the window, the same layers as its Input">
+            <p:TypeAnnotation LastCategoryFullName="Primitive" LastDependency="VL.CoreLib.vl">
+              <Choice Kind="TypeFlag" Name="String" />
+            </p:TypeAnnotation>
+            <p:ValueBoxSettings>
+              <p:fontsize p:Type="Int32">9</p:fontsize>
+              <p:stringtype p:Assembly="VL.Core" p:Type="VL.Core.StringType">Comment</p:stringtype>
+            </p:ValueBoxSettings>
+          </Pad>
+          <Pad Id="vJIGA9HK2gOCZPeJMQW9cy" Comment="Hit" Bounds="60,510,40,15" ShowValueBox="true" isIOBox="true">
+            <p:TypeAnnotation LastCategoryFullName="Primitive" LastDependency="VL.CoreLib.vl">
+              <Choice Kind="TypeFlag" Name="Boolean" />
+            </p:TypeAnnotation>
+          </Pad>
+          <Pad Id="78kyEk2FINMdB8FAsHzMtx" Comment="Layer" Bounds="130,510,120,15" ShowValueBox="true" isIOBox="true">
+            <p:TypeAnnotation LastCategoryFullName="Primitive" LastDependency="VL.CoreLib.vl">
+              <Choice Kind="TypeFlag" Name="String" />
+            </p:TypeAnnotation>
+          </Pad>
+          <Pad Id="HsEPrJ7sQTVsbaXpLcOkAW" Comment="Longitude" Bounds="60,540,90,15" ShowValueBox="true" isIOBox="true">
+            <p:TypeAnnotation LastCategoryFullName="Primitive" LastDependency="VL.CoreLib.vl">
+              <Choice Kind="TypeFlag" Name="Float64" />
+            </p:TypeAnnotation>
+          </Pad>
+          <Pad Id="Ryd5uVzdLU8ueZ5oBUEqWp" Comment="Latitude" Bounds="160,540,90,15" ShowValueBox="true" isIOBox="true">
+            <p:TypeAnnotation LastCategoryFullName="Primitive" LastDependency="VL.CoreLib.vl">
+              <Choice Kind="TypeFlag" Name="Float64" />
+            </p:TypeAnnotation>
+          </Pad>
+          <Pad Id="cHg7ZU6Dj90pMThdNADhn3" Bounds="260,538,300,20" ShowValueBox="true" isIOBox="true" Value="&lt; the place under the cursor, hit or not">
+            <p:TypeAnnotation LastCategoryFullName="Primitive" LastDependency="VL.CoreLib.vl">
+              <Choice Kind="TypeFlag" Name="String" />
+            </p:TypeAnnotation>
+            <p:ValueBoxSettings>
+              <p:fontsize p:Type="Int32">9</p:fontsize>
+              <p:stringtype p:Assembly="VL.Core" p:Type="VL.Core.StringType">Comment</p:stringtype>
+            </p:ValueBoxSettings>
+          </Pad>
+        </Canvas>
+        <Patch Id="dwHjhxCiQADMqOLRAxXVH0" Name="Create" />
+        <Patch Id="i8sUipEhG5tYGN2wrrNRUK" Name="Update" />
+        <ProcessDefinition Id="0PBpToFW6HvWDzwvZ9vRiF">
+          <Fragment Id="FIZUeTN6cAW0Qw2aZy1f4D" Patch="dwHjhxCiQADMqOLRAxXVH0" Enabled="true" />
+          <Fragment Id="9IObHxTaZhA7A6jpVkOyRk" Patch="i8sUipEhG5tYGN2wrrNRUK" Enabled="true" />
+        </ProcessDefinition>
+        <Link Id="unyBHsr4dEtUhtPjX6l6dW" Ids="ZFlRJmCGmUXiAPyhzAnar3,1syeefnLOpaMxxNDi9LE1K" />
+        <Link Id="DbLE6ZcugmlwnLpMTEMGoC" Ids="i3ylOjt6o0NpUmkVO8JmR8,FsHl7UeioEJP2NNern66nV" />
+        <Link Id="l5rzl6W7tOJ80JE2qF4z69" Ids="berACpdclsxHKifxi5CvQU,UtuieeCIxVc57VVTiY96vw" />
+        <Link Id="vQJX9fE3ozdn8iZZyHYHXr" Ids="OmXRrvftva9AW7hipTgadD,tjRNmHkW5vQ7CF5puzQqmO" />
+        <Link Id="YdQ7p5a3E5xCYpTAM3kAkX" Ids="effOhq4AUvy7VSLDCD1IfH,BZZW6m4nyoL6uniiFw152c" />
+        <Link Id="ujq63ZHiOVNrHIdjKXlan0" Ids="Te8r0khCEr7n1AyOHFRuT1,WoCHJs1UJOkHG16JqtQy92" />
+        <Link Id="62j0ifwrNTHg4ESDf9VLI2" Ids="DmO46ayJKP4GY08vDuPngU,35Nnt2j9IHrKFmAIhGaMyb" />
+        <Link Id="GtbYmAm6RfY0CncIAHFk81" Ids="edcm4pMbXDuCL1mHoOsFaQ,zrpEFivB50756EHugmANb7" />
+        <Link Id="9tutzeJtDQTexeRigQzRDV" Ids="qiSXbcmjoaRsuUwpNFgFUL,u57mnXm4gi4piUfqygB18A" />
+        <Link Id="9Y1hPCa3yTTEpsKhDXa22Z" Ids="Te8r0khCEr7n1AyOHFRuT1,IYTimzORZbgmKRw609xhTG" />
+        <Link Id="Un5NjsOy7IVt9vWzJQfqmm" Ids="h2GNqTmSH4BbyOA0HNkIn3,OWvGR1mZeEgbcWJNG5KEjm" />
+        <Link Id="yUhvt8rKEUOvC0yfgjNgiR" Ids="MkgGYau5fZ1T436O8zKMmG,vJIGA9HK2gOCZPeJMQW9cy" />
+        <Link Id="OTllmzc1DLTfgockhBAXev" Ids="LvZWqr6hVVXk07zi5v4ISx,78kyEk2FINMdB8FAsHzMtx" />
+        <Link Id="60B7GiPnXj0SyEv6ANaUzN" Ids="XBWlznUleZvtEga4wO5Ndo,HsEPrJ7sQTVsbaXpLcOkAW" />
+        <Link Id="SuYYpQMHbqvmvtPCgJynGv" Ids="r89QtvnQzKlIeyGFPnShWz,Ryd5uVzdLU8ueZ5oBUEqWp" />
+      </Patch>
+    </Node>
+  </Patch>
+</Document>

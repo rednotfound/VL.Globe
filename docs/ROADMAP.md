@@ -163,7 +163,9 @@ and labels are screen-facing 3D in both prototypes.
 **Built and seen in vvvv:** `Geometry`, `FeatureLayer` [Globe.Layers] and `VectorStyle` [Globe.Styles]
 in VL.Mapsui's shape (Features/Geometries + Style + Enabled + Name → a layer), into Globe's and
 GlobeWindow's **`Layers`**, drawn in order. Help patch `HowTo Draw shapes on the globe`. Changes are
-found by content (FromWKT and Cons rebuild objects every frame). **Still to do:** `Pick`, `Graticule`.
+found by content (FromWKT and Cons rebuild objects every frame). **`Pick` and `Graticule` built 2026-11-23**
+(Engine/Picking.cs; help patches `HowTo Pick a feature`, `HowTo Draw a graticule`; seen drawing in vvvv, the
+pick's hover still to be tried by the user). Shapes after VectorTiles are drawn by the GPU (GeometryStyle).
 
 The plan as written:
 
