@@ -9,10 +9,9 @@ namespace VL.Globe.Tests.Probes;
 // Liberty at Kyoto Station, z16, tilted: placement spiked to 20-38 ms in vvvv as tiles came (2026-11-22).
 public class PlacementProbe(ITestOutputHelper output)
 {
-    [Fact]
+    [Probe]
     public void Kyoto_station_z16_tilted_on_liberty()
     {
-        if (Environment.GetEnvironmentVariable("VLGLOBE_PROBE") != "1") return;
         using var service = new VectorTileService("https://tiles.openfreemap.org/styles/liberty");
         service.Start();
         var until = DateTime.UtcNow.AddSeconds(120);

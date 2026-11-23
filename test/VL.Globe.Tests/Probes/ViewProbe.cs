@@ -8,10 +8,9 @@ namespace VL.Globe.Tests.Probes;
 // vector tile draw each row, and how far off the ground there is. VLGLOBE_PROBE=1 VLGLOBE_VIEW=#z/lat/lng/b/p
 public class ViewProbe(ITestOutputHelper output)
 {
-    [Fact]
+    [Probe]
     public void RowsOfTheReportedView()
     {
-        if (Environment.GetEnvironmentVariable("VLGLOBE_PROBE") != "1") return;
         var hash = Environment.GetEnvironmentVariable("VLGLOBE_VIEW") ?? "#13.82/35.69555/139.75982/-9.9/57.3";
         const double FovY = Math.PI / 4, W = 1265, H = 808;
         var v = new GlobeView { MinHeight = 1, Width = W, Height_px = H, FovY = FovY, TiltByZoomLimit = false };

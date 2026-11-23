@@ -7,10 +7,9 @@ namespace VL.Globe.Tests.Probes;
 // and what the lenient parse and the builds skipped or dropped, at zooms where cities are labelled.
 public class PlaceLabelProbe(ITestOutputHelper output)
 {
-    [Fact]
+    [Probe]
     public void Liberty_place_layers()
     {
-        if (Environment.GetEnvironmentVariable("VLGLOBE_PROBE") != "1") return;
         using var service = new VectorTileService("https://tiles.openfreemap.org/styles/liberty");
         service.Start();
         var until = DateTime.UtcNow.AddSeconds(60);

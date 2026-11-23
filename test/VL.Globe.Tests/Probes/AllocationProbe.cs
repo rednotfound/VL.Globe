@@ -10,10 +10,9 @@ namespace VL.Globe.Tests.Probes;
 // when it is done - what a collection in the middle must mark and copy.
 public class AllocationProbe(ITestOutputHelper output)
 {
-    [Fact]
+    [Probe]
     public void Tokyo_z14_on_liberty()
     {
-        if (Environment.GetEnvironmentVariable("VLGLOBE_PROBE") != "1") return;
         using var service = new VectorTileService("https://tiles.openfreemap.org/styles/liberty");
         service.Start();
         var until = DateTime.UtcNow.AddSeconds(60);

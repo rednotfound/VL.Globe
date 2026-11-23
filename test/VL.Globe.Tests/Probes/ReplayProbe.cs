@@ -10,10 +10,9 @@ namespace VL.Globe.Tests.Probes;
 // some time on" - a layer that throws while one tile is built is dropped for every tile after.
 public class ReplayProbe(ITestOutputHelper output)
 {
-    [Fact]
+    [Probe]
     public void A_session_s_views_in_order()
     {
-        if (Environment.GetEnvironmentVariable("VLGLOBE_PROBE") != "1") return;
         var file = Environment.GetEnvironmentVariable("VLGLOBE_VIEWS_FILE");
         if (file is null || !File.Exists(file)) return;
         var hashes = File.ReadAllLines(file).Where(l => l.StartsWith('#')).ToList();

@@ -7,16 +7,15 @@ namespace VL.Globe.Tests.Probes;
 // one frame while tilting over Kyoto (2026-11-22). Fetches the style and the tile (or reads the cache).
 public class TileSizeProbe(ITestOutputHelper output)
 {
-    [Fact]
+    [Probe]
     public void Kyoto_station_z14_on_liberty() => Measure(new TileKey(14, 14371, 6491));
 
     // the far tiles of the user's tilted view over Tokyo (2026-11-22): do z13 tiles hold buildings?
-    [Fact]
+    [Probe]
     public void Kanda_z13_on_liberty() => Measure(new TileKey(13, 7276, 3225));
 
     void Measure(TileKey key)
     {
-        if (Environment.GetEnvironmentVariable("VLGLOBE_PROBE") != "1") return;
         using var service = new VectorTileService("https://tiles.openfreemap.org/styles/liberty");
         service.Start();
         var until = DateTime.UtcNow.AddSeconds(60);

@@ -8,10 +8,9 @@ public class TileProjectionProbe
     readonly ITestOutputHelper _out;
     public TileProjectionProbe(ITestOutputHelper output) => _out = output;
 
-    [Fact]
+    [Probe]
     public void Worst_error_by_zoom()
     {
-        if (Environment.GetEnvironmentVariable("VLGLOBE_PROBE") != "1") return;
         foreach (var (lon, lat) in new[] { (139.767, 35.681), (25.0, 78.0), (179.9, -60.0) })
             for (int z = 0; z <= 18; z += 2)
             {
