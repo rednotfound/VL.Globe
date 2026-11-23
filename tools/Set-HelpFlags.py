@@ -9,7 +9,7 @@ H, L = 'High', 'Low'
 plan = {
     r'Overview\HowTo Open a globe window.vl': {'GlobeWindow': H, 'OpenStreetMap': H, 'GlobeCamera': L, 'GlobeViewInfo': L},
     r'Overview\HowTo Build your own globe scene.vl': {'Globe': H, 'GlobeCamera': H, 'Drag': H, 'ZoomByWheel': H, 'DragRotate': H, 'OpenStreetMap': L, 'GlobeViewInfo': L},
-    r'Layers\HowTo Stack tile layers.vl': {'XyzTiles': H, 'Group': H, 'OpenStreetMap': L, 'GlobeWindow': L},
+    r'Layers\HowTo Stack tile layers.vl': {'XyzTiles': H, 'Group': H, 'Group (Spectral)': H, 'OpenStreetMap': L, 'GlobeWindow': L},
     r'Layers\HowTo Draw vector tiles.vl': {'VectorTiles': H, 'MapLibreStyle (URL)': H, 'MapLibreStyle (File)': H},
     r'Layers\HowTo Choose a vector tile style.vl': {'VectorTiles': L, 'MapLibreStyle (URL)': L, 'Geometry': L, 'VectorStyle': L, 'Group': L},
     r'Layers\HowTo Draw shapes on the globe.vl': {'Geometry': H, 'VectorStyle': H, 'FeatureLayer': H, 'Group': L},

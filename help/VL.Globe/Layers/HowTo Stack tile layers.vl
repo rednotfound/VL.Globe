@@ -153,7 +153,47 @@
               <Choice Kind="TypeFlag" Name="String" />
             </p:TypeAnnotation>
           </Pad>
-          <Pad Id="IhEhvLlb5O7nbncTIsHVcQ" Bounds="540,458,300,20" ShowValueBox="true" isIOBox="true" Value="&lt; the bottom layer's credit; show every layer's">
+          <Pad Id="IhEhvLlb5O7nbncTIsHVcQ" Bounds="540,458,360,20" ShowValueBox="true" isIOBox="true" Value="&lt; every layer's credit, also drawn bottom right in the window">
+            <p:TypeAnnotation LastCategoryFullName="Primitive" LastDependency="VL.CoreLib.vl">
+              <Choice Kind="TypeFlag" Name="String" />
+            </p:TypeAnnotation>
+            <p:ValueBoxSettings>
+              <p:fontsize p:Type="Int32">9</p:fontsize>
+              <p:stringtype p:Assembly="VL.Core" p:Type="VL.Core.StringType">Comment</p:stringtype>
+            </p:ValueBoxSettings>
+          </Pad>
+          <Pad Id="B3Ozml6YZwmcqldPylxp9n" Bounds="60,510,640,34" ShowValueBox="true" isIOBox="true" Value="Group (Spectral): the same stack from a spread of layers - for a number of layers that changes while the patch runs, as Skia's Group (Spectral)">
+            <p:TypeAnnotation LastCategoryFullName="Primitive" LastDependency="VL.CoreLib.vl">
+              <Choice Kind="TypeFlag" Name="String" />
+            </p:TypeAnnotation>
+            <p:ValueBoxSettings>
+              <p:fontsize p:Type="Int32">9</p:fontsize>
+              <p:stringtype p:Assembly="VL.Core" p:Type="VL.Core.StringType">Comment</p:stringtype>
+            </p:ValueBoxSettings>
+          </Pad>
+          <Node Bounds="60,560,45,19" Id="AQuv2vZ8c40WHBaP3xyqS5">
+            <p:NodeReference LastCategoryFullName="Collections.Spread" LastDependency="VL.Collections.vl">
+              <Choice Kind="NodeFlag" Name="Node" Fixed="true" />
+              <Choice Kind="OperationCallFlag" Name="Cons" />
+              <CategoryReference Kind="RecordType" Name="Spread" NeedsToBeDirectParent="true" />
+            </p:NodeReference>
+            <Pin Id="B59OeTzXYJ86m5y4BNLdog" Name="Input" Kind="StateInputPin" />
+            <Pin Id="Ck5tHtM3YReGXhCjkipQFd" Name="Input 2" Kind="StateInputPin" />
+            <Pin Id="LUPZbIAINPrVFuGgVkZHSo" Name="Result" Kind="OutputPin" />
+          </Node>
+          <Node Bounds="60,600,110,19" Id="Dxwk0YfxYiGhodJTJvtwe6">
+            <p:NodeReference LastCategoryFullName="Globe.Layers" LastDependency="VL.Globe.vl">
+              <Choice Kind="NodeFlag" Name="Node" Fixed="true" />
+              <CategoryReference Kind="Category" Name="Layers" NeedsToBeDirectParent="true">
+                <p:OuterCategoryReference Kind="Category" Name="Globe" NeedsToBeDirectParent="true" />
+              </CategoryReference>
+              <Choice Kind="ProcessAppFlag" Name="Group (Spectral)" />
+            </p:NodeReference>
+            <p:HelpFocus p:Assembly="VL.Lang" p:Type="VL.Model.HelpPriority">High</p:HelpFocus>
+            <Pin Id="HzknZSU5FWCnv8dM4fKdSm" Name="Input" Kind="InputPin" />
+            <Pin Id="CvkGnXHbdTusYJwXMzRpLh" Name="Output" Kind="OutputPin" />
+          </Node>
+          <Pad Id="Dy7tSUItaFal5Fp6z6Yske" Bounds="190,598,380,20" ShowValueBox="true" isIOBox="true" Value="&lt; its Output goes where Group's does: GlobeWindow's Input">
             <p:TypeAnnotation LastCategoryFullName="Primitive" LastDependency="VL.CoreLib.vl">
               <Choice Kind="TypeFlag" Name="String" />
             </p:TypeAnnotation>
@@ -176,6 +216,9 @@
         <Link Id="KXbC8WKMxKHO9MFO0Wjypi" Ids="tMFyW8DgKacn26cDBbyY7p,ifav4QrlBbciwU1NSl25nP" />
         <Link Id="CLE45BSpD0N4h22vRBmqPI" Ids="Kpm15UELhUOuZAzHx4LP4A,N5X4NDce7WBvizuOAr7y11" />
         <Link Id="HVBr1dvZXSLS4oKcZp7YYk" Ids="aH6mMAPIba9IOQD1630CUr,CRAUaFnYVKwQzpLUCadT2r" />
+        <Link Id="Ha8JR0AXasiHbGJILxdejJ" Ids="RO5k0A8Uci0qRhSBHpvkTS,B59OeTzXYJ86m5y4BNLdog" />
+        <Link Id="PqaWbj7k2G4jh876Jt1u3V" Ids="il8Krk3QCI33jOqw5LoVFq,Ck5tHtM3YReGXhCjkipQFd" />
+        <Link Id="H4ujRQzRXWiCXVPJwqHPiO" Ids="LUPZbIAINPrVFuGgVkZHSo,HzknZSU5FWCnv8dM4fKdSm" />
       </Patch>
     </Node>
   </Patch>

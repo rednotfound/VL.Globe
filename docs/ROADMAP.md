@@ -632,9 +632,8 @@ topics and subfolders as VL.Stride's and VL.Skia's (Overview, Layers, Camera, In
 ToGlobe/FromGlobe a cell of numbers below - absolute, so not drawn under GlobeWindow); "Put OpenStreetMap on a
 globe" is `Overview\HowTo Build your own globe scene`. All 11 compile (Compile-HelpPatches); the merged one seen
 in vvvv's editor. F1 flags (none before - F1 on a VL.Globe node opened nothing): one High per node, Low where it
-also helps, by `tools/Set-HelpFlags.py` (its table is the record); 30 of 31 nodes - FeatureLayer (Draw shapes, with its
-Attribution), GlobeToScreen (Read the place) and ToGlobe (Coordinate) (Place objects) given cells; only Group (Spectral)
-is in no patch. F1 tried by the user: works. Open: an off switch (MapLibre's `attributionControl: false`) -
+also helps, by `tools/Set-HelpFlags.py` (its table is the record); all 31 nodes - FeatureLayer (Draw shapes, with its
+Attribution), GlobeToScreen (Read the place) and ToGlobe (Coordinate) (Place objects) given cells, Group (Spectral) one in Stack tile layers. F1 tried by the user: works. Open: an off switch (MapLibre's `attributionControl: false`) -
 not added until asked.
 
 The plan as written:
