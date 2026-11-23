@@ -96,6 +96,7 @@
               </CategoryReference>
               <Choice Kind="OperationCallFlag" Name="VectorStyle" />
             </p:NodeReference>
+            <p:HelpFocus p:Assembly="VL.Lang" p:Type="VL.Model.HelpPriority">High</p:HelpFocus>
             <Pin Id="E20k7a2RG6YKDf95LwXIvC" Name="Fill Color" Kind="InputPin" DefaultValue="1, 0.45, 0.1, 0.3" />
             <Pin Id="CsZMhSJxElf7AHEEfc9vR8" Name="Line Color" Kind="InputPin" DefaultValue="0.9, 0.1, 0.1, 1" />
             <Pin Id="VTgg5ekcRytjmcPuUQe0dX" Name="Line Width" Kind="InputPin" DefaultValue="3" />
@@ -109,6 +110,7 @@
               </CategoryReference>
               <Choice Kind="ProcessAppFlag" Name="Geometry" />
             </p:NodeReference>
+            <p:HelpFocus p:Assembly="VL.Lang" p:Type="VL.Model.HelpPriority">High</p:HelpFocus>
             <Pin Id="QNxSWkxFD2VPvetIQAjJ6l" Name="Geometries" Kind="InputPin" />
             <Pin Id="ANKQWproSsdZMq1Oqe1zwL" Name="Style" Kind="InputPin" />
             <Pin Id="STu7YzI9jmMLslRraGm2uQ" Name="Output" Kind="OutputPin" />
@@ -130,6 +132,7 @@
               </CategoryReference>
               <Choice Kind="ProcessAppFlag" Name="Group" />
             </p:NodeReference>
+            <p:HelpFocus p:Assembly="VL.Lang" p:Type="VL.Model.HelpPriority">Low</p:HelpFocus>
             <Pin Id="0lR8acRYSi4MDF8kWCBX1K" Name="Input" Kind="InputPin" />
             <Pin Id="SxGXfQ9sWc92F0ppnkRcJa" Name="Input 2" Kind="InputPin" />
             <Pin Id="IAvhxROSaruxKxMy2VrKFL" Name="Output" Kind="OutputPin" />

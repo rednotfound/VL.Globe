@@ -155,6 +155,7 @@
               <Choice Kind="NodeFlag" Name="Node" Fixed="true" />
               <Choice Kind="ProcessAppFlag" Name="OpenStreetMap" />
             </p:NodeReference>
+            <p:HelpFocus p:Assembly="VL.Lang" p:Type="VL.Model.HelpPriority">Low</p:HelpFocus>
             <Pin Id="SYbrs69HqgkKzMvqIusjAQ" Name="Output" Kind="OutputPin" />
           </Node>
           <Node Bounds="300,200,200,19" Id="QdEsOxGmsbnr8jJur3MKQa">
@@ -162,6 +163,7 @@
               <Choice Kind="NodeFlag" Name="Node" Fixed="true" />
               <Choice Kind="ProcessAppFlag" Name="GlobeCamera" />
             </p:NodeReference>
+            <p:HelpFocus p:Assembly="VL.Lang" p:Type="VL.Model.HelpPriority">High</p:HelpFocus>
             <Pin Id="DNjxtWVjb6GlLrB30E0AXA" Name="Initial Longitude" Kind="InputPin" DefaultValue="10.6" />
             <Pin Id="FX70o2XBrLvcbvCSsXROsp" Name="Initial Latitude" Kind="InputPin" DefaultValue="-1.6" />
             <Pin Id="SqjixlQJ1c0R1wMIincnAo" Name="Initial Height" Kind="InputPin" DefaultValue="12000000" />
@@ -176,6 +178,7 @@
               <Choice Kind="NodeFlag" Name="Node" Fixed="true" />
               <Choice Kind="OperationCallFlag" Name="GlobeViewInfo" />
             </p:NodeReference>
+            <p:HelpFocus p:Assembly="VL.Lang" p:Type="VL.Model.HelpPriority">Low</p:HelpFocus>
             <Pin Id="wWntOPejFuwN1x0Srplu0Y" Name="View" Kind="InputPin" />
             <Pin Id="3OmglyZPYfOfDWZE6PWODS" Name="Height" Kind="OutputPin" />
           </Node>
@@ -199,6 +202,7 @@
               <Choice Kind="NodeFlag" Name="Node" Fixed="true" />
               <Choice Kind="ProcessAppFlag" Name="Drag" />
             </p:NodeReference>
+            <p:HelpFocus p:Assembly="VL.Lang" p:Type="VL.Model.HelpPriority">High</p:HelpFocus>
             <Pin Id="SsKArKryzsYFdrUwgWhYFx" Name="View" Kind="InputPin" />
             <Pin Id="Pk6SFmMGXsxU3vLP9EXaro" Name="Position" Kind="InputPin" />
             <Pin Id="Msj8lEbL0eL2hEd6Hvhzac" Name="Dragging" Kind="InputPin" />
@@ -209,6 +213,7 @@
               <Choice Kind="NodeFlag" Name="Node" Fixed="true" />
               <Choice Kind="ProcessAppFlag" Name="ZoomByWheel" />
             </p:NodeReference>
+            <p:HelpFocus p:Assembly="VL.Lang" p:Type="VL.Model.HelpPriority">High</p:HelpFocus>
             <Pin Id="H7JSNi267hqENh9Af6b7vf" Name="View" Kind="InputPin" />
             <Pin Id="AovU1V1N8gJsezVUWSALtt" Name="Position" Kind="InputPin" />
             <Pin Id="LmiHiesiYvoY7TYi0cpyzM" Name="Wheel Delta" Kind="InputPin" />
@@ -219,6 +224,7 @@
               <Choice Kind="NodeFlag" Name="Node" Fixed="true" />
               <Choice Kind="ProcessAppFlag" Name="DragRotate" />
             </p:NodeReference>
+            <p:HelpFocus p:Assembly="VL.Lang" p:Type="VL.Model.HelpPriority">High</p:HelpFocus>
             <Pin Id="FLte66XIUu2XVUYzWsHC5Q" Name="View" Kind="InputPin" />
             <Pin Id="Lo6eX6n3UhGu7JBnzyBkW4" Name="Position" Kind="InputPin" />
             <Pin Id="BEmshGzzJzTNRTk8MVkXB3" Name="Dragging" Kind="InputPin" />
@@ -229,6 +235,7 @@
               <Choice Kind="NodeFlag" Name="Node" Fixed="true" />
               <Choice Kind="ProcessAppFlag" Name="Globe" />
             </p:NodeReference>
+            <p:HelpFocus p:Assembly="VL.Lang" p:Type="VL.Model.HelpPriority">High</p:HelpFocus>
             <Pin Id="S6XBsJOa8Akovo6AuI5RxU" Name="Input" Kind="InputPin" />
             <Pin Id="JhYWGNLzmkPKug6XyJIrEu" Name="Camera" Kind="InputPin" />
             <Pin Id="STyWfRCD2KnULGQUVB5G5A" Name="Enabled" Kind="InputPin" />

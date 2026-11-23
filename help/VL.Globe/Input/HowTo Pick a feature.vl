@@ -88,6 +88,7 @@
                 <p:OuterCategoryReference Kind="Category" Name="Globe" NeedsToBeDirectParent="true" />
               </CategoryReference>
             </p:NodeReference>
+            <p:HelpFocus p:Assembly="VL.Lang" p:Type="VL.Model.HelpPriority">Low</p:HelpFocus>
             <Pin Id="UtuieeCIxVc57VVTiY96vw" Name="Geometries" Kind="InputPin" />
             <Pin Id="fRE5e32A8Yb3FKaNQyyLaM" Name="Name" Kind="InputPin" DefaultValue="Squares" />
             <Pin Id="effOhq4AUvy7VSLDCD1IfH" Name="Output" Kind="OutputPin" />
@@ -133,6 +134,7 @@
               <Choice Kind="NodeFlag" Name="Node" Fixed="true" />
               <Choice Kind="ProcessAppFlag" Name="Pick" />
             </p:NodeReference>
+            <p:HelpFocus p:Assembly="VL.Lang" p:Type="VL.Model.HelpPriority">High</p:HelpFocus>
             <Pin Id="u57mnXm4gi4piUfqygB18A" Name="View" Kind="InputPin" />
             <Pin Id="IYTimzORZbgmKRw609xhTG" Name="Input" Kind="InputPin" />
             <Pin Id="OWvGR1mZeEgbcWJNG5KEjm" Name="Position" Kind="InputPin" />

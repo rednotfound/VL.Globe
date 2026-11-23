@@ -53,6 +53,7 @@
               <Choice Kind="NodeFlag" Name="Node" Fixed="true" />
               <Choice Kind="ProcessAppFlag" Name="OpenStreetMap" />
             </p:NodeReference>
+            <p:HelpFocus p:Assembly="VL.Lang" p:Type="VL.Model.HelpPriority">Low</p:HelpFocus>
             <Pin Id="RO5k0A8Uci0qRhSBHpvkTS" Name="Output" Kind="OutputPin" />
           </Node>
           <Pad Id="Osq63Hvzl8IBtPnRNbzoc5" Bounds="180,208,360,20" ShowValueBox="true" isIOBox="true" Value="&lt; the bottom layer; below Opacity 1 the Background shows through">
@@ -77,6 +78,7 @@
               </CategoryReference>
               <Choice Kind="ProcessAppFlag" Name="XyzTiles" />
             </p:NodeReference>
+            <p:HelpFocus p:Assembly="VL.Lang" p:Type="VL.Model.HelpPriority">High</p:HelpFocus>
             <Pin Id="cgTAOGSf9uih4vmuGMGKAu" Name="Url" Kind="InputPin" DefaultValue="https://tile.opentopomap.org/{z}/{x}/{y}.png" />
             <Pin Id="WfpTbmRsHdRXfr8nBNXYK7" Name="Attribution" Kind="InputPin" DefaultValue="Map data: OpenStreetMap contributors, SRTM; map style: OpenTopoMap (CC-BY-SA)" />
             <Pin Id="Gh5Qhy50B7P6nLsbWsXAJK" Name="Opacity" Kind="InputPin" />
@@ -99,6 +101,7 @@
               </CategoryReference>
               <Choice Kind="ProcessAppFlag" Name="Group" />
             </p:NodeReference>
+            <p:HelpFocus p:Assembly="VL.Lang" p:Type="VL.Model.HelpPriority">High</p:HelpFocus>
             <Pin Id="HnCO3V3xkhTOa1bFFHiCv1" Name="Input" Kind="InputPin" />
             <Pin Id="JtcdMoCkcXSUyQBiAXqozA" Name="Input 2" Kind="InputPin" />
             <Pin Id="ZdyhWYNfZwRJhyj5PzSJxk" Name="Output" Kind="OutputPin" />
@@ -136,6 +139,7 @@
               <Choice Kind="NodeFlag" Name="Node" Fixed="true" />
               <Choice Kind="ProcessAppFlag" Name="GlobeWindow" />
             </p:NodeReference>
+            <p:HelpFocus p:Assembly="VL.Lang" p:Type="VL.Model.HelpPriority">Low</p:HelpFocus>
             <Pin Id="m4fVUpb5CUKR87xPkumIk3" Name="Bounds" Kind="InputPin" DefaultValue="926, 114, 800, 800" />
             <Pin Id="zLp1f4WDeKsom9z3vGc87q" Name="Bound to Document" Kind="InputPin" DefaultValue="True" />
             <Pin Id="FroWy76lMXouvBW8J5Vcd4" Name="Input" Kind="InputPin" />

@@ -65,6 +65,7 @@
               </CategoryReference>
               <Choice Kind="ProcessAppFlag" Name="MapLibreStyle (URL)" />
             </p:NodeReference>
+            <p:HelpFocus p:Assembly="VL.Lang" p:Type="VL.Model.HelpPriority">High</p:HelpFocus>
             <Pin Id="xWjpOrnB6ytmI5ETwh29BZ" Name="URL" Kind="InputPin" />
             <Pin Id="b2s2n28TK2sRjUoOuZy9AA" Name="Output" Kind="OutputPin" />
           </Node>
@@ -89,6 +90,7 @@
               </CategoryReference>
               <Choice Kind="ProcessAppFlag" Name="MapLibreStyle (File)" />
             </p:NodeReference>
+            <p:HelpFocus p:Assembly="VL.Lang" p:Type="VL.Model.HelpPriority">High</p:HelpFocus>
             <Pin Id="nNEM6HiCtt5GNRhfv3g9cV" Name="Path" Kind="InputPin" />
             <Pin Id="g6tsrPEnSMKXSh1cBj5R9S" Name="Read" Kind="InputPin" />
             <Pin Id="mEouJybD1bDEacNKlPyE6p" Name="Output" Kind="OutputPin" />
@@ -110,6 +112,7 @@
               </CategoryReference>
               <Choice Kind="ProcessAppFlag" Name="VectorTiles" />
             </p:NodeReference>
+            <p:HelpFocus p:Assembly="VL.Lang" p:Type="VL.Model.HelpPriority">High</p:HelpFocus>
             <Pin Id="QuTrCUs1nkkev5vof0Wb4m" Name="Style" Kind="InputPin" />
             <Pin Id="MuCJLUCfL92QRygdEuC3bj" Name="Enabled" Kind="InputPin" />
             <Pin Id="NeWCjiDv66ute8muzXJzsW" Name="Name" Kind="InputPin" />

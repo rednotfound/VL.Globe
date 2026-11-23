@@ -147,6 +147,7 @@
                 <p:OuterCategoryReference Kind="Category" Name="Globe" NeedsToBeDirectParent="true" />
               </CategoryReference>
             </p:NodeReference>
+            <p:HelpFocus p:Assembly="VL.Lang" p:Type="VL.Model.HelpPriority">Low</p:HelpFocus>
             <Pin Id="D1KCqTSgQpFjZ46UGS7PNK" Name="URL" Kind="InputPin" />
             <Pin Id="yLtBT1pnnwukA1gMAkX0dN" Name="Output" Kind="OutputPin" />
           </Node>
@@ -158,6 +159,7 @@
                 <p:OuterCategoryReference Kind="Category" Name="Globe" NeedsToBeDirectParent="true" />
               </CategoryReference>
             </p:NodeReference>
+            <p:HelpFocus p:Assembly="VL.Lang" p:Type="VL.Model.HelpPriority">Low</p:HelpFocus>
             <Pin Id="2WBKhr9swEvrswXmZTcVE4" Name="Style" Kind="InputPin" />
             <Pin Id="RLpMS3EDQnrVrLRwyyXevr" Name="Enabled" Kind="InputPin" />
             <Pin Id="SM1XYEBo1xoUKutZkS8vjp" Name="Output" Kind="OutputPin" />
@@ -190,6 +192,7 @@
                 <p:OuterCategoryReference Kind="Category" Name="Globe" NeedsToBeDirectParent="true" />
               </CategoryReference>
             </p:NodeReference>
+            <p:HelpFocus p:Assembly="VL.Lang" p:Type="VL.Model.HelpPriority">Low</p:HelpFocus>
             <Pin Id="D1NcueZ5esNNksNDGZDioI" Name="Fill Color" Kind="InputPin" DefaultValue="1, 0.2, 0.1, 0.35" />
             <Pin Id="ewHj4WrR89NcXf8Blobesr" Name="Line Color" Kind="InputPin" DefaultValue="0.9, 0.1, 0.1, 1" />
             <Pin Id="jeZrHp9yMR0lJU0RmioeYF" Name="Line Width" Kind="InputPin" DefaultValue="4" />
@@ -203,6 +206,7 @@
                 <p:OuterCategoryReference Kind="Category" Name="Globe" NeedsToBeDirectParent="true" />
               </CategoryReference>
             </p:NodeReference>
+            <p:HelpFocus p:Assembly="VL.Lang" p:Type="VL.Model.HelpPriority">Low</p:HelpFocus>
             <Pin Id="i5qJI4mijOXd47EAMQBl9n" Name="Geometries" Kind="InputPin" />
             <Pin Id="yFJabvGwdDb4q6iPKf9ZXF" Name="Style" Kind="InputPin" />
             <Pin Id="4jnnXsiHR8yWmoIJzGKZyf" Name="Output" Kind="OutputPin" />
@@ -224,6 +228,7 @@
                 <p:OuterCategoryReference Kind="Category" Name="Globe" NeedsToBeDirectParent="true" />
               </CategoryReference>
             </p:NodeReference>
+            <p:HelpFocus p:Assembly="VL.Lang" p:Type="VL.Model.HelpPriority">Low</p:HelpFocus>
             <Pin Id="3gNz8mHajhwMRGOz0x7Vz7" Name="Input" Kind="InputPin" />
             <Pin Id="qyl7R53FEb8st8rnWMV7zG" Name="Input 2" Kind="InputPin" />
             <Pin Id="d1pJewEWEQthJGgTLMt8Te" Name="Output" Kind="OutputPin" />

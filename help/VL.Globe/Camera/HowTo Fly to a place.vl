@@ -93,6 +93,7 @@
               <Choice Kind="NodeFlag" Name="Node" Fixed="true" />
               <Choice Kind="ProcessAppFlag" Name="FlyTo" />
             </p:NodeReference>
+            <p:HelpFocus p:Assembly="VL.Lang" p:Type="VL.Model.HelpPriority">High</p:HelpFocus>
             <Pin Id="KIv6IK652wFQsVFOs3CfYl" Name="View" Kind="InputPin" />
             <Pin Id="cdgDs25sPddTeyLygderbT" Name="Longitude" Kind="InputPin" DefaultValue="-0.1276" />
             <Pin Id="ZBW4nZrK6sYQsuNEt1iXR1" Name="Latitude" Kind="InputPin" DefaultValue="51.5072" />
@@ -148,6 +149,7 @@
               <Choice Kind="NodeFlag" Name="Node" Fixed="true" />
               <Choice Kind="ProcessAppFlag" Name="ZoomIn" />
             </p:NodeReference>
+            <p:HelpFocus p:Assembly="VL.Lang" p:Type="VL.Model.HelpPriority">High</p:HelpFocus>
             <Pin Id="IhEhvLlb5O7nbncTIsHVcQ" Name="View" Kind="InputPin" />
             <Pin Id="XPQjWJQh3qb38JzfqfB8mE" Name="Trigger" Kind="InputPin" />
             <Pin Id="fQSe8tfSgAvA2sGTSYqDfr" Name="Output" Kind="OutputPin" />
@@ -157,6 +159,7 @@
               <Choice Kind="NodeFlag" Name="Node" Fixed="true" />
               <Choice Kind="ProcessAppFlag" Name="ZoomOut" />
             </p:NodeReference>
+            <p:HelpFocus p:Assembly="VL.Lang" p:Type="VL.Model.HelpPriority">High</p:HelpFocus>
             <Pin Id="p5sBQwqgTVt4Qx5WYIvHse" Name="View" Kind="InputPin" />
             <Pin Id="cEg6NxSNLcr17jdfBQ3pTc" Name="Trigger" Kind="InputPin" />
             <Pin Id="KjTw0T9dlc4uB7EnCl5hM1" Name="Output" Kind="OutputPin" />
@@ -196,6 +199,7 @@
               <Choice Kind="NodeFlag" Name="Node" Fixed="true" />
               <Choice Kind="ProcessAppFlag" Name="ZoomToBounds" />
             </p:NodeReference>
+            <p:HelpFocus p:Assembly="VL.Lang" p:Type="VL.Model.HelpPriority">High</p:HelpFocus>
             <Pin Id="jUroYyeq3C7qhuMk9zUGIA" Name="View" Kind="InputPin" />
             <Pin Id="Jsam9cDIPYSTGnAvqGCAk7" Name="Geometry" Kind="InputPin" />
             <Pin Id="E3Vo9UctolfTclkWVagm9X" Name="Margin" Kind="InputPin" DefaultValue="0.1" />
@@ -224,6 +228,7 @@
               <Choice Kind="NodeFlag" Name="Node" Fixed="true" />
               <Choice Kind="ProcessAppFlag" Name="CenterOn" />
             </p:NodeReference>
+            <p:HelpFocus p:Assembly="VL.Lang" p:Type="VL.Model.HelpPriority">High</p:HelpFocus>
             <Pin Id="HVBr1dvZXSLS4oKcZp7YYk" Name="View" Kind="InputPin" />
             <Pin Id="9Z8wTTTO2zKLMSDUAzGKch" Name="Longitude" Kind="InputPin" DefaultValue="135.7588" />
             <Pin Id="eYeMbfXyUPvZLXcgroaK9j" Name="Latitude" Kind="InputPin" DefaultValue="34.9858" />
@@ -235,6 +240,7 @@
               <Choice Kind="NodeFlag" Name="Node" Fixed="true" />
               <Choice Kind="ProcessAppFlag" Name="ZoomToLevel" />
             </p:NodeReference>
+            <p:HelpFocus p:Assembly="VL.Lang" p:Type="VL.Model.HelpPriority">High</p:HelpFocus>
             <Pin Id="c4yEa41G2lGFgkU3dV7Hqw" Name="View" Kind="InputPin" />
             <Pin Id="f3k3vlgfdWSxQBHTmHpP8o" Name="Zoom Level" Kind="InputPin" DefaultValue="16" />
             <Pin Id="R10zTA5JF4x2J3hLKcZsFi" Name="Trigger" Kind="InputPin" />

@@ -52,6 +52,7 @@
               <Choice Kind="NodeFlag" Name="Node" Fixed="true" />
               <Choice Kind="ProcessAppFlag" Name="GlobePositionComponent" />
             </p:NodeReference>
+            <p:HelpFocus p:Assembly="VL.Lang" p:Type="VL.Model.HelpPriority">High</p:HelpFocus>
             <Pin Id="BQIUOOJhoJCJiujKFfUH3a" Name="Longitude" Kind="InputPin" DefaultValue="139.7671" />
             <Pin Id="C3QYFt1WVFRcs7GOxTYT4L" Name="Latitude" Kind="InputPin" DefaultValue="35.6812" />
             <Pin Id="PWlUxK9xxSBjWlxQ4M2fVh" Name="Height" Kind="InputPin" DefaultValue="100" />
@@ -144,6 +145,7 @@
               <Choice Kind="NodeFlag" Name="Node" Fixed="true" />
               <Choice Kind="OperationCallFlag" Name="GlobeViewInfo" />
             </p:NodeReference>
+            <p:HelpFocus p:Assembly="VL.Lang" p:Type="VL.Model.HelpPriority">Low</p:HelpFocus>
             <Pin Id="h1nmrMlGNKkApFA8x5pj4e" Name="View" Kind="InputPin" />
             <Pin Id="2Jekl5JEXhvG8sBRiz7fLm" Name="Height" Kind="OutputPin" />
           </Node>
@@ -237,6 +239,7 @@
               <Choice Kind="NodeFlag" Name="Node" Fixed="true" />
               <Choice Kind="OperationCallFlag" Name="ToGlobe" />
             </p:NodeReference>
+            <p:HelpFocus p:Assembly="VL.Lang" p:Type="VL.Model.HelpPriority">High</p:HelpFocus>
             <Pin Id="RTX5hOczMop2UQCfZooHhm" Name="Longitude" Kind="InputPin" />
             <Pin Id="F3qYSCVN1xC5i6S2WOaUU9" Name="Latitude" Kind="InputPin" />
             <Pin Id="ExEh7VKGIKXBnvJTkfnMsH" Name="Height" Kind="InputPin" />
@@ -248,6 +251,7 @@
               <Choice Kind="NodeFlag" Name="Node" Fixed="true" />
               <Choice Kind="OperationCallFlag" Name="FromGlobe" />
             </p:NodeReference>
+            <p:HelpFocus p:Assembly="VL.Lang" p:Type="VL.Model.HelpPriority">High</p:HelpFocus>
             <Pin Id="VoryjPVCzrD2vJWUrgCnqI" Name="Position" Kind="InputPin" />
             <Pin Id="DxJ2nlzku4ObwkbqqqJPNl" Name="Radius" Kind="InputPin" />
             <Pin Id="JsPBtc10ZcWQZoE5GqPmCK" Name="Longitude" Kind="OutputPin" />

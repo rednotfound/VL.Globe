@@ -94,6 +94,7 @@
               <Choice Kind="NodeFlag" Name="Node" Fixed="true" />
               <Choice Kind="OperationCallFlag" Name="ScreenToGlobe" />
             </p:NodeReference>
+            <p:HelpFocus p:Assembly="VL.Lang" p:Type="VL.Model.HelpPriority">High</p:HelpFocus>
             <Pin Id="GdTkgP8TdLtqjtYC01Qwfs" Name="View" Kind="InputPin" />
             <Pin Id="CthaaqpmjPd3b31iFeSrJT" Name="Position" Kind="InputPin" />
             <Pin Id="F6gHmavIqlio6qrHd2xzxy" Name="Longitude" Kind="OutputPin" />
@@ -129,6 +130,7 @@
               <Choice Kind="NodeFlag" Name="Node" Fixed="true" />
               <Choice Kind="OperationCallFlag" Name="GlobeViewInfo" />
             </p:NodeReference>
+            <p:HelpFocus p:Assembly="VL.Lang" p:Type="VL.Model.HelpPriority">High</p:HelpFocus>
             <Pin Id="On9h2tMNz4fcoXszIhjJ0y" Name="View" Kind="InputPin" />
             <Pin Id="PVOLXmsjzwV8ETy52DUpj4" Name="Center Longitude" Kind="OutputPin" />
             <Pin Id="RktYv5B62VbHEIlNuheTuY" Name="Center Latitude" Kind="OutputPin" />

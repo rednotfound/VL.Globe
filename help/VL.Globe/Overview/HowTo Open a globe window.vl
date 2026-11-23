@@ -57,6 +57,7 @@
               <Choice Kind="NodeFlag" Name="Node" Fixed="true" />
               <Choice Kind="ProcessAppFlag" Name="OpenStreetMap" />
             </p:NodeReference>
+            <p:HelpFocus p:Assembly="VL.Lang" p:Type="VL.Model.HelpPriority">High</p:HelpFocus>
             <Pin Id="PyDvZXlNY1BSQGxHSuXtMC" Name="Output" Kind="OutputPin" />
             <Pin Id="OgsCRD5A1xgNcfPnt3tIm4" Name="Enabled" Kind="InputPin" />
           </Node>
@@ -67,6 +68,7 @@
               <PinReference Kind="InputPin" Name="Bounds" />
               <PinReference Kind="InputPin" Name="Bound to Document" />
             </p:NodeReference>
+            <p:HelpFocus p:Assembly="VL.Lang" p:Type="VL.Model.HelpPriority">High</p:HelpFocus>
             <Pin Id="MzpRy6rIV9CQIC7lQ7lNR1" Name="Node Context" Kind="InputPin" IsHidden="true" />
             <Pin Id="A8EWcJCu6jBtNz5HJyuXYF" Name="Bounds" Kind="InputPin" DefaultValue="926, 114, 800, 800" />
             <Pin Id="EZP6Hw2TiMLIECaLHcOXTZ" Name="Bound to Document" Kind="InputPin" DefaultValue="True" />
@@ -86,6 +88,7 @@
               <Choice Kind="NodeFlag" Name="Node" Fixed="true" />
               <Choice Kind="ProcessAppFlag" Name="GlobeCamera" />
             </p:NodeReference>
+            <p:HelpFocus p:Assembly="VL.Lang" p:Type="VL.Model.HelpPriority">Low</p:HelpFocus>
             <Pin Id="InLWfm7WxCPMoeuPDYFnVa" Name="Node Context" Kind="InputPin" IsHidden="true" />
             <Pin Id="uXppcrSXU176W33VFoF4FB" Name="Initial Longitude" Kind="InputPin" DefaultValue="139.7" />
             <Pin Id="7fDn1abrDUQftwH5MeDRmi" Name="Initial Latitude" Kind="InputPin" DefaultValue="35.68" />
@@ -109,6 +112,7 @@
               <Choice Kind="NodeFlag" Name="Node" Fixed="true" />
               <Choice Kind="OperationCallFlag" Name="GlobeViewInfo" />
             </p:NodeReference>
+            <p:HelpFocus p:Assembly="VL.Lang" p:Type="VL.Model.HelpPriority">Low</p:HelpFocus>
             <Pin Id="YNHHc5cmoRq6qcXtD4wFoq" Name="View" Kind="InputPin" />
             <Pin Id="HKFutafdJZPPbp6W2zl029" Name="Center Longitude" Kind="OutputPin" />
             <Pin Id="OgmnKILQTkSPkLKaAEF7pg" Name="Center Latitude" Kind="OutputPin" />

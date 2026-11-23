@@ -71,6 +71,7 @@
                 <p:OuterCategoryReference Kind="Category" Name="Globe" NeedsToBeDirectParent="true" />
               </CategoryReference>
             </p:NodeReference>
+            <p:HelpFocus p:Assembly="VL.Lang" p:Type="VL.Model.HelpPriority">High</p:HelpFocus>
             <Pin Id="XZvlpYaGcpNhxIGjb7u4YQ" Name="Spacing" Kind="InputPin" />
             <Pin Id="1rOhoYHGEFOwqR8C5VkCsN" Name="Line Color" Kind="InputPin" DefaultValue="1, 1, 1, 0.6" />
             <Pin Id="3crv83GOSCTYnUsHqbRaSb" Name="Line Width" Kind="InputPin" DefaultValue="1.5" />

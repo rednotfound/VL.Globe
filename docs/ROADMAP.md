@@ -631,7 +631,9 @@ topics and subfolders as VL.Stride's and VL.Skia's (Overview, Layers, Camera, In
 "Stand a model" merged into `Objects\HowTo Place objects on the globe` (GlobePositionComponent the main cell,
 ToGlobe/FromGlobe a cell of numbers below - absolute, so not drawn under GlobeWindow); "Put OpenStreetMap on a
 globe" is `Overview\HowTo Build your own globe scene`. All 11 compile (Compile-HelpPatches); the merged one seen
-in vvvv's editor. Open: an off switch (MapLibre's `attributionControl: false`) -
+in vvvv's editor. F1 flags (none before - F1 on a VL.Globe node opened nothing): one High per node, Low where it
+also helps, by `tools/Set-HelpFlags.py` (its table is the record); 27 of 31 nodes - FeatureLayer, Group (Spectral),
+ToGlobe (Coordinate) and GlobeToScreen are in no patch yet. Not yet tried with F1 in vvvv. Open: an off switch (MapLibre's `attributionControl: false`) -
 not added until asked.
 
 The plan as written:
