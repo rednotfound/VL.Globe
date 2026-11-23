@@ -1,0 +1,178 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Document xmlns:p="property" xmlns:r="reflection" Id="XPQjWJQh3qb38JzfqfB8mE" LanguageVersion="2025.7.4" Version="0.128">
+  <NugetDependency Id="fQSe8tfSgAvA2sGTSYqDfr" Location="VL.CoreLib" Version="2025.7.4" />
+  <NugetDependency Id="Cs6SiQdPwVhC6Zz8oXkS0a" Location="VL.Stride" Version="2025.7.4" />
+  <NugetDependency Id="p5sBQwqgTVt4Qx5WYIvHse" Location="VL.Globe" Version="0.0.0" />
+  <NugetDependency Id="cEg6NxSNLcr17jdfBQ3pTc" Location="VL.NetTopologySuite" Version="0.0.0" />
+  <Patch Id="KjTw0T9dlc4uB7EnCl5hM1">
+    <Canvas Id="Yr0NHLjxkoVVvpWbj8hkog" DefaultCategory="Main" CanvasType="FullCategory" />
+    <Node Name="Application" Bounds="100,100" Id="Odad9lsRS5dUnJjkXRqyEo">
+      <p:NodeReference>
+        <Choice Kind="ContainerDefinition" Name="Process" />
+        <FullNameCategoryReference ID="Primitive" />
+      </p:NodeReference>
+      <Patch Id="8Vet1jlGSZRGyfTzIHy6rZ">
+        <Canvas Id="Q4DQdnmrMkSlNNtZx3cK8n" CanvasType="Group">
+          <Pad Id="WK59PFkl0JfI2yyVlbPegB" Bounds="60,40,460,34" ShowValueBox="true" isIOBox="true" Value="Stack tile layers">
+            <p:TypeAnnotation LastCategoryFullName="Primitive" LastDependency="VL.CoreLib.vl">
+              <Choice Kind="TypeFlag" Name="String" />
+            </p:TypeAnnotation>
+            <p:ValueBoxSettings>
+              <p:fontsize p:Type="Int32">20</p:fontsize>
+              <p:stringtype p:Assembly="VL.Core" p:Type="VL.Core.StringType">Comment</p:stringtype>
+            </p:ValueBoxSettings>
+          </Pad>
+          <Pad Id="PrUhRZdsvDQuc8dWrdE03W" Bounds="60,90,640,40" ShowValueBox="true" isIOBox="true" Value="Switch Enabled on. Every tile server is a layer: the leftmost in Group is at the bottom, the ones above it are drawn over it at their Opacity. Drag the Opacity to blend the topographic map into OpenStreetMap.">
+            <p:TypeAnnotation LastCategoryFullName="Primitive" LastDependency="VL.CoreLib.vl">
+              <Choice Kind="TypeFlag" Name="String" />
+            </p:TypeAnnotation>
+            <p:ValueBoxSettings>
+              <p:fontsize p:Type="Int32">9</p:fontsize>
+              <p:stringtype p:Assembly="VL.Core" p:Type="VL.Core.StringType">Comment</p:stringtype>
+            </p:ValueBoxSettings>
+          </Pad>
+          <Pad Id="Kpm15UELhUOuZAzHx4LP4A" Comment="Enabled" Bounds="60,150,60,30" ShowValueBox="true" isIOBox="true" Value="False">
+            <p:TypeAnnotation LastCategoryFullName="Primitive" LastDependency="VL.CoreLib.vl">
+              <Choice Kind="TypeFlag" Name="Boolean" />
+            </p:TypeAnnotation>
+            <p:ValueBoxSettings>
+              <p:buttonmode p:Assembly="VL.UI.Forms" p:Type="VL.HDE.PatchEditor.Editors.ButtonModeEnum">Toggle</p:buttonmode>
+            </p:ValueBoxSettings>
+          </Pad>
+          <Pad Id="zUdIG1OHqttidvRzFRYTor" Bounds="130,155,330,20" ShowValueBox="true" isIOBox="true" Value="&lt; off on open: nothing is fetched until you agree">
+            <p:TypeAnnotation LastCategoryFullName="Primitive" LastDependency="VL.CoreLib.vl">
+              <Choice Kind="TypeFlag" Name="String" />
+            </p:TypeAnnotation>
+            <p:ValueBoxSettings>
+              <p:fontsize p:Type="Int32">9</p:fontsize>
+              <p:stringtype p:Assembly="VL.Core" p:Type="VL.Core.StringType">Comment</p:stringtype>
+            </p:ValueBoxSettings>
+          </Pad>
+          <Node Bounds="60,210,100,19" Id="aZB3DO7GWIQtUlmOS6ECJS">
+            <p:NodeReference LastCategoryFullName="Globe.Layers" LastDependency="VL.Globe.vl">
+              <Choice Kind="NodeFlag" Name="Node" Fixed="true" />
+              <Choice Kind="ProcessAppFlag" Name="OpenStreetMap" />
+            </p:NodeReference>
+            <Pin Id="RO5k0A8Uci0qRhSBHpvkTS" Name="Output" Kind="OutputPin" />
+          </Node>
+          <Pad Id="Osq63Hvzl8IBtPnRNbzoc5" Bounds="180,208,300,20" ShowValueBox="true" isIOBox="true" Value="&lt; the bottom layer: always opaque">
+            <p:TypeAnnotation LastCategoryFullName="Primitive" LastDependency="VL.CoreLib.vl">
+              <Choice Kind="TypeFlag" Name="String" />
+            </p:TypeAnnotation>
+            <p:ValueBoxSettings>
+              <p:fontsize p:Type="Int32">9</p:fontsize>
+              <p:stringtype p:Assembly="VL.Core" p:Type="VL.Core.StringType">Comment</p:stringtype>
+            </p:ValueBoxSettings>
+          </Pad>
+          <Pad Id="1FeogdvbzDp8mFmQp5zvqY" Comment="Opacity" Bounds="250,250,50,15" ShowValueBox="true" isIOBox="true" Value="0.6">
+            <p:TypeAnnotation LastCategoryFullName="Primitive" LastDependency="VL.CoreLib.vl">
+              <Choice Kind="TypeFlag" Name="Float32" />
+            </p:TypeAnnotation>
+          </Pad>
+          <Node Bounds="200,280,300,19" Id="Mtrb1uvZwnZuDMjJxyZLLK">
+            <p:NodeReference LastCategoryFullName="Globe.Layers" LastDependency="VL.Globe.vl">
+              <Choice Kind="NodeFlag" Name="Node" Fixed="true" />
+              <CategoryReference Kind="Category" Name="Layers" NeedsToBeDirectParent="true">
+                <p:OuterCategoryReference Kind="Category" Name="Globe" NeedsToBeDirectParent="true" />
+              </CategoryReference>
+              <Choice Kind="ProcessAppFlag" Name="XyzTiles" />
+            </p:NodeReference>
+            <Pin Id="cgTAOGSf9uih4vmuGMGKAu" Name="Url" Kind="InputPin" DefaultValue="https://tile.opentopomap.org/{z}/{x}/{y}.png" />
+            <Pin Id="WfpTbmRsHdRXfr8nBNXYK7" Name="Attribution" Kind="InputPin" DefaultValue="Map data: OpenStreetMap contributors, SRTM; map style: OpenTopoMap (CC-BY-SA)" />
+            <Pin Id="Gh5Qhy50B7P6nLsbWsXAJK" Name="Opacity" Kind="InputPin" />
+            <Pin Id="il8Krk3QCI33jOqw5LoVFq" Name="Output" Kind="OutputPin" />
+          </Node>
+          <Pad Id="xtpuPzNP3MzTtpcqpyZ9Nf" Bounds="520,278,260,20" ShowValueBox="true" isIOBox="true" Value="&lt; any XYZ server: {z}, {x} and {y} in the Url">
+            <p:TypeAnnotation LastCategoryFullName="Primitive" LastDependency="VL.CoreLib.vl">
+              <Choice Kind="TypeFlag" Name="String" />
+            </p:TypeAnnotation>
+            <p:ValueBoxSettings>
+              <p:fontsize p:Type="Int32">9</p:fontsize>
+              <p:stringtype p:Assembly="VL.Core" p:Type="VL.Core.StringType">Comment</p:stringtype>
+            </p:ValueBoxSettings>
+          </Pad>
+          <Node Bounds="60,330,110,19" Id="Ul36ohkjXRS4ASfzgUOVm0">
+            <p:NodeReference LastCategoryFullName="Globe.Layers" LastDependency="VL.Globe.vl">
+              <Choice Kind="NodeFlag" Name="Node" Fixed="true" />
+              <CategoryReference Kind="Category" Name="Layers" NeedsToBeDirectParent="true">
+                <p:OuterCategoryReference Kind="Category" Name="Globe" NeedsToBeDirectParent="true" />
+              </CategoryReference>
+              <Choice Kind="ProcessAppFlag" Name="Group" />
+            </p:NodeReference>
+            <Pin Id="HnCO3V3xkhTOa1bFFHiCv1" Name="Input" Kind="InputPin" />
+            <Pin Id="JtcdMoCkcXSUyQBiAXqozA" Name="Input 2" Kind="InputPin" />
+            <Pin Id="ZdyhWYNfZwRJhyj5PzSJxk" Name="Output" Kind="OutputPin" />
+          </Node>
+          <Pad Id="KIv6IK652wFQsVFOs3CfYl" Bounds="190,328,300,20" ShowValueBox="true" isIOBox="true" Value="&lt; leftmost at the bottom">
+            <p:TypeAnnotation LastCategoryFullName="Primitive" LastDependency="VL.CoreLib.vl">
+              <Choice Kind="TypeFlag" Name="String" />
+            </p:TypeAnnotation>
+            <p:ValueBoxSettings>
+              <p:fontsize p:Type="Int32">9</p:fontsize>
+              <p:stringtype p:Assembly="VL.Core" p:Type="VL.Core.StringType">Comment</p:stringtype>
+            </p:ValueBoxSettings>
+          </Pad>
+          <Node Bounds="240,370,180,19" Id="cdgDs25sPddTeyLygderbT">
+            <p:NodeReference LastCategoryFullName="Globe" LastDependency="VL.Globe.vl">
+              <Choice Kind="NodeFlag" Name="Node" Fixed="true" />
+              <Choice Kind="ProcessAppFlag" Name="GlobeCamera" />
+            </p:NodeReference>
+            <Pin Id="ZBW4nZrK6sYQsuNEt1iXR1" Name="Initial Longitude" Kind="InputPin" DefaultValue="138.7274" />
+            <Pin Id="u8g1ypKM9Oe1MQh4NmWI1Y" Name="Initial Latitude" Kind="InputPin" DefaultValue="35.3606" />
+            <Pin Id="xNOkWft1K6iG3tTwZk7bcc" Name="Initial Height" Kind="InputPin" DefaultValue="40000" />
+            <Pin Id="tMFyW8DgKacn26cDBbyY7p" Name="Output" Kind="OutputPin" />
+          </Node>
+          <Pad Id="iEcz80x5uWHqm1xHgKk7gw" Bounds="500,368,220,20" ShowValueBox="true" isIOBox="true" Value="&lt; Mount Fuji, 40 km up">
+            <p:TypeAnnotation LastCategoryFullName="Primitive" LastDependency="VL.CoreLib.vl">
+              <Choice Kind="TypeFlag" Name="String" />
+            </p:TypeAnnotation>
+            <p:ValueBoxSettings>
+              <p:fontsize p:Type="Int32">9</p:fontsize>
+              <p:stringtype p:Assembly="VL.Core" p:Type="VL.Core.StringType">Comment</p:stringtype>
+            </p:ValueBoxSettings>
+          </Pad>
+          <Node Bounds="60,410,260,19" Id="xIbZkJpRL4sQy17NtPd88a">
+            <p:NodeReference LastCategoryFullName="Globe" LastDependency="VL.Globe.vl">
+              <Choice Kind="NodeFlag" Name="Node" Fixed="true" />
+              <Choice Kind="ProcessAppFlag" Name="GlobeWindow" />
+            </p:NodeReference>
+            <Pin Id="m4fVUpb5CUKR87xPkumIk3" Name="Bounds" Kind="InputPin" DefaultValue="926, 114, 800, 800" />
+            <Pin Id="zLp1f4WDeKsom9z3vGc87q" Name="Bound to Document" Kind="InputPin" DefaultValue="True" />
+            <Pin Id="FroWy76lMXouvBW8J5Vcd4" Name="Input" Kind="InputPin" />
+            <Pin Id="ifav4QrlBbciwU1NSl25nP" Name="Camera" Kind="InputPin" />
+            <Pin Id="KplloAYIgscKzgpEIS6enV" Name="Title" Kind="InputPin" DefaultValue="Stack tile layers" />
+            <Pin Id="N5X4NDce7WBvizuOAr7y11" Name="Enabled" Kind="InputPin" />
+            <Pin Id="aH6mMAPIba9IOQD1630CUr" Name="Attribution" Kind="OutputPin" />
+          </Node>
+          <Pad Id="CRAUaFnYVKwQzpLUCadT2r" Comment="Attribution" Bounds="60,460,400,15" ShowValueBox="true" isIOBox="true">
+            <p:TypeAnnotation LastCategoryFullName="Primitive" LastDependency="VL.CoreLib.vl">
+              <Choice Kind="TypeFlag" Name="String" />
+            </p:TypeAnnotation>
+          </Pad>
+          <Pad Id="IhEhvLlb5O7nbncTIsHVcQ" Bounds="540,458,300,20" ShowValueBox="true" isIOBox="true" Value="&lt; the bottom layer's credit; show every layer's">
+            <p:TypeAnnotation LastCategoryFullName="Primitive" LastDependency="VL.CoreLib.vl">
+              <Choice Kind="TypeFlag" Name="String" />
+            </p:TypeAnnotation>
+            <p:ValueBoxSettings>
+              <p:fontsize p:Type="Int32">9</p:fontsize>
+              <p:stringtype p:Assembly="VL.Core" p:Type="VL.Core.StringType">Comment</p:stringtype>
+            </p:ValueBoxSettings>
+          </Pad>
+        </Canvas>
+        <Patch Id="kB6VRLetC6Psnc1OAPZnod" Name="Create" />
+        <Patch Id="6tHqlqMfjB0tkgqXoa72Gg" Name="Update" />
+        <ProcessDefinition Id="cX5kSDzFVqmgIfOhu0VEtE">
+          <Fragment Id="jUroYyeq3C7qhuMk9zUGIA" Patch="kB6VRLetC6Psnc1OAPZnod" Enabled="true" />
+          <Fragment Id="Jsam9cDIPYSTGnAvqGCAk7" Patch="6tHqlqMfjB0tkgqXoa72Gg" Enabled="true" />
+        </ProcessDefinition>
+        <Link Id="E3Vo9UctolfTclkWVagm9X" Ids="RO5k0A8Uci0qRhSBHpvkTS,HnCO3V3xkhTOa1bFFHiCv1" />
+        <Link Id="CoREXncB0mtSCtjXS6vtD4" Ids="il8Krk3QCI33jOqw5LoVFq,JtcdMoCkcXSUyQBiAXqozA" />
+        <Link Id="ySKcqVDnQuRu4572QcoEAH" Ids="1FeogdvbzDp8mFmQp5zvqY,Gh5Qhy50B7P6nLsbWsXAJK" />
+        <Link Id="dP4iEAkuf17V8DOxjCH8In" Ids="ZdyhWYNfZwRJhyj5PzSJxk,FroWy76lMXouvBW8J5Vcd4" />
+        <Link Id="KXbC8WKMxKHO9MFO0Wjypi" Ids="tMFyW8DgKacn26cDBbyY7p,ifav4QrlBbciwU1NSl25nP" />
+        <Link Id="CLE45BSpD0N4h22vRBmqPI" Ids="Kpm15UELhUOuZAzHx4LP4A,N5X4NDce7WBvizuOAr7y11" />
+        <Link Id="HVBr1dvZXSLS4oKcZp7YYk" Ids="aH6mMAPIba9IOQD1630CUr,CRAUaFnYVKwQzpLUCadT2r" />
+      </Patch>
+    </Node>
+  </Patch>
+</Document>

@@ -3,6 +3,7 @@
 	<Topic title="A globe on screen">
 		<VLDocument link="HowTo Open a globe window.vl" tags="globeWindow,window,globe,openstreetmap,osm,tiles,enabled,drag,zoom,stride,3d,earth,screen,text,size" />
 		<VLDocument link="HowTo Put OpenStreetMap on a globe.vl" tags="globe,openstreetmap,osm,tiles,enabled,camera,orbitCamera,zoom,stride,3d,earth,sphere,attribution" />
+		<VLDocument link="HowTo Stack tile layers.vl" tags="xyzTiles,openStreetMap,group,layers,opacity,tiles,stack,blend,xyz,url,opentopomap,raster,imagery,basemap" />
 	</Topic>
 	<Topic title="Shapes on the globe">
 		<VLDocument link="HowTo Draw shapes on the globe.vl" tags="geometry,featureLayer,vectorStyle,layers,line,polygon,wkt,netTopologySuite,nts,draw,vector,drape" />

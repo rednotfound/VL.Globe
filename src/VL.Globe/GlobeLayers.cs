@@ -38,6 +38,8 @@ public sealed class GlobeLayer
     internal GlobeTileSource? Raster;
     // a group (Group, Group (Spectral)): its layers in order, first at the bottom
     internal IReadOnlyList<GlobeLayer>? Children;
+    // a tile layer's opacity; the bottom tile layer is drawn opaque (it is the globe's own imagery)
+    internal float Opacity = 1;
 
     /// <summary>The layers to draw, groups opened, in order (first at the bottom); disabled ones and their groups' contents left out.</summary>
     internal IEnumerable<GlobeLayer> Leaves()
@@ -59,7 +61,7 @@ public sealed class GlobeLayer
     internal bool Gpu;
 
     /// <summary>True when the layer has something to drape.</summary>
-    internal bool HasContent => Vector is { Document: not null } || Geometries.Count > 0;
+    internal bool HasContent => Raster is not null || Vector is { Document: not null } || Geometries.Count > 0;
 
     // Content, not identity: FromWKT and the collection nodes build new objects every frame, and the
     // tiles redraw their overlays only when this changes.
@@ -67,6 +69,7 @@ public sealed class GlobeLayer
     {
         var h = new HashCode();
         h.Add(Enabled);
+        if (Raster is { } r) { h.Add(System.Runtime.CompilerServices.RuntimeHelpers.GetHashCode(r)); h.Add(Opacity); }
         if (Vector is { } v) { h.Add(System.Runtime.CompilerServices.RuntimeHelpers.GetHashCode(v)); h.Add(v.Version); h.Add(Gpu); }
         h.Add(Style);
         h.Add(Geometries.Count);

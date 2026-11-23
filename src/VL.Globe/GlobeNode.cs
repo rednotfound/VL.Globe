@@ -234,19 +234,17 @@ public sealed class GlobeNode : IDisposable
         // the frame that just ended, taken apart if it missed its vsync (ROADMAP 4g step 4)
         if (_lastUpdateAt >= 0 && _anatomy.Explain(updateStart - _lastUpdateAt, updateStart, _gcPauseAtStart, _gen0AtStart, _gen2AtStart, _gpu.LastDraw) is { } slow)
             _logger.LogInformation("Globe frame: {Frame}", slow);
-        // One Input (docs/DESIGN-NODES.md): its layers in order; the bottom raster layer gives the globe's
-        // tiles, the others are drawn on them. A second raster layer is not stacked yet (ROADMAP item 6):
-        // said in Status, not dropped in silence.
+        // One Input (docs/DESIGN-NODES.md): its layers in order. The bottom tile layer gives the globe's
+        // own imagery; every layer after it - more tile layers at their opacity (ROADMAP item 6), the
+        // draped vectors - is drawn over it in order, into each tile's overlay.
         var leaves = input?.Leaves().ToList() ?? new List<GlobeLayer>();
-        var rasters = leaves.Where(l => l.Raster is not null).ToList();
-        var tileSource = rasters.FirstOrDefault()?.Raster;
-        var layers = leaves.Where(l => l.Raster is null).ToList();
+        var bottom = leaves.FirstOrDefault(l => l.Raster is not null);
+        var tileSource = bottom?.Raster;
+        var layers = leaves.Where(l => !ReferenceEquals(l, bottom)).ToList();
         try
         {
             var entity = UpdateCore(out tilesVisible, out tilesLoading, out requestsSent, out bytesReceived, out attribution, out status,
                 tileSource, camera, enabled, radius, background, maxZoom, screenSpaceError, maxRequestsInFlight, screenHeight, fadeDuration, layers);
-            if (rasters.Count > 1)
-                status += $"; {rasters.Count - 1} more tile layer(s) not drawn: one tile layer at a time for now ({string.Join(", ", rasters.Skip(1).Select(r => r.Name))})";
             return entity;
         }
         finally { Measure(updateStart); }
@@ -555,8 +553,8 @@ public sealed class GlobeNode : IDisposable
         if (signature != _signature)
         {
             _signature = signature;
-            _layers = list.Select(l => l.Vector?.Document is { } doc
-                ? (OverlayLayer)new StyleOverlay(doc)
+            _layers = list.Select(l => l.Raster is { } raster ? new RasterOverlay(raster, l.Opacity)
+                : l.Vector?.Document is { } doc ? (OverlayLayer)new StyleOverlay(doc)
                 : new ShapesOverlay(l.Geometries, new TileOverlay.Style(ToSk(l.Style.LineColor), l.Style.LineWidth, ToSk(l.Style.FillColor)))).ToList();
             _vectorLayers = list.Where(l => l.Vector != null).ToList();
             _overlayVersion++;

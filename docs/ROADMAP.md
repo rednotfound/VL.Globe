@@ -573,7 +573,17 @@ The plan as written:
   - MapLibre 6 bends the ray past the horizon.
   - Choose one; the ray must not reach the Newton solve when it misses.
 
-### 6. Widgets and imagery layers
+### 6. Widgets and imagery layers — imagery layers built 2026-11-23
+
+**Several imagery layers with Opacity — built**, seen in vvvv (OpenTopoMap at 0.5-0.6 over OpenStreetMap,
+Tokyo and Mount Fuji). OpenStreetMap and XyzTiles have an `Opacity`; in Group the leftmost tile layer is
+the globe's own imagery (mipmaps, fades, stand-ins; always opaque), every layer above it is drawn into
+each tile's overlay in Group order (`RasterOverlay`: the source's disk cache, or fetched on the overlay
+worker for a wanted tile; a stand-in draws only what is cached and is marked incomplete). GPU vector
+tiles stay above all tile layers whatever their place in Group. Help patch `HowTo Stack tile layers`
+(XyzTiles' first). Still to do: ScaleBar, ZoomButtons, Click, the attribution in the window.
+
+The plan as written:
 
 - `ScaleBar`: TerriaJS's method — the ground distance across one pixel at a probe point, then the
   largest round length under 100 px. Hidden when the probe misses the globe.

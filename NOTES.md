@@ -686,3 +686,9 @@ looked fine - "which makes one think it works". Two causes, estimated at 100 m h
   wheel notches, 3 right-drags, then Reset - the view back at 139.7 / 35.68, 12,000 km, heading and tilt
   0; no error in the log. They rearranged the patch and added a Reset bang. Their save carried Enabled
   True and VL.Globe pinned 0.0.1-alpha: Normalize-HelpPatches put them back (false, 0.0.0).
+- **Tile layers stack through the overlay** (2026-11-23, ROADMAP item 6): the layers above the bottom tile
+  layer go where the draped vectors already went - each tile's overlay image, rendered on a worker in
+  Group order - instead of a second texture and material blend per slot. No new upload path, no new
+  fade logic; opacity is the paint's alpha. Limits, by design: the bottom layer is opaque (it is the
+  imagery), and GPU vector tiles draw above every tile layer. Tested offline (a PNG put into the
+  source's FileCache first); seen in vvvv.
