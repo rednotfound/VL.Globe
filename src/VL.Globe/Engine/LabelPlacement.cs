@@ -198,15 +198,16 @@ internal sealed class LabelPlacement
                     var line = tile.LineLabels[i];
                     if (placed[line.VertexStart] == 0) continue;   // hidden, not fading out (LabelFades.Pack)
                     var clip = Vector4.Transform(new Vector4(line.Anchor, 1), worldViewProjection);
-                    if (clip.W <= 0) { LineGlyphs.Hide(line, dynamic); tile.DynamicDirty = true; continue; }
+                    int glyphVertices = line.GlyphOffsets.Length * 4;
+                    if (clip.W <= 0) { if (LineGlyphs.HideIfShown(line, dynamic)) tile.MarkDynamic(line.VertexStart, glyphVertices); continue; }
                     // GL JS updateLineLabels' isVisible: an anchor past the viewport and 256 px round it is hidden,
                     // not walked (4g step 4: every shown line label was walked every frame the camera moved)
                     float cx = clip.X / clip.W, cy = clip.Y / clip.W;
-                    if (cx < -bufferX || cx > bufferX || cy < -bufferY || cy > bufferY) { LineGlyphs.Hide(line, dynamic); tile.DynamicDirty = true; continue; }
+                    if (cx < -bufferX || cx > bufferX || cy < -bufferY || cy > bufferY) { if (LineGlyphs.HideIfShown(line, dynamic)) tile.MarkDynamic(line.VertexStart, glyphVertices); continue; }
                     float perspective = 0.5f + 0.5f * cameraToCenter / clip.W;
                     float size = (line.FeatureSize > 0 ? line.FeatureSize : layer.Size) * perspective;
                     LineGlyphs.Place(line, worldViewProjection, _width, _height, size, dynamic, out _, out _);
-                    tile.DynamicDirty = true;
+                    tile.MarkDynamic(line.VertexStart, glyphVertices);
                 }
             }
     }

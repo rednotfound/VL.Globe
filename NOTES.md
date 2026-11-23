@@ -570,3 +570,8 @@ looked fine - "which makes one think it works". Two causes, estimated at 100 m h
   `ViewProbe`). What was missing: `boundary_3` (prefecture and state borders), dropped in a lenient
   parse for `typeof` in its filter. `typeof` added (GL JS's typeOf and its array<item, N> names);
   borders drawn, solid - line-dasharray is not done. Where the user looked for names: to be asked.
+- **A pan bench does not test zooming (2026-11-23).** At GL JS's level on a pan (0.0-0.1%), the user's
+  own session showed label-index spikes while zooming; a zoom bench gave 4% where GL JS gave 0.2-0.4%.
+  Zooming builds tens of tiles a second; what survives follows the tiles built. Bench each motion.
+- I guessed once more without measuring (the one-way arrows' line arrays: 0.2 MB of 13.8) - the
+  AllocMeter lap on the branch then named the real part in one run. Measure the stage first.

@@ -498,6 +498,20 @@ Sum either log up with `tools/Summarize-Perf.py <log> --from <pan 1 begins> --to
   (`GetAccessor`, Stride's own renderers' way), fetched again each frame. **Submit 5.5 -> ~2 ms mean.**
 - **Bench: 0.1% (one frame) and 0.0%, worst frame 20 and 19 ms - GL JS's 0% and 17 ms.** On this pan
   the gap the user felt is closed. Not yet judged by the user; not yet benched tilting or zooming.
+- **Judged by the user (2026-11-23): "测试下来好很多了，帧数也稳定很多了".** Their own session's log
+  showed what a pan does not: zooming, the label index spiked 10-44 ms.
+- **A zoom bench** (`VLGLOBE_BENCH=zoom` / the page's `mode=zoom`: 5 levels out at one a second and
+  back, twice; GL JS seen zoomed out in a screenshot): **ours 4.0% and 3.3%, worst 38-41 ms; GL JS
+  0.2% and 0.4%, worst 850 and 67 ms.** Zooming builds tens of tiles a second: 41 collections a
+  second, 370 MB/s, 14-20 MB/s promoted - in the seconds that build 70 tiles, 85 MB.
+- Zoomed-out tiles' garbage was lines (a tessellator and strip list a line: now one a thread - z10
+  shapes 17.5 -> 2.6 MB, z12 22.8 -> 0.3) and one-way arrows (icons shaped once per input set per
+  layer, anchors without LINQ: 13.8 -> 6.7 MB). Off-screen line labels hidden again every frame,
+  and every such tile's whole label buffer uploaded: now only a change, only the changed range.
+  Zoom bench: 3.4%, worst 31 ms; collections 41 -> 27 a second, but promoted 14 -> 22 MB/s.
+- Left in zooming: GC (273 of 270 ms overrun), the promoted bytes following the tiles built (about
+  half their uploaded size). What survives needs a heap tool (dotnet-gcdump / dotnet-trace, not
+  installed - the user to decide).
 
 ### 5. Navigation
 

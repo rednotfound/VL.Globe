@@ -168,6 +168,15 @@ internal static class LineGlyphs
         }
     }
 
+    /// <summary>Hides a label not hidden already; true when anything was written (4g step 4: every off-screen
+    /// line label was hidden again every frame the camera moved, and its tile's whole buffer uploaded).</summary>
+    internal static bool HideIfShown(LineLabel label, Vector4[] dynamic)
+    {
+        if (label.GlyphOffsets.Length == 0 || dynamic[label.VertexStart].W == -1) return false;
+        Hide(label, dynamic);
+        return true;
+    }
+
     internal static bool Hide(LineLabel label, Vector4[]? dynamic)
     {
         if (dynamic is null) return false;

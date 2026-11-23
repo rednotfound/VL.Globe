@@ -42,6 +42,15 @@ internal sealed class GpuTile
     public Vector4[]? Dynamic;
     public Buffer? DynamicBuffer;
     public bool DynamicDirty;
+    // the part of Dynamic written since its last upload, vertices [from, to): uploaded alone
+    public int DynamicFrom = int.MaxValue, DynamicTo;
+
+    public void MarkDynamic(int start, int count)
+    {
+        DynamicDirty = true;
+        DynamicFrom = Math.Min(DynamicFrom, start);
+        DynamicTo = Math.Max(DynamicTo, start + count);
+    }
     public required Dictionary<int, List<VectorRange>> ByLayer;   // -1: the background grid
     public long Bytes => (Vertices?.SizeInBytes ?? 0) + (Indices?.SizeInBytes ?? 0) + (SymbolVertices?.SizeInBytes ?? 0) + (SymbolIndices?.SizeInBytes ?? 0)
         + (CircleVertices?.SizeInBytes ?? 0) + (CircleIndices?.SizeInBytes ?? 0);

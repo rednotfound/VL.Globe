@@ -235,8 +235,12 @@ internal sealed class VectorRenderer : IGraphicsRendererBase
                     }
                     if (tile.DynamicDirty && tile.DynamicBuffer is { } dynamicBuffer && tile.Dynamic is { } dynamic)
                     {
-                        dynamicBuffer.SetData(commandList, (ReadOnlySpan<Vector4>)dynamic);
+                        // the part written since the last upload, or all of it when that is not known (4g step 4)
+                        int from = Math.Clamp(tile.DynamicFrom, 0, dynamic.Length), to = Math.Clamp(tile.DynamicTo, from, dynamic.Length);
+                        if (tile.DynamicFrom == int.MaxValue) { from = 0; to = dynamic.Length; }
+                        if (to > from) dynamicBuffer.SetData(commandList, ((ReadOnlySpan<Vector4>)dynamic)[from..to], from * 16);
                         tile.DynamicDirty = false;
+                        tile.DynamicFrom = int.MaxValue; tile.DynamicTo = 0;
                     }
                 }
         }
