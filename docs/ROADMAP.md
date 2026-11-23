@@ -541,7 +541,14 @@ Sum either log up with `tools/Summarize-Perf.py <log> --from <pan 1 begins> --to
   in slot 1 bound at its element with stride 0: one Apply a pass instead of 13 sets and an Apply a
   draw. Submit 1.54 -> 1.15 ms in a made frame, 5.2 -> 4.1 in a missed one; zoom bench 0.5 / 0.9 /
   0.7% (was 1.1 / 0.8 / 0.8). Fixture reports identical, Tokyo offscreen within the probe's spread.
-  Not yet: merging draws across tiles (the draw calls themselves are 0.1 ms). A dump stalls vvvv ~0.8 s: never bench while dumping.
+  Not yet: merging draws across tiles (the draw calls themselves are 0.1 ms).
+- **Stopped here (the user, 2026-11-23: "如果你评估下来差不多了，那我们就可以停在这里了").** Pan
+  0.0-0.1% missed (GL JS 0%), zoom ~0.7% (from 3.4%; GL JS 0.2-0.4%). Left, by cost: pooling the
+  decoded tiles' arrays (ownership on eviction; ~0.1-0.3 points), spreading a tile's arrival over
+  frames and label opacities only where changed (small each), the tiles' data in native memory
+  (what GL JS's worker heaps amount to; every access by hand, crashes on a mistake), building in a
+  separate process (IPC, shared GPU memory). `DOTNET_GCgen0size` is the whole vvvv's, not a package's
+  to set. The one heap .NET threads share is the difference that stays. A dump stalls vvvv ~0.8 s: never bench while dumping.
 
 ### 5. Navigation
 

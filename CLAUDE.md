@@ -46,8 +46,9 @@ Guidance for Claude Code working in this repository.
    the style expressions interpreted per feature. Built: expressions compiled once, decoded tiles as a
    few arrays, buffers made on the workers, off-screen line labels not walked, parameters set through
    accessors - bench misses 3-5% -> 0.0-0.1%, worst frame 19-20 ms (GL JS 0%, 17). Zoom bench (2026-11-23, dotnet-gcdump):
-   features as rows of arrays, line labels as structs - 3.4% -> ~1.1% (GL JS 0.2-0.4%); the user: "好很多". Misses now mixed
-   (GC, label opacities, submit at 6000 draws); next: value strings as bytes, or measure those first.**
+   features as rows of arrays, line labels as structs, value strings made at first read, each draw's values in one buffer -
+   3.4% -> ~0.7% (GL JS 0.2-0.4%); the user: "好很多", then stopped 4g there (ROADMAP 4g, "Stopped here", lists what is left).
+   Next: the user's choice - ROADMAP 0.1's remaining items.**
    Research: [docs/RESEARCH-0.1.md](docs/RESEARCH-0.1.md), [docs/RESEARCH-VECTOR.md](docs/RESEARCH-VECTOR.md).
 2. Read **[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)** — what exists and why.
 3. Read **[NOTES.md](NOTES.md)** — every failure so far, before touching the same code.
