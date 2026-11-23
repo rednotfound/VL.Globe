@@ -1,11 +1,16 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
-<Document xmlns:p="property" xmlns:r="reflection" Id="DJewv2DkEQfWVxihldD05o" LanguageVersion="2025.7.4" Version="0.128">
+<Document xmlns:p="property" xmlns:r="reflection" Id="Pcd6pwcw7HmNYIDsKrJ7mY" LanguageVersion="2025.7.4" Version="0.128">
   <NugetDependency Id="UknH5lX7mzBn0PmGjhSOL8" Location="VL.CoreLib" Version="2025.7.4" />
   <NugetDependency Id="Vr6OYqKtz6WQkZJ1URgpIN" Location="VL.Stride" Version="2025.7.4" />
   <NugetDependency Id="FPxiIiZjkVDsT6WexmwhWv" Location="VL.Globe" Version="0.0.0" />
-  <NugetDependency Id="Kd3TrqY7nWbE2pZsLm9QxA" Location="VL.NetTopologySuite" Version="0.0.0" />
+  <NugetDependency Id="Kd3TrqY7nWbE2pZsLm9QxA" Location="VL.NetTopologySuite" Version="0.0.10-alpha" />
   <Patch Id="Ppp1diPg18Nhg303kSH9Ou">
     <Canvas Id="VMXIoIg7kJia5kIL8YL2u6" DefaultCategory="Main" CanvasType="FullCategory" />
+    <!--
+
+    ************************ Application ************************
+
+-->
     <Node Name="Application" Bounds="100,100" Id="FMPVtoTkhQDJer0TCexkeW">
       <p:NodeReference>
         <Choice Kind="ContainerDefinition" Name="Process" />
@@ -13,7 +18,7 @@
       </p:NodeReference>
       <Patch Id="L1ZFfbJtbZxyFKGJ3YRyrj">
         <Canvas Id="QqTmKIzMrnwwvikyOY6FSh" CanvasType="Group">
-          <Pad Id="CJLQA7Mle66CPfjSMe0RS9" Bounds="60,40,460,34" ShowValueBox="true" isIOBox="true" Value="Place objects on the globe">
+          <Pad Id="CJLQA7Mle66CPfjSMe0RS9" Bounds="60,40,460,41" ShowValueBox="true" isIOBox="true" Value="Place objects on the globe">
             <p:TypeAnnotation LastCategoryFullName="Primitive" LastDependency="VL.CoreLib.vl">
               <Choice Kind="TypeFlag" Name="String" />
             </p:TypeAnnotation>
@@ -31,7 +36,7 @@
               <p:stringtype p:Assembly="VL.Core" p:Type="VL.Core.StringType">Comment</p:stringtype>
             </p:ValueBoxSettings>
           </Pad>
-          <Pad Id="ICjZ6qRY1q67Xa0Hu21c2V" Comment="Enabled" Bounds="60,150,60,30" ShowValueBox="true" isIOBox="true" Value="False">
+          <Pad Id="ICjZ6qRY1q67Xa0Hu21c2V" Comment="Enabled" Bounds="198,190,60,30" ShowValueBox="true" isIOBox="true" Value="false">
             <p:TypeAnnotation LastCategoryFullName="Primitive" LastDependency="VL.CoreLib.vl">
               <Choice Kind="TypeFlag" Name="Boolean" />
             </p:TypeAnnotation>
@@ -39,16 +44,7 @@
               <p:buttonmode p:Assembly="VL.UI.Forms" p:Type="VL.HDE.PatchEditor.Editors.ButtonModeEnum">Toggle</p:buttonmode>
             </p:ValueBoxSettings>
           </Pad>
-          <Pad Id="Kx9fSbYoWnnsyM2c1UWa1A" Bounds="130,155,330,20" ShowValueBox="true" isIOBox="true" Value="&lt; off on open: nothing is fetched until you agree">
-            <p:TypeAnnotation LastCategoryFullName="Primitive" LastDependency="VL.CoreLib.vl">
-              <Choice Kind="TypeFlag" Name="String" />
-            </p:TypeAnnotation>
-            <p:ValueBoxSettings>
-              <p:fontsize p:Type="Int32">9</p:fontsize>
-              <p:stringtype p:Assembly="VL.Core" p:Type="VL.Core.StringType">Comment</p:stringtype>
-            </p:ValueBoxSettings>
-          </Pad>
-          <Node Bounds="300,200,180,19" Id="AI7Tnl2xLXOqfbiLS4fiNE">
+          <Node Bounds="400,190,180,19" Id="AI7Tnl2xLXOqfbiLS4fiNE">
             <p:NodeReference LastCategoryFullName="Globe" LastDependency="VL.Globe.vl">
               <Choice Kind="NodeFlag" Name="Node" Fixed="true" />
               <Choice Kind="ProcessAppFlag" Name="GlobePositionComponent" />
@@ -58,8 +54,9 @@
             <Pin Id="C3QYFt1WVFRcs7GOxTYT4L" Name="Latitude" Kind="InputPin" DefaultValue="35.6812" />
             <Pin Id="PWlUxK9xxSBjWlxQ4M2fVh" Name="Height" Kind="InputPin" DefaultValue="100" />
             <Pin Id="Qc9KHa3W3P8xTR5DnN1I6V" Name="Output" Kind="OutputPin" />
+            <Pin Id="UxE9fIzV64EPO5VABZa1j8" Name="Radius" Kind="InputPin" />
           </Node>
-          <Pad Id="SB5CxnHRezr5bzvWPxl4b2" Bounds="490,198,300,34" ShowValueBox="true" isIOBox="true" Value="&lt; where it stands, in degrees; Height in metres above sea level - the ball's centre, 100 m up">
+          <Pad Id="SB5CxnHRezr5bzvWPxl4b2" Bounds="590,188,300,34" ShowValueBox="true" isIOBox="true" Value="&lt; where it stands, in degrees; Height in metres above sea level - the ball's centre, 100 m up">
             <p:TypeAnnotation LastCategoryFullName="Primitive" LastDependency="VL.CoreLib.vl">
               <Choice Kind="TypeFlag" Name="String" />
             </p:TypeAnnotation>
@@ -68,7 +65,7 @@
               <p:stringtype p:Assembly="VL.Core" p:Type="VL.Core.StringType">Comment</p:stringtype>
             </p:ValueBoxSettings>
           </Pad>
-          <Node Bounds="300,240,65,19" Id="HvQXoulP9IG5zyDDNJbQ6P">
+          <Node Bounds="400,230,65,19" Id="HvQXoulP9IG5zyDDNJbQ6P">
             <p:NodeReference LastCategoryFullName="Collections.Spread" LastDependency="VL.Collections.vl">
               <Choice Kind="NodeFlag" Name="Node" Fixed="true" />
               <Choice Kind="OperationCallFlag" Name="FromValue" />
@@ -77,25 +74,34 @@
             <Pin Id="SCJGomwUxPp3RZiwnnmoKe" Name="Input" Kind="InputPin" />
             <Pin Id="VnZ9lEgIl0F0L0SVgb1hkf" Name="Result" Kind="OutputPin" />
           </Node>
-          <Node Bounds="400,240,77,19" Id="GLDuW6fJ9JDCD7pbAFnr4u">
+          <Node Bounds="315,230,77,19" Id="GLDuW6fJ9JDCD7pbAFnr4u">
             <p:NodeReference LastCategoryFullName="Stride.Materials" LastDependency="VL.Stride.Rendering.ShaderFX.vl">
               <Choice Kind="NodeFlag" Name="Node" Fixed="true" />
               <Choice Kind="ProcessAppFlag" Name="ColorMaterial" />
             </p:NodeReference>
+            <Pin Id="ICaKZHfXJfPQLJAf2t9W1W" Name="Node Context" Kind="InputPin" IsHidden="true" />
             <Pin Id="QcydKvDCYgilLcISMR8E4I" Name="Color" Kind="InputPin" DefaultValue="0.9, 0.15, 0.1, 1" />
             <Pin Id="EWb3qPN2RYMMnfp6vVYXeM" Name="Output" Kind="OutputPin" />
+            <Pin Id="I7mQyDM4cTbNLD26Nneefo" Name="Transparency" Kind="InputPin" />
+            <Pin Id="QlKeK5Jc1WWO5kMOBUjtev" Name="Cull Mode" Kind="InputPin" />
           </Node>
-          <Node Bounds="300,280,145,19" Id="TCev8kJWCMS7mlDjpR0S5L">
+          <Node Bounds="300,280,165,19" Id="TCev8kJWCMS7mlDjpR0S5L">
             <p:NodeReference LastCategoryFullName="Stride.Models" LastDependency="VL.Stride.Engine.vl">
               <Choice Kind="NodeFlag" Name="Node" Fixed="true" />
               <Choice Kind="ProcessAppFlag" Name="Sphere" />
             </p:NodeReference>
+            <Pin Id="KTmZnz8pvyUQTI2SFiuQdM" Name="Node Context" Kind="InputPin" IsHidden="true" />
             <Pin Id="IO0y5FHqatStmlbzeEHJxQ" Name="Transformation" Kind="InputPin" />
             <Pin Id="QNCxxzsf8Km3Xdqb3pCv46" Name="Radius" Kind="InputPin" DefaultValue="100" />
             <Pin Id="F2BaSMOvVVjGL0zFzWtTBZ" Name="Tessellation" Kind="InputPin" DefaultValue="32" />
             <Pin Id="IqldZs8fSeqS9CJ67PCDt2" Name="Material" Kind="InputPin" />
+            <Pin Id="KsxTy2rGJzELqyfaUFDZgB" Name="Is Shadow Caster" Kind="InputPin" />
             <Pin Id="T6J2eghgdYTtYVrdHnKLT5" Name="Components" Kind="InputPin" />
+            <Pin Id="L9PuS5CoOX3Ol0OHLbnvZE" Name="Output" Kind="OutputPin" IsHidden="true" />
             <Pin Id="EDTQiSYy2AYGd9N4brvaub" Name="Entity" Kind="OutputPin" />
+            <Pin Id="UJRzORbm2tjLflMhG5qZyb" Name="Children" Kind="InputPin" />
+            <Pin Id="POdSJs1Y5ASLIlRd5ggMmH" Name="Name" Kind="InputPin" />
+            <Pin Id="NsB7XeyxhsBOQg58llKelT" Name="Enabled" Kind="InputPin" />
           </Node>
           <Pad Id="O8Pu3I1wNcJWRP0jEEmpp4" Bounds="460,278,300,34" ShowValueBox="true" isIOBox="true" Value="&lt; the entity's own size and Transformation are in metres: +Y up, -Z north">
             <p:TypeAnnotation LastCategoryFullName="Primitive" LastDependency="VL.CoreLib.vl">
@@ -106,14 +112,16 @@
               <p:stringtype p:Assembly="VL.Core" p:Type="VL.Core.StringType">Comment</p:stringtype>
             </p:ValueBoxSettings>
           </Pad>
-          <Node Bounds="60,200,100,19" Id="E1uXPLpPtjFwbc4KNi5sUR">
+          <Node Bounds="133,250,100,19" Id="E1uXPLpPtjFwbc4KNi5sUR">
             <p:NodeReference LastCategoryFullName="Globe.Layers" LastDependency="VL.Globe.vl">
               <Choice Kind="NodeFlag" Name="Node" Fixed="true" />
               <Choice Kind="ProcessAppFlag" Name="OpenStreetMap" />
             </p:NodeReference>
             <Pin Id="O0IDjcemAH9JJFdAEy0LPM" Name="Output" Kind="OutputPin" />
+            <Pin Id="VReS843nhStLzhNEmrcbPz" Name="Opacity" Kind="InputPin" />
+            <Pin Id="ID8OLNjVitzP7Lt6ZD8K5f" Name="Enabled" Kind="InputPin" />
           </Node>
-          <Node Bounds="60,340,260,19" Id="OWOkhJq5Faiz0ADe09e29K">
+          <Node Bounds="55,370,260,19" Id="OWOkhJq5Faiz0ADe09e29K">
             <p:NodeReference LastCategoryFullName="Globe" LastDependency="VL.Globe.vl">
               <Choice Kind="NodeFlag" Name="Node" Fixed="true" />
               <Choice Kind="ProcessAppFlag" Name="GlobeWindow" />
@@ -121,36 +129,59 @@
               <PinReference Kind="InputPin" Name="Bound to Document" />
               <PinReference Kind="InputPin" Name="Scene" />
             </p:NodeReference>
+            <Pin Id="MEbD60zhfI2NPbGEj21H40" Name="Node Context" Kind="InputPin" IsHidden="true" />
             <Pin Id="A1BlHkhgbPJaF7fBo9Hq5S" Name="Bounds" Kind="InputPin" DefaultValue="926, 114, 800, 800" />
             <Pin Id="G7QByrgxmNUB9g3pruRh3V" Name="Bound to Document" Kind="InputPin" DefaultValue="True" />
             <Pin Id="Msk7QM2jl8FkrA8oa6tySY" Name="Input" Kind="InputPin" />
             <Pin Id="31Vih17UJZMPFO3yadbnbJ" Name="Camera" Kind="InputPin" />
-            <Pin Id="UGbWykMHsz0bFUtseYNXR7" Name="Enabled" Kind="InputPin" />
-            <Pin Id="FTj6FzAVy9VsATVViGsQhU" Name="Scene" Kind="InputPin" />
             <Pin Id="JyQ15suNRjYAWv87zuLNzi" Name="Title" Kind="InputPin" DefaultValue="Place objects on the globe" />
             <Pin Id="gJRSnfWiQmaVg7gP6URVFq" Name="View" Kind="OutputPin" />
+            <Pin Id="OGmvpMxZpM1OoazhCfERr1" Name="Cursor" Kind="OutputPin" />
+            <Pin Id="B7lNSVdQedfOqEsXzP8R16" Name="Attribution" Kind="OutputPin" />
             <Pin Id="MejIilgQYWEz3KObypRPyZ" Name="Status" Kind="OutputPin" />
+            <Pin Id="FltUneFJWH4Pdtjv0O7ddP" Name="Background" Kind="InputPin" />
+            <Pin Id="FTj6FzAVy9VsATVViGsQhU" Name="Scene" Kind="InputPin" />
+            <Pin Id="UGbWykMHsz0bFUtseYNXR7" Name="Enabled" Kind="InputPin" DefaultValue="True" />
           </Node>
-          <Node Bounds="60,260,180,19" Id="8n5DW4cJ2NOTh0JKTc8uKr">
+          <Node Bounds="164,310,225,19" Id="8n5DW4cJ2NOTh0JKTc8uKr">
             <p:NodeReference LastCategoryFullName="Globe" LastDependency="VL.Globe.vl">
               <Choice Kind="NodeFlag" Name="Node" Fixed="true" />
               <Choice Kind="ProcessAppFlag" Name="GlobeCamera" />
             </p:NodeReference>
+            <Pin Id="T4Jix6P8t70MN2pAsliBCq" Name="Node Context" Kind="InputPin" IsHidden="true" />
             <Pin Id="VbJcupSsiGAaReab8TwKEr" Name="Initial Longitude" Kind="InputPin" DefaultValue="139.7671" />
             <Pin Id="DUJYsBrI3SyGk6R1mX8aZ6" Name="Initial Latitude" Kind="InputPin" DefaultValue="35.6812" />
             <Pin Id="VCsyDxdHS0ljifZN9PRncN" Name="Initial Height" Kind="InputPin" DefaultValue="3000" />
             <Pin Id="dqPMeVy6M1IIJLgEAOptW6" Name="Output" Kind="OutputPin" />
+            <Pin Id="INon4teqhR1MLJUUF4WOQ4" Name="Initial Heading" Kind="InputPin" />
+            <Pin Id="E8lDoy8K2kJMrqF63wFmKY" Name="Initial Tilt" Kind="InputPin" />
+            <Pin Id="VidfHGkqy17QFwrFl4gnS9" Name="Min Height" Kind="InputPin" />
+            <Pin Id="Ixk6Wq7OqVKOPmE85IxGZw" Name="Max Height" Kind="InputPin" />
+            <Pin Id="Kv87UI6SXzJNzT4uxTNZdo" Name="Field Of View" Kind="InputPin" />
+            <Pin Id="L0mchDM9PeNL078Cx0tO7m" Name="Max Tilt" Kind="InputPin" />
+            <Pin Id="Tzlf5JxFvEMMLWWMzVpmAa" Name="Radius" Kind="InputPin" />
+            <Pin Id="DFRcy2w003CMoyOg2BR2fQ" Name="Mouse" Kind="InputPin" IsHidden="true" />
+            <Pin Id="NfWv174Z37FO6xycx3ENOt" Name="Screen Height" Kind="InputPin" IsHidden="true" />
+            <Pin Id="SGArP1GI0HDPcouiTMQtzd" Name="Reset" Kind="InputPin" />
+            <Pin Id="RqYGtcm8VbrNVhID8cb7d1" Name="Enabled" Kind="InputPin" />
+            <Pin Id="OyIN2c6632IN0F0rWxGuNr" Name="View" Kind="OutputPin" />
           </Node>
-          <Node Bounds="60,380,110,19" Id="9Pvp16rKa78IVYsnvLrRKG">
+          <Node Bounds="55,410,125,19" Id="9Pvp16rKa78IVYsnvLrRKG">
             <p:NodeReference LastCategoryFullName="Globe" LastDependency="VL.Globe.vl">
               <Choice Kind="NodeFlag" Name="Node" Fixed="true" />
               <Choice Kind="OperationCallFlag" Name="GlobeViewInfo" />
             </p:NodeReference>
             <p:HelpFocus p:Assembly="VL.Lang" p:Type="VL.Model.HelpPriority">Low</p:HelpFocus>
             <Pin Id="h1nmrMlGNKkApFA8x5pj4e" Name="View" Kind="InputPin" />
+            <Pin Id="QnNkXZYUciWLD0jPxb6ptN" Name="Center Longitude" Kind="OutputPin" />
+            <Pin Id="RZQEg5eZAy6MdS1i8t0yt7" Name="Center Latitude" Kind="OutputPin" />
             <Pin Id="2Jekl5JEXhvG8sBRiz7fLm" Name="Height" Kind="OutputPin" />
+            <Pin Id="JVwwzFLCRVvLVwfSLWayqg" Name="Heading" Kind="OutputPin" />
+            <Pin Id="DEjoZpR1hyjMQtFdC8Ylfy" Name="Tilt" Kind="OutputPin" />
+            <Pin Id="BKhp6CIaH86Psq4FbpLmB2" Name="Resolution" Kind="OutputPin" />
+            <Pin Id="RIQ2QqXfO5NMpTDBTDzh1d" Name="Zoom" Kind="OutputPin" />
           </Node>
-          <Pad Id="Uq1JcpsKOR2MpEAEm1vQ5q" Bounds="340,338,320,20" ShowValueBox="true" isIOBox="true" Value="&lt; Scene: your own entities, drawn with the map">
+          <Pad Id="Uq1JcpsKOR2MpEAEm1vQ5q" Bounds="335,368,320,20" ShowValueBox="true" isIOBox="true" Value="&lt; Scene: your own entities, drawn with the map">
             <p:TypeAnnotation LastCategoryFullName="Primitive" LastDependency="VL.CoreLib.vl">
               <Choice Kind="TypeFlag" Name="String" />
             </p:TypeAnnotation>
@@ -159,12 +190,12 @@
               <p:stringtype p:Assembly="VL.Core" p:Type="VL.Core.StringType">Comment</p:stringtype>
             </p:ValueBoxSettings>
           </Pad>
-          <Pad Id="Ko3IGBwaOytQDGFWw2nEm1" Comment="Height" Bounds="60,420,90,15" ShowValueBox="true" isIOBox="true">
+          <Pad Id="Ko3IGBwaOytQDGFWw2nEm1" Comment="Height" Bounds="55,450,90,15" ShowValueBox="true" isIOBox="true">
             <p:TypeAnnotation LastCategoryFullName="Primitive" LastDependency="VL.CoreLib.vl">
               <Choice Kind="TypeFlag" Name="Float64" />
             </p:TypeAnnotation>
           </Pad>
-          <Pad Id="IyBBovMvDOlCfodaiVeqnX" Bounds="220,420,260,20" ShowValueBox="true" isIOBox="true" Value="&lt; the camera, metres above the ground">
+          <Pad Id="IyBBovMvDOlCfodaiVeqnX" Bounds="215,450,260,20" ShowValueBox="true" isIOBox="true" Value="&lt; the camera, metres above the ground">
             <p:TypeAnnotation LastCategoryFullName="Primitive" LastDependency="VL.CoreLib.vl">
               <Choice Kind="TypeFlag" Name="String" />
             </p:TypeAnnotation>
@@ -173,36 +204,12 @@
               <p:stringtype p:Assembly="VL.Core" p:Type="VL.Core.StringType">Comment</p:stringtype>
             </p:ValueBoxSettings>
           </Pad>
-          <Pad Id="E0lYYKiBRLgONqahQjait5" Comment="Status" Bounds="60,460,500,15" ShowValueBox="true" isIOBox="true">
+          <Pad Id="E0lYYKiBRLgONqahQjait5" Comment="Status" Bounds="55,490,500,15" ShowValueBox="true" isIOBox="true">
             <p:TypeAnnotation LastCategoryFullName="Primitive" LastDependency="VL.CoreLib.vl">
               <Choice Kind="TypeFlag" Name="String" />
             </p:TypeAnnotation>
           </Pad>
-          <Pad Id="RzQo4i82y1AlPsnv1yVyFY" Bounds="60,520,620,60" ShowValueBox="true" isIOBox="true" Value="ToGlobe and FromGlobe: degrees to a position on a globe of radius 1, and back - numbers for your own maths. To show something in a GlobeWindow use GlobePositionComponent: that camera moves the world round the eye, so an absolute position lands at the eye.">
-            <p:TypeAnnotation LastCategoryFullName="Primitive" LastDependency="VL.CoreLib.vl">
-              <Choice Kind="TypeFlag" Name="String" />
-            </p:TypeAnnotation>
-            <p:ValueBoxSettings>
-              <p:fontsize p:Type="Int32">9</p:fontsize>
-              <p:stringtype p:Assembly="VL.Core" p:Type="VL.Core.StringType">Comment</p:stringtype>
-            </p:ValueBoxSettings>
-          </Pad>
-          <Pad Id="N6tT5Aq1zf59iBJ1k1aa5Z" Comment="Longitude" Bounds="60,600,60,15" ShowValueBox="true" isIOBox="true" Value="139.6917">
-            <p:TypeAnnotation LastCategoryFullName="Primitive" LastDependency="VL.CoreLib.vl">
-              <Choice Kind="TypeFlag" Name="Float64" />
-            </p:TypeAnnotation>
-          </Pad>
-          <Pad Id="TYaKadeoajFJnBlCCTDdx6" Comment="Latitude" Bounds="140,600,60,15" ShowValueBox="true" isIOBox="true" Value="35.6895">
-            <p:TypeAnnotation LastCategoryFullName="Primitive" LastDependency="VL.CoreLib.vl">
-              <Choice Kind="TypeFlag" Name="Float64" />
-            </p:TypeAnnotation>
-          </Pad>
-          <Pad Id="PmTZkFXgWoxtpHepxyVHSJ" Comment="Height" Bounds="220,600,60,15" ShowValueBox="true" isIOBox="true" Value="0">
-            <p:TypeAnnotation LastCategoryFullName="Primitive" LastDependency="VL.CoreLib.vl">
-              <Choice Kind="TypeFlag" Name="Float64" />
-            </p:TypeAnnotation>
-          </Pad>
-          <Pad Id="FeV0vGVcsjuSehPYwUuveq" Bounds="180,638,300,20" ShowValueBox="true" isIOBox="true" Value="&lt; degrees in, Vector3 out. Tokyo by default">
+          <Pad Id="RzQo4i82y1AlPsnv1yVyFY" Bounds="55,550,620,60" ShowValueBox="true" isIOBox="true" Value="ToGlobe and FromGlobe: degrees to a position on a globe of radius 1, and back - numbers for your own maths. To show something in a GlobeWindow use GlobePositionComponent: that camera moves the world round the eye, so an absolute position lands at the eye.">
             <p:TypeAnnotation LastCategoryFullName="Primitive" LastDependency="VL.CoreLib.vl">
               <Choice Kind="TypeFlag" Name="String" />
             </p:TypeAnnotation>
@@ -211,22 +218,22 @@
               <p:stringtype p:Assembly="VL.Core" p:Type="VL.Core.StringType">Comment</p:stringtype>
             </p:ValueBoxSettings>
           </Pad>
-          <Pad Id="HqiAqP0oFsCE8ow1NivSAF" Comment="Longitude" Bounds="60,720,70,15" ShowValueBox="true" isIOBox="true">
+          <Pad Id="N6tT5Aq1zf59iBJ1k1aa5Z" Comment="Longitude" Bounds="55,630,60,15" ShowValueBox="true" isIOBox="true" Value="139.6917">
             <p:TypeAnnotation LastCategoryFullName="Primitive" LastDependency="VL.CoreLib.vl">
               <Choice Kind="TypeFlag" Name="Float64" />
             </p:TypeAnnotation>
           </Pad>
-          <Pad Id="RZPhzss5E5Y2w5SblA6aKu" Comment="Latitude" Bounds="140,720,70,15" ShowValueBox="true" isIOBox="true">
+          <Pad Id="TYaKadeoajFJnBlCCTDdx6" Comment="Latitude" Bounds="135,630,60,15" ShowValueBox="true" isIOBox="true" Value="35.6895">
             <p:TypeAnnotation LastCategoryFullName="Primitive" LastDependency="VL.CoreLib.vl">
               <Choice Kind="TypeFlag" Name="Float64" />
             </p:TypeAnnotation>
           </Pad>
-          <Pad Id="QKs5kZMnZQJurVqKNMS37K" Comment="Height" Bounds="220,720,70,15" ShowValueBox="true" isIOBox="true">
+          <Pad Id="PmTZkFXgWoxtpHepxyVHSJ" Comment="Height" Bounds="215,630,60,15" ShowValueBox="true" isIOBox="true" Value="0">
             <p:TypeAnnotation LastCategoryFullName="Primitive" LastDependency="VL.CoreLib.vl">
               <Choice Kind="TypeFlag" Name="Float64" />
             </p:TypeAnnotation>
           </Pad>
-          <Pad Id="NswElGTNEmDQ7IAMJ6XpxP" Bounds="330,720,260,20" ShowValueBox="true" isIOBox="true" Value="&lt; and back">
+          <Pad Id="FeV0vGVcsjuSehPYwUuveq" Bounds="175,668,300,20" ShowValueBox="true" isIOBox="true" Value="&lt; degrees in, Vector3 out. Tokyo by default">
             <p:TypeAnnotation LastCategoryFullName="Primitive" LastDependency="VL.CoreLib.vl">
               <Choice Kind="TypeFlag" Name="String" />
             </p:TypeAnnotation>
@@ -235,7 +242,31 @@
               <p:stringtype p:Assembly="VL.Core" p:Type="VL.Core.StringType">Comment</p:stringtype>
             </p:ValueBoxSettings>
           </Pad>
-          <Node Bounds="60,640,100,19" Id="QtPsoGbyjvN4xHvVyw2KlX">
+          <Pad Id="HqiAqP0oFsCE8ow1NivSAF" Comment="Longitude" Bounds="55,750,70,15" ShowValueBox="true" isIOBox="true">
+            <p:TypeAnnotation LastCategoryFullName="Primitive" LastDependency="VL.CoreLib.vl">
+              <Choice Kind="TypeFlag" Name="Float64" />
+            </p:TypeAnnotation>
+          </Pad>
+          <Pad Id="RZPhzss5E5Y2w5SblA6aKu" Comment="Latitude" Bounds="135,750,70,15" ShowValueBox="true" isIOBox="true">
+            <p:TypeAnnotation LastCategoryFullName="Primitive" LastDependency="VL.CoreLib.vl">
+              <Choice Kind="TypeFlag" Name="Float64" />
+            </p:TypeAnnotation>
+          </Pad>
+          <Pad Id="QKs5kZMnZQJurVqKNMS37K" Comment="Height" Bounds="215,750,70,15" ShowValueBox="true" isIOBox="true">
+            <p:TypeAnnotation LastCategoryFullName="Primitive" LastDependency="VL.CoreLib.vl">
+              <Choice Kind="TypeFlag" Name="Float64" />
+            </p:TypeAnnotation>
+          </Pad>
+          <Pad Id="NswElGTNEmDQ7IAMJ6XpxP" Bounds="325,750,260,20" ShowValueBox="true" isIOBox="true" Value="&lt; and back">
+            <p:TypeAnnotation LastCategoryFullName="Primitive" LastDependency="VL.CoreLib.vl">
+              <Choice Kind="TypeFlag" Name="String" />
+            </p:TypeAnnotation>
+            <p:ValueBoxSettings>
+              <p:fontsize p:Type="Int32">9</p:fontsize>
+              <p:stringtype p:Assembly="VL.Core" p:Type="VL.Core.StringType">Comment</p:stringtype>
+            </p:ValueBoxSettings>
+          </Pad>
+          <Node Bounds="55,670,100,19" Id="QtPsoGbyjvN4xHvVyw2KlX">
             <p:NodeReference LastCategoryFullName="Globe" LastDependency="VL.Globe.vl">
               <Choice Kind="NodeFlag" Name="Node" Fixed="true" />
               <Choice Kind="OperationCallFlag" Name="ToGlobe" />
@@ -247,7 +278,7 @@
             <Pin Id="U4tMN5Ok62ZkJYvOwm4soU" Name="Radius" Kind="InputPin" />
             <Pin Id="NqRYFS7mCJbhgEO2YELbQA" Name="Position" Kind="OutputPin" />
           </Node>
-          <Node Bounds="60,680,100,19" Id="HYnIHb1egTsyJiw6bzx3aB">
+          <Node Bounds="55,710,100,19" Id="HYnIHb1egTsyJiw6bzx3aB">
             <p:NodeReference LastCategoryFullName="Globe" LastDependency="VL.Globe.vl">
               <Choice Kind="NodeFlag" Name="Node" Fixed="true" />
               <Choice Kind="OperationCallFlag" Name="FromGlobe" />
@@ -259,7 +290,7 @@
             <Pin Id="D8my5oSpLVot6PiqFCthOy" Name="Latitude" Kind="OutputPin" />
             <Pin Id="TJB7x5U0WcQLtrHF8lf9ZM" Name="Height" Kind="OutputPin" />
           </Node>
-          <Pad Id="Q2H6qLBIeh8MsrJB0ShC8b" Bounds="60,760,560,34" ShowValueBox="true" isIOBox="true" Value="ToGlobe (Coordinate): the same from a NetTopologySuite coordinate, X longitude, Y latitude, Z height">
+          <Pad Id="Q2H6qLBIeh8MsrJB0ShC8b" Bounds="55,790,560,34" ShowValueBox="true" isIOBox="true" Value="ToGlobe (Coordinate): the same from a NetTopologySuite coordinate, X longitude, Y latitude, Z height">
             <p:TypeAnnotation LastCategoryFullName="Primitive" LastDependency="VL.CoreLib.vl">
               <Choice Kind="TypeFlag" Name="String" />
             </p:TypeAnnotation>
@@ -268,17 +299,17 @@
               <p:stringtype p:Assembly="VL.Core" p:Type="VL.Core.StringType">Comment</p:stringtype>
             </p:ValueBoxSettings>
           </Pad>
-          <Pad Id="DWpZK4flNjTkehGaKvSzL3" Comment="X" Bounds="60,790,70,15" ShowValueBox="true" isIOBox="true" Value="139.6917">
+          <Pad Id="DWpZK4flNjTkehGaKvSzL3" Comment="X" Bounds="55,820,70,15" ShowValueBox="true" isIOBox="true" Value="139.6917">
             <p:TypeAnnotation LastCategoryFullName="Primitive" LastDependency="VL.CoreLib.vl">
               <Choice Kind="TypeFlag" Name="Float64" />
             </p:TypeAnnotation>
           </Pad>
-          <Pad Id="SAab4DTjTHpOOgqj4wloDa" Comment="Y" Bounds="140,790,70,15" ShowValueBox="true" isIOBox="true" Value="35.6895">
+          <Pad Id="SAab4DTjTHpOOgqj4wloDa" Comment="Y" Bounds="135,820,70,15" ShowValueBox="true" isIOBox="true" Value="35.6895">
             <p:TypeAnnotation LastCategoryFullName="Primitive" LastDependency="VL.CoreLib.vl">
               <Choice Kind="TypeFlag" Name="Float64" />
             </p:TypeAnnotation>
           </Pad>
-          <Node Bounds="60,830,90,19" Id="Oid8a2yGTAmHojCNOajKzT">
+          <Node Bounds="55,860,90,19" Id="Oid8a2yGTAmHojCNOajKzT">
             <p:NodeReference LastCategoryFullName="NetTopologySuite.Geometry" LastDependency="VL.NetTopologySuite.vl">
               <Choice Kind="NodeFlag" Name="Node" Fixed="true" />
               <Choice Kind="OperationCallFlag" Name="Coordinate" />
@@ -287,7 +318,7 @@
             <Pin Id="VgQvDllP7kI0Sz7KGDqdYB" Name="Y" Kind="InputPin" />
             <Pin Id="EoG8nHHIDYhaoNqyBiv6X1" Name="Result" Kind="OutputPin" />
           </Node>
-          <Node Bounds="60,870,140,19" Id="DParyDbwsa7vN6DYHNQM2i">
+          <Node Bounds="55,900,140,19" Id="DParyDbwsa7vN6DYHNQM2i">
             <p:NodeReference LastCategoryFullName="Globe" LastDependency="VL.Globe.vl">
               <Choice Kind="NodeFlag" Name="Node" Fixed="true" />
               <Choice Kind="OperationCallFlag" Name="ToGlobe (Coordinate)" />
@@ -295,13 +326,14 @@
             <p:HelpFocus p:Assembly="VL.Lang" p:Type="VL.Model.HelpPriority">High</p:HelpFocus>
             <Pin Id="DPQqZ4KYZTExLjAbWCrLqv" Name="Coordinate" Kind="InputPin" />
             <Pin Id="EEjcmsmkPiL4HQ6gXnArlA" Name="Position" Kind="OutputPin" />
+            <Pin Id="B2bNq87Xy59M5EYYlGkvSo" Name="Radius" Kind="InputPin" />
           </Node>
-          <Pad Id="UpfJ2WAJpM8HnisMPLKPAM" Comment="Position" Bounds="60,910,160,15" ShowValueBox="true" isIOBox="true">
+          <Pad Id="UpfJ2WAJpM8HnisMPLKPAM" Comment="Position" Bounds="55,940,160,43" ShowValueBox="true" isIOBox="true">
             <p:TypeAnnotation LastCategoryFullName="3D" LastDependency="VL.CoreLib.vl">
               <Choice Kind="TypeFlag" Name="Vector3" />
             </p:TypeAnnotation>
           </Pad>
-          <Pad Id="GvtY0rMfW8zGRPTWYXN9HA" Bounds="230,908,300,20" ShowValueBox="true" isIOBox="true" Value="&lt; on a globe of radius 1">
+          <Pad Id="GvtY0rMfW8zGRPTWYXN9HA" Bounds="273,936,300,20" ShowValueBox="true" isIOBox="true" Value="&lt; on a globe of radius 1">
             <p:TypeAnnotation LastCategoryFullName="Primitive" LastDependency="VL.CoreLib.vl">
               <Choice Kind="TypeFlag" Name="String" />
             </p:TypeAnnotation>
@@ -322,7 +354,6 @@
         <Link Id="LqkQCsgi4Xvc6q85QVp92R" Ids="EWb3qPN2RYMMnfp6vVYXeM,IqldZs8fSeqS9CJ67PCDt2" />
         <Link Id="GkSqudHl3okkSxQEhSskhC" Ids="EDTQiSYy2AYGd9N4brvaub,FTj6FzAVy9VsATVViGsQhU" />
         <Link Id="C2YwbjXZ7hkBhHKjffOWT8" Ids="O0IDjcemAH9JJFdAEy0LPM,Msk7QM2jl8FkrA8oa6tySY" />
-        <Link Id="VbE12KyJGyM2CDCvylmYeX" Ids="ICjZ6qRY1q67Xa0Hu21c2V,UGbWykMHsz0bFUtseYNXR7" />
         <Link Id="Ekdm8iamqmgsPzYCsTY5m4" Ids="2Jekl5JEXhvG8sBRiz7fLm,Ko3IGBwaOytQDGFWw2nEm1" />
         <Link Id="JQ0t6eSYZ0kBQjO2cPHa9J" Ids="MejIilgQYWEz3KObypRPyZ,E0lYYKiBRLgONqahQjait5" />
         <Link Id="yKDk4xGj413ElCA3A03xgZ" Ids="dqPMeVy6M1IIJLgEAOptW6,31Vih17UJZMPFO3yadbnbJ" />
@@ -338,6 +369,7 @@
         <Link Id="GR5A9pqLiY8ryiicoZbs1L" Ids="SAab4DTjTHpOOgqj4wloDa,VgQvDllP7kI0Sz7KGDqdYB" />
         <Link Id="KBS8QumzIrJ3MWPU55rUIw" Ids="EoG8nHHIDYhaoNqyBiv6X1,DPQqZ4KYZTExLjAbWCrLqv" />
         <Link Id="JUbK47ivwGnH0DignHpekL" Ids="EEjcmsmkPiL4HQ6gXnArlA,UpfJ2WAJpM8HnisMPLKPAM" />
+        <Link Id="VS8g5QLXQogNUM32Dll5Vl" Ids="ICjZ6qRY1q67Xa0Hu21c2V,ID8OLNjVitzP7Lt6ZD8K5f" />
       </Patch>
     </Node>
   </Patch>

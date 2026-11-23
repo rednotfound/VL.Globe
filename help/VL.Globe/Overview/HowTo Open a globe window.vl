@@ -35,7 +35,7 @@
               <p:stringtype p:Assembly="VL.Core" p:Type="VL.Core.StringType">Comment</p:stringtype>
             </p:ValueBoxSettings>
           </Pad>
-          <Pad Id="SwoX2dSx9tFUuiGeat2o3p" Comment="Enabled" Bounds="317,300,60,30" ShowValueBox="true" isIOBox="true" Value="false">
+          <Pad Id="SwoX2dSx9tFUuiGeat2o3p" Comment="Enabled" Bounds="472,290,60,30" ShowValueBox="true" isIOBox="true" Value="false">
             <p:TypeAnnotation LastCategoryFullName="Primitive" LastDependency="VL.CoreLib.vl">
               <Choice Kind="TypeFlag" Name="Boolean" />
             </p:TypeAnnotation>
@@ -43,7 +43,7 @@
               <p:buttonmode p:Assembly="VL.UI.Forms" p:Type="VL.HDE.PatchEditor.Editors.ButtonModeEnum">Toggle</p:buttonmode>
             </p:ValueBoxSettings>
           </Pad>
-          <Pad Id="CNLougM7bA1SqTcbRXdECT" Bounds="441,304,330,20" ShowValueBox="true" isIOBox="true" Value="&lt; off on open: nothing is fetched until you agree">
+          <Pad Id="CNLougM7bA1SqTcbRXdECT" Bounds="592,294,330,20" ShowValueBox="true" isIOBox="true" Value="&lt; off on open: nothing is fetched until you agree">
             <p:TypeAnnotation LastCategoryFullName="Primitive" LastDependency="VL.CoreLib.vl">
               <Choice Kind="TypeFlag" Name="String" />
             </p:TypeAnnotation>
@@ -59,6 +59,7 @@
             </p:NodeReference>
             <p:HelpFocus p:Assembly="VL.Lang" p:Type="VL.Model.HelpPriority">High</p:HelpFocus>
             <Pin Id="PyDvZXlNY1BSQGxHSuXtMC" Name="Output" Kind="OutputPin" />
+            <Pin Id="KnqFkDy6OnyOuOkJ4XXMAZ" Name="Opacity" Kind="InputPin" />
             <Pin Id="OgsCRD5A1xgNcfPnt3tIm4" Name="Enabled" Kind="InputPin" />
           </Node>
           <Node Bounds="60,380,260,19" Id="NuPByqQL3KICydCVEZA5RU">
@@ -83,7 +84,7 @@
             <Pin Id="LFure0pM58qLV3dl0cIryL" Name="Scene" Kind="InputPin" IsHidden="true" />
             <Pin Id="EqRmEftGJHv6mUOu2NIk35" Name="Enabled" Kind="InputPin" />
           </Node>
-          <Node Bounds="188,260,225,19" Id="OTUXcMILJFbi8xIvSBwQOO">
+          <Node Bounds="188,270,225,19" Id="OTUXcMILJFbi8xIvSBwQOO">
             <p:NodeReference LastCategoryFullName="Globe" LastDependency="VL.Globe.vl">
               <Choice Kind="NodeFlag" Name="Node" Fixed="true" />
               <Choice Kind="ProcessAppFlag" Name="GlobeCamera" />
@@ -131,12 +132,12 @@
               <p:stringtype p:Assembly="VL.Core" p:Type="VL.Core.StringType">Comment</p:stringtype>
             </p:ValueBoxSettings>
           </Pad>
-          <Pad Id="F0e6Zr2jZj93PDaKgJgiMF" Comment="Height" Bounds="102,491,90,15" ShowValueBox="true" isIOBox="true">
+          <Pad Id="F0e6Zr2jZj93PDaKgJgiMF" Comment="Height" Bounds="102,520,90,15" ShowValueBox="true" isIOBox="true">
             <p:TypeAnnotation LastCategoryFullName="Primitive" LastDependency="VL.CoreLib.vl">
               <Choice Kind="TypeFlag" Name="Float64" />
             </p:TypeAnnotation>
           </Pad>
-          <Pad Id="LYctryPuAu0GsthnT6amw3" Bounds="160,430,200,20" ShowValueBox="true" isIOBox="true" Value="&lt; metres above the ground">
+          <Pad Id="LYctryPuAu0GsthnT6amw3" Bounds="253,520,200,20" ShowValueBox="true" isIOBox="true" Value="&lt; metres above the ground">
             <p:TypeAnnotation LastCategoryFullName="Primitive" LastDependency="VL.CoreLib.vl">
               <Choice Kind="TypeFlag" Name="String" />
             </p:TypeAnnotation>
@@ -150,7 +151,7 @@
               <Choice Kind="TypeFlag" Name="String" />
             </p:TypeAnnotation>
           </Pad>
-          <Pad Id="ANGg4EbzG6CVJdSBpBxker" Bounds="540,552,315,19" ShowValueBox="true" isIOBox="true" Value="&lt; show the credit wherever the tiles are shown">
+          <Pad Id="ANGg4EbzG6CVJdSBpBxker" Bounds="552,546,315,19" ShowValueBox="true" isIOBox="true" Value="&lt; show the credit wherever the tiles are shown">
             <p:TypeAnnotation LastCategoryFullName="Primitive" LastDependency="VL.CoreLib.vl">
               <Choice Kind="TypeFlag" Name="String" />
             </p:TypeAnnotation>
@@ -159,12 +160,12 @@
               <p:stringtype p:Assembly="VL.Core" p:Type="VL.Core.StringType">Comment</p:stringtype>
             </p:ValueBoxSettings>
           </Pad>
-          <Pad Id="VeMdG7dJEwlMbRQ4m1H0ih" Comment="Status" Bounds="317,490,292,15" ShowValueBox="true" isIOBox="true">
+          <Pad Id="VeMdG7dJEwlMbRQ4m1H0ih" Comment="Status" Bounds="317,431,292,15" ShowValueBox="true" isIOBox="true">
             <p:TypeAnnotation LastCategoryFullName="Primitive" LastDependency="VL.CoreLib.vl">
               <Choice Kind="TypeFlag" Name="String" />
             </p:TypeAnnotation>
           </Pad>
-          <Pad Id="FbmkWroyX9TOA2Vk9Vi3a6" Comment="Reset" Bounds="390,211,35,35" ShowValueBox="true" isIOBox="true" Value="false">
+          <Pad Id="FbmkWroyX9TOA2Vk9Vi3a6" Comment="Reset" Bounds="390,221,35,35" ShowValueBox="true" isIOBox="true" Value="false">
             <p:TypeAnnotation LastCategoryFullName="Primitive" LastDependency="VL.CoreLib.vl">
               <Choice Kind="ImmutableTypeFlag" Name="Boolean" />
             </p:TypeAnnotation>
