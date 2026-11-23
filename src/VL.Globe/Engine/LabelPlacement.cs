@@ -185,6 +185,7 @@ internal sealed class LabelPlacement
     {
         _width = width; _height = height;
         var viewProjection = view * projection;
+        float bufferX = 256 / width * 2 + 1, bufferY = 256 / height * 2 + 1;   // GL JS's clippingBuffer
         foreach (var layer in layers)
             foreach (var (tile, world) in layer.Tiles)
             {
@@ -198,6 +199,10 @@ internal sealed class LabelPlacement
                     if (placed[line.VertexStart] == 0) continue;   // hidden, not fading out (LabelFades.Pack)
                     var clip = Vector4.Transform(new Vector4(line.Anchor, 1), worldViewProjection);
                     if (clip.W <= 0) { LineGlyphs.Hide(line, dynamic); tile.DynamicDirty = true; continue; }
+                    // GL JS updateLineLabels' isVisible: an anchor past the viewport and 256 px round it is hidden,
+                    // not walked (4g step 4: every shown line label was walked every frame the camera moved)
+                    float cx = clip.X / clip.W, cy = clip.Y / clip.W;
+                    if (cx < -bufferX || cx > bufferX || cy < -bufferY || cy > bufferY) { LineGlyphs.Hide(line, dynamic); tile.DynamicDirty = true; continue; }
                     float perspective = 0.5f + 0.5f * cameraToCenter / clip.W;
                     float size = (line.FeatureSize > 0 ? line.FeatureSize : layer.Size) * perspective;
                     LineGlyphs.Place(line, worldViewProjection, _width, _height, size, dynamic, out _, out _);

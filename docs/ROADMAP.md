@@ -484,6 +484,14 @@ Sum either log up with `tools/Summarize-Perf.py <log> --from <pan 1 begins> --to
   releases what it made. Misses 0.8%, **worst frame 24 ms** (was 28-34), Update under 5 ms in all.
 - Left in the missed frames: label placement spikes of 6-9 ms (its budget is 2 ms a frame), submit
   6-11 ms (3300 draws), GC pauses of 2-6 ms. Next: the placement spikes.
+- The label step timed by part in each missed frame: the spikes were the glyphs along lines, walked
+  every frame the camera moved - every shown line label, a list a glyph for paths only collisions use.
+  Now GL JS's isVisible (an anchor past the viewport and 256 px is hidden, not walked) and no paths
+  but for collisions: lines 7.4 -> 0.2 ms, the main thread's allocation 50 -> 37 MB/s. **Bench: misses
+  0.6%, worst frame 23 ms** (GL JS 0%, 17 ms). Fixture reports unchanged.
+- Left: GC pauses of 4-7.6 ms (2-4 collections in one frame, ~17 a second), submit 5-13 ms (3300
+  draws), the opacities rewritten for every label tile when a tile comes (5.4 ms once; GL JS skips
+  unchanged buckets).
 
 ### 5. Navigation
 

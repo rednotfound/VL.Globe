@@ -59,11 +59,23 @@ internal static class LineGlyphs
         out List<Vector2> pathFirst, out List<Vector2> pathLast)
         => Place(label, worldViewProjection, width, height, fontSize, null, false, out pathFirst, out pathLast);
 
+    // paths only for the collision circles (PlaceEnds); every frame's walk (Place) needs none - it built a
+    // list a glyph, every frame the camera moved (4g step 4: up to 7 ms of a missed frame's labels). The
+    // projected points in a pooled array.
     static bool Place(LineLabel label, Matrix worldViewProjection, float width, float height, float fontSize,
         Vector4[]? dynamic, bool all, out List<Vector2> pathFirst, out List<Vector2> pathLast)
     {
+        var projected = System.Buffers.ArrayPool<Vector2?>.Shared.Rent(label.Line.Length);
+        Array.Clear(projected, 0, label.Line.Length);
+        try { return PlaceCore(label, worldViewProjection, width, height, fontSize, dynamic, all, projected, out pathFirst, out pathLast); }
+        finally { System.Buffers.ArrayPool<Vector2?>.Shared.Return(projected); }
+    }
+
+    static bool PlaceCore(LineLabel label, Matrix worldViewProjection, float width, float height, float fontSize,
+        Vector4[]? dynamic, bool all, Vector2?[] projected, out List<Vector2> pathFirst, out List<Vector2> pathLast)
+    {
         pathFirst = pathLast = null!;
-        var projected = new Vector2?[label.Line.Length];
+        bool paths = !all;
         Vector2? Project(int i)
         {
             if (projected[i] is { } known) return known;
@@ -135,7 +147,7 @@ internal static class LineGlyphs
             var current = anchor;
             var previous = anchor;
             float fromAnchor = 0, segmentLength = 0, abs = Math.Abs(combined);
-            var path = new List<Vector2>();
+            var path = paths ? new List<Vector2>() : null;
             Vector2 segment = default;
             while (fromAnchor + segmentLength <= abs)
             {
@@ -145,14 +157,14 @@ internal static class LineGlyphs
                 previous = current;
                 if (Project(index) is not { } next) return null;
                 current = next;
-                path.Add(previous);
+                path?.Add(previous);
                 segment = current - previous;
                 segmentLength = segment.Length();
             }
             float t = (abs - fromAnchor) / segmentLength;
             var point = segment * t + previous;
-            path.Add(point);
-            return new Placed(point.X, point.Y, label.RotateToLine ? angle + MathF.Atan2(current.Y - previous.Y, current.X - previous.X) : 0, path);
+            path?.Add(point);
+            return new Placed(point.X, point.Y, label.RotateToLine ? angle + MathF.Atan2(current.Y - previous.Y, current.X - previous.X) : 0, path!);
         }
     }
 
