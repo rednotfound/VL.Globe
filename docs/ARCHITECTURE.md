@@ -89,6 +89,23 @@ SceneWindow: Enable Default Post Effects = False, Present Interval = One, Enable
 
 ## The engine (`Globe`, `Engine\`)
 
+`src\VL.Globe\*.cs` is the node surface (public); `Engine\` is internal, one folder and namespace
+per subsystem (`GlobalUsings.cs` names them all), and the tests mirror it in `test\VL.Globe.Tests\`:
+
+| folder | what |
+|---|---|
+| `Tiles\` | which tiles (TileSelector, DrawSet), their meshes and projection, mipmaps, fades, attribution |
+| `VectorTiles\` | MVT decoding (Pbf, VectorTile) into FeatureTables, the service fetching style tiles |
+| `Styling\` | the MapLibre style both paths read (MapStyleDocument), expressions, shapes as a style |
+| `Gpu\` | buckets (`VectorBucket*.cs`: fills/lines, symbols, circles), the renderer, fog, atlas textures |
+| `Symbols\` | GL JS's text shaping, glyphs, sprites, icons, label placement, collision and fades |
+| `Draped\` | the older path: styles and shapes drawn by SkiaSharp into each tile's overlay |
+| `Camera\` | navigation, picking, the camera-relative frame |
+| `Diagnostics\` | frame stats, allocation meter, the camera bench (`VLGLOBE_BENCH`) |
+
+Tests add `Nodes\` (the public nodes), `MapLibre\` (the render tests) and `Probes\` (measurements run
+by hand with `VLGLOBE_PROBE=1`).
+
 Each frame, on vvvv's main thread:
 
 1. **Camera pose.** The view matrix is the custom one when the camera uses it (GlobeCamera,
