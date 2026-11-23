@@ -602,3 +602,8 @@ looked fine - "which makes one think it works". Two causes, estimated at 100 m h
   wider than the step. Kept - fewer objects, same pixels (24 of 255k, the probe's own spread) - but
   the missed frames are now mixed: GC 4-8 ms a frame, label opacities 5-10 ms in single frames,
   submit 7-9 ms at 6000 draws zoomed out. Run a bench three times before calling a change.
+- **A missed frame's parts mean nothing without a made frame's** (2026-11-23): "outside 8 ms" in the
+  missed frames looked like a cause; made frames spend 12.9 ms there (Stride's own drawing plus the
+  vsync wait), so the missed ones had used their slack up. The perf line now carries every frame's
+  parts, made and missed apart. And a GC pause is counted twice - as GC and inside whatever stage it
+  stopped - so stage diffs are upper bounds when GC is in the same frame.

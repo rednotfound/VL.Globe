@@ -524,7 +524,15 @@ Sum either log up with `tools/Summarize-Perf.py <log> --from <pan 1 begins> --to
   no clear gain over 1.2%; the bench's spread between runs is now larger than the step. What the
   missed frames hold now is mixed, not GC alone (4-8 ms of it a frame): label opacities 5-10 ms in
   single frames, submit 7-9 ms at 6000 draws zoomed out, 800 label tiles. Left: the value strings as
-  bytes (218k strings, the largest count), and these - measured before chosen. A dump stalls vvvv ~0.8 s: never bench while dumping.
+  bytes (218k strings, the largest count), and these - measured before chosen.
+- **Measured** (2026-11-23: every frame's parts summed a second, made and missed apart - the perf
+  line's "frames by part"; three zoom benches, 1.9 / 0.8 / 0.9%, 48 missed of ~3950). Mean ms,
+  made -> missed: GC 0.9 -> 6.4, submit 1.6 -> 5.4, Update 1.7 -> 6.5 (its gpu vectors 1.0 -> 4.1:
+  the draw list's layers, 2.2 ms in every missed frame), label place 0.4 -> 3.9 (opacities 0.2 ->
+  2.1), upload 0.1 -> 1.6; time outside the node 12.9 -> 8.7 (the vsync slack used up). GC alone
+  is as long as the overrun in 14 of 48, and at most 63% of all of it; a pause lands inside the
+  other parts, so theirs include some. 19 of 48 had a tile uploaded in them; 2 a gen1/gen2.
+  Submit in the missed frames grows with items: 5.4 ms at 2000-6000, 6.0 above. A dump stalls vvvv ~0.8 s: never bench while dumping.
 
 ### 5. Navigation
 

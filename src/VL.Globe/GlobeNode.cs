@@ -291,8 +291,9 @@ public sealed class GlobeNode : IDisposable
         var draw = _gpu.TakeDrawStats();
         var frames = _frames.Take();
         if (_gpu.TilesBuilt > 0 && (frames.Moved || frames.MissedFrames > 0 || _perfUploads > 0 || gen2 > _gen2))
-            _logger.LogInformation("Globe perf: {Frames}; Update max {UpdateMax:F1} ms; uploaded {Uploads} tiles {MB:F1} MB, most {MaxMB:F1} MB in a frame; GC gen0 +{Gen0}, gen2 +{Gen2}, allocated {Alloc:F0} MB ({Main:F0} on the main thread), {Seen} ephemeral seen ({Gen1} gen1) promoted {Promoted:F1} MB, paused {SeenPause:F1} ms; draw: {Draw}",
-                frames, _updateMax, _perfUploads, _perfBytes / 1048576.0, _perfBytesMax / 1048576.0, gen0 - _gen0, gen2 - _gen2, allocMB, mainMB, _gcSeen, _gen1Seen, _promoted / 1048576.0, _gcPauseSeen, draw);
+            _logger.LogInformation("Globe perf: {Frames}; Update max {UpdateMax:F1} ms; uploaded {Uploads} tiles {MB:F1} MB, most {MaxMB:F1} MB in a frame; GC gen0 +{Gen0}, gen2 +{Gen2}, allocated {Alloc:F0} MB ({Main:F0} on the main thread), {Seen} ephemeral seen ({Gen1} gen1) promoted {Promoted:F1} MB, paused {SeenPause:F1} ms; draw: {Draw}; frames by part (mean ms): {Parts}",
+                frames, _updateMax, _perfUploads, _perfBytes / 1048576.0, _perfBytesMax / 1048576.0, gen0 - _gen0, gen2 - _gen2, allocMB, mainMB, _gcSeen, _gen1Seen, _promoted / 1048576.0, _gcPauseSeen, draw, _anatomy.TakeSecond());
+        else _anatomy.TakeSecond();
         _gcSeen = 0; _gen1Seen = 0; _promoted = 0; _gcPauseSeen = 0;
         _perfFrom = now; _updateMax = 0; _perfUploads = 0; _perfBytes = 0; _perfBytesMax = 0;
         _gen0 = gen0; _gen2 = gen2;

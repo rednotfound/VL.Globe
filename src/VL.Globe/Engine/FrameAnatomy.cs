@@ -37,6 +37,42 @@ internal sealed class FrameAnatomy
     double _secondFrom = double.NegativeInfinity;
     int _lines;
 
+    // Every frame's parts, summed for a second, the frames that made it and those that missed apart: a
+    // missed frame's "outside 8 ms" says nothing without what an ordinary frame spends there (2026-11-23).
+    static readonly string[] Parts = { "update", "gpu vectors", "place", "opacities", "submit", "upload", "outside", "gc" };
+    readonly double[] _okSum = new double[Parts.Length], _missSum = new double[Parts.Length];
+    int _okCount, _missCount;
+
+    void Accumulate(double interval, TimeSpan gcPauseNow, VectorRenderer.DrawTiming draw)
+    {
+        bool one = draw.Serial - _drawSerial == 1;
+        double drawMs = one ? draw.Total : 0, gpu = 0;
+        foreach (var (stage, ms) in _stages) if (stage == "gpu vectors") gpu = ms;
+        var sum = interval > Missed ? _missSum : _okSum;
+        if (interval > Missed) _missCount++; else _okCount++;
+        sum[0] += _updateMs; sum[1] += gpu;
+        if (one) { sum[2] += draw.Place; sum[3] += draw.Labels.Opacities; sum[4] += draw.Submit; sum[5] += draw.Upload; }
+        sum[6] += interval - _updateMs - drawMs;
+        sum[7] += (gcPauseNow - _gcPause).TotalMilliseconds;
+    }
+
+    /// <summary>The second's frames by part (mean ms), made and missed apart; then starts a new second.</summary>
+    public string TakeSecond()
+    {
+        var c = CultureInfo.InvariantCulture;
+        var sb = new StringBuilder();
+        void Row(string name, double[] sum, int n)
+        {
+            if (n == 0) return;
+            sb.Append(c, $"{(sb.Length > 0 ? "; " : "")}{name} {n}:");
+            for (int i = 0; i < Parts.Length; i++) sb.Append(c, $" {Parts[i]} {sum[i] / n:F1}");
+        }
+        Row("made", _okSum, _okCount);
+        Row("missed", _missSum, _missCount);
+        Array.Clear(_okSum); Array.Clear(_missSum); _okCount = _missCount = 0;
+        return sb.ToString();
+    }
+
     /// <summary>At the end of an Update: what it took, and the counters it began with.</summary>
     public void EndOfUpdate(double updateStart, double now, List<(string stage, double at)> stages, ReadOnlySpan<double> gpu,
         long uploadBytes, int uploads, TimeSpan gcPauseAtStart, int gen0AtStart, int gen2AtStart, long drawSerial)
@@ -59,7 +95,9 @@ internal sealed class FrameAnatomy
     /// </summary>
     public string? Explain(double interval, double now, TimeSpan gcPauseNow, int gen0Now, int gen2Now, VectorRenderer.DrawTiming draw)
     {
-        if (!_have || interval <= Missed) return null;
+        if (!_have) return null;
+        Accumulate(interval, gcPauseNow, draw);
+        if (interval <= Missed) return null;
         if (now - _secondFrom >= 1000) { _secondFrom = now; _lines = 0; }
         if (++_lines > MostLinesASecond) return null;
         var c = CultureInfo.InvariantCulture;
