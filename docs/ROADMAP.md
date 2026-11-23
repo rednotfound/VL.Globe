@@ -532,7 +532,11 @@ Sum either log up with `tools/Summarize-Perf.py <log> --from <pan 1 begins> --to
   2.1), upload 0.1 -> 1.6; time outside the node 12.9 -> 8.7 (the vsync slack used up). GC alone
   is as long as the overrun in 14 of 48, and at most 63% of all of it; a pause lands inside the
   other parts, so theirs include some. 19 of 48 had a tile uploaded in them; 2 a gen1/gen2.
-  Submit in the missed frames grows with items: 5.4 ms at 2000-6000, 6.0 above. A dump stalls vvvv ~0.8 s: never bench while dumping.
+  Submit in the missed frames grows with items: 5.4 ms at 2000-6000, 6.0 above.
+- Value strings left in the tile's bytes until a property is first read (`ValueTable`), keys shared
+  across tiles: strings grown in 22 s 218k -> 88k, all new objects 706k -> 328k; zoom bench 1.1 /
+  0.8 / 0.8% (was 1.9 / 0.8 / 0.9). Seen in the same dump: 18k Stride `ShaderClassSource` (and 9k
+  each of its lists) grew and stayed - shader sources made per something, not yet found. A dump stalls vvvv ~0.8 s: never bench while dumping.
 
 ### 5. Navigation
 

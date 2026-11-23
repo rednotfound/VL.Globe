@@ -607,3 +607,7 @@ looked fine - "which makes one think it works". Two causes, estimated at 100 m h
   vsync wait), so the missed ones had used their slack up. The perf line now carries every frame's
   parts, made and missed apart. And a GC pause is counted twice - as GC and inside whatever stage it
   stopped - so stage diffs are upper bounds when GC is in the same frame.
+- **Most strings were names nobody reads** (2026-11-23): OpenMapTiles carries a place's name in dozens
+  of languages, Liberty reads 22 keys. A value table now keeps a string as its place in the tile's
+  bytes and makes it at the first read (two threads may both make it: same text). Strings grown while
+  zooming 218k -> 88k in 22 s. The tile's bytes stay with the decoded tile (mostly large-object heap).

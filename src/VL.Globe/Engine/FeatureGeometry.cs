@@ -154,7 +154,7 @@ internal sealed class FeatureTable
     readonly int[] _firstParts = Array.Empty<int>(), _partCounts = Array.Empty<int>();
     readonly double[]? _ids;            // NaN: no id
     readonly string[] _keys = Array.Empty<string>();
-    readonly object?[] _values = Array.Empty<object?>();
+    readonly ValueTable _values = ValueTable.Empty;
     readonly int[] _tags = Array.Empty<int>();
     readonly FeatureGeometry _geometry = FeatureGeometry.Empty;
 
@@ -170,7 +170,7 @@ internal sealed class FeatureTable
 
     /// <summary>A vector tile layer's features as arrays over its geometry, tags and key/value tables.</summary>
     public FeatureTable(StyleFeature.Shape[] kinds, int[] tagStarts, int[] tagCounts, int[] firstParts, int[] partCounts,
-        double[]? ids, string[] keys, object?[] values, int[] tags, FeatureGeometry geometry)
+        double[]? ids, string[] keys, ValueTable values, int[] tags, FeatureGeometry geometry)
     {
         _kinds = kinds; _tagStarts = tagStarts; _tagCounts = tagCounts; _firstParts = firstParts; _partCounts = partCounts;
         _ids = ids; _keys = keys; _values = values; _tags = tags; _geometry = geometry;
@@ -215,4 +215,42 @@ internal sealed class FeatureTable
             return true;
         }
     }
+}
+
+/// <summary>
+/// A vector tile layer's value table: numbers and booleans as read, strings as places in the tile's
+/// bytes until a feature's property is first asked for - then made once and kept.
+/// </summary>
+// 4g, 2026-11-23: a heap dump while zooming found 218k strings, the largest count of surviving objects,
+// nearly all names in languages no style reads (OpenMapTiles' name:xx, dozens a place; Liberty reads
+// 22 keys). Two threads asking at once may both make the string: the same text, either kept.
+internal sealed class ValueTable
+{
+    public static readonly ValueTable Empty = new(Array.Empty<object?>(), null, null, Array.Empty<byte>());
+
+    readonly object?[] _values;
+    readonly int[]? _starts, _lengths;   // a string not yet made: its UTF-8 in _data; -1 for the others
+    readonly byte[] _data;
+
+    public ValueTable(object?[] values, int[]? starts, int[]? lengths, byte[] data)
+    {
+        _values = values; _starts = starts; _lengths = lengths; _data = data;
+    }
+
+    public int Count => _values.Length;
+
+    public object? this[int i]
+    {
+        get
+        {
+            var v = _values[i];
+            if (v != null || _lengths is null || _lengths[i] < 0) return v;
+            var s = System.Text.Encoding.UTF8.GetString(_data, _starts![i], _lengths[i]);
+            _values[i] = s;
+            return s;
+        }
+    }
+
+    /// <summary>Values that are objects already (tests).</summary>
+    public static ValueTable Of(object?[] values) => new(values, null, null, Array.Empty<byte>());
 }

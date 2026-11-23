@@ -39,7 +39,7 @@ internal sealed class StyleFeature : IReadOnlyDictionary<string, object?>
     double _numericId;
     bool _hasNumericId;
     string[]? _keys;
-    object?[]? _values;
+    ValueTable? _values;
     int[]? _tags;   // key, value, key, value ...
     int _tagStart, _tagCount;   // in pairs
 
@@ -47,7 +47,7 @@ internal sealed class StyleFeature : IReadOnlyDictionary<string, object?>
     public void SetNumericId(double id) { _numericId = id; _hasNumericId = true; _id = null; }
 
     /// <summary>The feature's properties as <paramref name="count"/> key/value pairs of its layer's tables from <paramref name="start"/>.</summary>
-    public void SetTags(string[] keys, object?[] values, int[] tags, int start, int count)
+    public void SetTags(string[] keys, ValueTable values, int[] tags, int start, int count)
     {
         _keys = keys; _values = values; _tags = tags; _tagStart = start; _tagCount = count; _properties = null;
     }

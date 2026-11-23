@@ -42,6 +42,7 @@ internal static class VectorTile
         uint extent = 4096;
         var keyList = new List<string>();
         var valueList = new List<object?>();
+        var valueStarts = new List<int>(); var valueLengths = new List<int>();
         var features = new List<(int start, int end)>();
         var data = r.Data;
         while (r.Next(out int field, out int wire))
@@ -50,8 +51,14 @@ internal static class VectorTile
             {
                 case 1 when wire == 2: name = r.String(); break;
                 case 2 when wire == 2: features.Add(r.Sub()); break;
-                case 3 when wire == 2: keyList.Add(r.String()); break;
-                case 4 when wire == 2: { var (s, e) = r.Sub(); valueList.Add(ReadValue(new Pbf(data, s, e))); break; }
+                case 3 when wire == 2: keyList.Add(Key(r.String())); break;
+                case 4 when wire == 2:
+                {
+                    var (s, e) = r.Sub();
+                    valueList.Add(ReadValue(new Pbf(data, s, e), out int textStart, out int textLength));
+                    valueStarts.Add(textStart); valueLengths.Add(textLength);
+                    break;
+                }
                 case 5 when wire == 0: extent = (uint)r.Varint(); break;
                 default: r.Skip(wire); break;
             }
@@ -59,7 +66,7 @@ internal static class VectorTile
         double scale = 1.0 / (extent * (double)tile.TilesPerSide);
         double ox = (double)tile.X / tile.TilesPerSide, oy = (double)tile.Y / tile.TilesPerSide;
         var keys = keyList.ToArray();
-        var values = valueList.ToArray();
+        var values = new ValueTable(valueList.ToArray(), valueStarts.ToArray(), valueLengths.ToArray(), data);
         var geometry = new FeatureGeometryBuilder();
         var tags = new List<int>();
         // a feature is a row of these arrays, not an object (FeatureTable)
@@ -71,7 +78,7 @@ internal static class VectorTile
         foreach (var (s, e) in features)
         {
             int tagStart = tags.Count / 2, firstPart = geometry.PartCount;
-            var kind = ReadFeature(new Pbf(data, s, e), keys.Length, values.Length, ox, oy, scale, geometry, tags, out var id);
+            var kind = ReadFeature(new Pbf(data, s, e), keys.Length, values.Count, ox, oy, scale, geometry, tags, out var id);
             if (kind is null) continue;
             kinds.Add(kind.Value);
             tagStarts.Add(tagStart); tagCounts.Add(tags.Count / 2 - tagStart);
@@ -82,14 +89,26 @@ internal static class VectorTile
             anyId ? ids.ToArray() : null, keys, values, tags.ToArray(), geometry.Build());
     }
 
-    static object? ReadValue(Pbf r)
+    // A layer's keys, one string each across tiles: a style's schema is a few hundred keys, every tile
+    // repeated them (4g, 2026-11-23). Up to a bound, past it (a tile of arbitrary keys) as they come.
+    static readonly System.Collections.Concurrent.ConcurrentDictionary<string, string> Keys = new();
+    static string Key(string key)
+    {
+        if (Keys.TryGetValue(key, out var known)) return known;
+        if (Keys.Count < 8192) Keys.TryAdd(key, key);
+        return key;
+    }
+
+    // a string value is left in the bytes (ValueTable): its place out, null returned
+    static object? ReadValue(Pbf r, out int textStart, out int textLength)
     {
         object? v = null;
+        textStart = 0; textLength = -1;
         while (r.Next(out int field, out int wire))
         {
             switch (field)
             {
-                case 1: v = r.String(); break;
+                case 1: { var (s, e) = r.Sub(); (textStart, textLength, v) = (s, e - s, null); break; }
                 case 2: v = (double)BitConverter.Int32BitsToSingle((int)r.Fixed32()); break;
                 case 3: v = BitConverter.Int64BitsToDouble((long)r.Fixed64()); break;
                 case 4: v = (double)(long)r.Varint(); break;
