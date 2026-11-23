@@ -3,7 +3,6 @@ using NetTopologySuite.Geometries;
 using Stride.Core.Mathematics;
 using VL.Core.Import;
 using VL.Globe;
-using VL.Globe.Engine;
 
 namespace VL;
 
