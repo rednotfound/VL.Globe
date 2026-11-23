@@ -152,6 +152,13 @@ $OurNodes = @{
     'GlobeViewInfo'        = 'GlobeViewNodes\.GlobeViewInfo\('
     'GlobeWindow'          = 'GlobeWindow_P\.Create\('     # patched in VL.Globe.vl, not C#
     'GlobePositionComponent' = 'new\s+[\w\.]*GlobePositionComponentNode\('
+    # Globe.Navigate (ROADMAP 0.1 item 5)
+    'CenterOn'             = 'new\s+[\w\.]*GlobeCenterOnNode\('
+    'ZoomToLevel'          = 'new\s+[\w\.]*GlobeZoomToLevelNode\('
+    'ZoomIn'               = 'new\s+[\w\.]*GlobeZoomInNode\('
+    'ZoomOut'              = 'new\s+[\w\.]*GlobeZoomOutNode\('
+    'FlyTo'                = 'new\s+[\w\.]*GlobeFlyToNode\('
+    'ZoomToBounds'         = 'new\s+[\w\.]*GlobeZoomToBoundsNode\('
 }
 
 # Process nodes must be constructed in __Create__ and only updated in Update. Built per frame, the

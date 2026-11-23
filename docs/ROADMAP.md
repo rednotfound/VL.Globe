@@ -550,7 +550,18 @@ Sum either log up with `tools/Summarize-Perf.py <log> --from <pan 1 begins> --to
   separate process (IPC, shared GPU memory). `DOTNET_GCgen0size` is the whole vvvv's, not a package's
   to set. The one heap .NET threads share is the difference that stays. A dump stalls vvvv ~0.8 s: never bench while dumping.
 
-### 5. Navigation
+### 5. Navigation — nodes built 2026-11-23, tested (294 green); not yet seen in vvvv
+
+**Built** (`GlobeNavigateNodes.cs`, `Engine/Navigation.cs`, category `Globe.Navigate`, VL.Mapsui's
+shape): `CenterOn`, `ZoomToLevel`, `ZoomIn`, `ZoomOut`, `FlyTo`, `ZoomToBounds`. Each acts on a
+Trigger's rising edge (the view is also moved by Drag and the wheel every frame: a node setting it
+every frame would hold it), passes the view on (Output) and logs the view's hash. FlyTo is MapLibre's:
+van Wijk and Nuij's path (rho 1.42) along the great circle, CSS ease, Duration 0 = S / 1.2 s (at most
+10); a drag or the wheel ends it. ZoomToBounds finds the height on the screen by bisection (a cap's
+radius left a box at 0.64 of the window). Help patch `HowTo Fly to a place`. Still to do from the list
+below: the drag that leaves the globe.
+
+The plan as written:
 
 - `CenterOn`, `ZoomToLevel`, `ZoomIn`, `ZoomOut`.
 - `FlyTo`: a great-circle path with a height arc, the globe's DragBetween.

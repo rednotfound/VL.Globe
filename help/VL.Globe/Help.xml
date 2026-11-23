@@ -8,6 +8,9 @@
 		<VLDocument link="HowTo Draw shapes on the globe.vl" tags="geometry,featureLayer,vectorStyle,layers,line,polygon,wkt,netTopologySuite,nts,draw,vector,drape" />
 		<VLDocument link="HowTo Draw vector tiles.vl" tags="vectorTiles,mapLibreStyle,maplibre,style,json,maputnik,openfreemap,liberty,url,file,read,labels,icons,buildings,mvt" />
 	</Topic>
+	<Topic title="Moving the view">
+		<VLDocument link="HowTo Fly to a place.vl" tags="flyTo,zoomToBounds,centerOn,zoomToLevel,zoomIn,zoomOut,navigate,camera,view,animate,fly,bounds,fit,zoom,trigger,bang" />
+	</Topic>
 	<Topic title="Coordinates">
 		<VLDocument link="HowTo Read the place under the cursor.vl" tags="screenToGlobe,globeToScreen,globeViewInfo,cursor,mouse,pick,longitude,latitude,resolution,zoom,height,heading,tilt" />
 		<VLDocument link="HowTo Stand a model on the globe.vl" tags="globePositionComponent,place,model,entity,sphere,stand,metres,longitude,latitude,height,camera-relative,input" />
