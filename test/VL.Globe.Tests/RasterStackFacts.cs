@@ -53,6 +53,27 @@ public class RasterStackFacts
     }
 
     [Fact]
+    public void AnOpaqueBottomTileLayerIsTheImagery()
+    {
+        var osm = new OpenStreetMapNode().Update();
+        var topo = new XyzTilesNode().Update("https://example.invalid/{z}/{x}/{y}.png", "t", opacity: 0.5f);
+        var (imagery, over) = GlobeNode.SplitLayers(new GlobeGroupSpectralNode().Update(new[] { osm, topo }));
+        Assert.Same(osm.Raster, imagery);
+        Assert.Equal(new[] { topo }, over);
+    }
+
+    // the user, 2026-11-23: the bottom layer's Opacity too - "用户知道自己再做什么"
+    [Fact]
+    public void ATranslucentBottomTileLayerGoesOverThePlainTiles()
+    {
+        var osm = new OpenStreetMapNode().Update(opacity: 0.4f);
+        var topo = new XyzTilesNode().Update("https://example.invalid/{z}/{x}/{y}.png", "t", opacity: 0.5f);
+        var (imagery, over) = GlobeNode.SplitLayers(new GlobeGroupSpectralNode().Update(new[] { osm, topo }));
+        Assert.Null(imagery);
+        Assert.Equal(new[] { osm, topo }, over);
+    }
+
+    [Fact]
     public void OpacityZeroDrawsNothing()
     {
         var source = SourceWithRed(out var folder);

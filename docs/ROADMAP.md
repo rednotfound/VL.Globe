@@ -577,7 +577,8 @@ The plan as written:
 
 **Several imagery layers with Opacity — built**, seen in vvvv (OpenTopoMap at 0.5-0.6 over OpenStreetMap,
 Tokyo and Mount Fuji). OpenStreetMap and XyzTiles have an `Opacity`; in Group the leftmost tile layer is
-the globe's own imagery (mipmaps, fades, stand-ins; always opaque), every layer above it is drawn into
+the globe's own imagery (mipmaps, fades, stand-ins) while opaque - below Opacity 1 it goes into the
+overlay too, over plain tiles in the Background colour (the user: "用户知道自己再做什么") - every layer above it is drawn into
 each tile's overlay in Group order (`RasterOverlay`: the source's disk cache, or fetched on the overlay
 worker for a wanted tile; a stand-in draws only what is cached and is marked incomplete). GPU vector
 tiles stay above all tile layers whatever their place in Group. Help patch `HowTo Stack tile layers`

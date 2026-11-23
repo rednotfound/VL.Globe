@@ -55,7 +55,7 @@
             </p:NodeReference>
             <Pin Id="RO5k0A8Uci0qRhSBHpvkTS" Name="Output" Kind="OutputPin" />
           </Node>
-          <Pad Id="Osq63Hvzl8IBtPnRNbzoc5" Bounds="180,208,300,20" ShowValueBox="true" isIOBox="true" Value="&lt; the bottom layer: always opaque">
+          <Pad Id="Osq63Hvzl8IBtPnRNbzoc5" Bounds="180,208,360,20" ShowValueBox="true" isIOBox="true" Value="&lt; the bottom layer; below Opacity 1 the Background shows through">
             <p:TypeAnnotation LastCategoryFullName="Primitive" LastDependency="VL.CoreLib.vl">
               <Choice Kind="TypeFlag" Name="String" />
             </p:TypeAnnotation>

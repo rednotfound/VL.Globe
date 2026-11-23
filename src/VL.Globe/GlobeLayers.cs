@@ -38,7 +38,7 @@ public sealed class GlobeLayer
     internal GlobeTileSource? Raster;
     // a group (Group, Group (Spectral)): its layers in order, first at the bottom
     internal IReadOnlyList<GlobeLayer>? Children;
-    // a tile layer's opacity; the bottom tile layer is drawn opaque (it is the globe's own imagery)
+    // a tile layer's opacity: over the layers under it, or for the bottom one over the globe's Background
     internal float Opacity = 1;
 
     /// <summary>The layers to draw, groups opened, in order (first at the bottom); disabled ones and their groups' contents left out.</summary>

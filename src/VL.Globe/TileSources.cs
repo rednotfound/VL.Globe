@@ -86,7 +86,7 @@ public sealed class OpenStreetMapNode
             "https://tile.openstreetmap.org/standard"),
     };
 
-    /// <param name="opacity">0 to 1. The bottom tile layer of the globe is always opaque.</param>
+    /// <param name="opacity">0 to 1. Below it: the layers under it, or the globe's Background for the bottom one.</param>
     /// <param name="enabled">Hides the layer while off.</param>
     [return: Pin(Name = "Output")]
     public GlobeLayer Update(float opacity = 1f, bool enabled = true)
@@ -107,7 +107,7 @@ public sealed class XyzTilesNode
 
     /// <param name="url">A tile URL template with {z}, {x} and {y}.</param>
     /// <param name="attribution">The credit the server requires.</param>
-    /// <param name="opacity">0 to 1. The bottom tile layer of the globe is always opaque.</param>
+    /// <param name="opacity">0 to 1. Below it: the layers under it, or the globe's Background for the bottom one.</param>
     /// <param name="enabled">Hides the layer while off.</param>
     [return: Pin(Name = "Output")]
     public GlobeLayer Update(string url = "", string attribution = "", float opacity = 1f, bool enabled = true)

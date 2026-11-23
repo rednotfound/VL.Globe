@@ -237,10 +237,7 @@ public sealed class GlobeNode : IDisposable
         // One Input (docs/DESIGN-NODES.md): its layers in order. The bottom tile layer gives the globe's
         // own imagery; every layer after it - more tile layers at their opacity (ROADMAP item 6), the
         // draped vectors - is drawn over it in order, into each tile's overlay.
-        var leaves = input?.Leaves().ToList() ?? new List<GlobeLayer>();
-        var bottom = leaves.FirstOrDefault(l => l.Raster is not null);
-        var tileSource = bottom?.Raster;
-        var layers = leaves.Where(l => !ReferenceEquals(l, bottom)).ToList();
+        var (tileSource, layers) = SplitLayers(input);
         try
         {
             var entity = UpdateCore(out tilesVisible, out tilesLoading, out requestsSent, out bytesReceived, out attribution, out status,
@@ -248,6 +245,21 @@ public sealed class GlobeNode : IDisposable
             return entity;
         }
         finally { Measure(updateStart); }
+    }
+
+    /// <summary>
+    /// The globe's own imagery and what is drawn over it, from the Input's layers in order: the bottom
+    /// tile layer is the imagery when it is opaque; any other layer - and that one too when its Opacity
+    /// is below 1, over plain tiles in the Background colour - goes into the overlay.
+    /// </summary>
+    // The bottom layer's Opacity was first left without effect ("it is the imagery"); the user: "没有必要，
+    // 因为用户知道自己再做什么" (2026-11-23). Translucent, it goes the overlay's way like the layers above it.
+    internal static (GlobeTileSource? imagery, List<GlobeLayer> over) SplitLayers(GlobeLayer? input)
+    {
+        var leaves = input?.Leaves().ToList() ?? new List<GlobeLayer>();
+        var bottom = leaves.FirstOrDefault(l => l.Raster is not null);
+        if (bottom is null || bottom.Opacity < 1) return (null, leaves);
+        return (bottom.Raster, leaves.Where(l => !ReferenceEquals(l, bottom)).ToList());
     }
 
     // a long Update says where its time went: each stage, and how much of it the collector paused

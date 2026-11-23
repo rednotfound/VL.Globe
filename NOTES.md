@@ -689,6 +689,7 @@ looked fine - "which makes one think it works". Two causes, estimated at 100 m h
 - **Tile layers stack through the overlay** (2026-11-23, ROADMAP item 6): the layers above the bottom tile
   layer go where the draped vectors already went - each tile's overlay image, rendered on a worker in
   Group order - instead of a second texture and material blend per slot. No new upload path, no new
-  fade logic; opacity is the paint's alpha. Limits, by design: the bottom layer is opaque (it is the
-  imagery), and GPU vector tiles draw above every tile layer. Tested offline (a PNG put into the
+  fade logic; opacity is the paint's alpha. GPU vector tiles draw above every tile layer. The bottom
+  layer was first left opaque ("it is the imagery"); the user: "没有必要，因为用户知道自己再做什么" - below
+  Opacity 1 it now goes into the overlay as well, over plain tiles in the Background colour (seen in vvvv). Tested offline (a PNG put into the
   source's FileCache first); seen in vvvv.
