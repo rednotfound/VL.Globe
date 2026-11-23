@@ -510,6 +510,8 @@ internal sealed class TaggedString
         while (start < graphemes.Count && IsWhitespaceGrapheme(graphemes[start])) start++;
         var end = graphemes.Count;
         while (end > start && IsWhitespaceGrapheme(graphemes[end - 1])) end--;
+        // nothing to trim (most labels): no new string, no new lists, the graphemes kept (4g step 4)
+        if (start == 0 && end == graphemes.Count) return;
 
         Text = string.Concat(graphemes.GetRange(start, end - start));
         SectionIndex = SectionIndex.GetRange(start, end - start);
@@ -519,6 +521,9 @@ internal sealed class TaggedString
     // GL JS tagged_string.ts, substring
     public TaggedString Substring(int start, int end)
     {
+        // the whole (a label of one line, most of them): the same text, lists and graphemes, shared - Trim
+        // replaces them rather than changing them, and nothing else changes a TaggedString once built
+        if (start == 0 && end == Length) return new TaggedString(Text, Sections, SectionIndex) { cachedGraphemes = cachedGraphemes };
         var text = string.Concat(Graphemes().GetRange(start, end - start));
         var sectionIndex = SectionIndex.GetRange(start, end - start);
         return new TaggedString(text, Sections, sectionIndex);
