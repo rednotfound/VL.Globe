@@ -612,7 +612,9 @@ by the user. As MapLibre's AttributionControl and Mapsui's renderer: no node, ev
 Enabled - `Engine/AttributionLayer.cs`, a VL.Skia layer put in the scene by VL.Stride's `SkiaRenderer`
 (made in C#, `AfterScene`), 12 px on a half-white box, cut with an ellipsis when wider than the view.
 Globe's `Attribution` output is now every enabled layer's credit once, in order, joined by " | " (was:
-the imagery's only). `AttributionFacts`. Open: an off switch (MapLibre's `attributionControl: false`) -
+the imagery's only). FeatureLayer and Geometry have an `Attribution` pin for the user's own data (Mapsui's
+layers each have one; the user chose it 2026-11-23), and a style's geojson sources give theirs too.
+`AttributionFacts`. Open: an off switch (MapLibre's `attributionControl: false`) -
 not added until asked.
 
 The plan as written:

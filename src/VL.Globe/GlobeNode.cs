@@ -221,7 +221,7 @@ public sealed class GlobeNode : IDisposable
     }
 
     internal static string AttributionOf(GlobeLayer? input)
-        => AttributionLayer.Join(input?.Leaves().Select(l => l.Raster?.Attribution ?? l.Vector?.Attribution) ?? Enumerable.Empty<string?>());
+        => AttributionLayer.Join(input?.Leaves().Select(l => l.Raster is { } r ? r.Attribution : l.Vector is { } v ? v.Attribution : l.Attribution) ?? Enumerable.Empty<string?>());
 
     /// <param name="input">What to draw on the surface: a layer from OpenStreetMap, XyzTiles, VectorTiles, FeatureLayer or Geometry, or several from Group.</param>
     /// <param name="camera">The camera entity the scene is rendered with.</param>

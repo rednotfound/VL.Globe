@@ -57,6 +57,8 @@ public sealed class GlobeLayer
     internal GlobeVectorStyle Style = GlobeVectorStyle.Default;
     internal bool Enabled = true;
     internal string Name = "";
+    // FeatureLayer's and Geometry's credit for the user's own data (tile layers carry their source's)
+    internal string Attribution = "";
     // a VectorTiles layer: a MapLibre style drawn by the painter instead of Geometries
     internal Engine.VectorTileService? Vector;
     // drawn by the GPU (Engine/GpuVectorTiles) instead of draped into the tiles' overlays
@@ -173,10 +175,12 @@ public sealed class GlobeFeatureLayerNode
     /// <param name="features">The features to draw, in longitude and latitude.</param>
     /// <param name="style">How to draw them. Unconnected gives a default style.</param>
     /// <param name="name">The layer's name.</param>
+    /// <param name="attribution">The credit the data's source requires, shown bottom right of the view - e.g. © OpenStreetMap contributors for data from OSM.</param>
     /// <param name="enabled">Hides the layer while off.</param>
     [return: Pin(Name = "Output")]
-    public GlobeLayer Update(IEnumerable<IFeature>? features = null, GlobeVectorStyle? style = null, string name = "Features", bool enabled = true)
+    public GlobeLayer Update(IEnumerable<IFeature>? features = null, GlobeVectorStyle? style = null, string name = "Features", string attribution = "", bool enabled = true)
     {
+        _layer.Attribution = attribution ?? "";
         // the features Pick can hand back: the ones whose geometry is drawn, in the same order
         var kept = features?.Where(f => f?.Geometry is { IsEmpty: false }).Select(f => f!).ToList();
         _layer.Set(kept?.Select(f => f.Geometry), style, enabled, name);
@@ -195,10 +199,12 @@ public sealed class GlobeGeometryLayerNode
     /// <param name="geometries">The shapes to draw, in longitude and latitude.</param>
     /// <param name="style">How to draw them. Unconnected gives a default style.</param>
     /// <param name="name">The layer's name.</param>
+    /// <param name="attribution">The credit the data's source requires, shown bottom right of the view.</param>
     /// <param name="enabled">Hides the layer while off.</param>
     [return: Pin(Name = "Output")]
-    public GlobeLayer Update(IEnumerable<Geometry>? geometries = null, GlobeVectorStyle? style = null, string name = "Geometry", bool enabled = true)
+    public GlobeLayer Update(IEnumerable<Geometry>? geometries = null, GlobeVectorStyle? style = null, string name = "Geometry", string attribution = "", bool enabled = true)
     {
+        _layer.Attribution = attribution ?? "";
         _layer.Set(geometries, style, enabled, name);
         return _layer;
     }

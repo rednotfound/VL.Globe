@@ -167,7 +167,11 @@ internal readonly record struct MapViewport(double CenterX, double CenterY, doub
 }
 
 /// <summary>A source of a style: inline GeoJSON, or vector tiles fetched by URL.</summary>
-internal abstract class StyleSource { }
+internal abstract class StyleSource
+{
+    // the credit the source's provider requires (a style's or TileJSON's "attribution", often HTML)
+    public string Attribution = "";
+}
 
 internal sealed class GeoJsonSource : StyleSource
 {
@@ -180,7 +184,6 @@ internal sealed class VectorSource : StyleSource
     public string[] Tiles = Array.Empty<string>();
     public int MinZoom, MaxZoom = 22, TileSize = 512;
     public bool Tms;
-    public string Attribution = "";
 
     public string Url(TileKey t)
     {
@@ -463,14 +466,15 @@ internal sealed class MapStyleDocument
                     if (!lenient && p.Name is not ("type" or "data" or "maxzoom" or "tolerance" or "buffer" or "attribution"))
                         throw new StyleUnsupportedException($"geojson source {p.Name}");
                 var data = s.GetProperty("data");
-                if (data.ValueKind == JsonValueKind.String) return new GeoJsonSource { Url = data.GetString() };
+                var credit = s.TryGetProperty("attribution", out var a) && a.ValueKind == JsonValueKind.String ? a.GetString() ?? "" : "";
+                if (data.ValueKind == JsonValueKind.String) return new GeoJsonSource { Url = data.GetString(), Attribution = credit };
                 var features = new List<StyleFeature>();
                 try { GeoJson.Read(data, features); }
                 catch (Exception e) when (e is KeyNotFoundException or InvalidOperationException or IndexOutOfRangeException)
                 {
                     features.Clear();   // invalid GeoJSON draws nothing, as in GL JS
                 }
-                return new GeoJsonSource { Features = new FeatureTable(features.ToArray()) };
+                return new GeoJsonSource { Features = new FeatureTable(features.ToArray()), Attribution = credit };
             }
             case "vector":
             {

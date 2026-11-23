@@ -15,8 +15,9 @@ public class AttributionFacts
         var again = new XyzTilesNode().Update("https://example.org/b/{z}/{x}/{y}.png", "© OpenTopoMap");
         var off = new XyzTilesNode().Update("https://example.org/c/{z}/{x}/{y}.png", "© Hidden", enabled: false);
         var shapes = new GlobeGeometryLayerNode().Update(Array.Empty<NetTopologySuite.Geometries.Geometry>());
-        var group = new GlobeGroupSpectralNode().Update(new[] { osm, topo, shapes, again, off });
-        Assert.Equal("© OpenStreetMap contributors | © OpenTopoMap", GlobeNode.AttributionOf(group));
+        var mine = new GlobeFeatureLayerNode().Update(attribution: "© My survey");
+        var group = new GlobeGroupSpectralNode().Update(new[] { osm, topo, shapes, again, off, mine });
+        Assert.Equal("© OpenStreetMap contributors | © OpenTopoMap | © My survey", GlobeNode.AttributionOf(group));
         Assert.Equal("", GlobeNode.AttributionOf(null));
     }
 
@@ -51,5 +52,16 @@ public class AttributionFacts
         var (box, _) = Drawn(long_, 300, 100);
         Assert.InRange(box.Left, 0, 300);
         Assert.Equal(300, box.Right);
+    }
+
+    [Fact]
+    public void AStylesGeoJsonSourceGivesItsCreditToo()
+    {
+        using var json = System.Text.Json.JsonDocument.Parse("""
+            { "version": 8, "sources": { "mine": { "type": "geojson", "attribution": "<a href='x'>© My data</a>",
+              "data": { "type": "FeatureCollection", "features": [] } } }, "layers": [] }
+            """);
+        var doc = MapStyleDocument.Parse(json.RootElement, lenient: true);
+        Assert.Equal("© My data", VectorTileService.PlainText(doc.Sources["mine"].Attribution));
     }
 }

@@ -113,7 +113,7 @@ internal sealed class VectorTileService : IDisposable
             doc.Load = Load;
             doc.Pending = Pending;
             doc.Peek = Peek;
-            Attribution = string.Join(" ", doc.Sources.Values.OfType<VectorSource>().Select(v => PlainText(v.Attribution)).Where(a => a.Length > 0).Distinct());
+            Attribution = string.Join(" ", doc.Sources.Values.Select(v => PlainText(v.Attribution)).Where(a => a.Length > 0).Distinct());
             _document = doc;
             Interlocked.Increment(ref _version);
         }
