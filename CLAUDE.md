@@ -61,9 +61,10 @@ Guidance for Claude Code working in this repository.
    Input, Objects; point + model merged into Objects\HowTo Place objects on the globe), all 11 compile.
    Then F1 flags (tools/Set-HelpFlags.py, all 31 nodes) and cells for FeatureLayer, GlobeToScreen,
    ToGlobe (Coordinate), Group (Spectral). F1 tried by the user: works.
-   **NOW (the user, 2026-11-23): they are arranging every help patch by hand. Do not edit help\ until
-   they say so; then Normalize-HelpPatches + Compile-HelpPatches on their saves, and re-run Set-HelpFlags.py
-   only if a flagged node moved patch. After that: ScaleBar, ZoomButtons, Click (ROADMAP 6) - not before they ask.**
+   The user arranged every help patch by hand (committed normalized, 6972235). Globe and GlobeWindow are
+   Enabled by default since 2026-11-23 (as SceneWindow/Renderer; help toggles still OFF). Node design
+   rules: the `vvvv-node-design` skill (~/.claude/skills). **NEXT: ScaleBar, ZoomButtons, Click
+   (ROADMAP 6) when the user asks; VectorTiles' Enabled default is still to decide.**
    Then (2026-11-23) the node surface made vvvv's (docs/DESIGN-NODES.md): navigation nodes [Globe.Navigate], pins in vvvv's
    order, one Input + Group, GlobeCamera as OrbitCamera. Next: the user's judgement of the gestures and the help patches' layout.**
    Research: [docs/RESEARCH-0.1.md](docs/RESEARCH-0.1.md), [docs/RESEARCH-VECTOR.md](docs/RESEARCH-VECTOR.md).
@@ -71,7 +72,7 @@ Guidance for Claude Code working in this repository.
 3. Read **[NOTES.md](NOTES.md)** — every failure so far, before touching the same code.
 4. The family's rules are the siblings': `D:\2026_Projects\vl-mapsui\docs\RULES.md` and that repo's
    CLAUDE.md (the dev loop, the four verification rungs, never leave vvvv running, close only your
-   own pid, `Enabled` off by default on anything that fetches, edit a .vl in place, NOTES.md is the
+   own pid, help patches ship an `Enabled` toggle OFF (nodes default ON since 2026-11-15/23), edit a .vl in place, NOTES.md is the
    failure log). They are not repeated here.
 
 The shared memory (`~\.claude\projects\D--2026-Projects-vl-globe\memory`) is a junction onto the
