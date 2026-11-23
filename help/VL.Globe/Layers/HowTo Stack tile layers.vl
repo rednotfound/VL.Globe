@@ -213,6 +213,26 @@
               <p:stringtype p:Assembly="VL.Core" p:Type="VL.Core.StringType">Comment</p:stringtype>
             </p:ValueBoxSettings>
           </Pad>
+          <Node Bounds="60,575,100,19" Id="GLj9Ccoeb0EVdal51uVELT">
+            <p:NodeReference LastCategoryFullName="Globe.Layers" LastDependency="VL.Globe.vl">
+              <Choice Kind="NodeFlag" Name="Node" Fixed="true" />
+              <CategoryReference Kind="Category" Name="Layers" NeedsToBeDirectParent="true">
+                <p:OuterCategoryReference Kind="Category" Name="Globe" NeedsToBeDirectParent="true" />
+              </CategoryReference>
+              <Choice Kind="ProcessAppFlag" Name="OpenStreetMap" />
+            </p:NodeReference>
+            <Pin Id="TOeJ6BJFnPIl4QS4M4sNML" Name="Output" Kind="OutputPin" />
+          </Node>
+          <Node Bounds="80,600,70,19" Id="BlIJ2Qjse8xJDBCbUhAXRC">
+            <p:NodeReference LastCategoryFullName="Globe.Layers" LastDependency="VL.Globe.vl">
+              <Choice Kind="NodeFlag" Name="Node" Fixed="true" />
+              <CategoryReference Kind="Category" Name="Layers" NeedsToBeDirectParent="true">
+                <p:OuterCategoryReference Kind="Category" Name="Globe" NeedsToBeDirectParent="true" />
+              </CategoryReference>
+              <Choice Kind="ProcessAppFlag" Name="Graticule" />
+            </p:NodeReference>
+            <Pin Id="GYLhXtc1KwQgpoAproaUGd" Name="Output" Kind="OutputPin" />
+          </Node>
         </Canvas>
         <Patch Id="kB6VRLetC6Psnc1OAPZnod" Name="Create" />
         <Patch Id="6tHqlqMfjB0tkgqXoa72Gg" Name="Update" />
@@ -228,6 +248,8 @@
         <Link Id="CLE45BSpD0N4h22vRBmqPI" Ids="Kpm15UELhUOuZAzHx4LP4A,N5X4NDce7WBvizuOAr7y11" />
         <Link Id="HVBr1dvZXSLS4oKcZp7YYk" Ids="aH6mMAPIba9IOQD1630CUr,CRAUaFnYVKwQzpLUCadT2r" />
         <Link Id="H4ujRQzRXWiCXVPJwqHPiO" Ids="LUPZbIAINPrVFuGgVkZHSo,HzknZSU5FWCnv8dM4fKdSm" />
+        <Link Id="UsAa4VpN75BSjrd7voQLWm" Ids="TOeJ6BJFnPIl4QS4M4sNML,B59OeTzXYJ86m5y4BNLdog" />
+        <Link Id="DvXp7dIB8YVbiA0w0ZPwqI" Ids="GYLhXtc1KwQgpoAproaUGd,Ck5tHtM3YReGXhCjkipQFd" />
       </Patch>
     </Node>
   </Patch>
