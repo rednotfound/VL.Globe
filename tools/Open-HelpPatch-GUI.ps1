@@ -56,9 +56,12 @@ $PidFile     = Join-Path ([IO.Path]::GetTempPath()) 'vl-mapsui-vvvv.pid'
 # too rather than only in Test-VLPatch. Falls back to a flat alphabetical list, with a header saying
 # so, if Help.xml is absent or fails to parse - the picker must degrade, never go blank.
 function Get-PatchEntries {
-    $onDisk = @(Get-ChildItem $HelpDir -File -Filter *.vl)
+    # by the path relative to help\VL.Globe, as Help.xml links them: patches live in topic folders
+    # (Overview\, Layers\ ... - VL.Stride's and VL.Skia's layout), so a bare file name is not enough
+    $onDisk = @(Get-ChildItem $HelpDir -File -Filter *.vl -Recurse)
     $byName = @{}
-    foreach ($f in $onDisk) { $byName[$f.Name] = $f }
+    function Get-RelativeKey([string]$path) { [IO.Path]::GetRelativePath($HelpDir, $path).Replace([char]'/', [char]92) }
+    foreach ($f in $onDisk) { $byName[(Get-RelativeKey $f.FullName)] = $f }
 
     $entries = [System.Collections.Generic.List[object]]::new()
     $ordered = [System.Collections.Generic.HashSet[string]]::new()
@@ -72,7 +75,7 @@ function Get-PatchEntries {
                 if ($docs.Count -eq 0) { continue }
                 $entries.Add([pscustomobject]@{ Kind = 'Header'; Text = $topic.title; File = $null })
                 foreach ($doc in $docs) {
-                    $link = $doc.link
+                    $link = ([string]$doc.link).Replace([char]'/', [char]92)
                     if ($byName.ContainsKey($link)) {
                         $entries.Add([pscustomobject]@{ Kind = 'Patch'; Text = [IO.Path]::GetFileNameWithoutExtension($link); File = $byName[$link] })
                         [void]$ordered.Add($link)
@@ -96,7 +99,7 @@ function Get-PatchEntries {
     # Every .vl on disk appears somewhere, even one Help.xml forgot - Test-VLPatch already fails on
     # that, but the picker should not silently hide a patch either.
     $strayLabel = if ($parsed) { 'Not in Help.xml' } else { 'help\VL.Globe (alphabetical)' }
-    $stray = @($onDisk | Where-Object { -not $ordered.Contains($_.Name) } | Sort-Object Name)
+    $stray = @($onDisk | Where-Object { -not $ordered.Contains((Get-RelativeKey $_.FullName)) } | Sort-Object FullName)
     if ($stray.Count -gt 0) {
         $entries.Add([pscustomobject]@{ Kind = 'Header'; Text = $strayLabel; File = $null })
         foreach ($f in $stray) { $entries.Add([pscustomobject]@{ Kind = 'Patch'; Text = $f.BaseName; File = $f }) }
