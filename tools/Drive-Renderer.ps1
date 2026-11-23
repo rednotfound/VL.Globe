@@ -9,8 +9,8 @@
     D:\2026_Projects\vl-overworld\tools\Capture-Renderer.ps1 to photograph the result.
     Positions are fractions of the client area.
 .EXAMPLE
-    .\tools\Drive-Renderer.ps1 -Title 'Put OpenStreetMap on a globe' -Action wheel -Notches 4 -AtX 0.6 -AtY 0.4
-    .\tools\Drive-Renderer.ps1 -Title 'Put OpenStreetMap on a globe' -Action drag -AtX 0.5 -AtY 0.5 -ToX 0.7 -ToY 0.5
+    .\tools\Drive-Renderer.ps1 -Title 'Build your own globe scene' -Action wheel -Notches 4 -AtX 0.6 -AtY 0.4
+    .\tools\Drive-Renderer.ps1 -Title 'Build your own globe scene' -Action drag -AtX 0.5 -AtY 0.5 -ToX 0.7 -ToY 0.5
 #>
 param(
     [Parameter(Mandatory)] [string]$Title,

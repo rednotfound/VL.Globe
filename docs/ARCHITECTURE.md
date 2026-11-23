@@ -38,13 +38,13 @@ the LTS line** (user, 2026-11-20); `tools\Find-Vvvv.ps1` stays below 8.0.
 | `ScreenToGlobe`, `GlobeToScreen`, `GlobeViewInfo [Globe]` | static | `GlobeViewNodes.cs` | projection-space position ↔ lon/lat (Success: hit the globe; Visible: not on the far side or behind); the view's centre, height, heading, tilt, ground m/px and web-map zoom (Mapsui's) |
 
 Help patches: `HowTo Open a globe window` (OpenStreetMap → GlobeWindow, the front door),
-`HowTo Put OpenStreetMap on a globe` (the separate nodes, for a window shared with other things) and
-`HowTo Place a point on the globe` (ToGlobe/FromGlobe, with an OrbitCamera — absolute, see below).
+`HowTo Build your own globe scene` (the separate nodes, for a window shared with other things) and
+`HowTo Place objects on the globe` (GlobePositionComponent; ToGlobe/FromGlobe as numbers — absolute, see below).
 
 ### GlobeWindow, and the wiring a patch does without it
 
 GlobeWindow is patched in `VL.Globe.vl` like VL.Mapsui's `MapWindow`: outer pins in its Create/Update
-patches reach the inner nodes by hidden links. Inside, and in `HowTo Put OpenStreetMap on a globe`:
+patches reach the inner nodes by hidden links. Inside, and in `HowTo Build your own globe scene`:
 
 ```
 OpenStreetMap ──Tile Source──► Globe ──Entity──► RootScene ──► SceneWindow

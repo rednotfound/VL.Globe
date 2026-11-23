@@ -12,7 +12,7 @@
       </p:NodeReference>
       <Patch Id="VEm0JPlILxBSuUDmJVopIZ">
         <Canvas Id="K0CSqdysOGuljQzcSnlu1p" CanvasType="Group">
-          <Pad Id="SiRPKSEnlg2so2RSrw2sWT" Bounds="60,40,460,34" ShowValueBox="true" isIOBox="true" Value="Put OpenStreetMap on a globe">
+          <Pad Id="SiRPKSEnlg2so2RSrw2sWT" Bounds="60,40,460,34" ShowValueBox="true" isIOBox="true" Value="Build your own globe scene">
             <p:TypeAnnotation LastCategoryFullName="Primitive" LastDependency="VL.CoreLib.vl">
               <Choice Kind="TypeFlag" Name="String" />
             </p:TypeAnnotation>
@@ -269,7 +269,7 @@
             <Pin Id="BG3cCV3rIKs62vxfdIJHcF" Name="Enable Default Camera" Kind="InputPin" DefaultValue="False" />
             <Pin Id="Emo58Kq3uWNw9s4MOgx5D2" Name="Enable Default Post Effects" Kind="InputPin" DefaultValue="False" />
             <Pin Id="VRzrgrkXsnH2fUqlwXPZDI" Name="Present Interval" Kind="InputPin" DefaultValue="One" />
-            <Pin Id="S3vD7AuPJjIrTjqy671TMg" Name="Title" Kind="InputPin" DefaultValue="Put OpenStreetMap on a globe" />
+            <Pin Id="S3vD7AuPJjIrTjqy671TMg" Name="Title" Kind="InputPin" DefaultValue="Build your own globe scene" />
             <Pin Id="KwwOuusdIoggJmomsZCFZC" Name="Output" Kind="OutputPin" />
             <Pin Id="LyG5wd83vK21WEUSvEAjr1" Name="Client Bounds" Kind="OutputPin" />
           </Node>

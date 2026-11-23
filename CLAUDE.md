@@ -57,11 +57,10 @@ Guidance for Claude Code working in this repository.
    (edge rows stretched to the pole; caps for a style's background), 334 green, seen by me in vvvv.
    Then the drag near the poles (flashed to the pole): GL JS's globe pan below MapLibre zoom 12, the
    grab above (`GlobeView.DragSession`), centre latitude within ±85.05 - 346 green, not yet seen in vvvv.
-   **NEXT: the user's look at the drag, the attribution and the poles; the help patches reorganised
-   (the user's choices, 2026-11-23: topics + subfolders as VL.Stride/Skia - Overview, Layers, Camera,
-   Input, Objects; "Place a point" and "Stand a model" merged into "HowTo Place objects on the globe",
-   GlobePositionComponent the main cell, ToGlobe/FromGlobe a side cell of numbers; "Put OpenStreetMap
-   on a globe" renamed "HowTo Build your own globe scene"); then ScaleBar, ZoomButtons, Click.**
+   Then the help patches reorganised as VL.Stride/Skia's (topics + subfolders: Overview, Layers, Camera,
+   Input, Objects; point + model merged into Objects\HowTo Place objects on the globe), all 11 compile.
+   **NEXT: the user's look at the drag, the attribution, the poles and the help patches; then ScaleBar,
+   ZoomButtons, Click (ROADMAP 6).**
    Then (2026-11-23) the node surface made vvvv's (docs/DESIGN-NODES.md): navigation nodes [Globe.Navigate], pins in vvvv's
    order, one Input + Group, GlobeCamera as OrbitCamera. Next: the user's judgement of the gestures and the help patches' layout.**
    Research: [docs/RESEARCH-0.1.md](docs/RESEARCH-0.1.md), [docs/RESEARCH-VECTOR.md](docs/RESEARCH-VECTOR.md).

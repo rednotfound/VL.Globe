@@ -624,7 +624,14 @@ horizon (over a pole it chose no tile at all) but picks the zoom by the square. 
 reaches the pole too (`VectorBucket` Background, the vertex's spare byte `Cap`, `GlobeVector.sdsl`
 PoleCap); fills do not, as in GL JS - Liberty's sea stops at 85°, the cap is its background colour.
 Seen in vvvv by me (OSM + OpenTopoMap and Liberty over the North Pole), not yet by the user.
-`PoleCapFacts`, incl. multisampled (below). Open: an off switch (MapLibre's `attributionControl: false`) -
+`PoleCapFacts`, incl. multisampled (below).
+
+**The help patches reorganised (2026-11-23, the user: "为什么是放在coordiates分类下面的呢？感觉有很多不佳而离的地方"):**
+topics and subfolders as VL.Stride's and VL.Skia's (Overview, Layers, Camera, Input, Objects); "Place a point" and
+"Stand a model" merged into `Objects\HowTo Place objects on the globe` (GlobePositionComponent the main cell,
+ToGlobe/FromGlobe a cell of numbers below - absolute, so not drawn under GlobeWindow); "Put OpenStreetMap on a
+globe" is `Overview\HowTo Build your own globe scene`. All 11 compile (Compile-HelpPatches); the merged one seen
+in vvvv's editor. Open: an off switch (MapLibre's `attributionControl: false`) -
 not added until asked.
 
 The plan as written:
