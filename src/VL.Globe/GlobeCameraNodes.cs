@@ -151,12 +151,12 @@ public sealed class GlobeCameraNode : IDisposable
     }
 }
 
-/// <summary>Grab the globe: the point under the cursor when the drag starts stays under the cursor.</summary>
+/// <summary>Drag the globe as MapLibre GL JS drags it: zoomed out the map follows the cursor, near the ground the place you grab stays under it.</summary>
 /// <remarks>Position and Dragging come from a Mouse [Stride.Input] node: its Position in Projection and Left Pressed.</remarks>
 [ProcessNode(Name = "Drag", Category = "Globe")]
 public sealed class GlobeDragNode
 {
-    D3? _grabbed;
+    GlobeView.DragSession? _drag;
     bool _was, _sawRay;
     int _frames;
     readonly ILogger _logger;
@@ -189,10 +189,13 @@ public sealed class GlobeDragNode
                 dragging ? view.PickDir(camDir)?.ToString() ?? "space" : "-");
             if (!dragging) GlobeViewLog.Write(_logger, view);
         }
-        if (!dragging) { _grabbed = null; return view; }
-        // pressed in space: the horizon's nearest point is held, as MapLibre's globe does (GlobeView.HorizonToward)
-        if (_grabbed is null) { _grabbed = view.PickDir(camDir, horizon: true); return view; }
-        view.DragTo(_grabbed.Value, camDir);
+        if (!dragging) { _drag = null; return view; }
+        // pixels, y down, from projection space (y up)
+        double x = (position.X + 1) / 2 * view.Width, y = (1 - position.Y) / 2 * view.Height_px;
+        // the rule is chosen at the press (GlobeView.DragSession): zoomed out GL JS's globe pan, near the
+        // ground the grab - pressed in space, the horizon's nearest point is held (GlobeView.HorizonToward)
+        if (_drag is null) { _drag = new GlobeView.DragSession(view, x, y, camDir); return view; }
+        _drag.Move(view, x, y, camDir);
         return view;
     }
 }

@@ -752,3 +752,11 @@ looked fine - "which makes one think it works". Two causes, estimated at 100 m h
   neighbours' samples - dotted seams only in vvvv. `RenderGlobe(..., samples: X4)` and ViewProbe's
   `VLGLOBE_MSAA=4` show it; caps are built to the square's width and not clipped, nor is a square's
   polar edge. Also: `GlobeView.SetHeight` takes metres - a test passing radii stood the camera 1 m up.
+- **Dragging near a pole flashed the view to it** (the user, 2026-11-23: "视野在南北极附近拖拽的时候还是会
+  抖动，甚至会闪动到北极去"; their log: 89.90 with longitude -1505, then 76.7). The grab with north
+  kept up has no answer once the grabbed point would need the camera past the pole; the fallback took
+  the far side's: 125-180° in one 5-px frame, tilted 30° at ~10,000 km (`PoleDragFacts`). The earlier
+  fix (stop at 89.9) checked longitude only. GL JS does not grab a globe at all ("not a very pleasant
+  way to pan a globe"): below MapLibre zoom 12 the pixel move moves the centre by its degrees per
+  pixel (computeGlobePanCenter, latitude within ±85.051129, longitude speed capped at 60° when far);
+  above it the exact grab. Done so (the user chose it): `GlobeView.DragSession`, chosen at the press.

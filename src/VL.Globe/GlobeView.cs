@@ -291,7 +291,9 @@ public sealed class GlobeView
         static double Wrap(double deg) => deg - 360 * Math.Round(deg / 360);
     }
 
-    const double MaxLatitude = 89.9;
+    // MapLibre's MAX_VALID_LATITUDE: the centre never goes nearer a pole (was 89.9; near it the solve
+    // has no good answer - the user, 2026-11-23, "甚至会闪动到北极去")
+    const double MaxLatitude = 85.051129;
 
     enum Fit { Exact, AtPole, Failed }
 
@@ -376,6 +378,67 @@ public sealed class GlobeView
         => v * Math.Cos(a) + D3.Cross(k, v) * Math.Sin(a) + k * (D3.Dot(k, v) * (1 - Math.Cos(a)));
 
     // ---------------------------------------------------------------- gestures
+
+    // ---------------------------------------------------------------- the drag, as MapLibre GL JS drags a globe
+
+    // GL JS (v5, vertical_perspective_camera_helper.handleMapControlsPan): "We avoid using the 'grab a
+    // place and move it around' approach from mercator here, since it is not a very pleasant way to pan
+    // a globe." Grabbing near a pole, with north kept up, has no answer once the point would need the
+    // camera past the pole; our solve then took the other side's - 125-180 degrees in a frame, the
+    // view flashing to the pole (the user, 2026-11-23; PoleDragFacts). So, as GL JS: while the globe
+    // is drawn as a globe (its style's default turns to Mercator between MapLibre zoom 10 and 12, and
+    // its controls are the globe's below 12) the cursor's move in pixels moves the centre by the
+    // centre's degrees per pixel (computeGlobePanCenter), latitude held within MaxLatitude; above it
+    // the grab, exact, as GL JS's Mercator controls. Chosen at the press: one drag, one rule.
+
+    /// <summary>MapLibre's zoom below which GL JS's globe controls are used.</summary>
+    internal const double GlobeControlsBelowZoom = 12;
+
+    internal sealed class DragSession
+    {
+        readonly D3? _grabbed;
+        readonly bool _globe;
+        double _x, _y;
+
+        /// <summary>A drag pressed at pixel (<paramref name="x"/>, <paramref name="y"/>) of <paramref name="view"/>, the camera direction there <paramref name="camDir"/>.</summary>
+        public DragSession(GlobeView view, double x, double y, D3 camDir)
+        {
+            _x = x; _y = y;
+            _globe = ZoomOf(view.GroundResolution(), view.Latitude) - 1 < GlobeControlsBelowZoom;
+            if (!_globe) _grabbed = view.PickDir(camDir, horizon: true);
+        }
+        public DragSession(GlobeView view, double x, double y) : this(view, x, y, view.CameraDirection(x, y)) { }
+
+        public bool GlobeControls => _globe;
+
+        /// <summary>The cursor is now at pixel (x, y), camera direction <paramref name="camDir"/>.</summary>
+        public void Move(GlobeView view, double x, double y, D3 camDir)
+        {
+            if (_globe) view.PanBy(x - _x, y - _y);
+            else if (_grabbed is { } g) view.DragTo(g, camDir);
+            _x = x; _y = y;
+        }
+        public void Move(GlobeView view, double x, double y) => Move(view, x, y, view.CameraDirection(x, y));
+    }
+
+    /// <summary>GL JS's computeGlobePanCenter: the cursor moved by (dx, dy) pixels (y down); the map follows it.</summary>
+    internal void PanBy(double dx, double dy)
+    {
+        if (dx == 0 && dy == 0) return;
+        // the move turned by the bearing (GL JS's Point.rotate)
+        double b = Heading * Math.PI / 180;
+        double rx = dx * Math.Cos(b) - dy * Math.Sin(b), ry = dx * Math.Sin(b) + dy * Math.Cos(b);
+        // degrees of arc per pixel at the centre (GL JS's getDegreesPerPixel), and the zoom the globe
+        // would have at the equator at this size (its normalizedGlobeZoom), in MapLibre's 512-px zoom
+        double degreesPerPixel = GroundResolution() / GlobeCoordinates.EarthRadius * 180 / Math.PI;
+        double normalizedZoom = Math.Log2(360 / degreesPerPixel / 512);
+        static double Sec(double degrees) => 1 / Math.Cos(degrees * Math.PI / 180);
+        double far = Math.Clamp((normalizedZoom - 7) / (3 - 7), 0, 1);   // remapSaturate(z, 7, 3, 0, 1)
+        double lngSpeed = Sec(Latitude) + (Sec(Math.Min(Math.Abs(Latitude), 60)) - Sec(Latitude)) * far;
+        double lon = Longitude - rx * degreesPerPixel * lngSpeed;
+        Longitude = ((lon + 180) % 360 + 360) % 360 - 180;
+        Latitude = Math.Clamp(Latitude + ry * degreesPerPixel, -MaxLatitude, MaxLatitude);
+    }
 
     /// <summary>One frame of a drag: the grabbed point is brought back under the cursor.</summary>
     internal void DragTo(D3 grabbed, D3 camDir) => BringUnderCursor(grabbed, camDir, horizon: true);
