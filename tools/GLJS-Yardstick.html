@@ -72,8 +72,14 @@ function frame(t) {
   // the point SPEED x dt px right of the centre made the centre - VL.Globe's bench does the same.
   // (panBy with animate: false was tried first: the map stayed put through 20 s of it, 2026-11-22)
   if (t < panUntil && last >= 0) {
-    const c = map.project(map.getCenter());
-    map.jumpTo({ center: map.unproject([c.x + SPEED * (t - last) / 1000, c.y]) });
+    if (q.get('mode') === 'zoom') {
+      // VL.Globe's VLGLOBE_BENCH=zoom: 5 levels out at one a second, then back in
+      const u = Math.min(Math.max((t - panFrom) / 1000, 0), panSeconds);
+      map.jumpTo({ zoom: zoomFrom - (u < panSeconds / 2 ? u : panSeconds - u) });
+    } else {
+      const c = map.project(map.getCenter());
+      map.jumpTo({ center: map.unproject([c.x + SPEED * (t - last) / 1000, c.y]) });
+    }
   }
   last = t;
   if (t - secondFrom >= 1000) {
@@ -85,7 +91,8 @@ function frame(t) {
   requestAnimationFrame(frame);
 }
 requestAnimationFrame(frame);
-function pan(seconds) { panUntil = performance.now() + seconds * 1000; }
+let panFrom = 0, panSeconds = 10, zoomFrom = 0;
+function pan(seconds) { panFrom = performance.now(); panSeconds = seconds; zoomFrom = map.getZoom(); panUntil = panFrom + seconds * 1000; }
 document.getElementById('pan').onclick = () => pan(10);
 // ?bench=1&wait=20&pan=10&runs=2&gap=5: wait for loading, then pan `runs` times
 if (q.get('bench') === '1') {

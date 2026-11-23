@@ -25,14 +25,20 @@ internal sealed class CameraBench
     double _last = -1;
     int _logged = -1;
 
-    CameraBench(string? hash, double wait) { _hash = hash; _wait = wait; }
+    // VLGLOBE_BENCH=zoom (2026-11-23: the user's zooming showed label index spikes of 10-44 ms a pan never
+    // made): each run zooms out 5 levels at one a second, then back in, about the view's centre
+    readonly bool _zoom;
+    double _h0, _runStart;
+
+    CameraBench(string? hash, double wait, bool zoom) { _hash = hash; _wait = wait; _zoom = zoom; }
 
     public static CameraBench? FromEnvironment()
     {
-        if (Environment.GetEnvironmentVariable("VLGLOBE_BENCH") != "pan") return null;
+        var mode = Environment.GetEnvironmentVariable("VLGLOBE_BENCH");
+        if (mode is not ("pan" or "zoom")) return null;
         double wait = double.TryParse(Environment.GetEnvironmentVariable("VLGLOBE_BENCH_WAIT"), System.Globalization.NumberStyles.Float,
             System.Globalization.CultureInfo.InvariantCulture, out var w) ? w : 25;
-        return new CameraBench(Environment.GetEnvironmentVariable("VLGLOBE_VIEW"), wait);
+        return new CameraBench(Environment.GetEnvironmentVariable("VLGLOBE_VIEW"), wait, mode == "zoom");
     }
 
     /// <summary>Moves the view for this frame: the hash on the first, then the pans.</summary>
@@ -42,8 +48,9 @@ internal sealed class CameraBench
         {
             _clock.Start();
             bool applied = _hash != null && view.TryApplyHash(_hash);
-            logger.LogInformation("Globe bench: {Hash} {Applied}, waiting {Wait} s, then {Runs} pans of {Secs} s at {Speed} px/s",
-                _hash ?? "(no VLGLOBE_VIEW)", applied ? "applied" : "NOT applied", _wait, Runs, PanSeconds, Speed);
+            logger.LogInformation("Globe bench: {Hash} {Applied}, waiting {Wait} s, then {Runs} {Kind} of {Secs} s",
+                _hash ?? "(no VLGLOBE_VIEW)", applied ? "applied" : "NOT applied", _wait, Runs,
+                _zoom ? "zooms (5 levels out and back at 1 a second)" : $"pans at {Speed} px/s", PanSeconds);
             return;
         }
         double t = _clock.Elapsed.TotalSeconds, dt = _last < 0 ? 0 : t - _last;
@@ -57,6 +64,7 @@ internal sealed class CameraBench
             if (phase >= 0 && phase < 2 * Runs && phase % 2 == 0)
             {
                 _from = (view.Latitude, view.Longitude);
+                _h0 = view.Height; _runStart = t;
                 logger.LogInformation("Globe bench: pan {Run} begins, centre {Lat:F5}, {Lon:F5}", phase / 2 + 1, view.Latitude, view.Longitude);
             }
             else if (phase >= 0 && phase < 2 * Runs)
@@ -65,6 +73,14 @@ internal sealed class CameraBench
             else if (phase == 2 * Runs) logger.LogInformation("Globe bench: done");
         }
         if (!panning || dt <= 0 || view.ProjX <= 0) return;
+        if (_zoom)
+        {
+            // out for the first half, back in for the second: 2^levels the height
+            double u = Math.Clamp(t - _runStart, 0, PanSeconds);
+            double levels = u < PanSeconds / 2 ? u : PanSeconds - u;
+            view.SetHeight(_h0 * Math.Pow(2, levels));
+            return;
+        }
         // the view's width in pixels from its height and the projection's aspect
         double width = view.Height_px * view.ProjY / view.ProjX;
         double px = Speed * dt;
