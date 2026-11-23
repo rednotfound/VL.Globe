@@ -13,7 +13,7 @@ namespace VL.Globe.Tests;
 // fail this way.
 public class OverscaledGroundFacts(ITestOutputHelper output)
 {
-    static string Tiles()
+    internal static string Tiles()
     {
         for (var d = new DirectoryInfo(AppContext.BaseDirectory); d != null; d = d.Parent)
             if (File.Exists(Path.Combine(d.FullName, "VL.Globe.nuspec")))

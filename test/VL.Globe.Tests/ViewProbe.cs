@@ -63,7 +63,8 @@ public class ViewProbe(ITestOutputHelper output)
             output.WriteLine($"  extrusion z{Math.Log2(i.Tiles)} clip {i.Clip} {i.Count} indices");
         foreach (bool fog in new[] { false, true })
         {
-            var px = GpuFixtureRenderer.RenderGlobe(gpu.Frame!, viewRotation, projection, (int)W, (int)H, fog, tiles);
+            var px = GpuFixtureRenderer.RenderGlobe(gpu.Frame!, viewRotation, projection, (int)W, (int)H, fog, tiles,
+                Environment.GetEnvironmentVariable("VLGLOBE_MSAA") == "4" ? global::Stride.Graphics.MultisampleCount.X4 : global::Stride.Graphics.MultisampleCount.None);
             var file = Path.Combine(Path.GetTempPath(), $"vlglobe-view{(fog ? "-fog" : "")}.bmp");
             Bmp(file, px, (int)W, (int)H);
             output.WriteLine("wrote " + file);

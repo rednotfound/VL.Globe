@@ -114,6 +114,19 @@ internal sealed class TileSelector
                 if (x * cn.X + y * cn.Y + z * cn.Z > 1.0 - slack * cn.Length()) return true;
             }
         }
+        // a top or bottom row tile reaches its pole (TileGeometry.CapRows): sample its cap too, or a
+        // camera over the pole saw no tile at all. Its zoom is still chosen by its square
+        // (DistanceToTile): every such tile meets at the pole, and by the cap all would refine to the end
+        foreach (var (cap, sign) in new[] { (TileGeometry.NorthCap(t), 1.0), (TileGeometry.SouthCap(t), -1.0) })
+        {
+            if (!cap) continue;
+            for (double lat = 86; lat <= 90; lat += 1)
+                for (int i = 0; i <= k; i++)
+                {
+                    var (x, y, z) = TileGeometry.OnSphere(TileGeometry.LongitudeOf((t.X + (double)i / k) / n), sign * lat);
+                    if (x * cn.X + y * cn.Y + z * cn.Z > 1.0 - slack * cn.Length()) return true;
+                }
+        }
         return false;
     }
 }

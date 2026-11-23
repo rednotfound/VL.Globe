@@ -53,7 +53,9 @@ Guidance for Claude Code working in this repository.
    cut along the ray. Built 2026-11-23 night, 315 green, offscreen probes now draw the globe tiles' depth.
    Seen by the user in vvvv: "似乎成功了"; zoom bench 0.1% missed (no cost). Then ROADMAP 6: the
    attribution drawn bottom right by every Globe (built 2026-11-23, seen by me, not yet by the user).
-   **NEXT: the user's look at it; then ScaleBar, ZoomButtons, Click (ROADMAP 6).**
+   Then Attribution pins on FeatureLayer/Geometry (the user's choice) and the poles filled GL JS's way
+   (edge rows stretched to the pole; caps for a style's background), 334 green, seen by me in vvvv.
+   **NEXT: the user's look at the attribution and the poles; then ScaleBar, ZoomButtons, Click (ROADMAP 6).**
    Then (2026-11-23) the node surface made vvvv's (docs/DESIGN-NODES.md): navigation nodes [Globe.Navigate], pins in vvvv's
    order, one Input + Group, GlobeCamera as OrbitCamera. Next: the user's judgement of the gestures and the help patches' layout.**
    Research: [docs/RESEARCH-0.1.md](docs/RESEARCH-0.1.md), [docs/RESEARCH-VECTOR.md](docs/RESEARCH-VECTOR.md).

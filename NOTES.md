@@ -742,3 +742,13 @@ looked fine - "which makes one think it works". Two causes, estimated at 100 m h
   device pixels (VL.Mapsui's PixelSpace). vvvv's SkiaSharp is 2.88: text through `SKPaint`
   (TextSize, MeasureText, BreakText, FontMetrics) - `SKFont.MeasureText(string)`/`BreakText` do not
   compile against it.
+- **The poles, and multisampling** (2026-11-23). Three traps on the way: (1) the selector's horizon
+  test sampled only a tile's Mercator square - over a pole no tile passed; (2) the background grid had
+  no vertex on its square's edges, so each neighbour cut its clip edge across its own chords; looking
+  down on a pole those chords bend in the screen's plane: a pixel of crack on every seam - now a column
+  and a row exactly at 0 and 1; (3) **vvvv's window is multisampled, the probes were not**: the clip's
+  `discard` runs once a pixel, at its centre, so a pixel straddling a clip edge where the margin is
+  under a pixel wide (columns meeting at the pole; the grid held at the polar edge) lost both
+  neighbours' samples - dotted seams only in vvvv. `RenderGlobe(..., samples: X4)` and ViewProbe's
+  `VLGLOBE_MSAA=4` show it; caps are built to the square's width and not clipped, nor is a square's
+  polar edge. Also: `GlobeView.SetHeight` takes metres - a test passing radii stood the camera 1 m up.

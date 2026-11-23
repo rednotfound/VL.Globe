@@ -32,7 +32,7 @@ internal struct VectorVertex
 {
     ushort _u, _v;             // (uv + 0.5) x 32768
     sbyte _ex, _ey;            // the extrusion x 63, rounded as GL JS rounds it
-    short _spare;              // Stride wants every element a multiple of 4 bytes: R8G8B8A8_SInt, .xy read
+    sbyte _cap, _spare;        // the element is R8G8B8A8_SInt (4 bytes, as Stride wants); .z: a pole cap's row (Cap)
     System.Half _n, _width;
     public uint Color;         // the feature's colour, straight sRGB bytes R G B A, where it depends on the feature; else white
 
@@ -53,6 +53,9 @@ internal struct VectorVertex
         readonly get => new(_u / UvUnits + UvLow, _v / UvUnits + UvLow);
         set { _u = Units(value.X); _v = Units(value.Y); }
     }
+
+    /// <summary>0, or for the background's pole cap the way from the Mercator edge (v 0 north, 1 south) to the pole, in 63rds.</summary>
+    public int Cap { readonly get => _cap; set => _cap = (sbyte)Math.Clamp(value, 0, 63); }
 
     /// <summary>-1..1 across a line, 0..1 out from a round cap's centre, 0 for a fill; a wall's vertical gradient.</summary>
     public float N { readonly get => (float)_n; set => _n = (System.Half)value; }
@@ -415,22 +418,61 @@ internal static partial class VectorBucketBuilder
             int start = _indices.Count;
             uint first = (uint)_vertices.Count;
             // a little past the square on every side: the clip rectangle, not the mesh's edge, decides
-            // where it ends, so neighbours meet without a crack (two meshes' edges are not bit-equal)
+            // where it ends, so neighbours meet without a crack (two meshes' edges are not bit-equal).
+            // And a column and a row exactly on the square's edges: the clip's edge is then a mesh edge
+            // both neighbours share. Without them each cut its edge across its own chords, and where the
+            // chords bend in the screen's plane - looking down on a pole - a pixel of crack showed
+            // between every two squares (PoleCapFacts, 2026-11-23).
             int cells = Math.Max(8, (int)Math.Ceiling(Extent / _maxSegment));
-            int side = cells + 1;
-            double pad = Extent * 0.01, span = Extent + 2 * pad;
+            double pad = Extent * 0.01;
+            var at = new double[cells + 3];
+            at[0] = -pad; at[cells + 2] = Extent + pad;
+            for (int k = 0; k <= cells; k++) at[k + 1] = Extent * k / cells;
+            int side = at.Length, quads = side - 1;
             for (int j = 0; j < side; j++)
                 for (int i = 0; i < side; i++)
-                    _vertices.Add(Vertex(span * i / cells - pad, span * j / cells - pad, 0, 0, 0, 1, uint.MaxValue));
-            for (int j = 0; j < cells; j++)
-                for (int i = 0; i < cells; i++)
+                    _vertices.Add(Vertex(at[i], at[j], 0, 0, 0, 1, uint.MaxValue));
+            for (int j = 0; j < quads; j++)
+                for (int i = 0; i < quads; i++)
                 {
                     uint a = first + (uint)(j * side + i), c = a + (uint)side;
                     _indices.Add(a); _indices.Add(a + 1); _indices.Add(c);
                     _indices.Add(a + 1); _indices.Add(c + 1); _indices.Add(c);
                 }
+            // the pole caps, as the globe's own tiles have them (TileGeometry.CapRows): rows from the
+            // square's edge to the pole, the shader puts each where its Cap says (GlobeVector.sdsl PoleCap).
+            // Exactly the square's width, no margin and no clip (the shader leaves a cap unclipped): the
+            // columns meet at the pole, a margin there is narrower than a pixel, and multisampled (vvvv's
+            // window) the clip's discard dropped pixels on every seam near the pole (2026-11-23)
+            if (!_flat)
+                foreach (var (cap, v, edgeRow) in new[] { (_key.Y == 0, 0.0, 1), (_key.Y == _n - 1, Extent, cells + 1) })
+                {
+                    if (!cap) continue;
+                    var rows = new List<uint> { first + (uint)(edgeRow * side) + 1 };
+                    for (int k = 1; k <= PoleCapRows; k++)
+                    {
+                        rows.Add((uint)_vertices.Count);
+                        for (int i = 1; i <= cells + 1; i++)
+                        {
+                            var vertex = Vertex(at[i], v, 0, 0, 0, 1, uint.MaxValue);
+                            vertex.Cap = k * 63 / PoleCapRows;
+                            _vertices.Add(vertex);
+                        }
+                    }
+                    if (v == 0) rows.Reverse();   // north to south, as the grid's rows run
+                    for (int r = 0; r + 1 < rows.Count; r++)
+                        for (int i = 0; i < cells; i++)
+                        {
+                            uint a = rows[r] + (uint)i, c = rows[r + 1] + (uint)i;
+                            _indices.Add(a); _indices.Add(a + 1); _indices.Add(c);
+                            _indices.Add(a + 1); _indices.Add(c + 1); _indices.Add(c);
+                        }
+                }
             _ranges.Add(new VectorRange(-1, RangeKind.Background, start, _indices.Count - start));
         }
+
+        // 21 rows: 63rds in steps of 3, ~0.24° of latitude each
+        const int PoleCapRows = 21;
 
         public void Layer(GpuStyleLayer layer, FeatureTable features, StyleContext ctx)
         {

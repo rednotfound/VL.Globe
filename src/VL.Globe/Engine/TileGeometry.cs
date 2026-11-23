@@ -26,6 +26,15 @@ internal static class TileGeometry
     public const int VertsPerSide = Segments + 1;    // for zoom 3 and finer
     public const double MaxLatitude = 85.05112877980659;
 
+    // The poles (the user, 2026-11-23: the round holes at both poles). Web Mercator stops at 85.05°;
+    // MapLibre GL JS's globe extends the top and bottom rows of tiles to the pole and stretches the
+    // texture's edge row over the cap (vertical_perspective_projection.getMeshFromTileID, extendToNorthPole
+    // for raster, background and hillshade). The same here: rows of the cap every 0.25° of latitude, so a
+    // chord sags ~15 m, at most - one row from 85° to 90° sagged ~6 km.
+    public const int CapRows = 20;
+    public static bool NorthCap(TileKey tile) => tile.Y == 0;
+    public static bool SouthCap(TileKey tile) => tile.Y == tile.TilesPerSide - 1;
+
     /// <summary>Latitude in degrees of a Mercator y in 0..1 (0 = north edge of the world).</summary>
     public static double LatitudeOf(double mercatorY)
         => (2.0 * Math.Atan(Math.Exp(Math.PI * (1.0 - 2.0 * mercatorY))) - Math.PI / 2) * 180.0 / Math.PI;
@@ -92,7 +101,8 @@ internal static class TileGeometry
     {
         int seg = SegmentsFor(tile.Zoom), side = seg + 1;
         var centre = Centre(tile);
-        var offsets = new Vector3[side * side];
+        bool north = NorthCap(tile), south = SouthCap(tile);
+        var offsets = new Vector3[side * side + ((north ? 1 : 0) + (south ? 1 : 0)) * CapRows * side];
         var normals = new Vector3[offsets.Length];
         var uv = new Vector2[offsets.Length];
         double global = (double)tile.TilesPerSide * seg;
@@ -109,6 +119,26 @@ internal static class TileGeometry
                 uv[j * side + i] = new Vector2((float)i / seg, (float)j / seg);
             }
         }
+        // the caps after the grid, north first, each row k = 1..CapRows from the edge to the pole; the
+        // texture's edge row stretched over them
+        int at = side * side;
+        foreach (var (cap, v) in new[] { (north, 0f), (south, 1f) })
+        {
+            if (!cap) continue;
+            double edge = v == 0 ? MaxLatitude : -MaxLatitude, pole = v == 0 ? 90 : -90;
+            for (int k = 1; k <= CapRows; k++)
+            {
+                double lat = edge + (pole - edge) * k / CapRows;
+                for (int i = 0; i < side; i++, at++)
+                {
+                    var (x, y, z) = OnSphere(LongitudeOf((tile.X * seg + i) / global), lat);
+                    var p = new D3(x, y, z);
+                    offsets[at] = (p - centre).ToVector3();
+                    normals[at] = p.ToVector3();
+                    uv[at] = new Vector2((float)i / seg, v);
+                }
+            }
+        }
         return (centre, offsets, normals, uv);
     }
 
@@ -118,23 +148,34 @@ internal static class TileGeometry
 
     static readonly System.Collections.Concurrent.ConcurrentDictionary<int, ushort[]> _indices = new();
 
-    /// <summary>Two triangles per cell for a tile at this zoom.</summary>
-    public static ushort[] IndicesFor(int zoom) => _indices.GetOrAdd(SegmentsFor(zoom), BuildIndices);
+    /// <summary>Two triangles per cell for this tile, its pole caps' rows included (<see cref="RelativeVertices"/>).</summary>
+    public static ushort[] IndicesFor(TileKey tile)
+        => _indices.GetOrAdd(SegmentsFor(tile.Zoom) * 4 + (NorthCap(tile) ? 1 : 0) + (SouthCap(tile) ? 2 : 0), BuildIndices);
 
-    static ushort[] BuildIndices(int seg)
+    static ushort[] BuildIndices(int key)
     {
-        int side = seg + 1;
-        var idx = new ushort[seg * seg * 6];
-        int k = 0;
-        for (int j = 0; j < seg; j++)
+        int seg = key / 4, side = seg + 1;
+        bool north = (key & 1) != 0, south = (key & 2) != 0;
+        var idx = new System.Collections.Generic.List<ushort>(seg * (seg + 2 * CapRows) * 6);
+        // the rows from north to south, by where each starts in the vertex array
+        var rows = new System.Collections.Generic.List<int>();
+        int capStart = side * side;
+        if (north) for (int k = CapRows; k >= 1; k--) rows.Add(capStart + (k - 1) * side);
+        for (int j = 0; j <= seg; j++) rows.Add(j * side);
+        if (south)
+        {
+            int southStart = capStart + (north ? CapRows * side : 0);
+            for (int k = 1; k <= CapRows; k++) rows.Add(southStart + (k - 1) * side);
+        }
+        for (int r = 0; r + 1 < rows.Count; r++)
             for (int i = 0; i < seg; i++)
             {
-                ushort a = (ushort)(j * side + i), b = (ushort)(a + 1);
-                ushort c = (ushort)(a + side), d = (ushort)(c + 1);
-                idx[k++] = a; idx[k++] = c; idx[k++] = b;
-                idx[k++] = b; idx[k++] = c; idx[k++] = d;
+                ushort a = (ushort)(rows[r] + i), b = (ushort)(a + 1);
+                ushort c = (ushort)(rows[r + 1] + i), d = (ushort)(c + 1);
+                idx.Add(a); idx.Add(c); idx.Add(b);
+                idx.Add(b); idx.Add(c); idx.Add(d);
             }
-        return idx;
+        return idx.ToArray();
     }
 
     /// <summary>The tile's centre on the unit sphere and the radius of a sphere around its corners.</summary>
@@ -149,6 +190,9 @@ internal static class TileGeometry
             var (x, y, z) = OnSphere(LongitudeOf((tile.X + u) / n), LatitudeOf((tile.Y + v) / n));
             r = Math.Max(r, Vector3.Distance(centre, new Vector3((float)x, (float)y, (float)z)));
         }
+        // a tile in the top or bottom row reaches its pole (the cap)
+        if (NorthCap(tile)) r = Math.Max(r, Vector3.Distance(centre, new Vector3(0, 1, 0)));
+        if (SouthCap(tile)) r = Math.Max(r, Vector3.Distance(centre, new Vector3(0, -1, 0)));
         // A tile wider than ~90 degrees bulges outward beyond its corners' chord; at zoom 0-1 just
         // take the whole sphere.
         if (tile.Zoom <= 1) { centre = Vector3.Zero; r = 1f; }

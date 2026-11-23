@@ -105,6 +105,20 @@ shader GlobeVector : ShaderBase
         return rel;
     }
 
+    // A row of the background's pole cap (VectorBucket Background, as TileGeometry.CapRows for the
+    // globe's tiles - MapLibre GL JS extends the edge rows of tiles to the poles): the Mercator edge
+    // point at this u, moved towards the pole by the cap's fraction of the latitude left
+    float3 PoleCap(GvDraw dr, float2 uv, float fraction)
+    {
+        float3 centre = dr.CentreHalfWidth.xyz;
+        bool north = uv.y < 0.5;
+        float3 edge = centre + Relative(dr, float2(uv.x, north ? 0 : 1), 0);
+        float latEdge = asin(clamp(edge.y / length(edge), -1, 1));
+        float lat = lerp(latEdge, north ? 1.5707963 : -1.5707963, fraction);
+        float2 lon = normalize(edge.xz);   // (sin, cos) of the longitude
+        return float3(cos(lat) * lon.x, sin(lat), cos(lat) * lon.y) - centre;
+    }
+
     // the vertex's up, east and north: on the sphere from its direction, on the plane fixed
     void Frame(GvDraw dr, float3 position, out float3 up, out float3 east, out float3 north)
     {
@@ -123,6 +137,7 @@ shader GlobeVector : ShaderBase
         float GvTiles = dr.Misc.y, GvHalfWidth = dr.CentreHalfWidth.w, GvIsLine = dr.Misc.z;
         float2 uvIn = float2(streams.GvUvIn) / 32768.0 - 0.5;
         float3 position = Relative(dr, uvIn, GvExtrusion > 0.5 ? streams.GvEdgeIn.y : 0);
+        if (streams.GvExtrude.z != 0 && GvFlat < 0.5) position = PoleCap(dr, uvIn, streams.GvExtrude.z / 63.0);
         float4 v = mul(float4(position, 1), GvWorldView);
         float outset = 0;
         float2 uvShift = 0;
@@ -184,7 +199,15 @@ shader GlobeVector : ShaderBase
         float4 GvClip = dr.Clip;
         float GvIsLine = dr.Misc.z;
         float2 uv = streams.GvUv;
-        if (uv.x < GvClip.x || uv.y < GvClip.y || uv.x > GvClip.z || uv.y > GvClip.w) discard;
+        // a pole cap (v exactly at its square's polar edge) is not clipped: built to the square's width,
+        // a discard there dropped multisampled pixels on its seams, where the columns meet at the pole
+        // Nor is a square's polar edge, where the square reaches it: past it the mesh is held at the
+        // edge (Relative), and the cap goes on from there - clipped, the pixels on that ring were dropped
+        float halfTile = 3.141592654 / dr.Misc.y;
+        bool northRow = GvFlat < 0.5 && abs(dr.Misc.x + halfTile - 3.141592654) < 1e-4 && GvClip.y <= 0;
+        bool southRow = GvFlat < 0.5 && abs(dr.Misc.x - halfTile + 3.141592654) < 1e-4 && GvClip.w >= 1;
+        bool cap = (uv.y == 0 && northRow) || (abs(uv.y - 1) < 1e-6 && southRow);
+        if (!cap && (uv.x < GvClip.x || uv.x > GvClip.z || (uv.y < GvClip.y && !northRow) || (uv.y > GvClip.w && !southRow))) discard;
         // Ground layers on the sphere take the depth of the sphere itself at their pixel, not of their
         // chord (ROADMAP 4h, docs/DESIGN-OVERSCALED.md): a bucket is cut by its source tile's zoom, and
         // shown far past the source's maxzoom its triangles sag under the sphere by more than the lift

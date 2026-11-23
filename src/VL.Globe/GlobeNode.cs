@@ -735,7 +735,7 @@ public sealed class GlobeNode : IDisposable
         var vertices = new VertexPositionNormalTexture[offsets.Length];
         for (int i = 0; i < offsets.Length; i++) vertices[i] = new VertexPositionNormalTexture(offsets[i], normals[i], uv[i]);
         var vb = Buffer.Vertex.New(device, vertices, GraphicsResourceUsage.Immutable);
-        var indices = TileGeometry.IndicesFor(key.Zoom);
+        var indices = TileGeometry.IndicesFor(key);
         var ib = Buffer.Index.New(device, indices, GraphicsResourceUsage.Immutable);
 
         var (boundsCentre, r) = TileGeometry.Bounds(key);

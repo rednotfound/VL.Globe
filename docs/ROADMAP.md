@@ -614,7 +614,17 @@ Enabled - `Engine/AttributionLayer.cs`, a VL.Skia layer put in the scene by VL.S
 Globe's `Attribution` output is now every enabled layer's credit once, in order, joined by " | " (was:
 the imagery's only). FeatureLayer and Geometry have an `Attribution` pin for the user's own data (Mapsui's
 layers each have one; the user chose it 2026-11-23), and a style's geojson sources give theirs too.
-`AttributionFacts`. Open: an off switch (MapLibre's `attributionControl: false`) -
+`AttributionFacts`.
+
+**The poles — built 2026-11-23** (the user: "南极和北极的圆洞", GL JS's way chosen): as MapLibre GL JS's
+globe (`getMeshFromTileID` extendToNorthPole/SouthPole for raster, background, hillshade), the top and
+bottom rows of tiles reach the pole, the texture's edge row stretched over the cap - 20 rows of 0.25°
+(`TileGeometry.CapRows`; one row 85°-90° would sag ~6 km). The selector samples the cap for the
+horizon (over a pole it chose no tile at all) but picks the zoom by the square. A style's background
+reaches the pole too (`VectorBucket` Background, the vertex's spare byte `Cap`, `GlobeVector.sdsl`
+PoleCap); fills do not, as in GL JS - Liberty's sea stops at 85°, the cap is its background colour.
+Seen in vvvv by me (OSM + OpenTopoMap and Liberty over the North Pole), not yet by the user.
+`PoleCapFacts`, incl. multisampled (below). Open: an off switch (MapLibre's `attributionControl: false`) -
 not added until asked.
 
 The plan as written:

@@ -118,7 +118,7 @@ internal static class GpuFixtureRenderer
         {
             var (centre, offsets, _, _) = TileGeometry.RelativeVertices(tile);
             var positions = offsets.Select(o => o * radius).ToArray();
-            var indices = TileGeometry.IndicesFor(tile.Zoom);
+            var indices = TileGeometry.IndicesFor(tile);
             using var vb = global::Stride.Graphics.Buffer.Vertex.New(gpu.Device, positions);
             using var ib = global::Stride.Graphics.Buffer.Index.New(gpu.Device, indices);
             var world = Matrix.Translation(TileGeometry.Translation(centre, radius, eye));
@@ -133,13 +133,17 @@ internal static class GpuFixtureRenderer
 
     /// <summary>A globe frame as vvvv draws it (on the sphere, linearised, lifted, fogged) over an opaque ground, read back RGBA.
     /// With <paramref name="globeTiles"/>, those tiles' depth first, as the globe's own tiles are in vvvv's scene.</summary>
-    public static byte[] RenderGlobe(VectorRenderer.Frame frame, Matrix view, Matrix projection, int width, int height, bool fog, IEnumerable<TileKey>? globeTiles = null)
+    public static byte[] RenderGlobe(VectorRenderer.Frame frame, Matrix view, Matrix projection, int width, int height, bool fog, IEnumerable<TileKey>? globeTiles = null,
+        MultisampleCount samples = MultisampleCount.None)
     {
         lock (Lock)
         {
             var gpu = Shared.Value;
-            using var target = Texture.New2D(gpu.Device, width, height, PixelFormat.R8G8B8A8_UNorm, TextureFlags.RenderTarget | TextureFlags.ShaderResource);
-            using var depth = Texture.New2D(gpu.Device, width, height, PixelFormat.D24_UNorm_S8_UInt, TextureFlags.DepthStencil);
+            // vvvv's SceneWindow draws multisampled: a discard at a clip edge behaves differently there
+            var targetDesc = TextureDescription.New2D(width, height, PixelFormat.R8G8B8A8_UNorm, TextureFlags.RenderTarget | TextureFlags.ShaderResource); targetDesc.MultisampleCount = samples;
+            using var target = Texture.New(gpu.Device, targetDesc);
+            var depthDesc = TextureDescription.New2D(width, height, PixelFormat.D24_UNorm_S8_UInt, TextureFlags.DepthStencil); depthDesc.MultisampleCount = samples;
+            using var depth = Texture.New(gpu.Device, depthDesc);
             var cl = gpu.Context.CommandList;
             cl.SetRenderTargetAndViewport(depth, target);
             cl.Clear(target, new Color4(0.2f, 0.2f, 0.2f, 1));
@@ -152,7 +156,10 @@ internal static class GpuFixtureRenderer
                 using var pass = new FogPass();
                 pass.Draw(cl, gpu.Context, gpu.FogEffect, view, projection, (-frame.Eye!.Value).ToVector3(), frame.Radius, f);
             }
-            return target.GetData<byte>(cl);
+            if (samples == MultisampleCount.None) return target.GetData<byte>(cl);
+            using var resolved = Texture.New2D(gpu.Device, width, height, PixelFormat.R8G8B8A8_UNorm, TextureFlags.ShaderResource);
+            cl.CopyMultisample(target, 0, resolved, 0);
+            return resolved.GetData<byte>(cl);
         }
     }
 
