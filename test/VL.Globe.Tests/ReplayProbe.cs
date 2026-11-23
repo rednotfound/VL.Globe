@@ -23,6 +23,7 @@ public class ReplayProbe(ITestOutputHelper output)
         service.Start();
         using var gpu = new GpuVectorTiles();
         int frame = 0, skippedBefore = 0;
+        (GlobeView v, D3 eye, double height)? last = null;
         var until = DateTime.UtcNow.AddMinutes(15);
         foreach (var hash in hashes)
         {
@@ -37,7 +38,11 @@ public class ReplayProbe(ITestOutputHelper output)
             double zoom = GlobeView.ZoomOf(height * 2 * Math.Tan(FovY / 2) / H * R, v.Latitude) - 1;
             var wanted = tiles.ToHashSet();
             int still = 0, lastBuilt = -1;
-            while (DateTime.UtcNow < until && still < 8)
+            // VLGLOBE_REPLAY_FRAMES=n: n updates a view, as a hand moving on (the last view settles)
+            int quick = int.TryParse(Environment.GetEnvironmentVariable("VLGLOBE_REPLAY_FRAMES"), out var q) ? q : 0;
+            bool lastView = hash == hashes[^1];
+            int updates = 0;
+            while (DateTime.UtcNow < until && still < 8 && (quick == 0 || lastView || updates++ < quick))
             {
                 GpuFixtureRenderer.Locked(() => { gpu.Update(GpuFixtureRenderer.Device, tiles, wanted, new[] { service }, 1f, eye, zoom, ++frame, height); return 0; });
                 if (service.Document != null && gpu.Building == 0 && gpu.TilesBuilt == lastBuilt) still++; else still = 0;
@@ -48,6 +53,22 @@ public class ReplayProbe(ITestOutputHelper output)
             var labels = gpu.Frame?.Labels.Sum(l => l.Tiles.Sum(t => t.tile.Labels.Count)) ?? 0;
             output.WriteLine($"{hash}: {gpu.TilesBuilt} built, {labels} point labels in the frame{(skipped.Count > skippedBefore ? ", NEW: " + string.Join(" | ", skipped.Skip(skippedBefore)) : "")}");
             skippedBefore = skipped.Count;
+            last = (v, eye, height);
+        }
+        // the last view drawn, as the session left it (2026-11-23: the globe's background showed through
+        // a style's background after zooming in, where one view alone drew it whole)
+        if (last is var (lv, le, lh) && gpu.Frame is { } f)
+        {
+            var (_, forward, up) = lv.Pose();
+            var projection = Matrix.PerspectiveFovRH((float)FovY, (float)(W / H), (float)(lh * 0.01), 10f);
+            var px = GpuFixtureRenderer.RenderGlobe(f, GlobeView.ViewRotation(forward, up), projection, (int)W, (int)H, false);
+            var bmp = Path.Combine(Path.GetTempPath(), "vlglobe-replay.bmp");
+            using var w = new BinaryWriter(File.Create(bmp));
+            int size = 54 + (int)W * (int)H * 4;
+            w.Write((byte)'B'); w.Write((byte)'M'); w.Write(size); w.Write(0); w.Write(54);
+            w.Write(40); w.Write((int)W); w.Write(-(int)H); w.Write((short)1); w.Write((short)32); w.Write(0); w.Write((int)W * (int)H * 4); w.Write(2835); w.Write(2835); w.Write(0); w.Write(0);
+            for (int i = 0; i < px.Length; i += 4) { w.Write(px[i + 2]); w.Write(px[i + 1]); w.Write(px[i]); w.Write((byte)255); }
+            output.WriteLine("wrote " + bmp);
         }
     }
 }

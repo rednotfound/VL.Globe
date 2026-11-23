@@ -129,6 +129,7 @@ internal sealed class GpuVectorTiles : IDisposable
     // What a lenient style left out since the last call, each once: GlobeNode logs it. A layer dropped
     // while a tile was built took the user's city names away and left no line in the log (2026-11-23).
     readonly HashSet<string> _skipsSeen = new();
+    string _lastGaps = "";
     readonly List<string> _newSkips = new();
     void CollectSkips(MapStyleDocument doc)
     {
@@ -280,12 +281,21 @@ internal sealed class GpuVectorTiles : IDisposable
                 // the background is drawn on every needed tile from the first frame, built or not:
                 // the style's ground colour, not the globe's dark one, while the data comes
                 if (sourceId == info.BackgroundSource)
+                {
                     foreach (var (vk, served) in needed)
                     {
                         var bg = Background(device, vk);
                         if (needed.Keys.Any(o => o.Zoom > vk.Zoom && Contains(vk, o))) foreach (var g in served) backgroundDraws.Add((bg, Rect(vk, g)));
                         else backgroundDraws.Add((bg, new Vector4(0, 0, 1, 1)));
                     }
+                    // 2026-11-23, the user: the globe's dark background showed through a style's own ("比如我现在的
+                    // 画面", MapLibre's demo tiles at zoom 10), and no offscreen replay showed it. A shown globe
+                    // tile no square of the background covers is said in the log, once a change.
+                    var covered = new HashSet<TileKey>(needed.Values.SelectMany(v => v));
+                    var gaps = shown.Where(g => !covered.Contains(g) && !covered.Any(c => Contains(g, c) || Contains(c, g))).Take(8).ToList();
+                    var text = gaps.Count == 0 ? "" : $"{gaps.Count} shown tile(s) without the style's background, e.g. {string.Join(" ", gaps)} (of {shown.Count} shown, {needed.Count} vector tiles)";
+                    if (text != _lastGaps) { _lastGaps = text; if (text.Length > 0) _newSkips.Add("background: " + text); }
+                }
             }
 
             Lap(3);
