@@ -653,3 +653,13 @@ looked fine - "which makes one think it works". Two causes, estimated at 100 m h
   say so and may have shown nothing. Added to GlobeWindow; to be confirmed: after vvvv recompiles,
   `GlobeWindow_P.Update`'s parameters should follow the `<Pin>` order (they do for SceneWindow,
   OrbitCamera and Renderer, which are manually sorted).
+- **Step 1 of DESIGN-NODES built** (2026-11-23): one Input + Group. OpenStreetMap and XyzTiles are layers
+  (Globe.Layers, Output); `Group` (a pin group: `[Pin(PinGroupKind = VL.Model.PinGroupKind.Collection,
+  PinGroupDefaultCount = 2)] Spread<T>` - VL.Model, not VL.Core) and `Group (Spectral)`; Globe and
+  GlobeWindow take `Input`, GlobeWindow's entity pin is `Scene`. The bottom raster layer gives the tiles;
+  a second one is not stacked yet and Status says so. Seen in vvvv: the bench (VectorTiles into Input)
+  and the shapes patch (OpenStreetMap + Geometry through Group) draw. **ManuallySortedPins confirmed**:
+  with it, GlobeWindow_P.Update's compiled parameters follow the `<Pin>` order exactly (without it they
+  did not). Two traps on the way: a test cannot name `Spread.X` (VL.CoreLib has a namespace
+  `VL.Lib.Collections.Spread`) - build through `Spread<T>.Empty.ToBuilder()`; and a help patch vvvv had
+  saved was LF without BOM while the others are CRLF with BOM - edit scripts must take each file's own.

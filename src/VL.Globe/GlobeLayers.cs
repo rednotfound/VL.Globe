@@ -17,8 +17,13 @@ namespace VL.Globe;
 // GPU vector renderer stays a later, separate node (docs/RESEARCH-VECTOR.md).
 //
 // Shaped as VL.Mapsui's FeatureLayer / Geometry / VectorStyle, so a patch moves between the 2D map and
-// the globe by changing the category: Features + Style + Enabled + Name in, a layer out, into Globe's
-// (or GlobeWindow's) Layers - drawn in order, first at the bottom.
+// the globe by changing the category: Features + Style + Name + Enabled in, a layer out.
+//
+// One Input, layers composed upstream (docs/DESIGN-NODES.md, the user's decision 2026-11-23): as VL.Skia's
+// Renderer takes one layer and Group composes them ("leftmost is drawn first"), Globe and GlobeWindow take
+// one GlobeLayer and Group / Group (Spectral) here compose them. Every surface thing is a layer -
+// OpenStreetMap and XyzTiles too (TileSources.cs) - as in Mapsui, MapLibre, OpenLayers and deck.gl, the
+// basemap being the bottom one.
 
 /// <summary>How a vector layer is drawn: fill, line colour and width in pixels.</summary>
 public sealed record GlobeVectorStyle(Color4 FillColor, Color4 LineColor, float LineWidth)
@@ -26,9 +31,24 @@ public sealed record GlobeVectorStyle(Color4 FillColor, Color4 LineColor, float 
     internal static readonly GlobeVectorStyle Default = new(new Color4(1, 0, 0, 0.3f), new Color4(1, 0, 0, 1), 2f);
 }
 
-/// <summary>Geometry drawn on the globe in one style; from FeatureLayer or Geometry, for Globe's Layers.</summary>
+/// <summary>Something drawn on the globe's surface: tiles, features or vector tiles, or a group of them. For Globe's or GlobeWindow's Input.</summary>
 public sealed class GlobeLayer
 {
+    // raster tiles (OpenStreetMap, XyzTiles): the globe's tiles come from here
+    internal GlobeTileSource? Raster;
+    // a group (Group, Group (Spectral)): its layers in order, first at the bottom
+    internal IReadOnlyList<GlobeLayer>? Children;
+
+    /// <summary>The layers to draw, groups opened, in order (first at the bottom); disabled ones and their groups' contents left out.</summary>
+    internal IEnumerable<GlobeLayer> Leaves()
+    {
+        if (!Enabled) yield break;
+        if (Children is null) { yield return this; yield break; }
+        foreach (var c in Children)
+            if (c is not null)
+                foreach (var l in c.Leaves()) yield return l;
+    }
+
     internal IReadOnlyList<Geometry> Geometries = Array.Empty<Geometry>();
     internal GlobeVectorStyle Style = GlobeVectorStyle.Default;
     internal bool Enabled = true;
@@ -61,6 +81,41 @@ public sealed class GlobeLayer
         Style = style ?? GlobeVectorStyle.Default;
         Enabled = enabled;
         Name = name ?? "";
+    }
+}
+
+/// <summary>Layers drawn as one, leftmost at the bottom.</summary>
+/// <remarks>Ctrl+ and Ctrl- add and remove inputs, as Skia's and Stride's Group.</remarks>
+[ProcessNode(Name = "Group", Category = "Globe.Layers")]
+public sealed class GlobeGroupNode
+{
+    readonly GlobeLayer _layer = new() { Name = "Group" };
+
+    /// <param name="input">The layers, leftmost at the bottom.</param>
+    /// <param name="enabled">Hides all of them while off.</param>
+    [return: Pin(Name = "Output")]
+    public GlobeLayer Update([Pin(PinGroupKind = VL.Model.PinGroupKind.Collection, PinGroupDefaultCount = 2)] VL.Lib.Collections.Spread<GlobeLayer> input, bool enabled = true)
+    {
+        _layer.Children = input?.ToArray() ?? Array.Empty<GlobeLayer>();
+        _layer.Enabled = enabled;
+        return _layer;
+    }
+}
+
+/// <summary>A spread of layers drawn as one, the first at the bottom.</summary>
+[ProcessNode(Name = "Group (Spectral)", Category = "Globe.Layers")]
+public sealed class GlobeGroupSpectralNode
+{
+    readonly GlobeLayer _layer = new() { Name = "Group" };
+
+    /// <param name="input">The layers, the first at the bottom.</param>
+    /// <param name="enabled">Hides all of them while off.</param>
+    [return: Pin(Name = "Output")]
+    public GlobeLayer Update(IEnumerable<GlobeLayer>? input = null, bool enabled = true)
+    {
+        _layer.Children = input?.ToArray() ?? Array.Empty<GlobeLayer>();
+        _layer.Enabled = enabled;
+        return _layer;
     }
 }
 

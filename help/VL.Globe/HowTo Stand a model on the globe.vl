@@ -105,11 +105,11 @@
             </p:ValueBoxSettings>
           </Pad>
           <Node Bounds="60,200,100,19" Id="E1uXPLpPtjFwbc4KNi5sUR">
-            <p:NodeReference LastCategoryFullName="Globe" LastDependency="VL.Globe.vl">
+            <p:NodeReference LastCategoryFullName="Globe.Layers" LastDependency="VL.Globe.vl">
               <Choice Kind="NodeFlag" Name="Node" Fixed="true" />
               <Choice Kind="ProcessAppFlag" Name="OpenStreetMap" />
             </p:NodeReference>
-            <Pin Id="O0IDjcemAH9JJFdAEy0LPM" Name="Tile Source" Kind="OutputPin" />
+            <Pin Id="O0IDjcemAH9JJFdAEy0LPM" Name="Output" Kind="OutputPin" />
           </Node>
           <Node Bounds="60,340,260,19" Id="OWOkhJq5Faiz0ADe09e29K">
             <p:NodeReference LastCategoryFullName="Globe" LastDependency="VL.Globe.vl">
@@ -117,16 +117,16 @@
               <Choice Kind="ProcessAppFlag" Name="GlobeWindow" />
               <PinReference Kind="InputPin" Name="Bounds" />
               <PinReference Kind="InputPin" Name="Bound to Document" />
-              <PinReference Kind="InputPin" Name="Input" />
+              <PinReference Kind="InputPin" Name="Scene" />
             </p:NodeReference>
             <Pin Id="A1BlHkhgbPJaF7fBo9Hq5S" Name="Bounds" Kind="InputPin" DefaultValue="926, 114, 800, 800" />
             <Pin Id="G7QByrgxmNUB9g3pruRh3V" Name="Bound to Document" Kind="InputPin" DefaultValue="True" />
-            <Pin Id="Msk7QM2jl8FkrA8oa6tySY" Name="Tile Source" Kind="InputPin" />
+            <Pin Id="Msk7QM2jl8FkrA8oa6tySY" Name="Input" Kind="InputPin" />
             <Pin Id="UGbWykMHsz0bFUtseYNXR7" Name="Enabled" Kind="InputPin" />
             <Pin Id="UAQO6mauOZvoXynehyWSiW" Name="Initial Longitude" Kind="InputPin" DefaultValue="139.7671" />
             <Pin Id="FHGn6M7RRaCEOuhGKcAvaj" Name="Initial Latitude" Kind="InputPin" DefaultValue="35.6812" />
             <Pin Id="RjYjykcCQyEJkkmCcvdUfS" Name="Initial Height" Kind="InputPin" DefaultValue="3000" />
-            <Pin Id="FTj6FzAVy9VsATVViGsQhU" Name="Input" Kind="InputPin" />
+            <Pin Id="FTj6FzAVy9VsATVViGsQhU" Name="Scene" Kind="InputPin" />
             <Pin Id="JyQ15suNRjYAWv87zuLNzi" Name="Title" Kind="InputPin" DefaultValue="Stand a model on the globe" />
             <Pin Id="I9CkgNvbI30M4iMai6eWo3" Name="Height" Kind="OutputPin" />
             <Pin Id="MejIilgQYWEz3KObypRPyZ" Name="Status" Kind="OutputPin" />

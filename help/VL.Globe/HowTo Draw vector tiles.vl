@@ -137,35 +137,24 @@
               <Choice Kind="TypeFlag" Name="String" />
             </p:TypeAnnotation>
           </Pad>
-          <Node Bounds="300,340,65,19" Id="BYUq46fa6MYuA38KqJGKK0">
-            <p:NodeReference LastCategoryFullName="Collections.Spread" LastDependency="VL.Collections.vl">
-              <Choice Kind="NodeFlag" Name="Node" Fixed="true" />
-              <Choice Kind="OperationCallFlag" Name="FromValue" />
-              <CategoryReference Kind="RecordType" Name="Spread" NeedsToBeDirectParent="true" />
-            </p:NodeReference>
-            <Pin Id="Kqptrc0rITwwK0W9FqelfK" Name="Input" Kind="InputPin" />
-            <Pin Id="MrvHrgdqKGUGEf8D5tShbb" Name="Result" Kind="OutputPin" />
-          </Node>
           <Node Bounds="60,390,260,19" Id="C6dVPiwwphKIz58QY8v4by">
             <p:NodeReference LastCategoryFullName="Globe" LastDependency="VL.Globe.vl">
               <Choice Kind="NodeFlag" Name="Node" Fixed="true" />
               <Choice Kind="ProcessAppFlag" Name="GlobeWindow" />
               <PinReference Kind="InputPin" Name="Bounds" />
               <PinReference Kind="InputPin" Name="Bound to Document" />
-              <PinReference Kind="InputPin" Name="Layers" />
             </p:NodeReference>
             <Pin Id="ISbwBLntSIhMojb8xDJe3U" Name="Node Context" Kind="InputPin" IsHidden="true" />
             <Pin Id="ImJ9CALmrnzpNj6bSFHcr1" Name="Bounds" Kind="InputPin" DefaultValue="592, 114, 1250, 800" />
             <Pin Id="TFFtrE1zxyScexNmv8lFFf" Name="Bound to Document" Kind="InputPin" DefaultValue="True" />
             <Pin Id="P0rLUMzqnhLcXCFz1TYsWf" Name="Initial Longitude" Kind="InputPin" DefaultValue="139.7671" />
-            <Pin Id="BtfThqv2ap5ThhPiRVvHoD" Name="Tile Source" Kind="InputPin" />
+            <Pin Id="BtfThqv2ap5ThhPiRVvHoD" Name="Input" Kind="InputPin" />
             <Pin Id="J2fgywvFUYxpkQHtoDgtIj" Name="Initial Latitude" Kind="InputPin" DefaultValue="35.6812" />
-            <Pin Id="HKlMaIFwV0GP5rMYuDrO7p" Name="Input" Kind="InputPin" IsHidden="true" />
+            <Pin Id="HKlMaIFwV0GP5rMYuDrO7p" Name="Scene" Kind="InputPin" IsHidden="true" />
             <Pin Id="Adns35BFXNa6wH3vNYkZYh" Name="Initial Height" Kind="InputPin" DefaultValue="1500" />
             <Pin Id="A4wWnK9CFnSqApz0sQFRxl" Name="Enabled" Kind="InputPin" />
             <Pin Id="AFFRIwczxgfLCd8duxfzPe" Name="Min Height" Kind="InputPin" IsHidden="true" />
             <Pin Id="D8Bv3RxATb8OsUoQuj4AHf" Name="Background" Kind="InputPin" />
-            <Pin Id="FWM7Cz0RvApe4VsCicCAUI" Name="Layers" Kind="InputPin" />
             <Pin Id="FyT2kEcPVHF04NYX106UUU" Name="Title" Kind="InputPin" DefaultValue="Draw vector tiles" />
             <Pin Id="OljP7W6xNKXQRYHZme3n9u" Name="View" Kind="OutputPin" />
             <Pin Id="PfHABiI5MSCMMV6zv2a99g" Name="Longitude" Kind="OutputPin" />
@@ -203,8 +192,7 @@
         <Link Id="E6THipl6Ninhe06jfmPImG" Ids="T0zVQn4a9xuvhQpCnlvBNI,MuCJLUCfL92QRygdEuC3bj" />
         <Link Id="Dd7Dd76gA9Muaids53JEQT" Ids="Sx8jhJ6j1vB2A7UhLu5Jde,MXNiXOLu0xxrFFQ4QBcOnC" />
         <Link Id="S0EMaut3UeXMg8mefXviOU" Ids="RolQ2zwdMUrGvltCTLdXLJ,T5WT3F9QFyU6Aw2RYNjmZz" />
-        <Link Id="S0pP7mNYb4yzzHQNvV3qJM" Ids="CWx72kLZL5EcReJgUBXoCF,Kqptrc0rITwwK0W9FqelfK" />
-        <Link Id="PkBqcrXUuqitbjzlv8zkIV" Ids="MrvHrgdqKGUGEf8D5tShbb,FWM7Cz0RvApe4VsCicCAUI" />
+        <Link Id="PkBqcrXUuqitbjzlv8zkIV" Ids="CWx72kLZL5EcReJgUBXoCF,BtfThqv2ap5ThhPiRVvHoD" />
         <Link Id="PL8tY1QUjbuhMY9Z8R71Wa" Ids="T0zVQn4a9xuvhQpCnlvBNI,A4wWnK9CFnSqApz0sQFRxl" />
         <Link Id="MzxNmajtRsXtiohb8lBYi8" Ids="I5iFsxov69rIeDAYcKjxTK,AVJjneKTLxVSGh0nhDUjDd" />
       </Patch>

@@ -201,8 +201,7 @@ public sealed class GlobeNode : IDisposable
         _root.Transform.Children.Add(_gpu.Entity.Transform);
     }
 
-    /// <param name="tileSource">From OpenStreetMap or XyzTiles.</param>
-    /// <param name="layers">Vector layers from FeatureLayer or Geometry, drawn on the map in order, first at the bottom.</param>
+    /// <param name="input">What to draw on the surface: a layer from OpenStreetMap, XyzTiles, VectorTiles, FeatureLayer or Geometry, or several from Group.</param>
     /// <param name="camera">The camera entity the scene is rendered with.</param>
     /// <param name="radius">The globe's radius in scene units.</param>
     /// <param name="background">The globe's colour where no tile has arrived, also while off. Transparent: none.</param>
@@ -224,7 +223,7 @@ public sealed class GlobeNode : IDisposable
         // vvvv's order (2026-11-23, the user: "vvvv gamma的节点有自己的要求和传统的"): the main inputs first,
         // configuration between, Enabled last - as 237 of the 289 patched nodes with an Enabled pin in
         // vvvv 7.4's packs, and the Gray Book's "Main input left".
-        GlobeTileSource? tileSource = null, IEnumerable<GlobeLayer>? layers = null, Entity? camera = null, float radius = 1f, Color4 background = default,
+        GlobeLayer? input = null, Entity? camera = null, float radius = 1f, Color4 background = default,
         float screenHeight = 1080f, int maxZoom = 19, float screenSpaceError = 1.41f, int maxRequestsInFlight = 6, float fadeDuration = 0.3f,
         bool enabled = false)
     {
@@ -235,8 +234,21 @@ public sealed class GlobeNode : IDisposable
         // the frame that just ended, taken apart if it missed its vsync (ROADMAP 4g step 4)
         if (_lastUpdateAt >= 0 && _anatomy.Explain(updateStart - _lastUpdateAt, updateStart, _gcPauseAtStart, _gen0AtStart, _gen2AtStart, _gpu.LastDraw) is { } slow)
             _logger.LogInformation("Globe frame: {Frame}", slow);
-        try { return UpdateCore(out tilesVisible, out tilesLoading, out requestsSent, out bytesReceived, out attribution, out status,
-            tileSource, camera, enabled, radius, background, maxZoom, screenSpaceError, maxRequestsInFlight, screenHeight, fadeDuration, layers); }
+        // One Input (docs/DESIGN-NODES.md): its layers in order; the bottom raster layer gives the globe's
+        // tiles, the others are drawn on them. A second raster layer is not stacked yet (ROADMAP item 6):
+        // said in Status, not dropped in silence.
+        var leaves = input?.Leaves().ToList() ?? new List<GlobeLayer>();
+        var rasters = leaves.Where(l => l.Raster is not null).ToList();
+        var tileSource = rasters.FirstOrDefault()?.Raster;
+        var layers = leaves.Where(l => l.Raster is null).ToList();
+        try
+        {
+            var entity = UpdateCore(out tilesVisible, out tilesLoading, out requestsSent, out bytesReceived, out attribution, out status,
+                tileSource, camera, enabled, radius, background, maxZoom, screenSpaceError, maxRequestsInFlight, screenHeight, fadeDuration, layers);
+            if (rasters.Count > 1)
+                status += $"; {rasters.Count - 1} more tile layer(s) not drawn: one tile layer at a time for now ({string.Join(", ", rasters.Skip(1).Select(r => r.Name))})";
+            return entity;
+        }
         finally { Measure(updateStart); }
     }
 
@@ -336,13 +348,13 @@ public sealed class GlobeNode : IDisposable
         // Status says WHY the globe is empty before it says anything else: every silent failure in
         // this family looked like a working node with nothing to show.
         _status = !enabled ? "off - switch Enabled on to fetch"
-            : _source is null && !layersOnly ? "no Tile Source and no layer to draw"
+            : _source is null && !layersOnly ? "nothing to draw: connect OpenStreetMap, XyzTiles or another layer to Input"
             : camera is null ? "no Camera"
             : _device is null ? "no Stride graphics device (is this patch rendering a Stride scene?)"
             : wanted.Count == 0 ? $"camera sees no tile (camera at {_lastEye.Length() / _radius:F3} radii)"
             : $"{wanted.Count} wanted, zoom {wanted.Min(t => t.Zoom)}..{wanted.Max(t => t.Zoom)}; {_loaded.Count} loaded, {_pending.Count} loading, {_failedCount} failed"
               + (_lastError.Length > 0 ? " - last error: " + _lastError : "")
-              + (layersOnly ? "; no Tile Source: layers on plain tiles" : "")
+              + (layersOnly ? "; no tile layer: layers on plain tiles" : "")
               + (_overlaysDrawn > 0 ? $"; overlays {_overlayMs:F0} ms each" : "")
               + (_gpu.Status.Length > 0 ? "; " + _gpu.Status : "");
         var head = _status.Split(';')[0];

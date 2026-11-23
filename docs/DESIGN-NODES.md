@@ -88,3 +88,21 @@ Where this differs from the survey, on purpose: the camera node also does the ge
 
 Breaking changes are fine: VL.Globe is 0.0.1-alpha, unpublished. VL.Mapsui's `Map` takes a spread of
 layers and the start of the view as its own pins — the family would follow later, if wanted.
+
+## 4. Decided (the user, 2026-11-23)
+
+- **One `Input` + Group** (as Skia): every surface thing a layer, `Group [Globe.Layers]` and
+  `Group (Spectral)` compose them; OpenStreetMap and XyzTiles become layers; today's `Input` (Stride
+  entities) becomes the optional `Scene`.
+- **GlobeCamera as OrbitCamera**: Initial … pins, Reset, Enabled, the mouse read by the camera;
+  GlobeWindow's `Camera` pin, its own camera when none is wired; the Initial pins leave GlobeWindow.
+- Order of the work: layers first (step 1), the camera second (step 2), each verified and committed.
+
+## 5. As built
+
+- **Step 1, layers — built 2026-11-23**, seen in vvvv (the bench's VectorTiles into Input; the shapes help
+  patch's OpenStreetMap + Geometry through Group). GlobeWindow: Bounds, Bound to Document | Input, Title,
+  Initial Longitude, Initial Latitude, Initial Height, Min Height*, Background, Scene*, Enabled | View,
+  Cursor, Longitude, Latitude, Height, Attribution, Status. Several raster layers: the bottom one is drawn,
+  the rest named in Status (stacking: ROADMAP item 6).
+- Step 2, the camera — next.

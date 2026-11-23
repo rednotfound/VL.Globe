@@ -151,11 +151,11 @@
             </p:ValueBoxSettings>
           </Pad>
           <Node Bounds="60,200,100,19" Id="ATetbEwJFzcllLDRHWWWPc">
-            <p:NodeReference LastCategoryFullName="Globe" LastDependency="VL.Globe.vl">
+            <p:NodeReference LastCategoryFullName="Globe.Layers" LastDependency="VL.Globe.vl">
               <Choice Kind="NodeFlag" Name="Node" Fixed="true" />
               <Choice Kind="ProcessAppFlag" Name="OpenStreetMap" />
             </p:NodeReference>
-            <Pin Id="SYbrs69HqgkKzMvqIusjAQ" Name="Tile Source" Kind="OutputPin" />
+            <Pin Id="SYbrs69HqgkKzMvqIusjAQ" Name="Output" Kind="OutputPin" />
           </Node>
           <Node Bounds="300,200,200,19" Id="QdEsOxGmsbnr8jJur3MKQa">
             <p:NodeReference LastCategoryFullName="Globe" LastDependency="VL.Globe.vl">
@@ -223,7 +223,7 @@
               <Choice Kind="NodeFlag" Name="Node" Fixed="true" />
               <Choice Kind="ProcessAppFlag" Name="Globe" />
             </p:NodeReference>
-            <Pin Id="S6XBsJOa8Akovo6AuI5RxU" Name="Tile Source" Kind="InputPin" />
+            <Pin Id="S6XBsJOa8Akovo6AuI5RxU" Name="Input" Kind="InputPin" />
             <Pin Id="JhYWGNLzmkPKug6XyJIrEu" Name="Camera" Kind="InputPin" />
             <Pin Id="STyWfRCD2KnULGQUVB5G5A" Name="Enabled" Kind="InputPin" />
             <Pin Id="MPH4bl2tSaFxHrguyORvnV" Name="Radius" Kind="InputPin" />

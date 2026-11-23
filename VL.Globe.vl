@@ -7,7 +7,7 @@
   <NugetDependency Id="SUAeOTPJlryUSKynrWmHb6" Location="BruTile" Version="5.0.6" />
   <Patch Id="SKTxI1h5DmCeNE0Z0nE6G4">
     <Canvas Id="Roygb3bQuVqK15xRv6xKxz" DefaultCategory="Globe" CanvasType="FullCategory">
-      <Node Name="GlobeWindow" Bounds="100,220" Id="VBrh8tKkQ1kPaTaEgq0sJb" Summary="A window that shows a globe. The mouse moves it." Remarks="Connect a tile source and switch Enabled on: left drag moves the globe, the wheel zooms, right drag turns and tilts.&#xD;&#xA;Cursor is the mouse in projection space, for ScreenToGlobe.&#xD;&#xA;Layers: FeatureLayer or Geometry, drawn on the map.&#xD;&#xA;It tells the tiles how tall the window really is, so map text is drawn at its size.&#xD;&#xA;To share the window with other scenes, use GlobeCamera, Globe, Drag and ZoomByWheel instead." Tags="renderer,window,globe,map">
+      <Node Name="GlobeWindow" Bounds="100,220" Id="VBrh8tKkQ1kPaTaEgq0sJb" Summary="A window that shows a globe. The mouse moves it." Remarks="Connect OpenStreetMap to Input and switch Enabled on: left drag moves the globe, the wheel zooms, right drag turns and tilts.&#xD;&#xA;More layers (VectorTiles, FeatureLayer, Geometry, more tiles) through Group: leftmost at the bottom.&#xD;&#xA;Scene: Stride entities shown with the globe, e.g. from Group [Stride].&#xD;&#xA;Cursor is the mouse in projection space, for ScreenToGlobe.&#xD;&#xA;To share the window with other scenes, use GlobeCamera, Globe, Drag and ZoomByWheel instead." Tags="renderer,window,globe,map">
         <p:NodeReference>
           <Choice Kind="ContainerDefinition" Name="Process" />
           <FullNameCategoryReference ID="Primitive" />
@@ -35,12 +35,11 @@
                 <Choice Kind="NodeFlag" Name="Node" Fixed="true" />
                 <Choice Kind="ProcessAppFlag" Name="Globe" />
               </p:NodeReference>
-              <Pin Id="Li4Y2I3N7vgqdMoovuj7eA" Name="Tile Source" Kind="InputPin" />
+              <Pin Id="Li4Y2I3N7vgqdMoovuj7eA" Name="Input" Kind="InputPin" />
               <Pin Id="KWXe3p1IucPBVcA7mPJfXa" Name="Camera" Kind="InputPin" />
               <Pin Id="TLSPX75K1fwRrNo5PiapAA" Name="Enabled" Kind="InputPin" />
               <Pin Id="MS2sctTBhw5rCAsILTAMAR" Name="Background" Kind="InputPin" />
               <Pin Id="RvdwA5eS1xw3RksQPGOYup" Name="Screen Height" Kind="InputPin" />
-              <Pin Id="Jce6sOXNG3JSbxzVK4KKge" Name="Layers" Kind="InputPin" />
               <Pin Id="LPZklW1vpTnweVxfbqNlHo" Name="Entity" Kind="OutputPin" />
               <Pin Id="DMoen1SFJD8KTbd0mYms3w" Name="Attribution" Kind="OutputPin" />
               <Pin Id="OmGugU4cmf5gN3PPZrPw6B" Name="Status" Kind="OutputPin" />
@@ -155,9 +154,7 @@
             <Pin Id="AbXn6Zbwp9Awy0l3cHTUlC" Name="Bound to Document" Kind="InputPin" Visibility="Optional" />
           </Patch>
           <Patch Id="AJmjIfRzBxd6Di2uELJOAG" Name="Update" ManuallySortedPins="true">
-            <Pin Id="SL7eUprBCwWoGKaZjwfsAz" Name="Tile Source" Kind="InputPin" />
-            <Pin Id="O6jUqB7CjulgB76rwphBZx" Name="Layers" Kind="InputPin" Visibility="Optional" />
-            <Pin Id="BkhcgPbNYsum7T136ojfmH" Name="Input" Kind="InputPin" Visibility="Optional" />
+            <Pin Id="SL7eUprBCwWoGKaZjwfsAz" Name="Input" Kind="InputPin" />
             <Pin Id="MS1pSC2B5MOFVTQMvyYeRv" Name="Title" Kind="InputPin" DefaultValue="Globe">
               <p:TypeAnnotation LastCategoryFullName="Primitive" LastDependency="VL.CoreLib.vl">
                 <Choice Kind="TypeFlag" Name="String" />
@@ -188,6 +185,7 @@
                 <Choice Kind="TypeFlag" Name="RGBA" />
               </p:TypeAnnotation>
             </Pin>
+            <Pin Id="BkhcgPbNYsum7T136ojfmH" Name="Scene" Kind="InputPin" Visibility="Optional" />
             <Pin Id="MTwNM9cKsAOSEqFhxzNFH5" Name="Enabled" Kind="InputPin" DefaultValue="False">
               <p:TypeAnnotation LastCategoryFullName="Primitive" LastDependency="VL.CoreLib.vl">
                 <Choice Kind="TypeFlag" Name="Boolean" />
@@ -225,7 +223,6 @@
             <Fragment Id="UXQ4mQlWlHEgcHYWFQbhEg" Patch="LrkrQdbiH9FsxIoydgqNhj" Enabled="true" />
             <Fragment Id="D7jrXh4ifrUcJSsv5lMw1x" Patch="AJmjIfRzBxd6Di2uELJOAG" Enabled="true" />
           </ProcessDefinition>
-          <Link Id="AxrL80t8ziLg69VhtDM2Qu" Ids="O6jUqB7CjulgB76rwphBZx,Jce6sOXNG3JSbxzVK4KKge" IsHidden="true" />
           <Link Id="NRxIhHzLcxGendEYxV3HvH" Ids="UzrLQcOB6dtIXlF1Cbsa42,Ig5kbhJ0wgt6M6W2O2Lhd5" IsHidden="true" />
           <Link Id="HezOyEVlui8yhVIkFDbkSr" Ids="FIurQ7sf9vJPmBbyuZXsCv,Fz2GmHvnXZtZGvhmrUfEM1" />
           <Link Id="EIXtaWUkxgTGJLbyKlRVIq" Ids="E3ZPLWWNmlB5GS07XCHNg1,LfQ8QxKyPGWuadKnYUDhjg" />

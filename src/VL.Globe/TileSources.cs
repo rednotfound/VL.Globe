@@ -71,36 +71,50 @@ internal static class TileSourceFactory
 // A process node, not a static method: an HttpTileSource owns an HttpClient and BruTile's is not
 // disposable, so one built per frame would leak a connection pool per frame (VL.Mapsui's lesson).
 
-/// <summary>OpenStreetMap's standard tiles, for a Globe.</summary>
+// Since 2026-11-23 these are LAYERS (docs/DESIGN-NODES.md): the raster tiles are the bottom layer of the
+// globe's one Input, as a basemap is in Mapsui, MapLibre and OpenLayers - no Tile Source pin of its own.
+
+/// <summary>OpenStreetMap's standard tiles, as a layer of the globe.</summary>
 /// <remarks>Fetching is the Globe node's, and off until its Enabled is on. Show the credit.</remarks>
-[ProcessNode(Name = "OpenStreetMap", Category = "Globe")]
+[ProcessNode(Name = "OpenStreetMap", Category = "Globe.Layers")]
 public sealed class OpenStreetMapNode
 {
-    readonly GlobeTileSource _source = TileSourceFactory.Create(
-        "https://tile.openstreetmap.org/{z}/{x}/{y}.png", "© OpenStreetMap contributors",
-        "https://tile.openstreetmap.org/standard");
+    readonly GlobeLayer _layer = new()
+    {
+        Name = "OpenStreetMap",
+        Raster = TileSourceFactory.Create("https://tile.openstreetmap.org/{z}/{x}/{y}.png", "© OpenStreetMap contributors",
+            "https://tile.openstreetmap.org/standard"),
+    };
 
-    /// <returns>The tile source, for a Globe's Tile Source pin.</returns>
-    [return: Pin(Name = "Tile Source")]
-    public GlobeTileSource Update() => _source;
+    /// <param name="enabled">Hides the layer while off.</param>
+    [return: Pin(Name = "Output")]
+    public GlobeLayer Update(bool enabled = true)
+    {
+        _layer.Enabled = enabled;
+        return _layer;
+    }
 }
 
-/// <summary>Any XYZ tile server, for a Globe.</summary>
+/// <summary>Any XYZ tile server, as a layer of the globe.</summary>
 /// <remarks>Url has {z}, {x} and {y}. Attribution is what the server requires you to show.</remarks>
-[ProcessNode(Name = "XyzTiles", Category = "Globe")]
+[ProcessNode(Name = "XyzTiles", Category = "Globe.Layers")]
 public sealed class XyzTilesNode
 {
     readonly Dictionary<string, GlobeTileSource> _sources = new(StringComparer.Ordinal);
+    readonly GlobeLayer _layer = new() { Name = "XyzTiles" };
 
     /// <param name="url">A tile URL template with {z}, {x} and {y}.</param>
     /// <param name="attribution">The credit the server requires.</param>
-    [return: Pin(Name = "Tile Source")]
-    public GlobeTileSource? Update(string url = "", string attribution = "")
+    /// <param name="enabled">Hides the layer while off.</param>
+    [return: Pin(Name = "Output")]
+    public GlobeLayer Update(string url = "", string attribution = "", bool enabled = true)
     {
-        if (string.IsNullOrWhiteSpace(url) || !url.Contains("{z}") || !url.Contains("{x}") || !url.Contains("{y}")) return null;
+        _layer.Enabled = enabled;
+        if (string.IsNullOrWhiteSpace(url) || !url.Contains("{z}") || !url.Contains("{x}") || !url.Contains("{y}")) { _layer.Raster = null; return _layer; }
         var key = url + "\n" + attribution;
         if (!_sources.TryGetValue(key, out var s))
             _sources[key] = s = TileSourceFactory.Create(url, attribution, url);
-        return s;
+        _layer.Raster = s;
+        return _layer;
     }
 }

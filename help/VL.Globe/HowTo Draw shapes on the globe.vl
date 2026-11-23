@@ -122,21 +122,24 @@
               <p:stringtype p:Assembly="VL.Core" p:Type="VL.Core.StringType">Comment</p:stringtype>
             </p:ValueBoxSettings>
           </Pad>
-          <Node Bounds="300,370,65,19" Id="HpT882xAG56GD9iLXh2R5x">
-            <p:NodeReference LastCategoryFullName="Collections.Spread" LastDependency="VL.Collections.vl">
+          <Node Bounds="300,370,90,19" Id="HpT882xAG56GD9iLXh2R5x">
+            <p:NodeReference LastCategoryFullName="Globe.Layers" LastDependency="VL.Globe.vl">
               <Choice Kind="NodeFlag" Name="Node" Fixed="true" />
-              <Choice Kind="OperationCallFlag" Name="FromValue" />
-              <CategoryReference Kind="RecordType" Name="Spread" NeedsToBeDirectParent="true" />
+              <CategoryReference Kind="Category" Name="Layers" NeedsToBeDirectParent="true">
+                <p:OuterCategoryReference Kind="Category" Name="Globe" NeedsToBeDirectParent="true" />
+              </CategoryReference>
+              <Choice Kind="ProcessAppFlag" Name="Group" />
             </p:NodeReference>
-            <Pin Id="SxGXfQ9sWc92F0ppnkRcJa" Name="Input" Kind="InputPin" />
-            <Pin Id="IAvhxROSaruxKxMy2VrKFL" Name="Result" Kind="OutputPin" />
+            <Pin Id="0lR8acRYSi4MDF8kWCBX1K" Name="Input" Kind="InputPin" />
+            <Pin Id="SxGXfQ9sWc92F0ppnkRcJa" Name="Input 2" Kind="InputPin" />
+            <Pin Id="IAvhxROSaruxKxMy2VrKFL" Name="Output" Kind="OutputPin" />
           </Node>
           <Node Bounds="60,200,100,19" Id="EDmRjWWp3uDh9qHsgjMdry">
-            <p:NodeReference LastCategoryFullName="Globe" LastDependency="VL.Globe.vl">
+            <p:NodeReference LastCategoryFullName="Globe.Layers" LastDependency="VL.Globe.vl">
               <Choice Kind="NodeFlag" Name="Node" Fixed="true" />
               <Choice Kind="ProcessAppFlag" Name="OpenStreetMap" />
             </p:NodeReference>
-            <Pin Id="C3oPzM0a5NtCbFcp0dya2b" Name="Tile Source" Kind="OutputPin" />
+            <Pin Id="C3oPzM0a5NtCbFcp0dya2b" Name="Output" Kind="OutputPin" />
           </Node>
           <Node Bounds="60,420,260,19" Id="F9GScSsipa9UzDwEwD3PFX">
             <p:NodeReference LastCategoryFullName="Globe" LastDependency="VL.Globe.vl">
@@ -144,20 +147,18 @@
               <Choice Kind="ProcessAppFlag" Name="GlobeWindow" />
               <PinReference Kind="InputPin" Name="Bounds" />
               <PinReference Kind="InputPin" Name="Bound to Document" />
-              <PinReference Kind="InputPin" Name="Layers" />
             </p:NodeReference>
             <Pin Id="LHG4rpPgddq5DvrnwWoUW5" Name="Bounds" Kind="InputPin" DefaultValue="926, 114, 800, 800" />
             <Pin Id="Q0lZzQg8Zg92Ajwrx8qBnW" Name="Bound to Document" Kind="InputPin" DefaultValue="True" />
-            <Pin Id="SHnELELX8XX55ec8Xqjct0" Name="Tile Source" Kind="InputPin" />
+            <Pin Id="SHnELELX8XX55ec8Xqjct0" Name="Input" Kind="InputPin" />
             <Pin Id="PYTzErdpA12r4YO24nuBei" Name="Enabled" Kind="InputPin" />
             <Pin Id="Hb6kT2JSJWIccFySKgGyXB" Name="Initial Longitude" Kind="InputPin" DefaultValue="139.7620" />
             <Pin Id="IYKoHUZYZTUMBU9jt106uc" Name="Initial Latitude" Kind="InputPin" DefaultValue="35.6830" />
             <Pin Id="MG7VaTirweJzm5XzVqFxr8" Name="Initial Height" Kind="InputPin" DefaultValue="3000" />
-            <Pin Id="Dx23zLr2SDH6RBvznP33c9" Name="Layers" Kind="InputPin" />
             <Pin Id="HQWIBVBdVQGwLnNojukGqN" Name="Title" Kind="InputPin" DefaultValue="Draw shapes on the globe" />
             <Pin Id="S6urMsRhtcrxucxhRiukoC" Name="Status" Kind="OutputPin" />
           </Node>
-          <Pad Id="C9uJEfMlq5zJG4Ltvjk8fU" Bounds="340,418,320,20" ShowValueBox="true" isIOBox="true" Value="&lt; Layers: drawn in order, first at the bottom">
+          <Pad Id="C9uJEfMlq5zJG4Ltvjk8fU" Bounds="340,418,320,20" ShowValueBox="true" isIOBox="true" Value="&lt; Group: leftmost at the bottom - the tiles, then the shapes">
             <p:TypeAnnotation LastCategoryFullName="Primitive" LastDependency="VL.CoreLib.vl">
               <Choice Kind="TypeFlag" Name="String" />
             </p:TypeAnnotation>
@@ -185,8 +186,8 @@
         <Link Id="EauMVwPDglc54HOoYBNhfi" Ids="PA3Hr3FQYdRylq5wiT5yII,QNxSWkxFD2VPvetIQAjJ6l" />
         <Link Id="HAjSJ2sC5IOnpiOZblQ06K" Ids="UjM6h7mBAGuzk9atPBWtBl,ANKQWproSsdZMq1Oqe1zwL" />
         <Link Id="MwHNtP6rQwR4tcBcagq9EQ" Ids="STu7YzI9jmMLslRraGm2uQ,SxGXfQ9sWc92F0ppnkRcJa" />
-        <Link Id="Pn3ZvyFmOjPFStoU3rY1mI" Ids="IAvhxROSaruxKxMy2VrKFL,Dx23zLr2SDH6RBvznP33c9" />
-        <Link Id="CkBd9Vavq0fdy0eAF5kWHg" Ids="C3oPzM0a5NtCbFcp0dya2b,SHnELELX8XX55ec8Xqjct0" />
+        <Link Id="Pn3ZvyFmOjPFStoU3rY1mI" Ids="IAvhxROSaruxKxMy2VrKFL,SHnELELX8XX55ec8Xqjct0" />
+        <Link Id="CkBd9Vavq0fdy0eAF5kWHg" Ids="C3oPzM0a5NtCbFcp0dya2b,0lR8acRYSi4MDF8kWCBX1K" />
         <Link Id="K3ch3DR9LUbw7u63ZJVhec" Ids="FlZBDhx90blz9s4L2QCdDz,PYTzErdpA12r4YO24nuBei" />
         <Link Id="A46K1vDcLioNzR4l249jME" Ids="S6urMsRhtcrxucxhRiukoC,GqzLvqKKqdmDEmUdysaXO0" />
       </Patch>

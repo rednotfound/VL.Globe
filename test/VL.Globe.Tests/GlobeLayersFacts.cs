@@ -53,6 +53,31 @@ public class GlobeLayersFacts
         Assert.Single(layer.Geometries);
     }
 
+    // One Input, layers composed by Group (docs/DESIGN-NODES.md): the globe draws the leaves in order.
+    [Fact]
+    public void AGroupIsItsLayersInOrderLeftmostFirst()
+    {
+        var osm = new OpenStreetMapNode().Update();
+        var shapes = new GlobeGeometryLayerNode().Update(new[] { Square(T) });
+        var hidden = new GlobeGeometryLayerNode().Update(new[] { Square(T) }, enabled: false);
+        var inner = new GlobeGroupSpectralNode().Update(new[] { shapes, hidden });
+        var pins = global::VL.Lib.Collections.Spread<GlobeLayer>.Empty.ToBuilder(); pins.Add(osm); pins.Add(inner);   // the Group's two inputs
+        var group = new GlobeGroupNode().Update(pins.ToSpread());
+        var leaves = group.Leaves().ToList();
+        Assert.Equal(new[] { osm, shapes }, leaves);
+        Assert.NotNull(leaves[0].Raster);
+        Assert.Null(leaves[1].Raster);
+    }
+
+    [Fact]
+    public void AGroupSwitchedOffHidesAllOfIt()
+    {
+        var osm = new OpenStreetMapNode().Update();
+        var group = new GlobeGroupSpectralNode().Update(new[] { osm }, enabled: false);
+        Assert.Empty(group.Leaves());
+        Assert.Empty(new OpenStreetMapNode().Update(enabled: false).Leaves());
+    }
+
     [Fact]
     public void AnUnwiredStyleIsTheDefault()
     {

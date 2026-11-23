@@ -49,11 +49,11 @@
             </p:ValueBoxSettings>
           </Pad>
           <Node Bounds="60,200,100,19" Id="aZB3DO7GWIQtUlmOS6ECJS">
-            <p:NodeReference LastCategoryFullName="Globe" LastDependency="VL.Globe.vl">
+            <p:NodeReference LastCategoryFullName="Globe.Layers" LastDependency="VL.Globe.vl">
               <Choice Kind="NodeFlag" Name="Node" Fixed="true" />
               <Choice Kind="ProcessAppFlag" Name="OpenStreetMap" />
             </p:NodeReference>
-            <Pin Id="RO5k0A8Uci0qRhSBHpvkTS" Name="Tile Source" Kind="OutputPin" />
+            <Pin Id="RO5k0A8Uci0qRhSBHpvkTS" Name="Output" Kind="OutputPin" />
           </Node>
           <Node Bounds="60,250,260,19" Id="Osq63Hvzl8IBtPnRNbzoc5">
             <p:NodeReference LastCategoryFullName="Globe" LastDependency="VL.Globe.vl">
@@ -64,7 +64,7 @@
             </p:NodeReference>
             <Pin Id="1FeogdvbzDp8mFmQp5zvqY" Name="Bounds" Kind="InputPin" DefaultValue="926, 114, 800, 800" />
             <Pin Id="Mtrb1uvZwnZuDMjJxyZLLK" Name="Bound to Document" Kind="InputPin" DefaultValue="True" />
-            <Pin Id="cgTAOGSf9uih4vmuGMGKAu" Name="Tile Source" Kind="InputPin" />
+            <Pin Id="cgTAOGSf9uih4vmuGMGKAu" Name="Input" Kind="InputPin" />
             <Pin Id="WfpTbmRsHdRXfr8nBNXYK7" Name="Enabled" Kind="InputPin" />
             <Pin Id="Gh5Qhy50B7P6nLsbWsXAJK" Name="Initial Longitude" Kind="InputPin" DefaultValue="139.7671" />
             <Pin Id="il8Krk3QCI33jOqw5LoVFq" Name="Initial Latitude" Kind="InputPin" DefaultValue="35.6812" />
