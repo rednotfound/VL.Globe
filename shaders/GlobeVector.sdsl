@@ -36,6 +36,7 @@ shader GlobeVector : ShaderBase
         stage float GvGlOutline;        // 1: the line list as GL JS's fill_outline: aliased, alpha 1 - smoothstep(distance)
         stage float2 GvViewport;        // the target's size in pixels
         stage float2 GvFade;            // fill-extrusion fades out between these distances from the eye (y 0: never)
+        stage float4 GvSphere;          // the globe's centre in view space, xyz; w: |eye - centre|^2 - radius^2 (from double)
     }
 
     stage stream float GvDrawIn : TEXCOORD4;     // per instance: the draw's index in GvDraws (a float: exact to 2^24)
@@ -51,6 +52,7 @@ shader GlobeVector : ShaderBase
     stage stream float GvOutset;
     stage stream float4 GvTint;
     stage stream float2 GvScreen;   // GL JS's v_pos: the vertex in pixels, interpolated along the line
+    stage stream float3 GvViewPos;  // the vertex in view space, before the lift
 
     float3 ToLinear(float3 c)
     {
@@ -142,6 +144,7 @@ shader GlobeVector : ShaderBase
             float span = GvFlat > 0.5 ? 1 / GvTiles : 6.283185307 * sqrt(saturate(1 - p.y * p.y)) / GvTiles;
             uvShift = q * (reach / GvRadius / span);
         }
+        streams.GvViewPos = v.xyz;
         v.xyz *= (1 - GvLift);
         streams.ShadingPosition = mul(v, GvProjection);
         // in pixels, y down as SV_Position is (GL JS's v_pos, y up as gl_FragCoord is)
@@ -182,6 +185,31 @@ shader GlobeVector : ShaderBase
         float GvIsLine = dr.Misc.z;
         float2 uv = streams.GvUv;
         if (uv.x < GvClip.x || uv.y < GvClip.y || uv.x > GvClip.z || uv.y > GvClip.w) discard;
+        // Ground layers on the sphere take the depth of the sphere itself at their pixel, not of their
+        // chord (ROADMAP 4h, docs/DESIGN-OVERSCALED.md): a bucket is cut by its source tile's zoom, and
+        // shown far past the source's maxzoom its triangles sag under the sphere by more than the lift
+        // (a z6 chord ~80 m), so the globe's finely cut tiles hid them by depth. GL JS never compares a
+        // 2D layer's own depth either (a constant depth range per layer) and cuts the far side by the
+        // horizon plane; we keep a depth test, for the Scene's entities, against the true sphere.
+        streams.Depth = streams.ShadingPosition.z;
+        if (GvFlat < 0.5 && GvExtrusion < 0.5)
+        {
+            float3 p = streams.GvViewPos, centre = GvSphere.xyz;
+            float c = GvSphere.w;
+            // the ray through this pixel meets the sphere at t: t^2 - 2bt + c = 0, in the form that
+            // keeps t's precision at street level (c is small there, b about the radius)
+            float3 d = normalize(p);
+            float b = dot(d, centre);
+            float disc = b * b - c;
+            bool hits = disc > 0 && b > 0;
+            // the far side of the globe: past the ray's nearest approach to the centre. GL JS cuts by the
+            // horizon plane, by the fragment's own position - but a sagging chord lies below the sphere,
+            // deeper than the eye is high at street level, and the plane cut it away (a z0 fill, eye 94 m)
+            if (hits && length(p) > b) discard;
+            float t = hits ? c / (b + sqrt(disc)) : length(p);
+            float4 onSphere = mul(float4(d * (t * (1 - GvLift)), 1), GvProjection);
+            streams.Depth = onSphere.z / onSphere.w;
+        }
         float alpha = streams.GvTint.a;
         if (GvIsLine > 0.5) alpha *= saturate(streams.GvOutset * (1 - abs(streams.GvEdge)));
         if (GvGlOutline > 0.5) alpha *= 1 - smoothstep(0, 1, length(streams.GvScreen - streams.ShadingPosition.xy));

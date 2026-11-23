@@ -552,7 +552,13 @@ Sum either log up with `tools/Summarize-Perf.py <log> --from <pan 1 begins> --to
   separate process (IPC, shared GPU memory). `DOTNET_GCgen0size` is the whole vvvv's, not a package's
   to set. The one heap .NET threads share is the difference that stays. A dump stalls vvvv ~0.8 s: never bench while dumping.
 
-### 4h. Ground layers sinking under the globe past a source's maxzoom — NEXT (the user, 2026-11-23)
+### 4h. Ground layers sinking under the globe past a source's maxzoom — built 2026-11-23, not yet seen by the user
+
+**Built** (the user chose B', GL JS's way): ground passes take the true sphere's depth at their pixel
+(`GlobeVector.sdsl`, `GvSphere`), the far side cut along the ray; `OverscaledGroundFacts` over the globe
+tiles' depth (red before: 0 of 120000 px), 315 green, fixture reports unchanged. Next: the user in vvvv,
+style 13 and others down to street level; the 4g bench (SV_Depth turns off early depth for these draws).
+
 
 **The whole plan, the user's words and the evidence: [DESIGN-OVERSCALED.md](DESIGN-OVERSCALED.md).**
 The user, testing styles: "zoom in之后就会把底下的深蓝色的球也给露出来" (style 13, MapLibre's demo

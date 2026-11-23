@@ -23,7 +23,7 @@ internal static class GpuFixtureRenderer
     {
         public required GraphicsDevice Device;
         public required GraphicsContext Context;
-        public required EffectInstance Effect, SymbolEffect, CircleEffect, FogEffect;
+        public required EffectInstance Effect, SymbolEffect, CircleEffect, FogEffect, DepthEffect;
         // fades off, as MapLibre's render tests run (fadeDuration 0): every label placed in its first frame
         public readonly VectorRenderer Renderer = new() { GlOutlines = true, FadeDuration = 0 };
     }
@@ -43,6 +43,7 @@ internal static class GpuFixtureRenderer
         var nuget = Environment.GetEnvironmentVariable("NUGET_PACKAGES") ?? Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".nuget", "packages");
         var assets = Path.Combine(nuget, "stride.graphics", "4.2.1.2487", "stride", "Assets");
         foreach (var f in new[] { "ShaderBase.sdsl", "ShaderBaseStream.sdsl" }) File.Copy(Path.Combine(assets, f), Path.Combine(dir, f), overwrite: true);
+        File.WriteAllText(Path.Combine(dir, "GlobeTileDepth.sdsl"), GlobeTileDepthShader);
         var compiler = new EffectCompiler(new FileSystemProvider(null, dir)) { UseFileSystem = true };
         compiler.SourceDirectories.Add(dir);
         var parameters = new CompilerParameters();
@@ -58,7 +59,7 @@ internal static class GpuFixtureRenderer
             effect.UpdateEffect(device);
             return effect;
         }
-        return new Gpu { Device = device, Context = new GraphicsContext(device), Effect = Compile("GlobeVector"), SymbolEffect = Compile("GlobeSymbol"), CircleEffect = Compile("GlobeCircle"), FogEffect = Compile("GlobeFog") };
+        return new Gpu { Device = device, Context = new GraphicsContext(device), Effect = Compile("GlobeVector"), SymbolEffect = Compile("GlobeSymbol"), CircleEffect = Compile("GlobeCircle"), FogEffect = Compile("GlobeFog"), DepthEffect = Compile("GlobeTileDepth") };
     }
 
     /// <summary>The fog alone over a transparent target, read back (RGBA, premultiplied).</summary>
@@ -81,8 +82,58 @@ internal static class GpuFixtureRenderer
     public static GraphicsDevice Device => Shared.Value.Device;
     public static T Locked<T>(Func<T> work) { lock (Lock) return work(); }
 
-    /// <summary>A globe frame as vvvv draws it (on the sphere, linearised, lifted, fogged) over an opaque ground, read back RGBA.</summary>
-    public static byte[] RenderGlobe(VectorRenderer.Frame frame, Matrix view, Matrix projection, int width, int height, bool fog)
+    // The globe's own tiles, depth only: in vvvv they are in the scene's depth before the vector frame is
+    // drawn, and hide whatever lies under them (ROADMAP 4h - without them no probe could show the sinking)
+    const string GlobeTileDepthShader = """
+        shader GlobeTileDepth : ShaderBase
+        {
+            cbuffer PerDraw { stage float4x4 GtWorldViewProjection; }
+            stage stream float3 GtPosition : POSITION;
+            stage override void VSMain() { streams.ShadingPosition = mul(float4(streams.GtPosition, 1), GtWorldViewProjection); }
+            stage override void PSMain() { streams.ColorTarget = float4(0, 0, 0, 0); }
+        };
+        """;
+
+    static void DrawGlobeTileDepth(Gpu gpu, CommandList cl, IEnumerable<TileKey> tiles, D3 eye, float radius, Matrix view, Matrix projection)
+    {
+        var effect = gpu.DepthEffect;
+        ParameterKey? key = null;
+        foreach (var cb in effect.Effect.Bytecode.Reflection.ConstantBuffers)
+            foreach (var m in cb.Members)
+                if (m.KeyInfo.KeyName == "GlobeTileDepth.GtWorldViewProjection") key = m.KeyInfo.Key;
+        var wvpKey = (ValueParameterKey<Matrix>)(key ?? throw new InvalidOperationException("GtWorldViewProjection not found"));
+        var pipeline = new MutablePipelineState(gpu.Device);
+        var s = pipeline.State;
+        s.SetDefaults();
+        s.InputElements = new[] { new InputElementDescription { SemanticName = "POSITION", SemanticIndex = 0, Format = PixelFormat.R32G32B32_Float, InputSlot = 0, AlignedByteOffset = 0, InputSlotClass = InputClassification.Vertex } };
+        s.BlendState = BlendStates.ColorDisabled;
+        s.DepthStencilState = DepthStencilStates.Default;
+        s.RasterizerState = RasterizerStates.CullNone;
+        s.PrimitiveType = PrimitiveType.TriangleList;
+        s.RootSignature = effect.RootSignature;
+        s.EffectBytecode = effect.Effect.Bytecode;
+        s.Output.CaptureState(cl);
+        pipeline.Update();
+        foreach (var tile in tiles)
+        {
+            var (centre, offsets, _, _) = TileGeometry.RelativeVertices(tile);
+            var positions = offsets.Select(o => o * radius).ToArray();
+            var indices = TileGeometry.IndicesFor(tile.Zoom);
+            using var vb = global::Stride.Graphics.Buffer.Vertex.New(gpu.Device, positions);
+            using var ib = global::Stride.Graphics.Buffer.Index.New(gpu.Device, indices);
+            var world = Matrix.Translation(TileGeometry.Translation(centre, radius, eye));
+            effect.Parameters.Set(wvpKey, world * view * projection);
+            cl.SetPipelineState(pipeline.CurrentState);
+            cl.SetVertexBuffer(0, vb, 0, 12);
+            cl.SetIndexBuffer(ib, 0, false);
+            effect.Apply(gpu.Context);
+            cl.DrawIndexed(indices.Length);
+        }
+    }
+
+    /// <summary>A globe frame as vvvv draws it (on the sphere, linearised, lifted, fogged) over an opaque ground, read back RGBA.
+    /// With <paramref name="globeTiles"/>, those tiles' depth first, as the globe's own tiles are in vvvv's scene.</summary>
+    public static byte[] RenderGlobe(VectorRenderer.Frame frame, Matrix view, Matrix projection, int width, int height, bool fog, IEnumerable<TileKey>? globeTiles = null)
     {
         lock (Lock)
         {
@@ -93,6 +144,7 @@ internal static class GpuFixtureRenderer
             cl.SetRenderTargetAndViewport(depth, target);
             cl.Clear(target, new Color4(0.2f, 0.2f, 0.2f, 1));
             cl.Clear(depth, DepthStencilClearOptions.DepthBuffer | DepthStencilClearOptions.Stencil, 1, 0);
+            if (globeTiles != null) DrawGlobeTileDepth(gpu, cl, globeTiles, frame.Eye!.Value, frame.Radius, view, projection);
             var renderer = new VectorRenderer { FadeDuration = 0 };   // one frame: every label placed in it
             renderer.DrawFrame(cl, gpu.Context, gpu.Effect, gpu.SymbolEffect, gpu.CircleEffect, view, projection, height, frame, renderer.Lift, linearize: false, flat: false);
             if (fog && VectorRenderer.FogOf(frame) is { } f)

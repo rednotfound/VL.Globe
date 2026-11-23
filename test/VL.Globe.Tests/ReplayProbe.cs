@@ -23,7 +23,7 @@ public class ReplayProbe(ITestOutputHelper output)
         service.Start();
         using var gpu = new GpuVectorTiles();
         int frame = 0, skippedBefore = 0;
-        (GlobeView v, D3 eye, double height)? last = null;
+        (GlobeView v, D3 eye, double height, IReadOnlyList<TileKey> tiles)? last = null;
         var until = DateTime.UtcNow.AddMinutes(15);
         foreach (var hash in hashes)
         {
@@ -53,15 +53,15 @@ public class ReplayProbe(ITestOutputHelper output)
             var labels = gpu.Frame?.Labels.Sum(l => l.Tiles.Sum(t => t.tile.Labels.Count)) ?? 0;
             output.WriteLine($"{hash}: {gpu.TilesBuilt} built, {labels} point labels in the frame{(skipped.Count > skippedBefore ? ", NEW: " + string.Join(" | ", skipped.Skip(skippedBefore)) : "")}");
             skippedBefore = skipped.Count;
-            last = (v, eye, height);
+            last = (v, eye, height, tiles.ToList());
         }
         // the last view drawn, as the session left it (2026-11-23: the globe's background showed through
         // a style's background after zooming in, where one view alone drew it whole)
-        if (last is var (lv, le, lh) && gpu.Frame is { } f)
+        if (last is var (lv, le, lh, lt) && gpu.Frame is { } f)
         {
             var (_, forward, up) = lv.Pose();
             var projection = Matrix.PerspectiveFovRH((float)FovY, (float)(W / H), (float)(lh * 0.01), 10f);
-            var px = GpuFixtureRenderer.RenderGlobe(f, GlobeView.ViewRotation(forward, up), projection, (int)W, (int)H, false);
+            var px = GpuFixtureRenderer.RenderGlobe(f, GlobeView.ViewRotation(forward, up), projection, (int)W, (int)H, false, lt);
             var bmp = Path.Combine(Path.GetTempPath(), "vlglobe-replay.bmp");
             using var w = new BinaryWriter(File.Create(bmp));
             int size = 54 + (int)W * (int)H * 4;

@@ -298,6 +298,16 @@ internal sealed class VectorRenderer : IGraphicsRendererBase
         var viewport = commandList.Viewport;
         Set(parameters, "GvViewport", new Vector2(viewport.Width, viewport.Height));
         Set(parameters, "GvFade", frame.ExtrusionFade);
+        // the sphere ground layers take their depth from (ROADMAP 4h): its centre in view space and
+        // |eye - centre|^2 - R^2, formed in double - at street level it is a small difference of large values
+        if (frame.Eye is { } eye)
+            Set(parameters, "GvSphere", new Vector4(Vector3.TransformNormal((-eye).ToVector3(), view),
+                (float)(eye.X * eye.X + eye.Y * eye.Y + eye.Z * eye.Z - (double)frame.Radius * frame.Radius)));
+        else
+        {
+            var centre = view.TranslationVector;   // the globe stands at the origin, the view moves the eye
+            Set(parameters, "GvSphere", new Vector4(centre, centre.LengthSquared() - frame.Radius * frame.Radius));
+        }
         Buffer? boundVertices = null;
         Texture? sceneDepth = null;
         // every vector draw's values, written once (GvDraws); text and circle items leave their element unused

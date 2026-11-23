@@ -114,6 +114,30 @@ whether GL JS has a separate globe surface for vectors to sink under at all (it 
 the vector/raster tiles themselves). Put what is found into this file, then decide A or B **with the
 user** (they decide direction questions; offer a recommendation).
 
+### What GL JS does (read 2026-11-23, maplibre-gl-js v5.19.0 source)
+
+- **Subdivision is by the canonical (source) zoom**, not the shown one: `fill_bucket.ts:177`,
+  `line_bucket.ts:278`, `fill_extrusion_bucket.ts:222` all call
+  `granularity.getGranularityForZoomLevel(canonical.z)`; an overscaled tile's canonical ID is the source
+  tile. So GL JS's chords sag exactly as ours do past maxzoom. **It does not build clipped buckets per
+  shown tile - option A is not GL JS's way.**
+- **2D layers never compare their real depth.** `painter.getDepthModeForSublayer` gives every layer a
+  constant `glDepthRange [d, d]` (painter's order by layer index); `_projection_globe.vertex.glsl`
+  `interpolateProjection`: "Z is overwritten by glDepthRange anyway - use a custom z value to clip
+  geometry on the invisible side of the sphere" - z = 1 - (dot(pos, plane.xyz) + plane.w), the
+  **horizon plane** (`vertical_perspective_transform._computeClippingPlane`), so the far side falls
+  outside the clip volume. Raster tiles, fills, lines, background: all the same. Sag cannot show.
+- **3D layers** (fill-extrusion) use their real depth (`interpolateProjectionFor3D`) in
+  `depthRangeFor3D`, in front of all 2D layers' ranges.
+- GL JS has no separate globe surface and no user entities: that is the one place we differ. Our
+  ground layers depth-test so that entities in the Scene (GlobePositionComponent) hide them.
+
+**So B is GL JS's way.** Our form of it (B'): keep the depth test for the user's entities, but give a
+ground fragment the depth of the **true sphere** at its pixel (ray-sphere in the pixel shader, the
+stable form t = c / (b + sqrt(b² - c)) with c = |eye|² - R² from the CPU in double, written as
+SV_Depth, a small lift kept against the globe tiles' own small sag), and discard the far side by GL JS's
+horizon plane. Sag at any zoom, overscaled or not (§2.5 too), stops mattering; buckets unchanged.
+
 ## 5. Steps once decided
 
 1. **An instrument that can fail.** Give `GpuFixtureRenderer.RenderGlobe` the globe's depth: draw the
@@ -135,6 +159,18 @@ user** (they decide direction questions; offer a recommendation).
 - Which other styles showed it, and at what height? (Probably street level - §2.5.)
 - After A or B is chosen: whether a sunken stand-in while a clipped bucket builds is acceptable, or
   the tile should wait.
+
+## 6b. Decided and built (2026-11-23 night)
+
+The user chose **B'** (on the GL JS finding above). Built: `GlobeVector.sdsl` PSMain writes the sphere's
+depth for non-flat, non-extrusion passes (`GvSphere` = the centre in view space, |eye|² - R² from
+double; set in `VectorRenderer.DrawFrame`); the far side is cut where the fragment lies past the ray's
+nearest approach to the centre - GL JS's horizon plane by the fragment's own position cut a z0 chord
+sagging 970 m under an eye 94 m up. Step 1 done: `GpuFixtureRenderer.RenderGlobe(..., globeTiles)`
+draws the globe tiles' depth first (ViewProbe, ReplayProbe use it); `OverscaledGroundFacts` went red
+(0 of 120000 px) before the shader change, green after; a far-side box 284 px without the cut, 0 with.
+ViewProbe on style 13 at the user's Tokyo Bay view: land and sea, no dark. Left: the user in vvvv, the
+4g bench. Option A is not needed; §2.5 (street level on z14 sources) is covered by the same change.
 
 ## 7. State at the time of writing
 

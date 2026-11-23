@@ -725,3 +725,14 @@ looked fine - "which makes one think it works". Two causes, estimated at 100 m h
   square's zoom. Overscaled DATA layers have the same sag: confirmed the same evening - after the fix,
   style 13 over Tokyo Station at ~2.5 km drew the sea colour everywhere, the land gone (lift ~4 m).
   The plan: docs/DESIGN-OVERSCALED.md (ROADMAP 4h).
+- **Fixed by the sphere's depth, GL JS's way** (2026-11-23 evening, ROADMAP 4h, the user chose B'). GL JS
+  subdivides by the SOURCE tile's zoom too (`getGranularityForZoomLevel(canonical.z)`) - its chords sag
+  the same; it never compares a 2D layer's own depth (a constant glDepthRange per layer) and cuts the
+  far side by the horizon plane. Ours: the ground passes write SV_Depth = the true sphere's depth along
+  the pixel's ray (t = c / (b + sqrt(b² - c)), c = |eye|² - R² in double on the CPU), lifted as before;
+  entities in the Scene still hide them. **First a probe that could fail**: `RenderGlobe` now draws
+  the globe tiles' depth first (`globeTiles`); a z0 water fill at eye 1-12 km went 120000 px alone and
+  **0 over the globe's depth** - the old probes' "fine" was the missing depth. **The horizon plane cut
+  too much**: tested by the fragment's own position (GL JS's), a z0 chord ~970 m under the sphere at an
+  eye 94 m up lay "past the horizon" - all discarded. Cut along the ray instead: past its nearest
+  approach to the centre (|p| > b). A far-side box: 284 px without the cut, 0 with it.
