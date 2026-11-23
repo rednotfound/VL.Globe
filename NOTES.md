@@ -722,5 +722,6 @@ looked fine - "which makes one think it works". Two causes, estimated at 100 m h
   dark disc round the centre of the view, where the lift is least. The gap diagnostic (every shown tile
   got its background squares) and offscreen probes (no globe tiles, nothing to hide behind) both said
   "fine" - the probe could not fail this way. Now the background is built per shown square at that
-  square's zoom. Still to look at: overscaled DATA layers (fills, lines from z6 at z12) have the same
-  sag; the demo's land showed whole, perhaps by luck of where its vertices fall.
+  square's zoom. Overscaled DATA layers have the same sag: confirmed the same evening - after the fix,
+  style 13 over Tokyo Station at ~2.5 km drew the sea colour everywhere, the land gone (lift ~4 m).
+  The plan: docs/DESIGN-OVERSCALED.md (ROADMAP 4h).

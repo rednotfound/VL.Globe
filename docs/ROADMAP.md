@@ -552,6 +552,19 @@ Sum either log up with `tools/Summarize-Perf.py <log> --from <pan 1 begins> --to
   separate process (IPC, shared GPU memory). `DOTNET_GCgen0size` is the whole vvvv's, not a package's
   to set. The one heap .NET threads share is the difference that stays. A dump stalls vvvv ~0.8 s: never bench while dumping.
 
+### 4h. Ground layers sinking under the globe past a source's maxzoom — NEXT (the user, 2026-11-23)
+
+**The whole plan, the user's words and the evidence: [DESIGN-OVERSCALED.md](DESIGN-OVERSCALED.md).**
+The user, testing styles: "zoom in之后就会把底下的深蓝色的球也给露出来" (style 13, MapLibre's demo
+tiles, maxzoom 6; seen with others too), then "还是非常明显，我觉得这个问题需要仔细想一下对策".
+Cause: a bucket is cut by its vector tile's zoom; shown far past the source's maxzoom its chords sag
+under the sphere (z6: ~80 m) more than the lift (0.0015 of the distance), and the globe's tiles hide
+it by depth. The background is fixed (7b278f4, per shown square); fills and lines are not (picture 4:
+the land gone at 2.5 km). Expected at street level on every style too (z14 sources, §2.5). Next:
+read how GL JS's globe does it, choose A (per-shown-tile clipped buckets) or B (no depth test against
+the globe; horizon in the shader) with the user, first a probe that can fail (globe depth in
+`RenderGlobe`).
+
 ### 5. Navigation — nodes built 2026-11-23, tested (294 green); not yet seen in vvvv
 
 **Built** (`GlobeNavigateNodes.cs`, `Engine/Navigation.cs`, category `Globe.Navigate`, VL.Mapsui's

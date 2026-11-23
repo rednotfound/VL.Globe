@@ -48,6 +48,10 @@ Guidance for Claude Code working in this repository.
    accessors - bench misses 3-5% -> 0.0-0.1%, worst frame 19-20 ms (GL JS 0%, 17). Zoom bench (2026-11-23, dotnet-gcdump):
    features as rows of arrays, line labels as structs, value strings made at first read, each draw's values in one buffer -
    3.4% -> ~0.7% (GL JS 0.2-0.4%); the user: "好很多", then stopped 4g there (ROADMAP 4g, "Stopped here", lists what is left).
+   **NEXT (the user, 2026-11-23 evening): ROADMAP 4h - ground layers sink under the globe past a source's
+   maxzoom (the dark globe showing through styles when zooming in). Read docs/DESIGN-OVERSCALED.md
+   first, whole: the user's words, the cause with numbers, options A/B, the steps; background part
+   fixed (7b278f4), fills/lines not.**
    Then (2026-11-23) the node surface made vvvv's (docs/DESIGN-NODES.md): navigation nodes [Globe.Navigate], pins in vvvv's
    order, one Input + Group, GlobeCamera as OrbitCamera. Next: the user's judgement of the gestures and the help patches' layout.**
    Research: [docs/RESEARCH-0.1.md](docs/RESEARCH-0.1.md), [docs/RESEARCH-VECTOR.md](docs/RESEARCH-VECTOR.md).
