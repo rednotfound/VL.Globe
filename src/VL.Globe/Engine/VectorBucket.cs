@@ -444,7 +444,7 @@ internal static partial class VectorBucketBuilder
             foreach (var f in features)
             {
                 if (f.Kind == StyleFeature.Shape.Point) continue;
-                ctx.Properties = f.Properties; ctx.GeometryType = f.GeometryType; ctx.Id = f.Id;
+                ctx.Use(f);
                 if (l.Filter is { } filter && !Expression.FilterFeature(filter, ctx, l.Id)) continue;
                 double opacity = layer.OpacityPerFeature ? Expression.Number(layer.Opacity, ctx, 1) : 1;
                 if (layer.IsExtrusion)

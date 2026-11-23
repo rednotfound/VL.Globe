@@ -14,15 +14,76 @@ namespace VL.Globe.Engine;
 // tile holds, and linear on the canvas. Pure: tested without a GPU.
 
 /// <summary>One feature of a source: geometry in Web Mercator world coordinates (0..1, y down), and its properties.</summary>
-internal sealed class StyleFeature
+internal sealed class StyleFeature : IReadOnlyDictionary<string, object?>
 {
     public enum Shape { Point, Line, Polygon }
     public Shape Kind;
     // Point: each part one coordinate. Line: each part one line. Polygon: each part one polygon, its rings.
     // A view of its layer's geometry (FeatureGeometry.cs: a decoded tile is a few large arrays, 4g step 4)
     public FeatureParts Parts => new(_geometry, _firstPart, _partCount);
-    public IReadOnlyDictionary<string, object?> Properties = NoProperties;
-    public object? Id;
+    // An MVT feature is its own properties - a view of its layer's key and value tables over one shared
+    // tag array - and keeps its id unboxed: one object a feature, not three (4g step 4, 2026-11-23: a
+    // heap dump while zooming grew by 181k features, 181k property views and 206k boxed doubles).
+    public IReadOnlyDictionary<string, object?> Properties
+    {
+        get => _properties ?? (_tags != null ? this : NoProperties);
+        set => _properties = value;
+    }
+    public object? Id
+    {
+        get => _hasNumericId ? _numericId : _id;
+        set { _id = value; _hasNumericId = false; }
+    }
+    IReadOnlyDictionary<string, object?>? _properties;
+    object? _id;
+    double _numericId;
+    bool _hasNumericId;
+    string[]? _keys;
+    object?[]? _values;
+    int[]? _tags;   // key, value, key, value ...
+    int _tagStart, _tagCount;   // in pairs
+
+    /// <summary>An MVT feature's id, unboxed until asked for.</summary>
+    public void SetNumericId(double id) { _numericId = id; _hasNumericId = true; _id = null; }
+
+    /// <summary>The feature's properties as <paramref name="count"/> key/value pairs of its layer's tables from <paramref name="start"/>.</summary>
+    public void SetTags(string[] keys, object?[] values, int[] tags, int start, int count)
+    {
+        _keys = keys; _values = values; _tags = tags; _tagStart = start; _tagCount = count; _properties = null;
+    }
+
+    // the properties' dictionary, for an MVT feature (a key given twice keeps its last value, as a dictionary
+    // filled in order did)
+    public bool TryGetValue(string key, out object? value)
+    {
+        if (_properties != null) return _properties.TryGetValue(key, out value);
+        if (_tags is { } tags)
+            for (int i = _tagCount - 1; i >= 0; i--)
+            {
+                int t = 2 * (_tagStart + i);
+                if (string.Equals(_keys![tags[t]], key)) { value = _values![tags[t + 1]]; return true; }
+            }
+        value = null;
+        return false;
+    }
+    public bool ContainsKey(string key) => TryGetValue(key, out _);
+    public object? this[string key] => TryGetValue(key, out var v) ? v : throw new KeyNotFoundException(key);
+    IEnumerable<KeyValuePair<string, object?>> Pairs()
+    {
+        if (_properties != null) { foreach (var kv in _properties) yield return kv; yield break; }
+        if (_tags is null) yield break;
+        var seen = new HashSet<string>();
+        for (int i = 0; i < _tagCount; i++)
+        {
+            var key = _keys![_tags[2 * (_tagStart + i)]];
+            if (seen.Add(key) && TryGetValue(key, out var v)) yield return new(key, v);
+        }
+    }
+    int IReadOnlyCollection<KeyValuePair<string, object?>>.Count { get { int n = 0; foreach (var _ in Pairs()) n++; return n; } }
+    IEnumerable<string> IReadOnlyDictionary<string, object?>.Keys { get { foreach (var kv in Pairs()) yield return kv.Key; } }
+    IEnumerable<object?> IReadOnlyDictionary<string, object?>.Values { get { foreach (var kv in Pairs()) yield return kv.Value; } }
+    IEnumerator<KeyValuePair<string, object?>> IEnumerable<KeyValuePair<string, object?>>.GetEnumerator() => Pairs().GetEnumerator();
+    System.Collections.IEnumerator System.Collections.IEnumerable.GetEnumerator() => Pairs().GetEnumerator();
 
     static readonly IReadOnlyDictionary<string, object?> NoProperties = new Dictionary<string, object?>();
     FeatureGeometry _geometry = FeatureGeometry.Empty;
@@ -565,7 +626,7 @@ internal static class MapStylePainter
             if (f.Kind == StyleFeature.Shape.Point) continue;
             var (fx0, fy0, fx1, fy1) = f.Bounds;
             if (fx1 < vx0 || fx0 > vx1 || fy1 < vy0 || fy0 > vy1) continue;
-            ctx.Properties = f.Properties; ctx.GeometryType = f.GeometryType; ctx.Id = f.Id;
+            ctx.Use(f);
             if (layer.Filter is { } filter && !Expression.Filter(filter, ctx)) continue;
             if (layer.Type == "fill")
             {

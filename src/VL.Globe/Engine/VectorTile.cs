@@ -75,7 +75,7 @@ internal static class VectorTile
         foreach (var (f, tagStart, tagCount, firstPart, partCount) in read)
         {
             f.SetGeometry(g, firstPart, partCount);
-            f.Properties = new TagProperties(keys, values, tagArray, tagStart, tagCount);
+            f.SetTags(keys, values, tagArray, tagStart, tagCount);
             list.Add(f);
         }
         into[name] = list;
@@ -116,12 +116,12 @@ internal static class VectorTile
         points.Clear(); ringEnds.Clear(); tags.Clear();
         int type = 0;
         (int s, int e) geometry = (0, 0);
-        object? id = null;
+        double? id = null;
         while (r.Next(out int field, out int wire))
         {
             switch (field)
             {
-                case 1 when wire == 0: id = (double)r.Varint(); break;
+                case 1 when wire == 0: id = r.Varint(); break;   // kept unboxed (StyleFeature.SetNumericId)
                 case 2 when wire == 2:
                 {
                     var (s, e) = r.Sub();
@@ -163,7 +163,8 @@ internal static class VectorTile
         }
         if (points.Count > ringStart) ringEnds.Add(points.Count);
 
-        var f = new StyleFeature { Id = id };
+        var f = new StyleFeature();
+        if (id is { } numeric) f.SetNumericId(numeric);
         var all = System.Runtime.InteropServices.CollectionsMarshal.AsSpan(points);
         switch (type)
         {

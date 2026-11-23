@@ -510,8 +510,15 @@ Sum either log up with `tools/Summarize-Perf.py <log> --from <pan 1 begins> --to
   and every such tile's whole label buffer uploaded: now only a change, only the changed range.
   Zoom bench: 3.4%, worst 31 ms; collections 41 -> 27 a second, but promoted 14 -> 22 MB/s.
 - Left in zooming: GC (273 of 270 ms overrun), the promoted bytes following the tiles built (about
-  half their uploaded size). What survives needs a heap tool (dotnet-gcdump / dotnet-trace, not
-  installed - the user to decide).
+  half their uploaded size).
+- **What survives, seen** (dotnet-gcdump, installed 2026-11-23 with the user's yes; two dumps 22 s
+  apart during the zoom bench): by count, 218k strings (the decoded tiles' value tables), 163-181k
+  `StyleFeature`s, as many `TagProperties` and 206k boxed doubles (ids), and 51k `LineLabel`s with
+  a float[] and a Vector3[] each. Bytes grow only in vertex arrays (17 MB, large-object heap). Done:
+  a feature is its own property view and keeps its id unboxed - the 181k views and ~180k doubles
+  gone; zoom bench 3.4% -> 2.8% (37 of 1306 frames), worst 39 ms. Next, by count: features as
+  indices into their layer (no object a feature), a line label's arrays in one array a tile, the
+  value strings kept as bytes until asked for. A dump stalls vvvv ~0.8 s: never bench while dumping.
 
 ### 5. Navigation
 

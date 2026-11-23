@@ -586,3 +586,9 @@ looked fine - "which makes one think it works". Two causes, estimated at 100 m h
   set on one line (or that label left out), a feature whose filter cannot evaluate is left out (GL JS's
   evaluate returns the default) - never the layer. Shields seen offscreen at Tokyo. Every new skip or
   drop is now a "Globe style:" warning in vvvv's log. Strict (the render tests) unchanged.
+- **What survives zooming, by count, not bytes** (2026-11-23, dotnet-gcdump during the zoom bench): the
+  heap grew 1.1M objects in 22 s but only ~18 MB, nearly all of it vertex arrays on the large-object
+  heap (never copied). The copying is in small objects: value strings, one `StyleFeature` + one
+  `TagProperties` + one boxed id per feature, three objects per line label. Merging the feature, its
+  property view and its id removed ~360k of them: zoom bench 3.4% -> 2.8%. `dotnet-gcdump collect`
+  freezes the process ~0.8 s - those frames are the tool's, not ours.

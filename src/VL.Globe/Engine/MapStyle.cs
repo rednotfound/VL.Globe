@@ -140,8 +140,14 @@ internal sealed class StyleContext
     public double Zoom;
     // values are double, string, bool or null (a GeoJSON object or array property: its JsonElement)
     public IReadOnlyDictionary<string, object?>? Properties;
-    public object? Id;
+    // the feature's id, taken from the feature only when an expression asks (it is kept unboxed)
+    public object? Id { get => _feature != null ? _feature.Id : _id; set { _id = value; _feature = null; } }
+    object? _id;
+    StyleFeature? _feature;
     public string? GeometryType;    // "Point", "LineString", "Polygon"
+
+    /// <summary>Evaluates against <paramref name="f"/>: its properties, geometry type and (when asked) id.</summary>
+    public void Use(StyleFeature f) { Properties = f.Properties; GeometryType = f.GeometryType; _id = null; _feature = f; }
     public IReadOnlyDictionary<string, JsonElement> GlobalState = new Dictionary<string, JsonElement>();
     // the style the features are built for: a lenient one leaves out a feature its filter cannot evaluate
     public MapStyleDocument? Document;

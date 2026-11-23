@@ -212,7 +212,7 @@ internal static partial class VectorBucketBuilder
                 featureIndex++;
                 AllocMeter.Start();
                 ctx.Zoom = tileZoom;
-                ctx.Properties = f.Properties; ctx.GeometryType = f.GeometryType; ctx.Id = f.Id;
+                ctx.Use(f);
                 if (l.Filter is { } filter && !Expression.FilterFeature(filter, ctx, l.Id)) { AllocMeter.Lap(0, "filter"); continue; }
                 AllocMeter.Lap(0, "filter");
                 var text = TextOf(layer, ctx);
