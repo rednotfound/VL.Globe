@@ -22,7 +22,7 @@ public class FrameAnatomyFacts
         var a = Kept(updateMs: 6, drawSerial: 41);
         var draw = new VectorRenderer.DrawTiming(42, Place: 1.5, Upload: 2, Submit: 8.5, Items: 3000);
         var line = a.Explain(31, 1031, TimeSpan.FromMilliseconds(14), 9, 1, draw)!;
-        Assert.StartsWith("31.0 ms = Update 6.0 (select 2.0, gpu vectors 3.0, rest 1.0) + draw 12.0 (place 1.5, upload 2.0, submit 8.5, 3000 items) + outside 13.0", line);
+        Assert.StartsWith("31.0 ms = Update 6.0 (select 2.0, gpu vectors 3.0, rest 1.0) + draw 12.0 (place 1.5 [index 0.0, placement 0.0, commit 0.0, opacities 0.0, lines 0.0], upload 2.0, submit 8.5, 3000 items) + outside 13.0", line);
         Assert.Contains("GC paused 4.0 ms, gen0 +2, gen2 +0", line);
         Assert.Contains("uploaded 2 tiles 5.0 MB", line);
         Assert.Contains("gpu vectors: finish+upload 3.0", line);

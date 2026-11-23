@@ -68,6 +68,7 @@ internal sealed class LabelFades
         float cameraToCenter, bool flat, D3? eye, double now)
     {
         var did = Did.None;
+        long t0 = Stopwatch.GetTimestamp();
         // the tiles: indexed again when any came or went (GL JS does it every frame; the same tiles are a no-op there)
         long tiles = 17;
         foreach (var layer in layers)
@@ -87,6 +88,7 @@ internal sealed class LabelFades
             _index.PruneUnusedLayers(used);
         }
         if (bucketsChanged) _stale = true;
+        long t1 = Stopwatch.GetTimestamp();
 
         // moved: the view, the viewport or the eye. With the eye left out, a pan at street level kept
         // the rotation-only view bit for bit in many frames: the glyphs along lines stood still while
@@ -96,6 +98,7 @@ internal sealed class LabelFades
         _lastCamera = camera;
 
         bool force = FadeDuration == 0;
+        double commitMs = 0;
         bool settled = _placement.Done && !StillRecent(now);
         if (force || !_begun || (settled && (camera != _placedCamera || _stale)))
         {
@@ -110,20 +113,29 @@ internal sealed class LabelFades
             long start = Stopwatch.GetTimestamp();
             bool done = _placement.Continue(force ? null : () => Stopwatch.GetElapsedTime(start).TotalMilliseconds > FrameBudget);
             did |= Did.Placed;
-            if (done) { Commit(now); did |= Did.Committed; }
+            if (done) { long tc = Stopwatch.GetTimestamp(); Commit(now); commitMs = Stopwatch.GetElapsedTime(tc).TotalMilliseconds; did |= Did.Committed; }
         }
+        long t2 = Stopwatch.GetTimestamp();
         if ((did & Did.Committed) != 0 || bucketsChanged)
         {
             UpdateOpacities(layers);
             did |= Did.Opacities;
         }
+        long t3 = Stopwatch.GetTimestamp();
         if (moved || (did & Did.Opacities) != 0)
         {
             _placement.UpdateLines(layers, view, projection, width, height, cameraToCenter, flat);
             did |= Did.Lines;
         }
+        long t4 = Stopwatch.GetTimestamp();
+        static double Ms(long a, long b) => (b - a) * 1000.0 / Stopwatch.Frequency;
+        Last = new StepTiming(Ms(t0, t1), Ms(t1, t2) - commitMs, commitMs, Ms(t2, t3), Ms(t3, t4));
         return did;
     }
+
+    /// <summary>The last Step's parts, ms (4g step 4: placement spiked 6-9 ms with a 2 ms budget).</summary>
+    internal readonly record struct StepTiming(double Index, double Placement, double Commit, double Opacities, double Lines);
+    internal StepTiming Last;
 
     // GL JS Placement.stillRecent, without its zoom adjustment
     bool StillRecent(double now) => _committed && _commitTime + FadeDuration > now;

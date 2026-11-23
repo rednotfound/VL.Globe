@@ -72,7 +72,11 @@ internal sealed class FrameAnatomy
         sb.Append(')');
         long draws = draw.Serial - _drawSerial;
         double drawMs = draws == 1 ? draw.Total : 0;
-        if (draws == 1) sb.Append(c, $" + draw {draw.Total:F1} (place {draw.Place:F1}, upload {draw.Upload:F1}, submit {draw.Submit:F1}, {draw.Items} items)");
+        if (draws == 1)
+        {
+            var l = draw.Labels;
+            sb.Append(c, $" + draw {draw.Total:F1} (place {draw.Place:F1} [index {l.Index:F1}, placement {l.Placement:F1}, commit {l.Commit:F1}, opacities {l.Opacities:F1}, lines {l.Lines:F1}], upload {draw.Upload:F1}, submit {draw.Submit:F1}, {draw.Items} items)");
+        }
         else sb.Append(c, $" + {draws} draws");
         sb.Append(c, $" + outside {interval - _updateMs - drawMs:F1}");
         sb.Append(c, $"; GC paused {(gcPauseNow - _gcPause).TotalMilliseconds:F1} ms, gen0 +{gen0Now - _gen0}, gen2 +{gen2Now - _gen2}");
