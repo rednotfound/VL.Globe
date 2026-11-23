@@ -624,5 +624,7 @@ looked fine - "which makes one think it works". Two causes, estimated at 100 m h
   2026-11-23, before and after the day's changes - a shutdown race, not yet looked at.
 - **Seen in vvvv, before and after the per-draw buffer** (2026-11-23, the bench patch at
   #14.82/35.68778/139.76758/-78.6/54.5, still, 45 s after opening): 53 of 253k sampled pixels differ
-  between the two builds; no renderer error in the log. Both show a few 3D buildings drawn
-  translucent (ground through them; Marunouchi, Yaesu) - already so before the change, not looked at yet.
+  between the two builds; no renderer error in the log. Every 3D building is drawn at 80%: Liberty's
+  building-3d has `fill-extrusion-opacity: 0.8` (GL JS too, depth first, then colour on the nearest
+  face). I first called "a few" translucent - those had water or roads behind them; the user saw
+  that all are. Read the style's paint before calling a look a bug.
