@@ -146,7 +146,7 @@ internal sealed class StyleContext
 }
 
 /// <summary>Evaluates a style property value: a literal, a legacy function or an expression.</summary>
-internal static class Expression
+internal static partial class Expression
 {
     // A property that evaluates to null (a missing feature property, no matching stop) takes the
     // spec's default, as in MapLibre.
@@ -164,8 +164,7 @@ internal static class Expression
         => value is { } v && Evaluate(v, ctx, Kind.String) is { } r ? r as string ?? throw new StyleUnsupportedException("a string property that is not a string") : fallback;
 
     /// <summary>A layer filter, expression or legacy syntax: true when the feature is drawn.</summary>
-    public static bool Filter(JsonElement filter, StyleContext ctx)
-        => IsExpressionFilter(filter) ? Evaluate(filter, ctx, Kind.Any) is true : Legacy(filter, ctx);
+    public static bool Filter(JsonElement filter, StyleContext ctx) => CompiledFilter(filter).Test(ctx);
 
     // MapLibre's isExpressionFilter (style-spec feature_filter): which syntax a filter is written in
     static bool IsExpressionFilter(JsonElement f)
@@ -186,58 +185,6 @@ internal static class Expression
         }
     }
 
-    // the legacy filter syntax: ["==", key, value], ["in", key, v...], ["has", key], ["all", f...];
-    // the key "$type" is the geometry type, "$id" the feature id; comparisons never coerce
-    static bool Legacy(JsonElement f, StyleContext ctx)
-    {
-        // an expression inside a legacy tree ("any" of both kinds) is evaluated as one: GL JS renders
-        // such a filter with a warning (filter/mixed-legacy-expression)
-        if (IsExpressionFilter(f)) return Evaluate(f, ctx, Kind.Any) is true;
-        var op = f[0].GetString();
-        object? Key(string k) => k switch
-        {
-            "$type" => ctx.GeometryType,
-            "$id" => ctx.Id,
-            _ => ctx.Properties != null && ctx.Properties.TryGetValue(k, out var v) ? v : null,
-        };
-        bool Has(string k) => k switch
-        {
-            "$type" => true,
-            "$id" => ctx.Id != null,
-            _ => ctx.Properties?.ContainsKey(k) == true,
-        };
-        switch (op)
-        {
-            case "all": return f.EnumerateArray().Skip(1).All(x => Legacy(x, ctx));
-            case "any": return f.EnumerateArray().Skip(1).Any(x => Legacy(x, ctx));
-            case "none": return !f.EnumerateArray().Skip(1).Any(x => Legacy(x, ctx));
-            case "has": return Has(f[1].GetString()!);
-            case "!has": return !Has(f[1].GetString()!);
-            case "in":
-            case "!in":
-            {
-                var v = Key(f[1].GetString()!);
-                bool found = f.EnumerateArray().Skip(2).Any(x => Equals(FromJson(x, Kind.Any), v));
-                return op == "in" ? found : !found;
-            }
-            case "==": return Equals(Key(f[1].GetString()!), FromJson(f[2], Kind.Any));
-            case "!=": return !Equals(Key(f[1].GetString()!), FromJson(f[2], Kind.Any));
-            case "<": case "<=": case ">": case ">=":
-            {
-                var a = Key(f[1].GetString()!);
-                var b = FromJson(f[2], Kind.Any);
-                if (a is double x && b is double y) return op switch { "<" => x < y, "<=" => x <= y, ">" => x > y, _ => x >= y };
-                if (a is string s && b is string t)
-                {
-                    int c = string.CompareOrdinal(s, t);
-                    return op switch { "<" => c < 0, "<=" => c <= 0, ">" => c > 0, _ => c >= 0 };
-                }
-                return false;
-            }
-        }
-        throw new StyleUnsupportedException($"legacy filter '{op}'");
-    }
-
     /// <summary>True when the value depends on the feature (so it is evaluated per feature).</summary>
     public static bool IsFeatureDependent(JsonElement value) => value.ValueKind switch
     {
@@ -251,184 +198,8 @@ internal static class Expression
     // NumberArray: an interpolatable array of numbers (icon-offset, text-offset); otherwise as Any
     public enum Kind { Any, Number, Color, String, NumberArray }
 
-    public static object? Evaluate(JsonElement e, StyleContext ctx, Kind want)
-    {
-        switch (e.ValueKind)
-        {
-            case JsonValueKind.Number: return e.GetDouble();
-            case JsonValueKind.True: return true;
-            case JsonValueKind.False: return false;
-            case JsonValueKind.Null: return null;
-            case JsonValueKind.String:
-                return want == Kind.Color ? (object?)(StyleColor.Parse(e.GetString()!) ?? throw new StyleUnsupportedException($"colour '{e.GetString()}'")) : e.GetString();
-            case JsonValueKind.Object: return Function(e, ctx, want);
-            case JsonValueKind.Array:
-                if (e.GetArrayLength() == 0 || e[0].ValueKind != JsonValueKind.String) return e;   // a literal array
-                return Call(e, ctx, want);
-        }
-        throw new StyleUnsupportedException($"value {e.ValueKind}");
-    }
-
-    static object? Call(JsonElement e, StyleContext ctx, Kind want)
-    {
-        var op = e[0].GetString()!;
-        int n = e.GetArrayLength();
-        object? Arg(int i, Kind k = Kind.Any) => Evaluate(e[i], ctx, k);
-        switch (op)
-        {
-            case "literal": return e[1].ValueKind == JsonValueKind.String && want == Kind.Color ? Evaluate(e[1], ctx, want) : Evaluate(e[1], ctx, Kind.Any);
-            case "zoom": return ctx.Zoom;
-            case "get":
-                if (n != 2) throw new StyleUnsupportedException("get from an object");
-                return ctx.Properties != null && ctx.Properties.TryGetValue(e[1].GetString()!, out var p) ? FromValue(p, want) : null;
-            case "has": return ctx.Properties?.ContainsKey(e[1].GetString()!) == true;
-            case "geometry-type": return ctx.GeometryType;
-            case "id": return ctx.Id;
-            case "in":
-            {
-                var needle = Arg(1);
-                var haystack = Arg(2);
-                return haystack switch
-                {
-                    JsonElement a when a.ValueKind == JsonValueKind.Array => a.EnumerateArray().Any(x => Equals(FromJson(x, Kind.Any), needle)),
-                    string s => needle is string n2 && s.Contains(n2),
-                    null => false,
-                    _ => throw new StyleUnsupportedException("in on a non-array"),
-                };
-            }
-            case "global-state":
-                return ctx.GlobalState.TryGetValue(e[1].GetString()!, out var g) ? FromJson(g, want) : null;
-            case "string": case "number": case "boolean": case "to-number": case "to-string": case "to-boolean":
-                for (int i = 1; i < n; i++) { var v = Arg(i, want); if (v != null) return Coerce(op, v); }
-                return null;
-            // labels (4e): Liberty's text-field joins the Latin and the local name with concat
-            case "concat":
-            {
-                var sb = new System.Text.StringBuilder();
-                for (int i = 1; i < n; i++) { var v = Arg(i, Kind.Any); if (v != null) sb.Append((string)Coerce("to-string", v)!); }
-                return sb.ToString();
-            }
-            case "upcase": return Arg(1, Kind.String) is string up ? up.ToUpperInvariant() : null;
-            case "downcase": return Arg(1, Kind.String) is string down ? down.ToLowerInvariant() : null;
-            case "to-color":
-            case "coalesce":
-                for (int i = 1; i < n; i++)
-                {
-                    var v = op == "to-color" ? Arg(i, Kind.Color) : Arg(i, want);
-                    if (v is string s && (op == "to-color" || want == Kind.Color)) v = StyleColor.Parse(s);
-                    if (v != null) return v;
-                }
-                return null;
-            case "rgb": case "rgba":
-                return new StyleColor(ToNumber(Arg(1)) / 255, ToNumber(Arg(2)) / 255, ToNumber(Arg(3)) / 255, op == "rgba" ? ToNumber(Arg(4)) : 1);
-            case "+": { double s = 0; for (int i = 1; i < n; i++) s += ToNumber(Arg(i)); return s; }
-            case "*": { double s = 1; for (int i = 1; i < n; i++) s *= ToNumber(Arg(i)); return s; }
-            case "-": return n == 2 ? -ToNumber(Arg(1)) : ToNumber(Arg(1)) - ToNumber(Arg(2));
-            case "/": return ToNumber(Arg(1)) / ToNumber(Arg(2));
-            case "==": return Equals(Arg(1), Arg(2));
-            case "!=": return !Equals(Arg(1), Arg(2));
-            case "<": return Compare(Arg(1), Arg(2)) < 0;
-            case "<=": return Compare(Arg(1), Arg(2)) <= 0;
-            case ">": return Compare(Arg(1), Arg(2)) > 0;
-            case ">=": return Compare(Arg(1), Arg(2)) >= 0;
-            case "!": return Arg(1) is not true;
-            case "all": for (int i = 1; i < n; i++) if (Arg(i) is not true) return false; return true;
-            case "any": for (int i = 1; i < n; i++) if (Arg(i) is true) return true; return false;
-            case "case":
-                for (int i = 1; i + 1 < n; i += 2) if (Arg(i) is true) return Arg(i + 1, want);
-                return Arg(n - 1, want);
-            case "match":
-            {
-                var input = Arg(1);
-                for (int i = 2; i + 1 < n; i += 2)
-                {
-                    var labels = e[i].ValueKind == JsonValueKind.Array ? e[i].EnumerateArray().ToArray() : new[] { e[i] };
-                    if (labels.Any(l => Equals(FromJson(l, Kind.Any), input))) return Arg(i + 1, want);
-                }
-                return Arg(n - 1, want);
-            }
-            case "step":
-            {
-                double x = ToNumber(Arg(1));
-                int pick = 2;
-                for (int i = 3; i + 1 < n; i += 2) if (x >= e[i].GetDouble()) pick = i + 1; else break;
-                return Arg(pick, want);
-            }
-            case "interpolate":
-            {
-                var how = e[1];
-                var kind = how[0].GetString();
-                double b = kind switch
-                {
-                    "linear" => 1,
-                    "exponential" => how[1].GetDouble(),
-                    _ => throw new StyleUnsupportedException($"interpolate {kind}"),
-                };
-                double x = ToNumber(Arg(2));
-                var stops = new List<(double input, JsonElement output)>();
-                for (int i = 3; i + 1 < n; i += 2) stops.Add((e[i].GetDouble(), e[i + 1]));
-                return Interpolate(stops, x, b, s => Evaluate(s, ctx, want), want);
-            }
-        }
-        throw new StyleUnsupportedException($"expression '{op}'");
-    }
-
-    // legacy functions: {stops, base, property, type, default, colorSpace}
-    static object? Function(JsonElement f, StyleContext ctx, Kind want)
-    {
-        if (f.TryGetProperty("colorSpace", out var cs) && cs.GetString() != "rgb")
-            throw new StyleUnsupportedException($"colorSpace {cs.GetString()}");
-        double b = f.TryGetProperty("base", out var bb) ? bb.GetDouble() : 1;
-        bool interpolatable = want is Kind.Number or Kind.Color or Kind.NumberArray;
-        string type = f.TryGetProperty("type", out var t) ? t.GetString()! : interpolatable ? "exponential" : "interval";
-        bool isProperty = f.TryGetProperty("property", out var prop);
-        object? Default() => f.TryGetProperty("default", out var d) ? Evaluate(d, ctx, want) : null;
-
-        if (type == "identity")
-        {
-            if (!isProperty) return ctx.Zoom;
-            return ctx.Properties != null && ctx.Properties.TryGetValue(prop.GetString()!, out var iv) ? FromValue(iv, want) ?? Default() : Default();
-        }
-        if (!f.TryGetProperty("stops", out var stopsJson)) throw new StyleUnsupportedException("a function without stops");
-        var stops = stopsJson.EnumerateArray().Select(s => (key: s[0], output: s[1])).ToList();
-
-        // zoom-and-property: evaluate the property function at each zoom, then interpolate over zoom
-        if (stops.Count > 0 && stops[0].key.ValueKind == JsonValueKind.Object)
-        {
-            var byZoom = stops.GroupBy(s => s.key.GetProperty("zoom").GetDouble())
-                .Select(g => (zoom: g.Key, value: EvaluateStops(g.Select(s => (s.key.GetProperty("value"), s.output)).ToList(), PropertyInput(), type, b, ctx, want)))
-                .ToList();
-            return InterpolateValues(byZoom, ctx.Zoom, 1, want);   // zoom curves of composite functions use base 1 between zoom groups
-        }
-        return EvaluateStops(stops, isProperty ? PropertyInput() : ctx.Zoom, type, b, ctx, want) ?? Default();
-
-        object? PropertyInput() => ctx.Properties != null && ctx.Properties.TryGetValue(prop.GetString()!, out var pv) ? pv : null;
-    }
-
-    static object? EvaluateStops(List<(JsonElement key, JsonElement output)> stops, object? input, string type, double b, StyleContext ctx, Kind want)
-    {
-        if (input is null) return null;
-        switch (type)
-        {
-            case "categorical":
-                foreach (var (key, output) in stops) if (Equals(FromJson(key, Kind.Any), input)) return Evaluate(output, ctx, want);
-                return null;
-            case "interval":
-            {
-                if (input is not double x) return null;
-                var pick = stops[0].output;
-                foreach (var (key, output) in stops) if (x >= key.GetDouble()) pick = output; else break;
-                return Evaluate(pick, ctx, want);
-            }
-            case "exponential":
-                if (input is not double xe) return null;
-                return Interpolate(stops.Select(s => (s.key.GetDouble(), s.output)).ToList(), xe, b, o => Evaluate(o, ctx, want), want);
-        }
-        throw new StyleUnsupportedException($"function type {type}");
-    }
-
-    static object? Interpolate(List<(double input, JsonElement output)> stops, double x, double b, Func<JsonElement, object?> eval, Kind want)
-        => InterpolateValues(stops.Select(s => (s.input, eval(s.output))).ToList(), x, b, want);
+    /// <summary>An expression's value: compiled on first use (StyleExpressionCompiler.cs), then evaluated without walking its JSON.</summary>
+    public static object? Evaluate(JsonElement e, StyleContext ctx, Kind want) => Compiled(e).Eval(ctx, want);
 
     static double[]? Numbers(object? v) => v switch
     {
@@ -437,27 +208,6 @@ internal static class Expression
         IReadOnlyList<object?> l when l.All(e => e is double) => l.Select(e => (double)e!).ToArray(),
         _ => null,
     };
-
-    static object? InterpolateValues(List<(double input, object? value)> stops, double x, double b, Kind want)
-    {
-        if (x <= stops[0].input) return stops[0].value;
-        if (x >= stops[^1].input) return stops[^1].value;
-        int i = 1;
-        while (stops[i].input < x) i++;
-        var (x0, v0) = stops[i - 1];
-        var (x1, v1) = stops[i];
-        double d = x1 - x0, p = x - x0;
-        double t = d == 0 ? 0 : b == 1 ? p / d : (Math.Pow(b, p) - 1) / (Math.Pow(b, d) - 1);
-        return (v0, v1) switch
-        {
-            (double a, double c) => a + (c - a) * t,
-            (StyleColor a, StyleColor c) => StyleColor.Lerp(a, c, t),
-            // arrays of numbers (icon-offset, text-offset) element by element, as GL JS's interpolate.array
-            _ when Numbers(v0) is { } a && Numbers(v1) is { } c && a.Length == c.Length
-                => a.Select((ai, k) => (object?)(ai + (c[k] - ai) * t)).ToList(),
-            _ => throw new StyleUnsupportedException($"interpolating {v0?.GetType().Name}"),
-        };
-    }
 
     static object? FromValue(object? v, Kind want) => v is string s && want == Kind.Color ? StyleColor.Parse(s) : v;
 
