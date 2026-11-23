@@ -551,3 +551,11 @@ looked fine - "which makes one think it works". Two causes, estimated at 100 m h
   having been the first suspect). Decoded tiles made of a few arrays halved what was promoted and
   the misses fell to 0.8-1.6%. In .NET, an object that outlives one gen0 interval (~50 ms here) is
   what costs; what dies young is nearly free.
+- **Tile buffers are made on the workers (2026-11-23, 4g step 4).** With GC no longer the cause, a
+  tile's upload in Update (5-8 ms) was in most missed frames. D3D11 devices are free-threaded unless
+  created `SingleThreaded`; Stride never sets it, the host does - vvvv 7.4's flags read `None` at run
+  time (`Globe device:` log line). Stride 4.2.1's `Buffer.New` with data touches only the device; its
+  resource set is locked. Not `SetData`: that needs the render thread's command list. A job dropped
+  while running must release its buffers (`Drop`'s continuation) - the collector does not.
+- **Git Bash `sed -i` turned GlobeNode.cs (CRLF) into LF again** the same day - CLAUDE.md warns of
+  it. Edit CRLF files only by byte-preserving scripts.

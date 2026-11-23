@@ -24,7 +24,8 @@ internal sealed class GpuVectorTiles : IDisposable
 
     sealed class Entry
     {
-        public Task<(VectorBucket? bucket, bool complete, string[] missing)>? Job;
+        // built and uploaded on a worker (4g step 4): the buffers come made
+        public Task<(Built? built, VectorBucket? bucket, bool complete, string[] missing)>? Job;
         public Built? Built;
         public string[] Missing = Array.Empty<string>();   // the tile was not here: built again once it is
         public bool Incomplete;   // built while some of it (a label's glyph range) was on its way: built again once it is
@@ -51,9 +52,7 @@ internal sealed class GpuVectorTiles : IDisposable
     readonly VectorRenderer.Frame[] _frames = { new(), new() };
     // the background grids, by tile: no data in them, built at once on this thread
     readonly Dictionary<TileKey, (Built built, int lastUsed)> _backgrounds = new();
-    // Uploads by bytes, not by tiles: four street-level tiles arriving together were tens of MB in one
-    // frame. At least one tile a frame goes up whatever its size.
-    const long UploadBytesPerFrame = 8L << 20;
+    // (Uploads were limited to 8 MB a frame here; since 4g step 4 the workers make the buffers.)
     // Kept to come back to: zooming in and out again rebuilt what had just been seen (the user,
     // 2026-11-22: "每次zoom in zoom out都会重新加载"). The log showed why - 760-900 MB in use tilted over
     // Tokyo against a 768 MB budget, so every tile not drawn this frame went at once, oldest first;
@@ -159,9 +158,8 @@ internal sealed class GpuVectorTiles : IDisposable
         result.CameraToCenter = (float)cameraToCenter;
         result.Radius = radius;
         result.Eye = eye;
-        long budget = UploadBytesPerFrame;
         UploadedBytes = 0; Uploads = 0;
-        foreach (var e in _entries.Values) Finish(device, e, ref budget);
+        foreach (var e in _entries.Values) Finish(e);
         Lap(0);
 
         // ROADMAP 4f step 3: the fog's reach, in globe radii. A tilted view drew the tiles a little way off
@@ -245,7 +243,12 @@ internal sealed class GpuVectorTiles : IDisposable
                                 var missing = new List<string>();
                                 var bucket = VectorBucketBuilder.Build(doc, source, built, false, vk, fetch, missing, out bool complete,
                                     overscale: Math.Max(1, scale));
-                                return (bucket, complete, missing.ToArray());
+                                // the buffers made here, not in Update: 5-8 ms of the frames still missed
+                                // (2026-11-23) was a tile's upload. D3D11's device is free-threaded (vvvv's
+                                // creation flags: None, logged) and Stride's buffer creation touches only the
+                                // device, its resource list under a lock (read in Stride 4.2.1's source)
+                                Built? made = bucket is null || _disposed ? null : GpuTile.Upload(device, bucket);
+                                return (made, bucket, complete, missing.ToArray());
                             });
                             _running++;
                         }
@@ -373,39 +376,28 @@ internal sealed class GpuVectorTiles : IDisposable
         return e;
     }
 
-    void Finish(GraphicsDevice device, Entry e, ref long budget)
+    void Finish(Entry e)
     {
         if (e.Job is not { IsCompleted: true } job) return;
-        var bucket0 = job.IsCompletedSuccessfully ? job.Result.bucket : null;
-        long size = bucket0 is null ? 0 : (long)bucket0.VertexCount * VectorVertex.Size + bucket0.IndexCount * 2L;
-        if (size > 0 && budget <= 0) return;   // next frame
         e.Job = null;
         _running--;
         if (job.IsFaulted) { e.Missing = Array.Empty<string>(); Set(e, Empty(new VectorBucket())); return; }   // not retried in a loop
-        var (bucket, complete, missing) = job.Result;
-        if (bucket is null)
+        var (made, bucket, complete, missing) = job.Result;
+        if (bucket is null || made is null)
         {
             if (!complete) { e.Missing = missing; return; }
             Set(e, Empty(new VectorBucket()));   // nothing there
             return;
         }
-        budget -= size;
         _built++;
         _buildMs += (bucket.Ms - _buildMs) / Math.Min(_built, 50);
         e.Incomplete = !complete;
         e.Missing = complete ? Array.Empty<string>() : missing;
-        Set(e, Upload(device, bucket));
+        if (made.Vertices is not null) { UploadedBytes += made.Bytes; Uploads++; }
+        Set(e, made);
     }
 
     static Built Empty(VectorBucket b) => GpuTile.Empty(b);
-
-    Built Upload(GraphicsDevice device, VectorBucket bucket)
-    {
-        long bytes = (long)bucket.VertexCount * VectorVertex.Size + bucket.IndexCount * 2L;
-        var tile = GpuTile.Upload(device, bucket);
-        if (tile.Vertices is not null) { UploadedBytes += bytes; Uploads++; }
-        return tile;
-    }
 
     void Set(Entry e, Built built)
     {
@@ -420,7 +412,12 @@ internal sealed class GpuVectorTiles : IDisposable
     {
         var e = _entries[k];
         if (e.Built is { } b) { _tilesBuilt--; _gpuBytes -= b.Bytes; b.Dispose(); }
-        if (e.Job != null) _running--;   // it finishes unseen; its arrays go to the collector
+        if (e.Job is { } job)
+        {
+            _running--;
+            // it finishes unseen: its arrays go to the collector, its buffers (made on the worker) are released
+            job.ContinueWith(static t => { if (t.IsCompletedSuccessfully) t.Result.built?.Dispose(); }, TaskScheduler.Default);
+        }
         _entries.Remove(k);
     }
 
@@ -546,7 +543,7 @@ internal sealed class GpuVectorTiles : IDisposable
     {
         if (_backgrounds.TryGetValue(key, out var b)) { _backgrounds[key] = (b.built, _frame); return b.built; }
         var bucket = VectorBucketBuilder.BackgroundBucket(key);
-        var built = Upload(device, bucket);
+        var built = GpuTile.Upload(device, bucket);
         _backgrounds[key] = (built, _frame);
         return built;
     }
@@ -575,8 +572,11 @@ internal sealed class GpuVectorTiles : IDisposable
         }
     }
 
+    volatile bool _disposed;   // a job still running then makes no buffers
+
     public void Dispose()
     {
+        _disposed = true;
         _renderer.Current = null;
         foreach (var k in _entries.Keys.ToList()) Drop(k);
         foreach (var b in _backgrounds.Values) b.built.Dispose();

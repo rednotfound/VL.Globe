@@ -89,6 +89,21 @@ public sealed class GlobeNode : IDisposable
     HashSet<TileKey> _wantedSet = new();
     readonly ConcurrentQueue<(TileKey key, byte[]? bytes, GlobeTileSource source)> _arrived = new();
     GraphicsDevice? _device;
+    bool _deviceLogged;
+
+    // ROADMAP 4g step 4: may tile buffers be made on the workers? D3D11's device is free-threaded unless
+    // created SingleThreaded - which Stride never sets itself, the host decides (read from Stride
+    // 4.2.1's source, 2026-11-23). So the flags vvvv's device has, read once, by reflection (no SharpDX reference)
+    static string DeviceDescription(GraphicsDevice device)
+    {
+        try
+        {
+            var native = SharpDXInterop.GetNativeDevice(device);
+            var flags = native?.GetType().GetProperty("CreationFlags")?.GetValue(native);
+            return $"{GraphicsDevice.Platform} {device.Features.CurrentProfile}, creation flags {flags ?? "unknown"}";
+        }
+        catch (Exception e) { return $"{GraphicsDevice.Platform}, flags not read: {e.Message}"; }
+    }
     GlobeTileSource? _source;
     int _frame, _requests;
     long _bytes;
@@ -296,6 +311,7 @@ public sealed class GlobeNode : IDisposable
         status = "";
 
         _device ??= GetDevice();
+        if (_device is not null && !_deviceLogged) { _deviceLogged = true; _logger.LogInformation("Globe device: {Device}", DeviceDescription(_device)); }
         if (_device is not null) CreateArrived(_device);
         Stage("arrived");
 

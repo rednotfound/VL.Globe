@@ -476,6 +476,14 @@ Sum either log up with `tools/Summarize-Perf.py <log> --from <pan 1 begins> --to
   and 0.8%** (two runs), worst frame 28-31 ms. GL JS: 0%.
 - Left: ~17 collections a second (166 MB/s, most of it symbol layout: ~10 KB a label - shaping's
   object a glyph) and 7 MB/s still promoted. Next: what is still promoted, then shaping's glyphs.
+- Then the misses left were no longer GC's: frames of 20-24 ms (one 31), Update + Draw + a little
+  pause. A tile's buffers made in Update were 5-8 ms of six of eleven. **Now the workers make them**
+  (`GpuTile.Upload` in the job): D3D11's device is free-threaded unless created `SingleThreaded` -
+  vvvv's flags are `None` (logged, `Globe device:`) - and Stride 4.2.1's buffer creation touches only
+  the device, its resource list under a lock (read in its source). A job dropped while running
+  releases what it made. Misses 0.8%, **worst frame 24 ms** (was 28-34), Update under 5 ms in all.
+- Left in the missed frames: label placement spikes of 6-9 ms (its budget is 2 ms a frame), submit
+  6-11 ms (3300 draws), GC pauses of 2-6 ms. Next: the placement spikes.
 
 ### 5. Navigation
 
