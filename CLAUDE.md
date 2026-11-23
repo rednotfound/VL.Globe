@@ -44,7 +44,8 @@ Guidance for Claude Code working in this repository.
    **Next: ROADMAP 4g, as smooth as GL JS (the user, 2026-11-22: "远远不如人家那么流畅，还是卡卡的") -
    step 2 built (bytes halved, misses not); step 4 found the cause - workers' garbage (gen0 pauses),
    the style expressions interpreted per feature. Built: expressions compiled once, decoded tiles as a
-   few arrays - bench misses 3-5% -> 0.8-1.6% (GL JS 0%). Next: what is still promoted (7 MB/s), shaping's glyphs.**
+   few arrays, buffers made on the workers, off-screen line labels not walked, parameters set through
+   accessors - bench misses 3-5% -> 0.0-0.1%, worst frame 19-20 ms (GL JS 0%, 17). Next: the user's judgement; tilt/zoom benches.**
    Research: [docs/RESEARCH-0.1.md](docs/RESEARCH-0.1.md), [docs/RESEARCH-VECTOR.md](docs/RESEARCH-VECTOR.md).
 2. Read **[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)** — what exists and why.
 3. Read **[NOTES.md](NOTES.md)** — every failure so far, before touching the same code.

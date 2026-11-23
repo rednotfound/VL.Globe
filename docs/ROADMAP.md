@@ -492,6 +492,12 @@ Sum either log up with `tools/Summarize-Perf.py <log> --from <pan 1 begins> --to
 - Left: GC pauses of 4-7.6 ms (2-4 collections in one frame, ~17 a second), submit 5-13 ms (3300
   draws), the opacities rewritten for every label tile when a tile comes (5.4 ms once; GL JS skips
   unchanged buckets).
+- Submit taken apart (state and parameters / Apply / DrawIndexed, vector and text apart): of ~5.5 ms,
+  **~4 were setting the vector items' parameters** - Stride's `Set(key, value)` finds the key in the
+  collection's layout every call; Apply 0.5 ms, DrawIndexed 0.1. Now set through accessors
+  (`GetAccessor`, Stride's own renderers' way), fetched again each frame. **Submit 5.5 -> ~2 ms mean.**
+- **Bench: 0.1% (one frame) and 0.0%, worst frame 20 and 19 ms - GL JS's 0% and 17 ms.** On this pan
+  the gap the user felt is closed. Not yet judged by the user; not yet benched tilting or zooming.
 
 ### 5. Navigation
 

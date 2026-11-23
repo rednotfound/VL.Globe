@@ -182,6 +182,7 @@ internal sealed class VectorRenderer : IGraphicsRendererBase
         EffectInstance circleEffect, Matrix view, Matrix projection, float viewHeight, Frame frame, float lift, bool linearize, bool flat)
     {
         ItemsDrawn = 0;
+        _stamp++;   // every accessor fetched again this frame, before any parameter is set
         AtlasTexture.Flush(commandList, frame.Atlases);
         EnsurePipelines(commandList.GraphicsDevice);
         if (_circleKeys.Count == 0)
@@ -525,21 +526,45 @@ internal sealed class VectorRenderer : IGraphicsRendererBase
     // and hashed a frame (ROADMAP 4g step 4, found 2026-11-23 when two more per-draw parameters cost
     // the frame 1.3 ms). The names are literals, one object each: looked up by reference. The effect's
     // keys are read once (the first Draw), so a key found stays right.
-    readonly Dictionary<object, ParameterKey?> _resolved = new(ReferenceEqualityComparer.Instance),
+    // Then (the same day) a missed frame's submit taken apart: of ~5.5 ms, ~4 were the vector items'
+    // parameters - Set(key, value) finds the key in the collection's layout every call. Stride's own
+    // renderers hold an accessor (GetAccessor: the slot's place) and set through it; so do we, the
+    // accessor fetched again each frame (a recompiled effect lays its parameters out anew).
+    readonly Dictionary<object, Slot?> _resolved = new(ReferenceEqualityComparer.Instance),
         _symbolResolved = new(ReferenceEqualityComparer.Instance), _circleResolved = new(ReferenceEqualityComparer.Instance);
+    int _stamp;   // DrawFrame's count: an accessor older than this frame is fetched again
 
-    static void SetBy<T>(ParameterCollection parameters, Dictionary<string, ParameterKey> keys, Dictionary<object, ParameterKey?> resolved,
+    abstract class Slot { }
+
+    sealed class Slot<T> : Slot where T : struct
+    {
+        public required ValueParameterKey<T> Key;
+        public ValueParameter<T> Accessor;
+        public ParameterCollection? For;
+        public int Stamp = -1;
+    }
+
+    void SetBy<T>(ParameterCollection parameters, Dictionary<string, ParameterKey> keys, Dictionary<object, Slot?> resolved,
         string prefix, string name, T value) where T : struct
     {
-        if (!resolved.TryGetValue(name, out var key))
+        if (!resolved.TryGetValue(name, out var slot))
         {
             if (keys.Count == 0) return;   // the effect not read yet: nothing to set, nothing remembered
-            resolved[name] = key = keys.TryGetValue(prefix + name, out var found) ? found : null;
+            if (!keys.TryGetValue(prefix + name, out var found)) slot = null;   // compiled away: unused
+            else if (found is ValueParameterKey<T> typed) slot = new Slot<T> { Key = typed };
+            else throw new InvalidOperationException($"{prefix}{name} is a {found.GetType().Name}, set as {typeof(T).Name}");
+            resolved[name] = slot;
             // a name made at run time would be a new object every call, and this table would grow
             if (resolved.Count > 256) throw new InvalidOperationException($"{prefix}{name}: parameter names must be string literals");
         }
-        if (key is null) return;   // compiled away: unused
-        if (key is ValueParameterKey<T> typed) parameters.Set(typed, value);
-        else throw new InvalidOperationException($"{prefix}{name} is a {key.GetType().Name}, set as {typeof(T).Name}");
+        if (slot is null) return;
+        if (slot is not Slot<T> s) throw new InvalidOperationException($"{prefix}{name} set as {typeof(T).Name}, first as another type");
+        if (s.Stamp != _stamp || !ReferenceEquals(s.For, parameters))
+        {
+            s.Accessor = parameters.GetAccessor(s.Key);
+            s.For = parameters;
+            s.Stamp = _stamp;
+        }
+        parameters.Set(s.Accessor, value);
     }
 }

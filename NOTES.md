@@ -559,3 +559,8 @@ looked fine - "which makes one think it works". Two causes, estimated at 100 m h
   while running must release its buffers (`Drop`'s continuation) - the collector does not.
 - **Git Bash `sed -i` turned GlobeNode.cs (CRLF) into LF again** the same day - CLAUDE.md warns of
   it. Edit CRLF files only by byte-preserving scripts.
+- **Stride's `ParameterCollection.Set(key, value)` was 4 of a frame's 5.5 ms of submit (2026-11-23).**
+  It finds the key in the layout on every call; 3000 draws x a dozen parameters. Set through an
+  accessor (`GetAccessor` once, then `Set(accessor, value)`) - fetched again each frame, before the
+  first set, since a recompiled effect lays its parameters out anew. Submit ~2 ms. Draws themselves
+  (DrawIndexed 0.1 ms, Apply 0.5 ms for 3000) were never the cost; measure before batching.
