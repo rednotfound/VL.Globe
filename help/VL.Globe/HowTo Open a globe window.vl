@@ -5,6 +5,11 @@
   <NugetDependency Id="OteDC6GtJHFDwjVzqmJ9YP" Location="VL.Globe" Version="0.0.0" />
   <Patch Id="LnXvmTkyV2lzzsSF6LIGX8">
     <Canvas Id="AortMCmRJgNwXoENVounzO" DefaultCategory="Main" CanvasType="FullCategory" />
+    <!--
+
+    ************************ Application ************************
+
+-->
     <Node Name="Application" Bounds="100,100" Id="TJjDXfynzyGABZWFFEeViZ">
       <p:NodeReference>
         <Choice Kind="ContainerDefinition" Name="Process" />
@@ -12,7 +17,7 @@
       </p:NodeReference>
       <Patch Id="RuJrNAwbVyXrZh0KCVwZZg">
         <Canvas Id="M5X1OMpV3x5vpzYw0Eicuo" CanvasType="Group">
-          <Pad Id="Bqf2fEJbOhV50Xj08HZpnl" Bounds="60,40,460,34" ShowValueBox="true" isIOBox="true" Value="Open a globe window">
+          <Pad Id="Bqf2fEJbOhV50Xj08HZpnl" Bounds="60,40,460,41" ShowValueBox="true" isIOBox="true" Value="Open a globe window">
             <p:TypeAnnotation LastCategoryFullName="Primitive" LastDependency="VL.CoreLib.vl">
               <Choice Kind="TypeFlag" Name="String" />
             </p:TypeAnnotation>
@@ -30,7 +35,7 @@
               <p:stringtype p:Assembly="VL.Core" p:Type="VL.Core.StringType">Comment</p:stringtype>
             </p:ValueBoxSettings>
           </Pad>
-          <Pad Id="SwoX2dSx9tFUuiGeat2o3p" Comment="Enabled" Bounds="60,150,60,30" ShowValueBox="true" isIOBox="true" Value="False">
+          <Pad Id="SwoX2dSx9tFUuiGeat2o3p" Comment="Enabled" Bounds="317,300,60,30" ShowValueBox="true" isIOBox="true" Value="false">
             <p:TypeAnnotation LastCategoryFullName="Primitive" LastDependency="VL.CoreLib.vl">
               <Choice Kind="TypeFlag" Name="Boolean" />
             </p:TypeAnnotation>
@@ -38,7 +43,7 @@
               <p:buttonmode p:Assembly="VL.UI.Forms" p:Type="VL.HDE.PatchEditor.Editors.ButtonModeEnum">Toggle</p:buttonmode>
             </p:ValueBoxSettings>
           </Pad>
-          <Pad Id="CNLougM7bA1SqTcbRXdECT" Bounds="130,155,330,20" ShowValueBox="true" isIOBox="true" Value="&lt; off on open: nothing is fetched until you agree">
+          <Pad Id="CNLougM7bA1SqTcbRXdECT" Bounds="441,304,330,20" ShowValueBox="true" isIOBox="true" Value="&lt; off on open: nothing is fetched until you agree">
             <p:TypeAnnotation LastCategoryFullName="Primitive" LastDependency="VL.CoreLib.vl">
               <Choice Kind="TypeFlag" Name="String" />
             </p:TypeAnnotation>
@@ -47,49 +52,73 @@
               <p:stringtype p:Assembly="VL.Core" p:Type="VL.Core.StringType">Comment</p:stringtype>
             </p:ValueBoxSettings>
           </Pad>
-          <Node Bounds="60,200,100,19" Id="Shp8ldnMYgHVmevxwWP6zH">
+          <Node Bounds="145,200,100,19" Id="Shp8ldnMYgHVmevxwWP6zH">
             <p:NodeReference LastCategoryFullName="Globe.Layers" LastDependency="VL.Globe.vl">
               <Choice Kind="NodeFlag" Name="Node" Fixed="true" />
               <Choice Kind="ProcessAppFlag" Name="OpenStreetMap" />
             </p:NodeReference>
             <Pin Id="PyDvZXlNY1BSQGxHSuXtMC" Name="Output" Kind="OutputPin" />
+            <Pin Id="OgsCRD5A1xgNcfPnt3tIm4" Name="Enabled" Kind="InputPin" />
           </Node>
-          <Node Bounds="60,250,260,19" Id="NuPByqQL3KICydCVEZA5RU">
+          <Node Bounds="60,380,260,19" Id="NuPByqQL3KICydCVEZA5RU">
             <p:NodeReference LastCategoryFullName="Globe" LastDependency="VL.Globe.vl">
               <Choice Kind="NodeFlag" Name="Node" Fixed="true" />
               <Choice Kind="ProcessAppFlag" Name="GlobeWindow" />
               <PinReference Kind="InputPin" Name="Bounds" />
               <PinReference Kind="InputPin" Name="Bound to Document" />
             </p:NodeReference>
+            <Pin Id="MzpRy6rIV9CQIC7lQ7lNR1" Name="Node Context" Kind="InputPin" IsHidden="true" />
             <Pin Id="A8EWcJCu6jBtNz5HJyuXYF" Name="Bounds" Kind="InputPin" DefaultValue="926, 114, 800, 800" />
             <Pin Id="EZP6Hw2TiMLIECaLHcOXTZ" Name="Bound to Document" Kind="InputPin" DefaultValue="True" />
             <Pin Id="KIyc1orFsTdwRu5d2OOz1h" Name="Input" Kind="InputPin" />
             <Pin Id="jzs8jaDkjQWL3Ecs0HniBx" Name="Camera" Kind="InputPin" />
-            <Pin Id="EqRmEftGJHv6mUOu2NIk35" Name="Enabled" Kind="InputPin" />
             <Pin Id="Fj5M1fIY4WK9B8oSi8VWna" Name="Title" Kind="InputPin" DefaultValue="Open a globe window" />
             <Pin Id="XUGfzeJMH8NHH7wgaINy2z" Name="View" Kind="OutputPin" />
+            <Pin Id="LlTMtJzruXMN3T9nO4ZnSh" Name="Cursor" Kind="OutputPin" />
             <Pin Id="A1tNWPIOJ84reFj6EI8zf3" Name="Attribution" Kind="OutputPin" />
             <Pin Id="MytfgT3q6LPQdKV84VjHI7" Name="Status" Kind="OutputPin" />
+            <Pin Id="Hji1fIB8LXdMEqKEjFuOW0" Name="Background" Kind="InputPin" />
+            <Pin Id="LFure0pM58qLV3dl0cIryL" Name="Scene" Kind="InputPin" IsHidden="true" />
+            <Pin Id="EqRmEftGJHv6mUOu2NIk35" Name="Enabled" Kind="InputPin" />
           </Node>
-          <Node Bounds="350,210,180,19" Id="OTUXcMILJFbi8xIvSBwQOO">
+          <Node Bounds="188,260,225,19" Id="OTUXcMILJFbi8xIvSBwQOO">
             <p:NodeReference LastCategoryFullName="Globe" LastDependency="VL.Globe.vl">
               <Choice Kind="NodeFlag" Name="Node" Fixed="true" />
               <Choice Kind="ProcessAppFlag" Name="GlobeCamera" />
             </p:NodeReference>
+            <Pin Id="InLWfm7WxCPMoeuPDYFnVa" Name="Node Context" Kind="InputPin" IsHidden="true" />
             <Pin Id="uXppcrSXU176W33VFoF4FB" Name="Initial Longitude" Kind="InputPin" DefaultValue="139.7" />
             <Pin Id="7fDn1abrDUQftwH5MeDRmi" Name="Initial Latitude" Kind="InputPin" DefaultValue="35.68" />
             <Pin Id="tmDXJTHBLv47aF1PvrCNg0" Name="Initial Height" Kind="InputPin" DefaultValue="12000000" />
             <Pin Id="1ExqCtgfSHg0G3FH85Hw0X" Name="Output" Kind="OutputPin" />
+            <Pin Id="JxbH97pf5q5LQ6Zwopdqy2" Name="Initial Heading" Kind="InputPin" />
+            <Pin Id="RV2PnrLltp4PZmLKuai1OG" Name="Initial Tilt" Kind="InputPin" />
+            <Pin Id="QvvI2SbGUdwQEkuzg7xWkj" Name="Min Height" Kind="InputPin" />
+            <Pin Id="Ion7u7Go0PZM5tU9iJ3mhu" Name="Max Height" Kind="InputPin" />
+            <Pin Id="Kw98308dcsbQVY2rHvLeYa" Name="Field Of View" Kind="InputPin" />
+            <Pin Id="EdK2RDpxyjcMi0Xp7Xwvzg" Name="Max Tilt" Kind="InputPin" />
+            <Pin Id="LN0qBiXPRpcMBIsGwMXBYV" Name="Radius" Kind="InputPin" />
+            <Pin Id="PyIMonIlryJLGY3anWkEM5" Name="Mouse" Kind="InputPin" IsHidden="true" />
+            <Pin Id="HPWBJz0ZMJXLPSppMPMHFu" Name="Screen Height" Kind="InputPin" IsHidden="true" />
+            <Pin Id="BI49Ch5BmNkLN1CBssB30G" Name="Reset" Kind="InputPin" />
+            <Pin Id="JWyfuagl9whNCbmWFOkGsr" Name="Enabled" Kind="InputPin" />
+            <Pin Id="ItEiYTut82qOms0i7SKq4k" Name="View" Kind="OutputPin" />
           </Node>
-          <Node Bounds="350,290,110,19" Id="FryRPfkKVSrusG1IwhXSY3">
+          <Node Bounds="60,440,125,19" Id="FryRPfkKVSrusG1IwhXSY3">
             <p:NodeReference LastCategoryFullName="Globe" LastDependency="VL.Globe.vl">
               <Choice Kind="NodeFlag" Name="Node" Fixed="true" />
               <Choice Kind="OperationCallFlag" Name="GlobeViewInfo" />
             </p:NodeReference>
             <Pin Id="YNHHc5cmoRq6qcXtD4wFoq" Name="View" Kind="InputPin" />
+            <Pin Id="HKFutafdJZPPbp6W2zl029" Name="Center Longitude" Kind="OutputPin" />
+            <Pin Id="OgmnKILQTkSPkLKaAEF7pg" Name="Center Latitude" Kind="OutputPin" />
             <Pin Id="PRGd9oL1BRrTeMpNkB9nsc" Name="Height" Kind="OutputPin" />
+            <Pin Id="Fko8oCJ13TxNUQzOsZyKjK" Name="Heading" Kind="OutputPin" />
+            <Pin Id="Ru8OSR9JQItP1dSwWPcxT6" Name="Tilt" Kind="OutputPin" />
+            <Pin Id="OGuUpMhSTDAMZg7O4QE8qN" Name="Resolution" Kind="OutputPin" />
+            <Pin Id="Gf31HGIWbKZQHAn0qqrnY9" Name="Zoom" Kind="OutputPin" />
           </Node>
-          <Pad Id="JhU0SwUNS01WixDD688Vrg" Bounds="340,250,320,20" ShowValueBox="true" isIOBox="true" Value="&lt; a window with its own camera: drag moves, the wheel zooms">
+          <Pad Id="JhU0SwUNS01WixDD688Vrg" Bounds="352,389,394,19" ShowValueBox="true" isIOBox="true" Value="&lt; a window with its own camera: drag moves, the wheel zooms">
             <p:TypeAnnotation LastCategoryFullName="Primitive" LastDependency="VL.CoreLib.vl">
               <Choice Kind="TypeFlag" Name="String" />
             </p:TypeAnnotation>
@@ -98,12 +127,12 @@
               <p:stringtype p:Assembly="VL.Core" p:Type="VL.Core.StringType">Comment</p:stringtype>
             </p:ValueBoxSettings>
           </Pad>
-          <Pad Id="F0e6Zr2jZj93PDaKgJgiMF" Comment="Height" Bounds="60,300,90,15" ShowValueBox="true" isIOBox="true">
+          <Pad Id="F0e6Zr2jZj93PDaKgJgiMF" Comment="Height" Bounds="102,491,90,15" ShowValueBox="true" isIOBox="true">
             <p:TypeAnnotation LastCategoryFullName="Primitive" LastDependency="VL.CoreLib.vl">
               <Choice Kind="TypeFlag" Name="Float64" />
             </p:TypeAnnotation>
           </Pad>
-          <Pad Id="LYctryPuAu0GsthnT6amw3" Bounds="160,300,200,20" ShowValueBox="true" isIOBox="true" Value="&lt; metres above the ground">
+          <Pad Id="LYctryPuAu0GsthnT6amw3" Bounds="160,430,200,20" ShowValueBox="true" isIOBox="true" Value="&lt; metres above the ground">
             <p:TypeAnnotation LastCategoryFullName="Primitive" LastDependency="VL.CoreLib.vl">
               <Choice Kind="TypeFlag" Name="String" />
             </p:TypeAnnotation>
@@ -112,12 +141,12 @@
               <p:stringtype p:Assembly="VL.Core" p:Type="VL.Core.StringType">Comment</p:stringtype>
             </p:ValueBoxSettings>
           </Pad>
-          <Pad Id="GdgDhiI7En2smyMw1GUDej" Comment="Attribution" Bounds="60,340,240,15" ShowValueBox="true" isIOBox="true">
+          <Pad Id="GdgDhiI7En2smyMw1GUDej" Comment="Attribution" Bounds="232,550,240,15" ShowValueBox="true" isIOBox="true">
             <p:TypeAnnotation LastCategoryFullName="Primitive" LastDependency="VL.CoreLib.vl">
               <Choice Kind="TypeFlag" Name="String" />
             </p:TypeAnnotation>
           </Pad>
-          <Pad Id="ANGg4EbzG6CVJdSBpBxker" Bounds="310,340,300,20" ShowValueBox="true" isIOBox="true" Value="&lt; show the credit wherever the tiles are shown">
+          <Pad Id="ANGg4EbzG6CVJdSBpBxker" Bounds="540,552,315,19" ShowValueBox="true" isIOBox="true" Value="&lt; show the credit wherever the tiles are shown">
             <p:TypeAnnotation LastCategoryFullName="Primitive" LastDependency="VL.CoreLib.vl">
               <Choice Kind="TypeFlag" Name="String" />
             </p:TypeAnnotation>
@@ -126,10 +155,18 @@
               <p:stringtype p:Assembly="VL.Core" p:Type="VL.Core.StringType">Comment</p:stringtype>
             </p:ValueBoxSettings>
           </Pad>
-          <Pad Id="VeMdG7dJEwlMbRQ4m1H0ih" Comment="Status" Bounds="60,380,500,15" ShowValueBox="true" isIOBox="true">
+          <Pad Id="VeMdG7dJEwlMbRQ4m1H0ih" Comment="Status" Bounds="317,490,292,15" ShowValueBox="true" isIOBox="true">
             <p:TypeAnnotation LastCategoryFullName="Primitive" LastDependency="VL.CoreLib.vl">
               <Choice Kind="TypeFlag" Name="String" />
             </p:TypeAnnotation>
+          </Pad>
+          <Pad Id="FbmkWroyX9TOA2Vk9Vi3a6" Comment="Reset" Bounds="390,211,35,35" ShowValueBox="true" isIOBox="true" Value="false">
+            <p:TypeAnnotation LastCategoryFullName="Primitive" LastDependency="VL.CoreLib.vl">
+              <Choice Kind="ImmutableTypeFlag" Name="Boolean" />
+            </p:TypeAnnotation>
+            <p:ValueBoxSettings>
+              <p:buttonmode p:Assembly="VL.UI.Forms" p:Type="VL.HDE.PatchEditor.Editors.ButtonModeEnum">Bang</p:buttonmode>
+            </p:ValueBoxSettings>
           </Pad>
         </Canvas>
         <Patch Id="Pl0xc2QjldwU56Jq5Irjp1" Name="Create" />
@@ -145,6 +182,7 @@
         <Link Id="TFx7ZEvUjA6ChO9jXxcXaw" Ids="MytfgT3q6LPQdKV84VjHI7,VeMdG7dJEwlMbRQ4m1H0ih" />
         <Link Id="Z7Pci4oPLMaajn5dY9DUaP" Ids="1ExqCtgfSHg0G3FH85Hw0X,jzs8jaDkjQWL3Ecs0HniBx" />
         <Link Id="NqLJaqpQJk5JsxSssmIkhF" Ids="XUGfzeJMH8NHH7wgaINy2z,YNHHc5cmoRq6qcXtD4wFoq" />
+        <Link Id="DrQNMJCqMozOJqdDvzieYj" Ids="FbmkWroyX9TOA2Vk9Vi3a6,BI49Ch5BmNkLN1CBssB30G" />
       </Patch>
     </Node>
   </Patch>

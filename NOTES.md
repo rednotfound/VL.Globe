@@ -682,3 +682,7 @@ looked fine - "which makes one think it works". Two causes, estimated at 100 m h
   - Seen only by reading the compiled IL: ilspycmd is not installed here; scratchpad `IlCalls.ps1` lists a
     method's IL with calls resolved (System.Reflection.Metadata + Emit.OpCodes, PowerShell 7 only).
   - `tools`-like generator `make_fly_help.py` (scratchpad) is retired: the help patches are edited in place.
+- **The user tried the new GlobeCamera** (2026-11-23 17:06, HowTo Open a globe window): 10 drags, 88
+  wheel notches, 3 right-drags, then Reset - the view back at 139.7 / 35.68, 12,000 km, heading and tilt
+  0; no error in the log. They rearranged the patch and added a Reset bang. Their save carried Enabled
+  True and VL.Globe pinned 0.0.1-alpha: Normalize-HelpPatches put them back (false, 0.0.0).
