@@ -12,12 +12,12 @@ plan = {
     r'Layers\HowTo Stack tile layers.vl': {'XyzTiles': H, 'Group': H, 'OpenStreetMap': L, 'GlobeWindow': L},
     r'Layers\HowTo Draw vector tiles.vl': {'VectorTiles': H, 'MapLibreStyle (URL)': H, 'MapLibreStyle (File)': H},
     r'Layers\HowTo Choose a vector tile style.vl': {'VectorTiles': L, 'MapLibreStyle (URL)': L, 'Geometry': L, 'VectorStyle': L, 'Group': L},
-    r'Layers\HowTo Draw shapes on the globe.vl': {'Geometry': H, 'VectorStyle': H, 'Group': L},
+    r'Layers\HowTo Draw shapes on the globe.vl': {'Geometry': H, 'VectorStyle': H, 'FeatureLayer': H, 'Group': L},
     r'Layers\HowTo Draw a graticule.vl': {'Graticule': H},
     r'Camera\HowTo Fly to a place.vl': {'FlyTo': H, 'CenterOn': H, 'ZoomToLevel': H, 'ZoomIn': H, 'ZoomOut': H, 'ZoomToBounds': H},
-    r'Input\HowTo Read the place under the cursor.vl': {'ScreenToGlobe': H, 'GlobeViewInfo': H},
+    r'Input\HowTo Read the place under the cursor.vl': {'ScreenToGlobe': H, 'GlobeViewInfo': H, 'GlobeToScreen': H},
     r'Input\HowTo Pick a feature.vl': {'Pick': H, 'Geometry': L},
-    r'Objects\HowTo Place objects on the globe.vl': {'GlobePositionComponent': H, 'ToGlobe': H, 'FromGlobe': H, 'GlobeViewInfo': L},
+    r'Objects\HowTo Place objects on the globe.vl': {'GlobePositionComponent': H, 'ToGlobe': H, 'FromGlobe': H, 'ToGlobe (Coordinate)': H, 'GlobeViewInfo': L},
 }
 
 # a node of VL.Globe: its NodeReference names the node by ProcessAppFlag/OperationCallFlag and comes from VL.Globe

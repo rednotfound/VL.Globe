@@ -3,6 +3,7 @@
   <NugetDependency Id="UknH5lX7mzBn0PmGjhSOL8" Location="VL.CoreLib" Version="2025.7.4" />
   <NugetDependency Id="Vr6OYqKtz6WQkZJ1URgpIN" Location="VL.Stride" Version="2025.7.4" />
   <NugetDependency Id="FPxiIiZjkVDsT6WexmwhWv" Location="VL.Globe" Version="0.0.0" />
+  <NugetDependency Id="Kd3TrqY7nWbE2pZsLm9QxA" Location="VL.NetTopologySuite" Version="0.0.0" />
   <Patch Id="Ppp1diPg18Nhg303kSH9Ou">
     <Canvas Id="VMXIoIg7kJia5kIL8YL2u6" DefaultCategory="Main" CanvasType="FullCategory" />
     <Node Name="Application" Bounds="100,100" Id="FMPVtoTkhQDJer0TCexkeW">
@@ -225,7 +226,7 @@
               <Choice Kind="TypeFlag" Name="Float64" />
             </p:TypeAnnotation>
           </Pad>
-          <Pad Id="NswElGTNEmDQ7IAMJ6XpxP" Bounds="300,720,260,20" ShowValueBox="true" isIOBox="true" Value="&lt; and back">
+          <Pad Id="NswElGTNEmDQ7IAMJ6XpxP" Bounds="330,720,260,20" ShowValueBox="true" isIOBox="true" Value="&lt; and back">
             <p:TypeAnnotation LastCategoryFullName="Primitive" LastDependency="VL.CoreLib.vl">
               <Choice Kind="TypeFlag" Name="String" />
             </p:TypeAnnotation>
@@ -258,6 +259,57 @@
             <Pin Id="D8my5oSpLVot6PiqFCthOy" Name="Latitude" Kind="OutputPin" />
             <Pin Id="TJB7x5U0WcQLtrHF8lf9ZM" Name="Height" Kind="OutputPin" />
           </Node>
+          <Pad Id="Q2H6qLBIeh8MsrJB0ShC8b" Bounds="60,760,560,34" ShowValueBox="true" isIOBox="true" Value="ToGlobe (Coordinate): the same from a NetTopologySuite coordinate, X longitude, Y latitude, Z height">
+            <p:TypeAnnotation LastCategoryFullName="Primitive" LastDependency="VL.CoreLib.vl">
+              <Choice Kind="TypeFlag" Name="String" />
+            </p:TypeAnnotation>
+            <p:ValueBoxSettings>
+              <p:fontsize p:Type="Int32">9</p:fontsize>
+              <p:stringtype p:Assembly="VL.Core" p:Type="VL.Core.StringType">Comment</p:stringtype>
+            </p:ValueBoxSettings>
+          </Pad>
+          <Pad Id="DWpZK4flNjTkehGaKvSzL3" Comment="X" Bounds="60,790,70,15" ShowValueBox="true" isIOBox="true" Value="139.6917">
+            <p:TypeAnnotation LastCategoryFullName="Primitive" LastDependency="VL.CoreLib.vl">
+              <Choice Kind="TypeFlag" Name="Float64" />
+            </p:TypeAnnotation>
+          </Pad>
+          <Pad Id="SAab4DTjTHpOOgqj4wloDa" Comment="Y" Bounds="140,790,70,15" ShowValueBox="true" isIOBox="true" Value="35.6895">
+            <p:TypeAnnotation LastCategoryFullName="Primitive" LastDependency="VL.CoreLib.vl">
+              <Choice Kind="TypeFlag" Name="Float64" />
+            </p:TypeAnnotation>
+          </Pad>
+          <Node Bounds="60,830,90,19" Id="Oid8a2yGTAmHojCNOajKzT">
+            <p:NodeReference LastCategoryFullName="NetTopologySuite.Geometry" LastDependency="VL.NetTopologySuite.vl">
+              <Choice Kind="NodeFlag" Name="Node" Fixed="true" />
+              <Choice Kind="OperationCallFlag" Name="Coordinate" />
+            </p:NodeReference>
+            <Pin Id="AFG9uQIw8djfj8NLmEmDWU" Name="X" Kind="InputPin" />
+            <Pin Id="VgQvDllP7kI0Sz7KGDqdYB" Name="Y" Kind="InputPin" />
+            <Pin Id="EoG8nHHIDYhaoNqyBiv6X1" Name="Result" Kind="OutputPin" />
+          </Node>
+          <Node Bounds="60,870,140,19" Id="DParyDbwsa7vN6DYHNQM2i">
+            <p:NodeReference LastCategoryFullName="Globe" LastDependency="VL.Globe.vl">
+              <Choice Kind="NodeFlag" Name="Node" Fixed="true" />
+              <Choice Kind="OperationCallFlag" Name="ToGlobe (Coordinate)" />
+            </p:NodeReference>
+            <p:HelpFocus p:Assembly="VL.Lang" p:Type="VL.Model.HelpPriority">High</p:HelpFocus>
+            <Pin Id="DPQqZ4KYZTExLjAbWCrLqv" Name="Coordinate" Kind="InputPin" />
+            <Pin Id="EEjcmsmkPiL4HQ6gXnArlA" Name="Position" Kind="OutputPin" />
+          </Node>
+          <Pad Id="UpfJ2WAJpM8HnisMPLKPAM" Comment="Position" Bounds="60,910,160,15" ShowValueBox="true" isIOBox="true">
+            <p:TypeAnnotation LastCategoryFullName="3D" LastDependency="VL.CoreLib.vl">
+              <Choice Kind="TypeFlag" Name="Vector3" />
+            </p:TypeAnnotation>
+          </Pad>
+          <Pad Id="GvtY0rMfW8zGRPTWYXN9HA" Bounds="230,908,300,20" ShowValueBox="true" isIOBox="true" Value="&lt; on a globe of radius 1">
+            <p:TypeAnnotation LastCategoryFullName="Primitive" LastDependency="VL.CoreLib.vl">
+              <Choice Kind="TypeFlag" Name="String" />
+            </p:TypeAnnotation>
+            <p:ValueBoxSettings>
+              <p:fontsize p:Type="Int32">9</p:fontsize>
+              <p:stringtype p:Assembly="VL.Core" p:Type="VL.Core.StringType">Comment</p:stringtype>
+            </p:ValueBoxSettings>
+          </Pad>
         </Canvas>
         <Patch Id="GRnFDxV5KkTT0CVUkNEfy4" Name="Create" />
         <Patch Id="BEhFoOETfepaMNegnQCx3K" Name="Update" />
@@ -282,6 +334,10 @@
         <Link Id="DtP1ZMvaNkAeR6ESoSHTMt" Ids="JsPBtc10ZcWQZoE5GqPmCK,HqiAqP0oFsCE8ow1NivSAF" />
         <Link Id="HnzXAYoNJ37XCrAggjaukv" Ids="D8my5oSpLVot6PiqFCthOy,RZPhzss5E5Y2w5SblA6aKu" />
         <Link Id="ONp5Ja6Co1mvfqhnM67I8T" Ids="TJB7x5U0WcQLtrHF8lf9ZM,QKs5kZMnZQJurVqKNMS37K" />
+        <Link Id="TBznTazAg43mUodoVgZ5i2" Ids="DWpZK4flNjTkehGaKvSzL3,AFG9uQIw8djfj8NLmEmDWU" />
+        <Link Id="GR5A9pqLiY8ryiicoZbs1L" Ids="SAab4DTjTHpOOgqj4wloDa,VgQvDllP7kI0Sz7KGDqdYB" />
+        <Link Id="KBS8QumzIrJ3MWPU55rUIw" Ids="EoG8nHHIDYhaoNqyBiv6X1,DPQqZ4KYZTExLjAbWCrLqv" />
+        <Link Id="JUbK47ivwGnH0DignHpekL" Ids="EEjcmsmkPiL4HQ6gXnArlA,UpfJ2WAJpM8HnisMPLKPAM" />
       </Patch>
     </Node>
   </Patch>

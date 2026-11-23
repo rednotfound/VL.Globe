@@ -182,6 +182,56 @@
               <p:stringtype p:Assembly="VL.Core" p:Type="VL.Core.StringType">Comment</p:stringtype>
             </p:ValueBoxSettings>
           </Pad>
+          <Pad Id="Uc4Grlcp3N2CNUZttkZlcT" Bounds="60,560,520,20" ShowValueBox="true" isIOBox="true" Value="The other way: where a place is on the screen">
+            <p:TypeAnnotation LastCategoryFullName="Primitive" LastDependency="VL.CoreLib.vl">
+              <Choice Kind="TypeFlag" Name="String" />
+            </p:TypeAnnotation>
+            <p:ValueBoxSettings>
+              <p:fontsize p:Type="Int32">9</p:fontsize>
+              <p:stringtype p:Assembly="VL.Core" p:Type="VL.Core.StringType">Comment</p:stringtype>
+            </p:ValueBoxSettings>
+          </Pad>
+          <Pad Id="AeInppaAdLFchcvXkIaWyG" Comment="Longitude" Bounds="60,590,80,15" ShowValueBox="true" isIOBox="true" Value="139.7671">
+            <p:TypeAnnotation LastCategoryFullName="Primitive" LastDependency="VL.CoreLib.vl">
+              <Choice Kind="TypeFlag" Name="Float64" />
+            </p:TypeAnnotation>
+          </Pad>
+          <Pad Id="OGJagGJivvO0FmuGygWa7M" Comment="Latitude" Bounds="150,590,80,15" ShowValueBox="true" isIOBox="true" Value="35.6812">
+            <p:TypeAnnotation LastCategoryFullName="Primitive" LastDependency="VL.CoreLib.vl">
+              <Choice Kind="TypeFlag" Name="Float64" />
+            </p:TypeAnnotation>
+          </Pad>
+          <Node Bounds="60,630,120,19" Id="DcdYQxuOGwOM5WGhvN94TY">
+            <p:NodeReference LastCategoryFullName="Globe" LastDependency="VL.Globe.vl">
+              <Choice Kind="NodeFlag" Name="Node" Fixed="true" />
+              <Choice Kind="OperationCallFlag" Name="GlobeToScreen" />
+            </p:NodeReference>
+            <p:HelpFocus p:Assembly="VL.Lang" p:Type="VL.Model.HelpPriority">High</p:HelpFocus>
+            <Pin Id="KQcQhcU4JtTYyrnPdCP8pf" Name="View" Kind="InputPin" />
+            <Pin Id="SgAIzy8jKHjn4HJ2843mcq" Name="Longitude" Kind="InputPin" />
+            <Pin Id="NB3hr952p66mQAP0wDxY0U" Name="Latitude" Kind="InputPin" />
+            <Pin Id="ERmR4OwSevQbZcFL77ZVa2" Name="Position" Kind="OutputPin" />
+            <Pin Id="LOkRrhMgRxZZAdC0Qn0wTQ" Name="Visible" Kind="OutputPin" />
+          </Node>
+          <Pad Id="KbBW9M3Wkr17LuEIeXI2Ga" Comment="Position" Bounds="60,670,120,15" ShowValueBox="true" isIOBox="true">
+            <p:TypeAnnotation LastCategoryFullName="2D" LastDependency="VL.CoreLib.vl">
+              <Choice Kind="TypeFlag" Name="Vector2" />
+            </p:TypeAnnotation>
+          </Pad>
+          <Pad Id="Ce5dvWvQKWwJCkNAQfsn0S" Comment="Visible" Bounds="190,670,40,15" ShowValueBox="true" isIOBox="true">
+            <p:TypeAnnotation LastCategoryFullName="Primitive" LastDependency="VL.CoreLib.vl">
+              <Choice Kind="TypeFlag" Name="Boolean" />
+            </p:TypeAnnotation>
+          </Pad>
+          <Pad Id="EpEBiV8msPyaJaLY3NJk9d" Bounds="290,668,360,34" ShowValueBox="true" isIOBox="true" Value="&lt; Tokyo Station in projection space, -1..1, y up; Visible is false on the far side or behind the camera">
+            <p:TypeAnnotation LastCategoryFullName="Primitive" LastDependency="VL.CoreLib.vl">
+              <Choice Kind="TypeFlag" Name="String" />
+            </p:TypeAnnotation>
+            <p:ValueBoxSettings>
+              <p:fontsize p:Type="Int32">9</p:fontsize>
+              <p:stringtype p:Assembly="VL.Core" p:Type="VL.Core.StringType">Comment</p:stringtype>
+            </p:ValueBoxSettings>
+          </Pad>
         </Canvas>
         <Patch Id="V2riwQ4qkLQ53cPNIaVIhi" Name="Create" />
         <Patch Id="KSMohDHhoyi0ljiB8QuqhU" Name="Update" />
@@ -201,6 +251,11 @@
         <Link Id="TAVcuCKkhrvwyFgvXe8ySj" Ids="P6aUyGo3aQrr9XxCMpKedh,QdkgPGuvvCtUek35rynDKn" />
         <Link Id="MmRLTDVGl8mK3qyaLtGC9q" Ids="IGPTbzsF8Id10LAGWaQlvS,P2qy9H1vXsCK8ZIaZsAv0M" />
         <Link Id="4b8dvGaM85OYTCbYNsskQH" Ids="w9Er1A6dXoy9cswU74ZpGd,3H473TqSqSuYi53JJkHwDn" />
+        <Link Id="AF0TdsRSzqxv1oB9N9NvTi" Ids="EnOuhLmSUhKuCO8lA527Bz,KQcQhcU4JtTYyrnPdCP8pf" />
+        <Link Id="NJbIJDuhShc8vH8rOyvGlI" Ids="AeInppaAdLFchcvXkIaWyG,SgAIzy8jKHjn4HJ2843mcq" />
+        <Link Id="UvmFKeJCTsAN5Id3feWrXT" Ids="OGJagGJivvO0FmuGygWa7M,NB3hr952p66mQAP0wDxY0U" />
+        <Link Id="LhXx77GCp87JyAX8CtcYUo" Ids="ERmR4OwSevQbZcFL77ZVa2,KbBW9M3Wkr17LuEIeXI2Ga" />
+        <Link Id="HNHu3eBSC4c3IjV1vlfVbb" Ids="LOkRrhMgRxZZAdC0Qn0wTQ,Ce5dvWvQKWwJCkNAQfsn0S" />
       </Patch>
     </Node>
   </Patch>
