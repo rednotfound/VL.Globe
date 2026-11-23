@@ -6,8 +6,7 @@ using System.Text.Json;
 
 namespace VL.Globe.Engine.Styling;
 
-// A MapLibre style as both paths read it - the GPU's (VectorBucket) and the drape's (MapStylePainter):
-// its features, its sources and its layers.
+// A MapLibre style as the GPU path reads it (VectorBucket): its features, its sources and its layers.
 
 /// <summary>One feature of a source: geometry in Web Mercator world coordinates (0..1, y down), and its properties.</summary>
 internal sealed class StyleFeature : IReadOnlyDictionary<string, object?>

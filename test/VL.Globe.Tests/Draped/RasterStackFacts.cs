@@ -42,10 +42,8 @@ public class RasterStackFacts
         var source = SourceWithRed(out var folder);
         try
         {
-            var missing = new List<string>();
-            var bytes = OverlayRenderer.Render(new TileKey(10, 0, 0), new OverlayLayer[] { new RasterOverlay(source, 1) }, 256, out bool complete, fetch: false, missing: missing);
+            var bytes = OverlayRenderer.Render(new TileKey(10, 0, 0), new OverlayLayer[] { new RasterOverlay(source, 1) }, 256, out bool complete, fetch: false);
             Assert.False(complete);
-            Assert.Single(missing);
             Assert.Null(bytes);
         }
         finally { Directory.Delete(folder, true); }

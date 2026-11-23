@@ -62,8 +62,7 @@ public sealed class GlobeNode : IDisposable
         public int OverlayVersion = -1;  // the layers' version the overlay shows
         public int OverlayStamp;         // bumped on every new overlay image, for the stand-ins borrowing it
         public bool OverlayIncomplete;   // drawn while a vector tile it needs was still on its way
-        public string[] OverlayMissing = Array.Empty<string>();   // the vector tiles it was drawn without
-        public Task<(byte[]? bytes, bool complete, string[] missing, double ms)>? OverlayJob;
+        public Task<(byte[]? bytes, bool complete, double ms)>? OverlayJob;
         public int OverlayJobVersion;
         public bool OverlayJobFetch, OverlayFetched;   // drawn as a wanted tile (fetching vector tiles) or as a stand-in (only what was here)
         public void Dispose() { Texture.Dispose(); Overlay?.Dispose(); Vertices.Dispose(); Indices.Dispose(); }
@@ -140,13 +139,12 @@ public sealed class GlobeNode : IDisposable
     }
     readonly Dictionary<TileKey, StandIn> _standIns = new();
 
-    // Vector layers draped into the tiles (ROADMAP 0.1 items 3-4, 4c). Overlays are rendered on worker
-    // threads (a street-level vector tile takes milliseconds) and uploaded here, at most
-    // OverlaysPerFrame a frame; an overlay drawn while a vector tile was missing is drawn again
-    // when tiles have arrived since.
+    // Layers draped into the tiles: raster layers above the bottom one, and shapes before any
+    // VectorTiles layer (ROADMAP 0.1 items 3-4, 6). Overlays are rendered on worker threads and
+    // uploaded here, at most OverlaysPerFrame a frame; a stand-in's overlay, drawn from what was
+    // cached, is drawn again once the tile is wanted and may fetch.
     long _signature;
     List<OverlayLayer> _layers = new();
-    List<GlobeLayer> _vectorLayers = new();
     int _overlayVersion;
     const int OverlaysPerFrame = 6;
     static readonly int OverlayJobs = Math.Max(2, Environment.ProcessorCount - 2);
@@ -296,7 +294,7 @@ public sealed class GlobeNode : IDisposable
 
     List<GlobeLayer> ShapesOnTheGpu(List<GlobeLayer> layers)
     {
-        int firstGpu = layers.FindIndex(l => l is { Gpu: true, Vector: not null });
+        int firstGpu = layers.FindIndex(l => l is { Vector: not null });
         var seen = new HashSet<GlobeLayer>(ReferenceEqualityComparer.Instance);
         if (firstGpu >= 0)
             for (int i = firstGpu + 1; i < layers.Count; i++)
@@ -311,7 +309,7 @@ public sealed class GlobeNode : IDisposable
                     var service = new Engine.VectorTiles.VectorTileService("shapes:" + l.Name,
                         System.Text.Encoding.UTF8.GetBytes(Engine.Styling.GeometryStyle.Json(l.Geometries, l.Style)));
                     service.Start();
-                    entry = (signature, new GlobeLayer { Name = l.Name, Vector = service, Gpu = true });
+                    entry = (signature, new GlobeLayer { Name = l.Name, Vector = service });
                     _gpuShapes[l] = entry;
                 }
                 layers[i] = entry.gpu;
@@ -482,7 +480,7 @@ public sealed class GlobeNode : IDisposable
         // the GPU's vector tiles follow the wanted tiles, not the ones shown: they need no imagery,
         // and the wanted set covers the view at the right zoom even while the raster loads
         var gpuServices = enabled && layers is not null
-            ? layers.Where(l => l is { Enabled: true, Gpu: true, Vector: not null }).Select(l => l.Vector!).ToList()
+            ? layers.Where(l => l is { Enabled: true, Vector: not null }).Select(l => l.Vector!).ToList()
             : new List<VectorTileService>();
         // the distance to the view's centre, for the labels' perspective ratio: the eye's height above the ground
         if (_device is not null) _gpu.Update(_device, wanted, _wantedSet, gpuServices, _radius, _relativeEye, _cameraZoom, _frame,
@@ -618,8 +616,8 @@ public sealed class GlobeNode : IDisposable
     void UpdateOverlays(IEnumerable<GlobeLayer>? layers)
     {
         foreach (var r in _retired.Where(r => _frame - r.frame > 60).ToList()) { r.texture.Dispose(); _retired.Remove(r); }
-        // VectorTiles drawn by the GPU are not draped
-        var list = layers?.Where(l => l is { Enabled: true } && l.HasContent && !(l.Vector != null && l.Gpu)).Select(l => l!).ToList() ?? new List<GlobeLayer>();
+        // VectorTiles are drawn by the GPU, never draped
+        var list = layers?.Where(l => l is { Enabled: true } && l.HasContent && l.Vector is null).Select(l => l!).ToList() ?? new List<GlobeLayer>();
         var h = new HashCode();
         h.Add(list.Count);
         foreach (var l in list) h.Add(l.Signature());
@@ -627,14 +625,11 @@ public sealed class GlobeNode : IDisposable
         if (signature != _signature)
         {
             _signature = signature;
-            _layers = list.Select(l => l.Raster is { } raster ? new RasterOverlay(raster, l.Opacity)
-                : l.Vector?.Document is { } doc ? (OverlayLayer)new StyleOverlay(doc)
+            _layers = list.Select(l => l.Raster is { } raster ? (OverlayLayer)new RasterOverlay(raster, l.Opacity)
                 : new ShapesOverlay(l.Geometries, new TileOverlay.Style(ToSk(l.Style.LineColor), l.Style.LineWidth, ToSk(l.Style.FillColor)))).ToList();
-            _vectorLayers = list.Where(l => l.Vector != null).ToList();
             _overlayVersion++;
         }
         if (_device is null) return;
-        bool Came(string url) => _vectorLayers.Any(l => l.Vector!.IsHere(url));
 
         // finished jobs: upload, nearest first, a few a frame
         int budget = OverlaysPerFrame;
@@ -657,13 +652,12 @@ public sealed class GlobeNode : IDisposable
             }
             if (s.OverlayJobVersion != _overlayVersion) continue;   // the layers changed meanwhile
             budget--;
-            var (bytes, complete, missing, ms) = job.Result;
+            var (bytes, complete, ms) = job.Result;
             SetOverlay(s, bytes);
             _overlaysDrawn++;
             _overlayMs += (ms - _overlayMs) / Math.Min(_overlaysDrawn, 50);   // a running mean of the last ~50
             s.OverlayVersion = s.OverlayJobVersion;
             s.OverlayIncomplete = !complete;
-            s.OverlayMissing = missing;
             s.OverlayFetched = s.OverlayJobFetch;
         }
 
@@ -674,10 +668,10 @@ public sealed class GlobeNode : IDisposable
             var s = _loaded[t];
             if (s.OverlayJob != null) continue;
             bool fetch = _wantedSet.Contains(t);
-            // drawn again only when it can come out different: the layers changed, a stand-in became
-            // wanted (now it may fetch), or a vector tile it was drawn without has come since
+            // drawn again only when it can come out different: the layers changed, or a stand-in
+            // became wanted (now it may fetch)
             bool stale = s.OverlayVersion != _overlayVersion
-                || (s.OverlayIncomplete && ((fetch && !s.OverlayFetched) || s.OverlayMissing.Any(Came)));
+                || (s.OverlayIncomplete && fetch && !s.OverlayFetched);
             if (!stale) continue;
             if (_layers.Count == 0)
             {
@@ -692,9 +686,8 @@ public sealed class GlobeNode : IDisposable
             s.OverlayJob = Task.Run(() =>
             {
                 var clock = System.Diagnostics.Stopwatch.StartNew();
-                var missing = new List<string>();
-                var bytes = OverlayRenderer.Render(key, snapshot, 256, out bool complete, fetch, missing);
-                return (bytes, complete, missing.Distinct().ToArray(), clock.Elapsed.TotalMilliseconds);
+                var bytes = OverlayRenderer.Render(key, snapshot, 256, out bool complete, fetch);
+                return (bytes, complete, clock.Elapsed.TotalMilliseconds);
             });
             running++;
         }

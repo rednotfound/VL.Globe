@@ -27,7 +27,6 @@
   <ItemGroup>
     <!-- ROADMAP 4b: pixelmatch's own test images and the render-test manifest -->
     <None Include="MapLibre\pixelmatch-fixtures\*.png" CopyToOutputDirectory="PreserveNewest" />
-    <None Include="MapLibre\render-tests.json" CopyToOutputDirectory="PreserveNewest" />
     <None Include="MapLibre\render-tests-gpu.json" CopyToOutputDirectory="PreserveNewest" />
     <None Include="MapLibre\shaping\*.json" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>

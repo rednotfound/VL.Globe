@@ -144,7 +144,6 @@
             <p:HelpFocus p:Assembly="VL.Lang" p:Type="VL.Model.HelpPriority">Low</p:HelpFocus>
             <Pin Id="CUdVqhQtxb8b0tCtIsnxDZ" Name="Style" Kind="InputPin" />
             <Pin Id="KKP7ZTzNYf4Owbk6tLq2eE" Name="Name" Kind="InputPin" />
-            <Pin Id="OV593z4J17OPSIlhjvVLCq" Name="Rendering" Kind="InputPin" />
             <Pin Id="RLpMS3EDQnrVrLRwyyXevr" Name="Enabled" Kind="InputPin" />
             <Pin Id="SM1XYEBo1xoUKutZkS8vjp" Name="Output" Kind="OutputPin" />
             <Pin Id="TPukNiV3s6ejLnKKLufAIr" Name="Attribution" Kind="OutputPin" />

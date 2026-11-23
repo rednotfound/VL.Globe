@@ -101,7 +101,6 @@
             <Pin Id="CWx72kLZL5EcReJgUBXoCF" Name="Output" Kind="OutputPin" />
             <Pin Id="Sx8jhJ6j1vB2A7UhLu5Jde" Name="Attribution" Kind="OutputPin" />
             <Pin Id="RolQ2zwdMUrGvltCTLdXLJ" Name="Status" Kind="OutputPin" />
-            <Pin Id="TRIOELT61KFM8FlSzowgCt" Name="Rendering" Kind="InputPin" />
             <Pin Id="MuCJLUCfL92QRygdEuC3bj" Name="Enabled" Kind="InputPin" />
           </Node>
           <Pad Id="VQ4dZbH26FFoMfZeAMOusW" Bounds="490,380,260,34" ShowValueBox="true" isIOBox="true" Value="&lt; the Status says what of the style it skips">

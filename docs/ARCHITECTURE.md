@@ -99,7 +99,7 @@ per subsystem (`GlobalUsings.cs` names them all), and the tests mirror it in `te
 | `Styling\` | the MapLibre style both paths read (MapStyleDocument), expressions, shapes as a style |
 | `Gpu\` | buckets (`VectorBucket*.cs`: fills/lines, symbols, circles), the renderer, fog, atlas textures |
 | `Symbols\` | GL JS's text shaping, glyphs, sprites, icons, label placement, collision and fades |
-| `Draped\` | the older path: styles and shapes drawn by SkiaSharp into each tile's overlay |
+| `Draped\` | shapes (before any VectorTiles layer) and tile layers above the bottom one, drawn by SkiaSharp into each tile's overlay |
 | `Camera\` | navigation, picking, the camera-relative frame |
 | `Diagnostics\` | frame stats, allocation meter, the camera bench (`VLGLOBE_BENCH`) |
 
@@ -141,15 +141,11 @@ Each frame, on vvvv's main thread:
    alpha, and laid over the imagery with `BinaryOperator.Over`. The same look is used by the tile's
    fades and by stand-ins borrowing it. A replaced overlay is disposed 60 frames later, since a fade or
    stand-in may still sample it. Layers change by content, not identity.
-   **A MapLibre style subset** is drawn by a second, newer painter (`MapStyle.cs`,
-   `MapStylePainter.cs`, `LineTessellator.cs`, `VectorTile.cs` for MVT), measured against MapLibre's
-   render tests (ROADMAP 4b, 4c), wired to `VectorTiles` with `Rendering` Draped. Geometry is in Web Mercator world
-   coordinates; a vector layer is drawn tile by tile, clipped to each tile's square; fills are
-   aliased with GL's one-pixel `gl.LINES` outline reproduced pixel by pixel; lines are triangulated as GL JS's `line_bucket.ts` does and drawn
-   with `DrawVertices`, every triangle blending on its own, so translucent overlaps darken as in
-   MapLibre; the shader's 1-pixel edge ramp is reproduced by cutting each triangle where its alpha
-   bends and colouring the vertices.
-7b. **VectorTiles on the GPU** (`Rendering` GPU, the default; ROADMAP 4d, docs/DESIGN-GPU-VECTOR.md) —
+   Draped since 2026-11-24: Geometry/FeatureLayer before any VectorTiles layer (after one they go to
+   the GPU, `GeometryStyle`) and tile layers above the bottom one. VectorTiles were draped too, by a
+   SkiaSharp MapLibre painter measured against the render tests (ROADMAP 4b, 4c); judged "不太行"
+   and removed with the `Rendering` pin (docs/HISTORY.md, NOTES.md 2026-11-24).
+7b. **VectorTiles on the GPU** (the only way since 2026-11-24; ROADMAP 4d, docs/DESIGN-GPU-VECTOR.md) —
    MapLibre's architecture, *geometry cached, pixels drawn every frame*:
    - `VectorTile.cs` decodes an MVT layer into a `FeatureTable` (`FeatureGeometry.cs`): points, rings,
      parts, tags and ids as a few arrays, values in a `ValueTable` whose strings are made at their
@@ -230,9 +226,10 @@ with `VLGLOBE_VIEW=#...` (`CameraBench.cs`), against `tools/GLJS-Yardstick.html`
 
 ## Verification
 
-- **MapLibre's render tests** (`MapLibreRenderFacts`, ROADMAP 4b): fixtures fetched by
+- **MapLibre's render tests** (`MapLibreGpuRenderFacts`, ROADMAP 4b/4d): fixtures fetched by
   `tools\Fetch-MapLibreFixtures.ps1` (the test fails, saying so, when they are missing), pixelmatch
-  8.0.0 ported, `render-tests.json` holding the ignores and the count that may only go up.
+  8.0.0 ported, `render-tests-gpu.json` holding the ignores and the count that may only go up.
+  The drape's own run (`MapLibreRenderFacts`, 98 passing) went with the drape on 2026-11-24.
 - **Tests** (`test\VL.Globe.Tests`, 284 on 2026-11-23, no network; the GPU path's fixtures on a D3D11 device of the test's own — SkiaSharp runs in the test host): coordinates; tile geometry (exact
   seams, sag); camera-relative precision (0.008 mm vs 0.54 m); selection — the tile below at
   0.6–1.42×, **every sampled pixel of the screen** at ≤ 1.5× over seven poses (`TileCoverageFacts`;

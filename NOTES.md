@@ -785,3 +785,8 @@ looked fine - "which makes one think it works". Two causes, estimated at 100 m h
 - **The repository mixes LF and CRLF** (CRLF: TileGeometry, TileSelector, GlobeCameraNodes,
   GlobeCoordinates, GlobeView, the csproj, two test files). An edit script that matches `\n` misses the
   CRLF files in silence; split on the file's own newline.
+- **The drape of vector tiles retired** (the user, 2026-11-24): `Rendering` pin, `GlobeVectorRendering`,
+  `GlobeLayer.Gpu`, `StyleOverlay`, `MapStylePainter`, `MapLibreRenderFacts` and `render-tests.json` gone;
+  the two help patches' `<Pin Name="Rendering">` removed in place. What went with it: an overlay no
+  longer waits for vector tiles (`OverlayMissing`, `Came`), so a draped overlay is redrawn only when
+  the layers change or a stand-in becomes wanted. 334 pass (4 drape facts fewer).

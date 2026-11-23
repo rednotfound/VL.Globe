@@ -31,9 +31,9 @@ at country scale; judge every change at the lowest height.
 
 **Now (2026-11-24).** An engineering pass: the engine in eight folders (ARCHITECTURE.md, "The
 engine"), the tests mirroring them, probes skipped unless `VLGLOBE_PROBE=1`, the tools reading
-`tools\Nodes.psd1`. Its step 3 waits on the user: the draped path kept or retired, `GlobeNode.cs`
-(1049 lines) split, where terrain goes, one shared `tools\` for the family, a CI; and the
-hand-written IDs `Test-VLPatch.ps1` fails (NOTES.md, 2026-11-24).
+`tools\Nodes.psd1`. Step 3, the user's choices: VectorTiles' drape retired (the `Rendering` pin gone), the hand-written
+IDs replaced; the family's `tools\` stay per repository, no CI. Still open: `GlobeNode.cs` (1049
+lines) split, where terrain goes.
 
 **Waiting on the user:** their judgement of the gestures and the help patches' layout
 (docs/DESIGN-NODES.md); the drag near the poles and the attribution, not yet seen by them in vvvv.
@@ -52,10 +52,10 @@ A reported view is drawn offscreen by `Probes\ViewProbe` (VLGLOBE_PROBE=1 VLGLOB
 | `GlobePositionComponent [Globe]` | stands an entity on the globe, placed at draw time; user-judged |
 | `ScreenToGlobe`, `GlobeToScreen`, `GlobeViewInfo [Globe]` | built; user-judged |
 | `Geometry`, `FeatureLayer [Globe.Layers]`, `VectorStyle [Globe.Styles]` | built, draped into the tiles; seen in vvvv |
-| `VectorTiles [Globe.Layers]` | built 2026-11-21: a MapLibre style's fills/lines/background from vector tiles, with or without a Tile Source; `Rendering` GPU (default, judged by the user moving) or Draped (seen standing still, "不太行") |
+| `VectorTiles [Globe.Layers]` | built 2026-11-21: a MapLibre style's fills/lines/background from vector tiles, with or without a Tile Source; drawn by the GPU (judged by the user moving; the drape, "不太行", removed 2026-11-24) |
 | `ToGlobe`, `ToGlobe (Coordinate)`, `FromGlobe [Globe]` | built, 4 rungs, **absolute** — right under OrbitCamera; under GlobeCamera use GlobePositionComponent |
 
-338 tests pass and 8 probes are skipped (incl. MapLibre v6.19.0's render tests — 409 fixtures, fetched by script — run twice: on the drape and, offscreen on a D3D11 device of the test's own, on the GPU path; 329 pass on the GPU path). Branch `feature/camera-relative`, pushed to `github.com/rednotfound/VL.Globe`
+334 tests pass and 8 probes are skipped (incl. MapLibre v6.19.0's render tests — 409 fixtures, fetched by script — run offscreen on a D3D11 device of the test's own, on the GPU path: 329 pass). Branch `feature/camera-relative`, pushed to `github.com/rednotfound/VL.Globe`
 (public); not merged, not published. Verified on vvvv **7.4 (LTS)**; `Find-Vvvv.ps1` stays below 8.0.
 
 ## Facts this repo paid for (details in NOTES.md)
@@ -106,8 +106,8 @@ A reported view is drawn offscreen by `Probes\ViewProbe` (VLGLOBE_PROBE=1 VLGLOB
   depth writes there are dropped in silence; 3D buildings draw on their own copy of the scene's depth.
 - **Measure before fixing a hitch**: the `Globe perf` lines in vvvv's log, with `GC.GetTotalPauseDuration`;
   a gen-2 count in the same second was not the cause.
-- **Draped overlays render on worker threads**; only wanted tiles fetch vector tiles, and an overlay
-  is redrawn only when a tile it lacked has come. SkSL shaders crash SkiaSharp 2.88's CPU backend.
+- **Draped overlays render on worker threads** (shapes, upper tile layers); a stand-in's overlay
+  draws only what is cached and is redrawn once the tile is wanted. SkSL shaders crash SkiaSharp 2.88's CPU backend.
 - **Edit scripts read and write with `newline=''`**: Git Bash `sed -i` turned a CRLF file into LF, and
   Python's text mode turned LF into CRLF — each a "whole file changed" diff.
 

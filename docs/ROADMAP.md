@@ -206,7 +206,11 @@ stated threshold, and an ignore list of known failures.
 a symbol layer, terrain, operations. FeatureLayer still drapes with `TileOverlay`'s Skia stroke;
 moving it onto the painter is part of 4c.
 
-### 4c. `VectorTiles` — a draped vector-tile source — built, judged "不太行"
+### 4c. `VectorTiles` — a draped vector-tile source — built, judged "不太行", retired 2026-11-24
+
+**Retired 2026-11-24 (the user's choice):** the `Rendering` pin, `MapStylePainter` and the drape's
+MapLibre run (98 fixtures) removed; VectorTiles draw on the GPU only (4d). The overlay remains for
+shapes before any VectorTiles layer and for tile layers above the bottom one (item 6).
 
 MVT via NetTopologySuite.IO.VectorTiles, drawn per tile into the overlay from a MapLibre Style JSON
 *subset* (fill, line, background; filters; zoom stops) — stage 1 of RESEARCH-VECTOR's path, the same
@@ -276,7 +280,7 @@ Design: [DESIGN-GPU-VECTOR.md](DESIGN-GPU-VECTOR.md). Built the same night:
 - `Engine/Gpu/VectorRenderer.cs` (an `IGraphicsRendererBase` in VL.Stride's `EntityRendererComponent`,
   transparent stage) and `Engine/Gpu/GpuVectorTiles.cs` (which tiles, built on workers, uploaded 4 a
   frame, stand-ins by the nearest built ancestor).
-- `VectorTiles` gained `Rendering`: GPU (default) or Draped.
+- `VectorTiles` gained `Rendering`: GPU (default) or Draped (removed 2026-11-24 with the drape, 4c).
 - 9 xUnit facts (GpuVectorFacts), 170 green. The shader has never compiled yet: **rung 4 is next**
   (the user's vvvv was open on the help patch, so dist was not rebuilt).
 

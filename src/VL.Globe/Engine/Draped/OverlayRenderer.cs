@@ -4,17 +4,14 @@ using SkiaSharp;
 
 namespace VL.Globe.Engine.Draped;
 
-// One tile's overlay: every layer of Globe's Layers drawn in order into one image - FeatureLayer
-// and Geometry by TileOverlay, VectorTiles by the MapLibre painter in the tile's own viewport. Runs
-// on a worker thread (the globe renders overlays off the main thread since vector tiles came:
-// drawing a street-level tile takes milliseconds that a frame does not have).
+// One tile's overlay: the draped layers of Globe's Layers drawn in order into one image - FeatureLayer
+// and Geometry by TileOverlay, tile layers above the bottom one as images. Runs on a worker thread.
+// VectorTiles were drawn here too by a MapLibre painter until 2026-11-24; the GPU draws them now.
 
 /// <summary>A layer as the overlay renderer draws it.</summary>
 internal abstract record OverlayLayer;
 
 internal sealed record ShapesOverlay(IReadOnlyList<Geometry> Geometries, TileOverlay.Style Style) : OverlayLayer;
-
-internal sealed record StyleOverlay(MapStyleDocument Document) : OverlayLayer;
 
 // A tile layer above the bottom one (ROADMAP item 6, 2026-11-23): the same XYZ square as the globe tile,
 // drawn at its opacity. The bottom tile layer is the globe's own imagery (mipmaps, fades, stand-ins);
@@ -27,12 +24,11 @@ internal static class OverlayRenderer
     /// <param name="tile">The globe tile whose square is drawn.</param>
     /// <param name="layers">Globe's Layers, bottom first.</param>
     /// <param name="size">The overlay's width and height in pixels.</param>
-    /// <param name="complete">False when a vector tile it needs was still on its way.</param>
-    /// <param name="fetch">False for a tile the globe shows only while its children load: vector tiles are drawn if already here, never fetched.</param>
-    /// <param name="missing">Collects the URLs of the vector tiles that were not here.</param>
-    // The tile from the source's disk cache, or (a wanted tile) fetched - on this worker thread, as the
-    // vector tiles are. A stand-in only draws what is already cached, and says it is incomplete.
-    static bool DrawRaster(SKCanvas canvas, TileKey tile, RasterOverlay r, int size, bool fetch, ICollection<string>? missing)
+    /// <param name="complete">False when a raster tile it needs was not fetched.</param>
+    /// <param name="fetch">False for a tile the globe shows only while its children load: raster tiles are drawn if cached, never fetched.</param>
+    // The tile from the source's disk cache, or (a wanted tile) fetched - on this worker thread.
+    // A stand-in only draws what is already cached, and says it is incomplete.
+    static bool DrawRaster(SKCanvas canvas, TileKey tile, RasterOverlay r, int size, bool fetch)
     {
         if (r.Opacity <= 0) return true;
         var index = new BruTile.TileIndex(tile.X, tile.Y, tile.Zoom);
@@ -44,7 +40,7 @@ internal static class OverlayRenderer
         }
         if (bytes is null)
         {
-            if (!fetch) { missing?.Add($"raster:{r.Source.Attribution}:{tile}"); return false; }
+            if (!fetch) return false;
             return true;
         }
         using var image = SKBitmap.Decode(bytes);
@@ -54,7 +50,7 @@ internal static class OverlayRenderer
         return true;
     }
 
-    public static byte[]? Render(TileKey tile, IReadOnlyList<OverlayLayer> layers, int size, out bool complete, bool fetch = true, ICollection<string>? missing = null)
+    public static byte[]? Render(TileKey tile, IReadOnlyList<OverlayLayer> layers, int size, out bool complete, bool fetch = true)
     {
         complete = true;
         var info = new SKImageInfo(size, size, SKColorType.Rgba8888, SKAlphaType.Premul);
@@ -69,11 +65,8 @@ internal static class OverlayRenderer
                     case ShapesOverlay g:
                         TileOverlay.DrawOn(canvas, tile, g.Geometries, g.Style, size);
                         break;
-                    case StyleOverlay s:
-                        complete &= MapStylePainter.Draw(canvas, s.Document, MapViewport.OfTile(tile, size), fetch, missing);
-                        break;
                     case RasterOverlay r:
-                        complete &= DrawRaster(canvas, tile, r, size, fetch, missing);
+                        complete &= DrawRaster(canvas, tile, r, size, fetch);
                         break;
                 }
             }
