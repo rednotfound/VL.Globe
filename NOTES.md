@@ -611,3 +611,14 @@ looked fine - "which makes one think it works". Two causes, estimated at 100 m h
   of languages, Liberty reads 22 keys. A value table now keeps a string as its place in the tile's
   bytes and makes it at the first read (two threads may both make it: same text). Strings grown while
   zooming 218k -> 88k in 22 s. The tile's bytes stay with the decoded tile (mostly large-object heap).
+- **Per-draw values in a structured buffer: two traps** (2026-11-23). (1) A matrix in a StructuredBuffer
+  is read column-major (the generated HLSL in the test's `bin\...\log\shader_GlobeVector_*.hlsl` shows
+  offset 0 = `_m00 _m10 _m20 _m30`), a cbuffer's row-major: upload `Matrix.Transpose`. (2) A draw's index
+  as a per-instance element offset by DrawIndexedInstanced's start instance was read PER VERTEX - found
+  by colouring pixels by the index (it varied across a triangle). Bound instead with stride 0 at the
+  draw's element (`SetVertexBuffer(1, ids, index * 4, 0)`): every vertex reads it, whatever the
+  classification. `return;` in an SDSL PSMain does not compile (X3080). Stride writes each compiled
+  effect's HLSL to `log\` beside the binary: read it before guessing.
+- **Closing a GlobeWindow with WM_CLOSE sometimes logs ObjectDisposedException** (GlobeWindow_P's
+  GetClientBounds on the disposed VLGameForm, then vvvv's MainForm): seen in 4 of 9 bench closes on
+  2026-11-23, before and after the day's changes - a shutdown race, not yet looked at.

@@ -536,7 +536,12 @@ Sum either log up with `tools/Summarize-Perf.py <log> --from <pan 1 begins> --to
 - Value strings left in the tile's bytes until a property is first read (`ValueTable`), keys shared
   across tiles: strings grown in 22 s 218k -> 88k, all new objects 706k -> 328k; zoom bench 1.1 /
   0.8 / 0.8% (was 1.9 / 0.8 / 0.9). Seen in the same dump: 18k Stride `ShaderClassSource` (and 9k
-  each of its lists) grew and stayed - shader sources made per something, not yet found. A dump stalls vvvv ~0.8 s: never bench while dumping.
+  each of its lists) grew and stayed - from the raster engine's Material.New per tile slot (GlobeNode).
+- Each vector draw's values in one structured buffer a frame (GlobeVector.sdsl's GvDraws), its index
+  in slot 1 bound at its element with stride 0: one Apply a pass instead of 13 sets and an Apply a
+  draw. Submit 1.54 -> 1.15 ms in a made frame, 5.2 -> 4.1 in a missed one; zoom bench 0.5 / 0.9 /
+  0.7% (was 1.1 / 0.8 / 0.8). Fixture reports identical, Tokyo offscreen within the probe's spread.
+  Not yet: merging draws across tiles (the draw calls themselves are 0.1 ms). A dump stalls vvvv ~0.8 s: never bench while dumping.
 
 ### 5. Navigation
 

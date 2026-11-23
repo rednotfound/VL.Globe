@@ -109,6 +109,34 @@ internal sealed class VectorRenderer : IGraphicsRendererBase
     bool _broken;
     readonly Dictionary<string, ParameterKey> _keys = new();
 
+    // Each vector draw's values in one buffer a frame (GlobeVector.sdsl's GvDraws), found by its index - a
+    // per-instance attribute from _drawIds, offset by the draw's start instance. One Apply a pass, not
+    // one a draw: at 4000-6000 draws zoomed out the per-draw sets and Applies were 5 ms of a missed
+    // frame (ROADMAP 4g, 2026-11-23).
+    [System.Runtime.InteropServices.StructLayout(System.Runtime.InteropServices.LayoutKind.Sequential)]
+    internal struct DrawData
+    {
+        public Matrix WorldView;
+        public Vector4 Color, Clip, TileTrig, CentreHalfWidth, Misc;   // Misc: Mercator y, tiles a side, is a line, -
+        public const int Size = 64 + 5 * 16;
+    }
+    DrawData[] _drawData = new DrawData[256];
+    Buffer? _draws, _drawIds;
+    int _drawCapacity;
+
+    void EnsureDrawBuffers(GraphicsDevice device, int count)
+    {
+        if (_draws is not null && count <= _drawCapacity) return;
+        int capacity = Math.Max(256, (int)System.Numerics.BitOperations.RoundUpToPowerOf2((uint)count));
+        _draws?.Dispose(); _drawIds?.Dispose();
+        _draws = Buffer.Structured.New(device, capacity, DrawData.Size);
+        var ids = new float[capacity];
+        for (int i = 0; i < capacity; i++) ids[i] = i;
+        _drawIds = Buffer.Vertex.New(device, ids, GraphicsResourceUsage.Immutable);
+        _drawCapacity = capacity;
+        if (_drawData.Length < capacity) _drawData = new DrawData[capacity];
+    }
+
     public void Draw(RenderDrawContext context)
     {
         var frame = Current;
@@ -202,8 +230,10 @@ internal sealed class VectorRenderer : IGraphicsRendererBase
             foreach (var cb in effect.Effect.Bytecode.Reflection.ConstantBuffers)
                 foreach (var m in cb.Members)
                     if (m.KeyInfo.Key is { } key) _keys[m.KeyInfo.KeyName] = key;
+            foreach (var r in effect.Effect.Bytecode.Reflection.ResourceBindings)
+                if (r.KeyInfo.Key is { } key) _keys[r.KeyInfo.KeyName] = key;
             // a key not found would leave its value unset in silence: say which were found
-            if (!_keys.ContainsKey("GlobeVector.GvWorldView") || !_keys.ContainsKey("GlobeVector.GvProjection"))
+            if (!_keys.ContainsKey("GlobeVector.GvDraws") || !_keys.ContainsKey("GlobeVector.GvProjection"))
                 throw new InvalidOperationException("GlobeVector's parameters not found; the effect has: " + string.Join(", ", _keys.Keys));
         }
 
@@ -270,11 +300,30 @@ internal sealed class VectorRenderer : IGraphicsRendererBase
         Set(parameters, "GvFade", frame.ExtrusionFade);
         Buffer? boundVertices = null;
         Texture? sceneDepth = null;
+        // every vector draw's values, written once (GvDraws); text and circle items leave their element unused
+        int itemCount = frame.Items.Count;
+        EnsureDrawBuffers(commandList.GraphicsDevice, itemCount);
+        for (int i = 0; i < itemCount; i++)
+        {
+            var it = frame.Items[i];
+            if (it.Text is not null || it.Circle is not null) continue;
+            _drawData[i] = new DrawData
+            {
+                WorldView = Matrix.Transpose(it.World * view), Color = it.Color, Clip = it.Clip, TileTrig = it.Geo.Trig,
+                CentreHalfWidth = new Vector4(it.Centre, it.HalfWidth),
+                Misc = new Vector4(it.Geo.MercatorY, it.Tiles, it.IsLine ? 1f : 0f, 0),
+            };
+        }
+        if (itemCount > 0) _draws!.SetData(commandList, new ReadOnlySpan<DrawData>(_drawData, 0, itemCount));
+        parameters.Set((ObjectParameterKey<Buffer>)_keys["GlobeVector.GvDraws"], _draws!);
+        bool vectorApplied = false;
+        Pass? appliedPass = null;
         try
         {
             Array.Clear(_submitTicks);
-            foreach (var item in frame.Items)
+            for (int itemIndex = 0; itemIndex < itemCount; itemIndex++)
             {
+                var item = frame.Items[itemIndex];
                 long tItem = System.Diagnostics.Stopwatch.GetTimestamp();
                 bool extrusion = item.Pass is Pass.ExtrusionDepth or Pass.ExtrusionColor;
                 if (extrusion && sceneDepth is null) sceneDepth = UseOwnDepth(commandList);
@@ -317,6 +366,7 @@ internal sealed class VectorRenderer : IGraphicsRendererBase
                     SetCircle(circleParameters, "GcStrokeWidthV", V(CirclePerFeature.StrokeWidth));
                     SetCircle(circleParameters, "GcStrokeOpacityV", V(CirclePerFeature.StrokeOpacity));
                     circleEffect.Apply(graphicsContext);
+                    vectorApplied = false;
                     commandList.DrawIndexed(item.Count, item.Start);
                     ItemsDrawn++;
                     continue;
@@ -325,6 +375,7 @@ internal sealed class VectorRenderer : IGraphicsRendererBase
                 {
                     commandList.SetVertexBuffer(1, t.Placed, 0, sizeof(float));
                     commandList.SetVertexBuffer(2, t.Dynamic, 0, 16);
+                    vectorApplied = false;
                     SetText(symbolParameters, "GsWorldView", item.World * view);
                     SetText(symbolParameters, "GsCentre", item.Centre);
                     SetText(symbolParameters, "GsViewport", new Vector2(commandList.Viewport.Width, commandList.Viewport.Height));
@@ -353,21 +404,21 @@ internal sealed class VectorRenderer : IGraphicsRendererBase
                     ItemsDrawn++;
                     continue;
                 }
-                Set(parameters, "GvWorldView", item.World * view);
-                Set(parameters, "GvColor", item.Color);
-                Set(parameters, "GvClip", item.Clip);
-                Set(parameters, "GvCentre", item.Centre);
-                Set(parameters, "GvTiles", item.Tiles);
-                // the bucket's projection (TileProjection): its vertices hold their place in the tile
-                Set(parameters, "GvTileTrig", item.Geo.Trig);
-                Set(parameters, "GvTileMercatorY", item.Geo.MercatorY);
-                Set(parameters, "GvHalfWidth", item.HalfWidth);
-                Set(parameters, "GvIsLine", item.IsLine ? 1f : 0f);
-                Set(parameters, "GvStraight", item.Pass == Pass.LineList && !GlOutlines ? 1f : 0f);
-                Set(parameters, "GvGlOutline", item.Pass == Pass.LineList && GlOutlines ? 1f : 0f);
-                Set(parameters, "GvExtrusion", extrusion ? 1f : 0f);
+                // the draw's index: slot 1 at its element with stride 0, so every vertex reads it. A per-instance
+                // element offset by the start instance (DrawIndexedInstanced) was read per vertex instead -
+                // Stride's input layout lost the classification (2026-11-23, colours by index in a fixture)
+                commandList.SetVertexBuffer(1, _drawIds!, itemIndex * sizeof(float), 0);
                 long tApplyV = System.Diagnostics.Stopwatch.GetTimestamp();
-                effect.Apply(graphicsContext);
+                if (!vectorApplied || appliedPass != item.Pass)
+                {
+                    // what a pass shares; the rest is the draw's own, in GvDraws
+                    Set(parameters, "GvStraight", item.Pass == Pass.LineList && !GlOutlines ? 1f : 0f);
+                    Set(parameters, "GvGlOutline", item.Pass == Pass.LineList && GlOutlines ? 1f : 0f);
+                    Set(parameters, "GvExtrusion", extrusion ? 1f : 0f);
+                    tApplyV = System.Diagnostics.Stopwatch.GetTimestamp();
+                    effect.Apply(graphicsContext);
+                    vectorApplied = true; appliedPass = item.Pass;
+                }
                 long tDrawV = System.Diagnostics.Stopwatch.GetTimestamp();
                 commandList.DrawIndexed(item.Count, item.Start, item.BaseVertex);
                 Tally(0, tItem, tApplyV, tDrawV);
@@ -415,7 +466,13 @@ internal sealed class VectorRenderer : IGraphicsRendererBase
         _pipeline = new MutablePipelineState(device);
         var s = _pipeline.State;
         s.SetDefaults();
-        s.InputElements = VectorVertex.Layout.CreateInputElements();
+        // the vertices in slot 0, the draw's index in slot 1 - bound with stride 0: one a draw
+        var drawElement = new InputElementDescription
+        {
+            SemanticName = "TEXCOORD", SemanticIndex = 4, Format = PixelFormat.R32_Float, InputSlot = 1,
+            AlignedByteOffset = 0, InputSlotClass = InputClassification.Vertex, InstanceDataStepRate = 0,
+        };
+        s.InputElements = VectorVertex.Layout.CreateInputElements().Append(drawElement).ToArray();
         s.BlendState = BlendStates.AlphaBlend;   // premultiplied
         s.DepthStencilState = DepthStencilStates.DepthRead;
         s.RasterizerState = RasterizerStates.CullNone;

@@ -4,29 +4,42 @@
 // shader with GL JS's ramp, alpha = clamp(outset * (1 - |N|)), outset = half width + 0.5 px.
 shader GlobeVector : ShaderBase
 {
+    // Each draw's own values, one element a draw in a buffer written once a frame; a draw finds its own
+    // by its index, a per-instance vertex attribute (D3D11 offsets those by the draw's start instance,
+    // not SV_InstanceID). One Apply a pass instead of one a draw (ROADMAP 4g, 2026-11-23: at 4000-6000
+    // draws zoomed out, setting and applying each draw's parameters was 5 ms of a missed frame).
+    struct GvDraw
+    {
+        float4x4 WorldView;     // scale (radius) and the tile's camera-relative translation, then the view
+        float4 Color;           // linear, straight alpha; times the vertex colour
+        float4 Clip;            // u0 v0 u1 v1 in the tile's square: the rest is discarded
+        float4 TileTrig;        // the tile centre's sin and cos of latitude, sin and cos of longitude (TileProjection.Geo)
+        float4 CentreHalfWidth; // the tile's centre on the unit sphere (for the tangent frame); half the width, px (0: a fill)
+        float4 Misc;            // the tile centre's Mercator y (radians), tiles per side (2^z), is a line, -
+    };
+
+    rgroup PerDraw.GvDraws
+    {
+        stage StructuredBuffer<GvDraw> GvDraws;
+    }
+
     cbuffer PerDraw
     {
-        stage float4x4 GvWorldView;     // scale (radius) and the tile's camera-relative translation, then the view
         stage float4x4 GvProjection;
-        stage float4 GvColor;           // linear, straight alpha; times the vertex colour
-        stage float4 GvClip;            // u0 v0 u1 v1 in the tile's square: the rest is discarded
-        stage float3 GvCentre;          // the tile's centre on the unit sphere (for the tangent frame)
         stage float GvRadius;
-        stage float GvHalfWidth;        // px; 0 draws a fill
         stage float GvPixel;            // view units per pixel at depth 1: 2 / (projection._22 * viewport height)
         stage float GvLift;             // fraction of the distance moved towards the eye, over the tiles
-        stage float GvIsLine;
         stage float GvStraight;         // 1: straight colour out, for the hardware-antialiased line list
         stage float GvExtrusion;        // 1: fill-extrusion, lit; GvColor is sRGB then
         stage float GvLinearize;        // 1: vvvv (sRGB colours into a linear pipeline); 0: as GL JS, all in sRGB (the render tests)
         stage float GvFlat;             // 1: on the Mercator plane (x east, y north, z up), not the sphere
         stage float GvGlOutline;        // 1: the line list as GL JS's fill_outline: aliased, alpha 1 - smoothstep(distance)
         stage float2 GvViewport;        // the target's size in pixels
-        stage float GvTiles;            // tiles per side at the bucket's zoom (2^z): a tile is 1/GvTiles of the world
         stage float2 GvFade;            // fill-extrusion fades out between these distances from the eye (y 0: never)
-        stage float4 GvTileTrig;        // the tile centre's sin and cos of latitude, sin and cos of longitude (TileProjection.Geo)
-        stage float GvTileMercatorY;    // the tile centre's Mercator y, in radians
     }
+
+    stage stream float GvDrawIn : TEXCOORD4;     // per instance: the draw's index in GvDraws (a float: exact to 2^24)
+    stage stream float GvDrawId;                 // to the pixel shader: the same for the whole draw, rounded there
 
     stage stream uint2 GvUvIn : TEXCOORD1;       // the place in the tile: (uv + 0.5) x 32768
     stage stream int4 GvExtrude : TEXCOORD0;     // GL JS's extrusion bytes in .xy: e = k / 63
@@ -60,8 +73,10 @@ shader GlobeVector : ShaderBase
         return abs(t) < 0.25 ? t * (1 - q * (1.0 / 3 - q * (1.0 / 5 - q * (1.0 / 7 - q * (1.0 / 9 - q * (1.0 / 11 - q / 13)))))) : atan(t);
     }
 
-    float3 Relative(float2 uv, float raise)
+    float3 Relative(GvDraw dr, float2 uv, float raise)
     {
+        float GvTiles = dr.Misc.y, GvTileMercatorY = dr.Misc.x;
+        float4 GvTileTrig = dr.TileTrig;
         float delta = 6.283185307 / GvTiles;
         float du = uv.x - 0.5, dv = uv.y - 0.5;
         float d = -dv * delta;   // Mercator y grows north, v south
@@ -89,25 +104,30 @@ shader GlobeVector : ShaderBase
     }
 
     // the vertex's up, east and north: on the sphere from its direction, on the plane fixed
-    void Frame(float3 position, out float3 up, out float3 east, out float3 north)
+    void Frame(GvDraw dr, float3 position, out float3 up, out float3 east, out float3 north)
     {
         if (GvFlat > 0.5) { up = float3(0, 0, 1); east = float3(1, 0, 0); north = float3(0, 1, 0); return; }
-        up = normalize(GvCentre + position);
+        up = normalize(dr.CentreHalfWidth.xyz + position);
         east = normalize(float3(up.z, 0, -up.x));
         north = cross(up, east);
     }
 
     stage override void VSMain()
     {
+        GvDraw dr = GvDraws[(uint)streams.GvDrawIn];
+        streams.GvDrawId = streams.GvDrawIn;
+        float4x4 GvWorldView = dr.WorldView;
+        float4 GvColor = dr.Color;
+        float GvTiles = dr.Misc.y, GvHalfWidth = dr.CentreHalfWidth.w, GvIsLine = dr.Misc.z;
         float2 uvIn = float2(streams.GvUvIn) / 32768.0 - 0.5;
-        float3 position = Relative(uvIn, GvExtrusion > 0.5 ? streams.GvEdgeIn.y : 0);
+        float3 position = Relative(dr, uvIn, GvExtrusion > 0.5 ? streams.GvEdgeIn.y : 0);
         float4 v = mul(float4(position, 1), GvWorldView);
         float outset = 0;
         float2 uvShift = 0;
         if (GvIsLine > 0.5)
         {
             float3 p, east, north;
-            Frame(position, p, east, north);
+            Frame(dr, position, p, east, north);
             float2 q = float2(streams.GvExtrude.xy) / 63.0;
             float3 dir = q.x * east - q.y * north;
             float3 dirView = mul(float4(dir, 0), GvWorldView).xyz / GvRadius;
@@ -136,7 +156,7 @@ shader GlobeVector : ShaderBase
             // [1.15, 210, 30] (radial, azimuthal, polar) = (0.2875, -0.498, 0.996) in the map's
             // east / south / up; intensity 0.5, colour white, 0.03 ambient. In sRGB, as GL JS.
             float3 p, east, north;
-            Frame(position, p, east, north);
+            Frame(dr, position, p, east, north);
             float2 e = float2(streams.GvExtrude.xy);
             float3 n = dot(e, e) > 0 ? normalize(e.x * east - e.y * north) : p;
             float3 light = 0.2875 * east + 0.498 * north + 0.996 * p;
@@ -157,6 +177,9 @@ shader GlobeVector : ShaderBase
 
     stage override void PSMain()
     {
+        GvDraw dr = GvDraws[(uint)round(streams.GvDrawId)];
+        float4 GvClip = dr.Clip;
+        float GvIsLine = dr.Misc.z;
         float2 uv = streams.GvUv;
         if (uv.x < GvClip.x || uv.y < GvClip.y || uv.x > GvClip.z || uv.y > GvClip.w) discard;
         float alpha = streams.GvTint.a;
