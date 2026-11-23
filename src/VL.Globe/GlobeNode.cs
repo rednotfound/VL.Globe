@@ -169,6 +169,11 @@ public sealed class GlobeNode : IDisposable
     double _perfFrom = -1, _lastUpdateAt = -1, _updateMax;
     int _perfUploads, _gen0, _gen2;
     long _allocated, _mainAllocated;
+    // the ephemeral collections seen (the last one each frame): what they promoted and how long they paused -
+    // the pause follows what survives (4g step 4), so the survivors are what to know
+    long _lastGcIndex = -1, _promoted;
+    int _gcSeen, _gen1Seen;
+    double _gcPauseSeen;
     long _perfBytes, _perfBytesMax;
     readonly FrameStats _frames = new();
     Matrix _statsView;
@@ -239,6 +244,14 @@ public sealed class GlobeNode : IDisposable
                 now - updateStart, string.Join(", ", parts), (GC.GetTotalPauseDuration() - _gcPauseAtStart).TotalMilliseconds, _gpu.Breakdown);
         }
         if (_lastUpdateAt >= 0) _frames.Add(updateStart - _lastUpdateAt, _movedThisFrame);
+        var gc = GC.GetGCMemoryInfo(GCKind.Ephemeral);
+        if (gc.Index != _lastGcIndex && _lastGcIndex >= 0)
+        {
+            _gcSeen++; _promoted += gc.PromotedBytes;
+            if (gc.Generation == 1) _gen1Seen++;
+            if (gc.PauseDurations.Length > 0) _gcPauseSeen += gc.PauseDurations[0].TotalMilliseconds;
+        }
+        _lastGcIndex = gc.Index;
         _anatomy.EndOfUpdate(updateStart, now, _stages, _gpu.StageMs, _gpu.UploadedBytes, _gpu.Uploads, _gcPauseAtStart, _gen0AtStart, _gen2AtStart, _gpu.LastDraw.Serial);
         _movedThisFrame = false;
         _lastUpdateAt = updateStart;
@@ -263,8 +276,9 @@ public sealed class GlobeNode : IDisposable
         var draw = _gpu.TakeDrawStats();
         var frames = _frames.Take();
         if (_gpu.TilesBuilt > 0 && (frames.Moved || frames.MissedFrames > 0 || _perfUploads > 0 || gen2 > _gen2))
-            _logger.LogInformation("Globe perf: {Frames}; Update max {UpdateMax:F1} ms; uploaded {Uploads} tiles {MB:F1} MB, most {MaxMB:F1} MB in a frame; GC gen0 +{Gen0}, gen2 +{Gen2}, allocated {Alloc:F0} MB ({Main:F0} on the main thread); draw: {Draw}",
-                frames, _updateMax, _perfUploads, _perfBytes / 1048576.0, _perfBytesMax / 1048576.0, gen0 - _gen0, gen2 - _gen2, allocMB, mainMB, draw);
+            _logger.LogInformation("Globe perf: {Frames}; Update max {UpdateMax:F1} ms; uploaded {Uploads} tiles {MB:F1} MB, most {MaxMB:F1} MB in a frame; GC gen0 +{Gen0}, gen2 +{Gen2}, allocated {Alloc:F0} MB ({Main:F0} on the main thread), {Seen} ephemeral seen ({Gen1} gen1) promoted {Promoted:F1} MB, paused {SeenPause:F1} ms; draw: {Draw}",
+                frames, _updateMax, _perfUploads, _perfBytes / 1048576.0, _perfBytesMax / 1048576.0, gen0 - _gen0, gen2 - _gen2, allocMB, mainMB, _gcSeen, _gen1Seen, _promoted / 1048576.0, _gcPauseSeen, draw);
+        _gcSeen = 0; _gen1Seen = 0; _promoted = 0; _gcPauseSeen = 0;
         _perfFrom = now; _updateMax = 0; _perfUploads = 0; _perfBytes = 0; _perfBytesMax = 0;
         _gen0 = gen0; _gen2 = gen2;
     }

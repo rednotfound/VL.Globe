@@ -207,16 +207,22 @@ internal static partial class VectorBucketBuilder
             foreach (var f in features)
             {
                 featureIndex++;
+                AllocMeter.Start();
                 ctx.Zoom = tileZoom;
                 ctx.Properties = f.Properties; ctx.GeometryType = f.GeometryType; ctx.Id = f.Id;
-                if (l.Filter is { } filter && !Expression.Filter(filter, ctx)) continue;
+                if (l.Filter is { } filter && !Expression.Filter(filter, ctx)) { AllocMeter.Lap(0, "filter"); continue; }
+                AllocMeter.Lap(0, "filter");
                 var text = TextOf(layer, ctx);
+                AllocMeter.Lap(1, "text");
                 string? iconName = layer.IconImage is null || iconsOff != null ? null : IconOf(layer, ctx);
+                AllocMeter.Lap(2, "icon name");
                 bool hasText = !string.IsNullOrEmpty(text), hasIcon = !string.IsNullOrEmpty(iconName);
                 if (!hasText && !hasIcon) continue;
                 string stack = hasText ? FontStack(layer, ctx) : "";
+                AllocMeter.Lap(3, "font stack");
                 if (hasText && !store.Ensure(stack, text!, fetch, missing)) { complete = false; continue; }
                 if (hasIcon && !sprites.Ensure(fetch, missing)) { complete = false; continue; }
+                AllocMeter.Lap(4, "ensure");
 
                 // GL JS: the shaping's text size at the bucket's zoom + 1 and at its zoom; icon-size too
                 ctx.Zoom = tileZoom + 1;
@@ -235,11 +241,14 @@ internal static partial class VectorBucketBuilder
                 // GL JS: a label on a line is one line; along it, centred
                 if (placement != "point") maxWidth = double.PositiveInfinity;
                 if (alongLine) justify = TextJustify.Center;
+                AllocMeter.Lap(5, "layout properties");
 
                 var shaping = hasText
                     ? Shaping.ShapeText(Formatted.FromString(text!), store, stack, maxWidth, lineHeight, anchor, justify,
                         spacing, (offset.X, offset.Y), WritingMode.Horizontal, false, layoutTextSize, layoutTextSizeThisZoom)
                     : null;
+                AllocMeter.Lap(6, "shaping");
+                if (AllocMeter.On && shaping != null) foreach (var pl in shaping.PositionedLines) AllocMeter.Glyphs += pl.PositionedGlyphs.Count;
                 ImagePosition? image = hasIcon && sprites.TryGet(iconName!, out var position) ? position : null;
                 if (shaping is null && image is null) continue;
 
@@ -294,6 +303,7 @@ internal static partial class VectorBucketBuilder
                         : (img.Image.Sdf, needsLinear);
                 }
 
+                AllocMeter.Lap(8, "icon and box");
                 if (iconAlongLine && iconQuads != null && shaping is null)
                 {
                     foreach (var (y, iconStart, iconCount) in IconsAlongLine(layer, f, placement, ctx, iconQuads, iconExtent!.Value, iconBox!.Value,
@@ -331,6 +341,7 @@ internal static partial class VectorBucketBuilder
                             AnchorX = (int)(ax * LineUp), AnchorY = (int)(ay * LineUp),
                         });
                 }
+                AllocMeter.Lap(9, "anchors, quads, labels");
             }
             ctx.Zoom = tileZoom;
             // GL JS placement.ts alwaysShowText / alwaysShowIcon, from what the layer's bucket holds

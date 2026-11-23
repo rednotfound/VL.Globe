@@ -149,9 +149,13 @@ internal sealed class Shaping
         if (writingMode != WritingMode.Horizontal)
             throw new ArgumentOutOfRangeException(nameof(writingMode), writingMode, "horizontal or vertical");
 
+        AllocMeter.Lap(7, "(before shaping)");
         var logicalInput = TaggedString.FromFeature(text, defaultFontStack);
+        AllocMeter.Lap(10, "shaping: tagged string");
         var lineBreaks = logicalInput.DetermineLineBreaks(spacing, maxWidth, glyphs, layoutTextSize);
+        AllocMeter.Lap(11, "shaping: line breaks");
         var lines = BreakLines(logicalInput, lineBreaks);
+        AllocMeter.Lap(12, "shaping: break lines");
 
         var shaping = new Shaping
         {
@@ -167,6 +171,7 @@ internal sealed class Shaping
 
         ShapeLines(shaping, glyphs, lines, lineHeight, textAnchor, textJustify, writingMode, spacing,
             allowVerticalPlacement, layoutTextSizeThisZoom);
+        AllocMeter.Lap(13, "shaping: shape lines");
         if (IsEmpty(shaping.PositionedLines)) return null;
         return shaping;
     }
@@ -307,13 +312,15 @@ internal sealed class Shaping
                 var codePoint = TaggedString.FirstCodePoint(grapheme);
                 var vertical = IsLineVertical(writingMode, allowVerticalPlacement, codePoint);
 
-                // A cluster the font has no shape for is drawn a code point at a time.
-                IEnumerable<string> keys = TaggedString.IsCluster(grapheme) && !TaggedString.TryGetGlyph(glyphs, section.FontStack, grapheme, out _)
-                    ? TaggedString.CodePoints(grapheme)
-                    : new[] { grapheme };
-
-                foreach (var key in keys)
+                // A cluster the font has no shape for is drawn a code point at a time; anything else is
+                // its own one key (without an array a glyph: ROADMAP 4g step 4)
+                bool byCodePoint = TaggedString.IsCluster(grapheme) && !TaggedString.TryGetGlyph(glyphs, section.FontStack, grapheme, out _);
+                using var codePoints = byCodePoint ? TaggedString.CodePoints(grapheme).GetEnumerator() : null;
+                for (bool first = true; ; first = false)
                 {
+                    string key;
+                    if (codePoints is null) { if (!first) break; key = grapheme; }
+                    else { if (!codePoints.MoveNext()) break; key = codePoints.Current; }
                     var positionedGlyph = new PositionedGlyph
                     {
                         Glyph = TaggedString.FirstCodePoint(key),
@@ -760,11 +767,16 @@ internal sealed class TaggedString
                 continue;
             }
             var n = char.IsHighSurrogate(text[i]) && i + 1 < text.Length && char.IsLowSurrogate(text[i + 1]) ? 2 : 1;
-            units.Add(text.Substring(i, n));
+            units.Add(n == 1 ? OneChar(text[i]) : text.Substring(i, n));
             i += n;
         }
         return units;
     }
+
+    // A one-character grapheme as one string for good: every label of every tile was cut into new
+    // strings a character each (ROADMAP 4g step 4: garbage from building tiles paused the renderer)
+    static readonly string?[] OneChars = new string?[char.MaxValue + 1];
+    internal static string OneChar(char c) => OneChars[c] ??= c.ToString();
 
     // String.prototype.codePointAt(0): a lone surrogate is its own value, as in JS.
     internal static int FirstCodePoint(string s) =>

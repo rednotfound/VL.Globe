@@ -76,6 +76,14 @@ public class AllocationProbe(ITestOutputHelper output)
                 output.WriteLine($"    {worst.Layer.Id} by type (100-KB ticks):");
                 foreach (var (type, n) in ticks.Top(12)) output.WriteLine($"      {n,5}  {type}");
             }
+            // ... and by stage of the per-feature loop (AllocMeter, temporary)
+            AllocMeter.Reset(); AllocMeter.On = true;
+            try { VectorBucketBuilder.Build(doc, source, new List<GpuStyleLayer> { worst }, false, key, true, null, out _)?.Release(); }
+            finally { AllocMeter.On = false; }
+            output.WriteLine($"    {worst.Layer.Id} by stage:");
+            for (int i = 0; i < AllocMeter.Mb.Length; i++)
+                if (AllocMeter.Names[i] is { } stage) output.WriteLine($"      {AllocMeter.Mb[i],7:F1} MB  {stage} ({AllocMeter.Calls[i]} calls, {AllocMeter.Mb[i] * 1048576 / Math.Max(1, AllocMeter.Calls[i]):F0} B each)");
+            output.WriteLine($"      {AllocMeter.Glyphs} glyphs shaped");
         }
     }
 
