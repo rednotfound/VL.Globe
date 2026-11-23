@@ -399,7 +399,7 @@ internal static partial class VectorBucketBuilder
             {
                 Key = _key, OverscaledZoom = _key.Zoom + System.Numerics.BitOperations.Log2((uint)Overscale), Centre = _centre, Vertices = vertices, Indices = indices,
                 VertexCount = _vertices.Count, IndexCount = _indices.Count, Ranges = ranges,
-                SymbolVertices = _symbolVertices.ToArray(), SymbolIndices = _symbolIndices.ToArray(), Labels = _labels.ToList(), LineLabels = _lineLabels.ToList(),
+                SymbolVertices = _symbolVertices.ToArray(), SymbolIndices = _symbolIndices.ToArray(), Labels = _labels.ToList(), LineLabels = FinishLineLabels(),
                 IconModes = new Dictionary<int, (bool, bool)>(_iconModes),
                 CircleVertices = _circleVertices.ToArray(), CircleIndices = _circleIndices.ToArray(),
             };

@@ -597,3 +597,8 @@ looked fine - "which makes one think it works". Two causes, estimated at 100 m h
   feature seen in a loop is valid until the next: keep its `Index` and `Get(i)` it later (the fill
   outlines did). Zoom bench 2.8% -> 1.2% (two runs), worst 31-35 ms. ViewProbe differs by ~22 pixels
   between two runs of the same code (label timing): compare a change against that, not against zero.
+- **Line labels as structs: no measurable gain** (2026-11-23). Three zoom benches 0.6 / 2.2 / 1.1%
+  against 1.2 / 1.2 before: the run-to-run spread (tiles arriving at different moments) is now
+  wider than the step. Kept - fewer objects, same pixels (24 of 255k, the probe's own spread) - but
+  the missed frames are now mixed: GC 4-8 ms a frame, label opacities 5-10 ms in single frames,
+  submit 7-9 ms at 6000 draws zoomed out. Run a bench three times before calling a change.

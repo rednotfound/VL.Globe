@@ -519,8 +519,12 @@ Sum either log up with `tools/Summarize-Perf.py <log> --from <pan 1 begins> --to
   gone; zoom bench 3.4% -> 2.8% (37 of 1306 frames), worst 39 ms. Then features as rows of their
   layer's arrays (`FeatureTable`, enumerated through one reused cursor - no object a feature): zoom
   bench **1.2%** twice (16 of 1314 frames), worst 31-35 ms; Tokyo offscreen unchanged (22-26 pixels
-  of 255k differ, as between two runs of the same code). Next, by count: a line label's arrays in
-  one array a tile, the value strings kept as bytes until asked for. A dump stalls vvvv ~0.8 s: never bench while dumping.
+  of 255k differ, as between two runs of the same code). Then line labels as structs, their lines and
+  glyph offsets ranges of two arrays a tile (no three objects a label): three runs 0.6%, 2.2%, 1.1% -
+  no clear gain over 1.2%; the bench's spread between runs is now larger than the step. What the
+  missed frames hold now is mixed, not GC alone (4-8 ms of it a frame): label opacities 5-10 ms in
+  single frames, submit 7-9 ms at 6000 draws zoomed out, 800 label tiles. Left: the value strings as
+  bytes (218k strings, the largest count), and these - measured before chosen. A dump stalls vvvv ~0.8 s: never bench while dumping.
 
 ### 5. Navigation
 

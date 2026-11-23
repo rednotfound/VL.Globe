@@ -58,7 +58,7 @@ public class AllocationProbe(ITestOutputHelper output)
             output.WriteLine($"  shapes   allocated {(a2 - a1) / 1048576.0,7:F1} MB, alive after it {(afterShapes - afterDecode) / 1048576.0,6:F1} MB more (its bucket {((long)b1.VertexCount * VectorVertex.Size + b1.IndexCount * 2L) / 1048576.0:F1} MB)");
             output.WriteLine($"  symbols  allocated {(a3 - a2) / 1048576.0,7:F1} MB, alive after it {(afterSymbols - afterShapes) / 1048576.0,6:F1} MB more");
             // what the symbols' result is made of - its small objects are what a collection copies
-            long lineLabelArrays = b2.LineLabels.Sum(x => (long)x.Line.Length * 12 + x.GlyphOffsets.Length * 4L + 2 * 24);
+            long lineLabelArrays = b2.LineLabels.Sum(x => (long)x.Line.Length * 12 + x.GlyphOffsets.Length * 4L);
             output.WriteLine($"  symbols' result: {b2.Labels.Count} point labels (one array), {b2.LineLabels.Count} line labels " +
                 $"({3 * b2.LineLabels.Count} objects, {lineLabelArrays / 1048576.0:F1} MB of arrays), symbol vertices {(long)b2.SymbolVertices.Length * SymbolVertex.Size / 1048576.0:F1} MB, " +
                 $"indices {b2.SymbolIndices.Length * 4L / 1048576.0:F1} MB, circles {b2.CircleVertices.Length}");

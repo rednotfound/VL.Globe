@@ -9,13 +9,18 @@ namespace VL.Globe.Engine;
 /// follows (on the unit sphere or the plane, relative to the bucket's centre), each glyph's offset
 /// along the line in 24-px units, and its vertices - 4 a glyph, in glyph order.
 /// </summary>
-internal sealed class LineLabel
+// A struct, its line and glyph offsets ranges of its bucket's two arrays: a heap dump while zooming found
+// 51k line labels surviving with three objects each (the label, its line, its offsets), 2026-11-23.
+internal struct LineLabel
 {
+    public LineLabel() { }
+
     public required int Layer;
     public required Vector3 Anchor;
-    public required Vector3[] Line;
+    public ReadOnlyMemory<Vector3> Line;      // set when the bucket is finished (LineStart/LineCount before)
     public required int Segment;              // the anchor lies on Line[Segment]..Line[Segment + 1]
-    public required float[] GlyphOffsets;     // GL JS's glyphOffsetArray: x + half the advance, at 24 px
+    public ReadOnlyMemory<float> GlyphOffsets;   // GL JS's glyphOffsetArray: x + half the advance, at 24 px
+    internal int LineStart, LineCount, GlyphStart, GlyphCount;   // into the builder's arrays
     public required int VertexStart;
     public float LineOffsetX, LineOffsetY;    // text-offset at 24 px (GL JS's lineOffsetX/Y)
     public bool KeepUpright = true;
@@ -79,7 +84,7 @@ internal static class LineGlyphs
         Vector2? Project(int i)
         {
             if (projected[i] is { } known) return known;
-            var c = Vector4.Transform(new Vector4(label.Line[i], 1), worldViewProjection);
+            var c = Vector4.Transform(new Vector4(label.Line.Span[i], 1), worldViewProjection);
             if (c.W <= 0) return null;   // GL JS truncates the segment at the camera plane; hidden here
             var p = new Vector2((c.X / c.W * 0.5f + 0.5f) * width, (-c.Y / c.W * 0.5f + 0.5f) * height);
             projected[i] = p;
@@ -113,8 +118,8 @@ internal static class LineGlyphs
         (List<Placed> glyphs, bool flip)? PlaceAll(bool flip)
         {
             int n = label.GlyphOffsets.Length;
-            var first = Glyph(fontScale * label.GlyphOffsets[0], flip);
-            var last = n > 1 ? Glyph(fontScale * label.GlyphOffsets[n - 1], flip) : first;
+            var first = Glyph(fontScale * label.GlyphOffsets.Span[0], flip);
+            var last = n > 1 ? Glyph(fontScale * label.GlyphOffsets.Span[n - 1], flip) : first;
             if (first is null || last is null) return null;
             // GL JS requiresOrientationChange, horizontal text: the first glyph right of the last
             if (label.KeepUpright && !flip && n > 1 && first.Value.X > last.Value.X) return (new List<Placed>(), true);
@@ -127,7 +132,7 @@ internal static class LineGlyphs
             var list = new List<Placed> { first.Value };
             for (int g = 1; all && g < n - 1; g++)
             {
-                var p = Glyph(fontScale * label.GlyphOffsets[g], flip);
+                var p = Glyph(fontScale * label.GlyphOffsets.Span[g], flip);
                 if (p is null) return null;
                 list.Add(p.Value);
             }

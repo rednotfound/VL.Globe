@@ -456,9 +456,9 @@ internal static partial class VectorBucketBuilder
                     foreach (var (used, anchor) in LinePlacements(layer, f, placement, ctx, (shaping.Left, shaping.Right), null, layoutTextSize, text, repeated))
                     {
                         var anchorPosition = Relative(anchor.X / Up, anchor.Y / Up);
-                        var points = LineOf(used, Up);
+                        var (lineStart, lineCount) = LineOf(used, Up);
                         int first = _symbolVertices.Count;
-                        var offsets = new List<float>();
+                        int glyphStart = _glyphOffsets.Count;
                         foreach (var lineGlyphs in shaping.PositionedLines)
                             foreach (var g in lineGlyphs.PositionedGlyphs)
                             {
@@ -466,7 +466,7 @@ internal static partial class VectorBucketBuilder
                                 // GL JS getGlyphQuads along a line: the quad round the glyph's own point,
                                 // which is glyphOffset (x + half the advance) along the line, y across it
                                 double halfAdvance = g.Metrics.Advance * g.Scale / 2;
-                                offsets.Add((float)(g.X + halfAdvance));
+                                _glyphOffsets.Add((float)(g.X + halfAdvance));
                                 const double RectBuffer = Glyph.Border + GlyphAtlas.Padding;
                                 double x1 = (g.Metrics.Left - RectBuffer) * g.Scale - halfAdvance;
                                 double y1 = (-g.Metrics.Top - RectBuffer) * g.Scale + g.Y;
@@ -479,11 +479,12 @@ internal static partial class VectorBucketBuilder
                                 _symbolIndices.Add(i); _symbolIndices.Add(i + 1); _symbolIndices.Add(i + 2);
                                 _symbolIndices.Add(i + 1); _symbolIndices.Add(i + 2); _symbolIndices.Add(i + 3);
                             }
-                        if (offsets.Count == 0) continue;
+                        if (_glyphOffsets.Count == glyphStart) continue;
                         _lineLabels.Add(new LineLabel
                         {
-                            Layer = layer.Index, Anchor = anchorPosition, Line = points, Segment = anchor.Segment,
-                            GlyphOffsets = offsets.ToArray(), VertexStart = first,
+                            Layer = layer.Index, Anchor = anchorPosition, Segment = anchor.Segment,
+                            LineStart = lineStart, LineCount = lineCount, GlyphStart = glyphStart, GlyphCount = _glyphOffsets.Count - glyphStart,
+                            VertexStart = first,
                             LineOffsetX = (float)offset.X, LineOffsetY = (float)offset.Y, KeepUpright = keepUpright, RotateToLine = rotateToLine,
                             CircleDiameter = diameter, Padding = (float)padding, FeatureSize = size,
                             AlwaysOverlap = alwaysOverlap, IgnorePlacement = ignorePlacement,
@@ -511,19 +512,38 @@ internal static partial class VectorBucketBuilder
         // The line a label along a line is walked on, relative to the bucket's centre: one array for all the
         // anchors on one clipped line, not one each (a long road's every one-way arrow held the whole road -
         // 13.8 MB of a z12 tile, and kept with it; GL JS keeps a feature's line once, 4g step 4). Read only.
+        // Now a range of one array a bucket (_linePoints3), with the glyph offsets in another: no array a label.
         object? _lineOfUsed;
         double _lineOfScale;
-        Vector3[] _lineOf = Array.Empty<Vector3>();
+        (int Start, int Count) _lineOf;
+        readonly List<Vector3> _linePoints3 = new();
+        readonly List<float> _glyphOffsets = new();
 
-        Vector3[] LineOf(IReadOnlyList<(double X, double Y)> used, double scale)
+        (int Start, int Count) LineOf(IReadOnlyList<(double X, double Y)> used, double scale)
         {
             if (!ReferenceEquals(used, _lineOfUsed) || scale != _lineOfScale)
             {
-                var line = new Vector3[used.Count];
-                for (int i = 0; i < line.Length; i++) line[i] = Relative(used[i].X / scale, used[i].Y / scale);
-                (_lineOfUsed, _lineOfScale, _lineOf) = (used, scale, line);
+                int start = _linePoints3.Count;
+                for (int i = 0; i < used.Count; i++) _linePoints3.Add(Relative(used[i].X / scale, used[i].Y / scale));
+                (_lineOfUsed, _lineOfScale, _lineOf) = (used, scale, (start, used.Count));
             }
             return _lineOf;
+        }
+
+        // the labels' lines and offsets as ranges of the finished bucket's two arrays
+        List<LineLabel> FinishLineLabels()
+        {
+            var points = _linePoints3.ToArray();
+            var offsets = _glyphOffsets.ToArray();
+            var labels = new List<LineLabel>(_lineLabels.Count);
+            foreach (var label in _lineLabels)
+            {
+                var l = label;
+                l.Line = new ReadOnlyMemory<Vector3>(points, l.LineStart, l.LineCount);
+                l.GlyphOffsets = new ReadOnlyMemory<float>(offsets, l.GlyphStart, l.GlyphCount);
+                labels.Add(l);
+            }
+            return labels;
         }
 
         List<(int Y, int IconStart, int IconCount)> IconsAlongLine(GpuStyleLayer layer, StyleFeature f, string placement, StyleContext ctx, List<IconQuad> quads,
@@ -539,11 +559,14 @@ internal static partial class VectorBucketBuilder
                 int first = _symbolVertices.Count, iconIndexFirst = _iconIndices.Count;
                 foreach (var q in quads) IconQuadVertices(anchorPosition, q, size, opacity, color);
                 placed.Add(((int)Math.Floor(anchor.Y + 0.5), iconIndexFirst, _iconIndices.Count - iconIndexFirst));
+                var (lineStart, lineCount) = LineOf(used, LineUp);
+                int glyphStart = _glyphOffsets.Count;
+                for (int q = 0; q < quads.Count; q++) _glyphOffsets.Add(0);   // every quad at the anchor
                 _lineLabels.Add(new LineLabel
                 {
                     Layer = layer.Index, Anchor = anchorPosition, Segment = anchor.Segment,
-                    Line = LineOf(used, LineUp),
-                    GlyphOffsets = new float[quads.Count], VertexStart = first, KeepUpright = keepUpright,
+                    LineStart = lineStart, LineCount = lineCount, GlyphStart = glyphStart, GlyphCount = quads.Count,
+                    VertexStart = first, KeepUpright = keepUpright,
                     FeatureSize = size, IconBox = box,
                     AlwaysOverlap = (flags & SymbolFlags.IconAllowOverlap) != 0, IgnorePlacement = (flags & SymbolFlags.IconIgnorePlacement) != 0,
                     Key = CrossTileSymbolIndex.KeyOf(""), AnchorX = (int)Math.Floor(anchor.X), AnchorY = (int)Math.Floor(anchor.Y),
