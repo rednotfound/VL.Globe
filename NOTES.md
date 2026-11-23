@@ -622,3 +622,7 @@ looked fine - "which makes one think it works". Two causes, estimated at 100 m h
 - **Closing a GlobeWindow with WM_CLOSE sometimes logs ObjectDisposedException** (GlobeWindow_P's
   GetClientBounds on the disposed VLGameForm, then vvvv's MainForm): seen in 4 of 9 bench closes on
   2026-11-23, before and after the day's changes - a shutdown race, not yet looked at.
+- **Seen in vvvv, before and after the per-draw buffer** (2026-11-23, the bench patch at
+  #14.82/35.68778/139.76758/-78.6/54.5, still, 45 s after opening): 53 of 253k sampled pixels differ
+  between the two builds; no renderer error in the log. Both show a few 3D buildings drawn
+  translucent (ground through them; Marunouchi, Yaesu) - already so before the change, not looked at yet.
