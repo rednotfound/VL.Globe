@@ -150,11 +150,11 @@
               </p:ValueBoxSettings>
             </Pad>
           </Canvas>
-          <Patch Id="LrkrQdbiH9FsxIoydgqNhj" Name="Create">
+          <Patch Id="LrkrQdbiH9FsxIoydgqNhj" Name="Create" ManuallySortedPins="true">
             <Pin Id="SL7ppt5RhCZleruS8IEBIz" Name="Bounds" Kind="InputPin" Visibility="Optional" />
             <Pin Id="AbXn6Zbwp9Awy0l3cHTUlC" Name="Bound to Document" Kind="InputPin" Visibility="Optional" />
           </Patch>
-          <Patch Id="AJmjIfRzBxd6Di2uELJOAG" Name="Update">
+          <Patch Id="AJmjIfRzBxd6Di2uELJOAG" Name="Update" ManuallySortedPins="true">
             <Pin Id="SL7eUprBCwWoGKaZjwfsAz" Name="Tile Source" Kind="InputPin" />
             <Pin Id="O6jUqB7CjulgB76rwphBZx" Name="Layers" Kind="InputPin" Visibility="Optional" />
             <Pin Id="BkhcgPbNYsum7T136ojfmH" Name="Input" Kind="InputPin" Visibility="Optional" />

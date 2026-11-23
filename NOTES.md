@@ -647,3 +647,9 @@ looked fine - "which makes one think it works". Two causes, estimated at 100 m h
   Geometry: Enabled last; ZoomIn/ZoomOut: Trigger last. Pins link by name: patches keep their links
   (all 8 help patches compiled; the bench patch drew in vvvv). VL.Mapsui's layer nodes have the same
   Enabled-in-the-middle order (ours copied it) - not changed there.
+- **A patched definition's pin order needs `ManuallySortedPins="true"`** on its Create/Update `<Patch>`
+  (538 of them in VL.Stride.Engine.vl; none in VL.Globe.vl until 2026-11-23). Without it the `<Pin>`
+  elements' order is not what the editor shows - the reorder committed just before (1ca1dba) did not
+  say so and may have shown nothing. Added to GlobeWindow; to be confirmed: after vvvv recompiles,
+  `GlobeWindow_P.Update`'s parameters should follow the `<Pin>` order (they do for SceneWindow,
+  OrbitCamera and Renderer, which are manually sorted).
