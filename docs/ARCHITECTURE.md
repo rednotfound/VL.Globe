@@ -134,20 +134,30 @@ Each frame, on vvvv's main thread:
    bends and colouring the vertices.
 7b. **VectorTiles on the GPU** (`Rendering` GPU, the default; ROADMAP 4d, docs/DESIGN-GPU-VECTOR.md) —
    MapLibre's architecture, *geometry cached, pixels drawn every frame*:
-   - `VectorBucket.cs` builds one vector tile into vertices on the unit sphere relative to the tile's
-     centre (fills ear-clipped here or by NTS for rings with holes; lines by the same
+   - `VectorTile.cs` decodes an MVT layer into a `FeatureTable` (`FeatureGeometry.cs`): points, rings,
+     parts, tags and ids as a few arrays, values in a `ValueTable` whose strings are made at their
+     first read - no object a feature (what outlives a gen0 interval is copied by every collection
+     that sees it; ROADMAP 4g). A feature is walked through one reused `StyleFeature` cursor: keep its
+     `Index`, never the object. Style expressions are compiled once (`StyleExpressionCompiler.cs`).
+     A lenient style (vvvv) leaves out a feature or a label it cannot draw, never the layer, and logs
+     each skip once as `Globe style:`; a strict one (the render tests) refuses.
+   - `VectorBucket.cs` builds one vector tile into 16-byte vertices holding their place in the tile
+     (`TileProjection.cs`, the shader's `Relative`) with 16-bit indices in segments (fills
+     ear-clipped here or by NTS for rings with holes; lines by the same
      `LineTessellator`, unextruded; fill outlines a line list, GL's `gl.LINES`), every style layer a
      range of one index buffer; paint that depends on the feature in the vertices, the rest uniforms
      per frame at the camera's zoom. Edges are cut to an eighth of a tile up to zoom 10 so chords
      stay above the globe under the shader's lift.
    - `GpuVectorTiles.cs` picks the vector tile for each wanted globe tile (zoom − 1 for 512-px tiles,
      overscaled past maxzoom), builds on MapLibre's worker count (half the cores, at most 6, threads
-     below normal priority), uploads at most 8 MB a frame from pooled arrays, stands in built
+     below normal priority) and makes the tile's GPU buffers there (the device is free-threaded), stands in built
      descendants (zooming out) or the nearest built ancestor, draws a data-free background grid on
      every needed tile at once, and keeps 768 MB of GPU buffers, least recently used out.
    - `VectorRenderer.cs` is an `IGraphicsRendererBase` in VL.Stride's `EntityRendererComponent`
      (transparent stage, after the opaque tiles): one draw per layer per tile with
-     `shaders\GlobeVector.sdsl` — lines extruded in pixels in the vertex shader, GL's edge ramp in
+     `shaders\GlobeVector.sdsl`, each draw's values in one structured buffer a frame (`GvDraws`,
+     column-major matrices; the draw's index bound in slot 1 with stride 0), one Apply a pass —
+     lines extruded in pixels in the vertex shader, GL's edge ramp in
      the pixel shader, clipping to the tile's square by discard (rectangles overlapping by 2e-4),
      vertices lifted 0.0015 of their distance towards the eye, depth tested and not written.
      Outlines are hardware-antialiased lines blended straight (the coverage goes into alpha only).
@@ -193,16 +203,20 @@ Process nodes only (a static node runs 60×/s). Network work runs on the thread 
 enqueues bytes; every GPU resource is created and every entity added or removed in `Update`, on the
 main thread. A tile from a source that has since been replaced is dropped on arrival. Draped
 overlays render on pool threads; GPU vector buckets on VL.Globe's own worker threads (below normal
-priority). **Measured in the log** while GPU vectors draw: a `Globe perf` line each second (longest
-frame, frames over 33 ms, the node's longest Update, MB uploaded, GC gen0/gen2), and for an Update
-over 50 ms its stages, the GC pause inside it and the GPU path's own stages.
+priority). **Measured in the log** while GPU vectors draw: a `Globe perf` line each second (frame
+percentiles, frames over 20 ms, the node's longest Update, MB uploaded, GC collections, bytes
+allocated and promoted, pauses, and every frame's parts - Update, gpu vectors, label place and
+opacities, submit, upload, outside, GC - made and missed frames apart), a `Globe frame:` line taking
+apart each frame over 20 ms, and for an Update over 50 ms its stages. Benches: `VLGLOBE_BENCH=pan|zoom`
+with `VLGLOBE_VIEW=#...` (`CameraBench.cs`), against `tools/GLJS-Yardstick.html`; heap dumps with
+`dotnet-gcdump` (installed 2026-11-23). In .NET every thread's collection stops the render thread.
 
 ## Verification
 
 - **MapLibre's render tests** (`MapLibreRenderFacts`, ROADMAP 4b): fixtures fetched by
   `tools\Fetch-MapLibreFixtures.ps1` (the test fails, saying so, when they are missing), pixelmatch
   8.0.0 ported, `render-tests.json` holding the ignores and the count that may only go up.
-- **Tests** (`test\VL.Globe.Tests`, 155, no network, no GPU — SkiaSharp runs in the test host): coordinates; tile geometry (exact
+- **Tests** (`test\VL.Globe.Tests`, 284 on 2026-11-23, no network; the GPU path's fixtures on a D3D11 device of the test's own — SkiaSharp runs in the test host): coordinates; tile geometry (exact
   seams, sag); camera-relative precision (0.008 mm vs 0.54 m); selection — the tile below at
   0.6–1.42×, **every sampled pixel of the screen** at ≤ 1.5× over seven poses (`TileCoverageFacts`;
   the tile-below test could not see a stretched row), a wrong Screen Height making text small; draw
@@ -213,5 +227,9 @@ over 50 ms its stages, the GC pause inside it and the GPU path's own stages.
   for each node and for dropped links. **It cannot see inside GlobeWindow**: the package's `.vl`
   compiles to `VL.Globe.vl.dll` with no source. Decompile it (`ilspycmd`) and read
   `GlobeWindow_P.Update` after every change to the definition.
+- **Probes by hand** (`VLGLOBE_PROBE=1`): `ViewProbe` draws a logged view offscreen
+  (`VLGLOBE_VIEW=#...`; two runs of the same code differ by ~20-30 pixels of 255k, label timing),
+  `ReplayProbe` replays a session's logged views in order and prints what the style skipped
+  (`VLGLOBE_VIEWS_FILE`), `AllocationProbe` what building a tile allocates and keeps.
 - **Rung 4 is the user's screen**: the jitter, the heading drift, the stretched row, the dark fades
   and the tearing were all seen there first.

@@ -328,6 +328,24 @@ What each part of the GPU path now is, and the measurement that made it so:
 - The rule that came out of it: **what outlives a gen0 interval costs; what dies young is nearly free.**
   Long-lived data as few large arrays. Measured with `AllocationProbe` (by hand) and the perf line's
   promoted bytes; the details and the wrong turns are in ROADMAP 4g and NOTES.md.
+- **Zooming** (`VLGLOBE_BENCH=zoom`, 5 levels out and back): 3.4% missed. Heap dumps 22 s apart
+  (dotnet-gcdump) showed the survivors were small objects **by count**: per feature a `StyleFeature`,
+  a property view and a boxed id; per line label three objects; 218k value strings, mostly names in
+  languages no style reads. Now a feature is a row of its layer's arrays (`FeatureTable`, one reused
+  cursor), a line label a struct over two arrays a tile, a value string made at its first read
+  (`ValueTable`), keys shared across tiles: ~0.9%.
+- **Every frame's parts, made and missed apart** (the perf line): a missed frame's "outside 8 ms" was
+  the made frames' 13 ms of vsync slack used up, not a cause. Then each draw's values went into one
+  structured buffer (`GvDraws`), one Apply a pass: submit 1.54 -> 1.15 ms, zoom ~0.7% (GL JS
+  0.2-0.4%). Two traps: a StructuredBuffer's matrix is column-major; a per-instance index offset by
+  the start instance was read per vertex - bound with stride 0 instead.
+- **Stopped there** (the user, 2026-11-23): what is left costs more than it buys - pooling, native
+  memory, a separate process for building (ROADMAP 4g lists them). .NET's one heap shared by all
+  threads is the difference from GL JS's workers that stays.
+- **Lenient means per feature**: a layer was dropped for good the first time one feature threw - the
+  user's city names went mid-session (a Thai name at z5 wanting a line break), Liberty's shields were
+  never drawn (a null compared with a number). Now that feature or label is left out, the text set on
+  one line, and each skip logged once.
 
 ## Next
 
