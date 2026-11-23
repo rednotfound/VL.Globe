@@ -53,6 +53,10 @@ internal sealed class VectorTileService : IDisposable
 
     public VectorTileService(string styleUrl) => StyleUrl = styleUrl;
 
+    /// <summary>A style given as its JSON, not fetched (GeometryStyle: shapes drawn by the GPU).</summary>
+    internal VectorTileService(string name, byte[] styleJson) { StyleUrl = name; _inline = styleJson; }
+    readonly byte[]? _inline;
+
     public string StyleUrl { get; }
 
     /// <summary>The parsed style, once it has come; null before.</summary>
@@ -92,7 +96,7 @@ internal sealed class VectorTileService : IDisposable
     {
         try
         {
-            var bytes = await GetAsync(StyleUrl).ConfigureAwait(false) ?? throw new IOException($"no style at {StyleUrl}");
+            var bytes = _inline ?? await GetAsync(StyleUrl).ConfigureAwait(false) ?? throw new IOException($"no style at {StyleUrl}");
             using var json = JsonDocument.Parse(bytes);
             var root = json.RootElement;
             // every vector source's TileJSON, before the parse that needs them

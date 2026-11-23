@@ -238,6 +238,7 @@ public sealed class GlobeNode : IDisposable
         // own imagery; every layer after it - more tile layers at their opacity (ROADMAP item 6), the
         // draped vectors - is drawn over it in order, into each tile's overlay.
         var (tileSource, layers) = SplitLayers(input);
+        layers = ShapesOnTheGpu(layers);
         try
         {
             var entity = UpdateCore(out tilesVisible, out tilesLoading, out requestsSent, out bytesReceived, out attribution, out status,
@@ -260,6 +261,41 @@ public sealed class GlobeNode : IDisposable
         var bottom = leaves.FirstOrDefault(l => l.Raster is not null);
         if (bottom is null || bottom.Opacity < 1) return (null, leaves);
         return (bottom.Raster, leaves.Where(l => !ReferenceEquals(l, bottom)).ToList());
+    }
+
+    // Shapes after a GPU VectorTiles layer (GeometryStyle): each FeatureLayer or Geometry there drawn by the
+    // GPU from a style of its own, made again only when the layer's content changes; services of layers
+    // gone are disposed.
+    readonly Dictionary<GlobeLayer, (long signature, GlobeLayer gpu)> _gpuShapes = new(ReferenceEqualityComparer.Instance);
+
+    List<GlobeLayer> ShapesOnTheGpu(List<GlobeLayer> layers)
+    {
+        int firstGpu = layers.FindIndex(l => l is { Gpu: true, Vector: not null });
+        var seen = new HashSet<GlobeLayer>(ReferenceEqualityComparer.Instance);
+        if (firstGpu >= 0)
+            for (int i = firstGpu + 1; i < layers.Count; i++)
+            {
+                var l = layers[i];
+                if (l.Raster is not null || l.Vector is not null || l.Geometries.Count == 0) continue;
+                seen.Add(l);
+                long signature = l.Signature();
+                if (!_gpuShapes.TryGetValue(l, out var entry) || entry.signature != signature)
+                {
+                    entry.gpu?.Vector?.Dispose();
+                    var service = new Engine.VectorTileService("shapes:" + l.Name,
+                        System.Text.Encoding.UTF8.GetBytes(Engine.GeometryStyle.Json(l.Geometries, l.Style)));
+                    service.Start();
+                    entry = (signature, new GlobeLayer { Name = l.Name, Vector = service, Gpu = true });
+                    _gpuShapes[l] = entry;
+                }
+                layers[i] = entry.gpu;
+            }
+        foreach (var gone in _gpuShapes.Keys.Where(k => !seen.Contains(k)).ToList())
+        {
+            _gpuShapes[gone].gpu.Vector?.Dispose();
+            _gpuShapes.Remove(gone);
+        }
+        return layers;
     }
 
     // a long Update says where its time went: each stage, and how much of it the collector paused

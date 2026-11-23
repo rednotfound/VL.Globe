@@ -693,3 +693,19 @@ looked fine - "which makes one think it works". Two causes, estimated at 100 m h
   layer was first left opaque ("it is the imagery"); the user: "没有必要，因为用户知道自己再做什么" - below
   Opacity 1 it now goes into the overlay as well, over plain tiles in the Background colour (seen in vvvv). Tested offline (a PNG put into the
   source's FileCache first); seen in vvvv.
+- **Shapes over vector tiles** (2026-11-23, the user asked it tested): a Geometry after VectorTiles in
+  Group was drawn into the tiles' overlay - under the GPU's vector tiles, so it vanished. Now such
+  layers go the GPU's way (`GeometryStyle`: one MapLibre style a layer, an inline GeoJSON source, fill /
+  line / circle in its VectorStyle; `VectorTileService` takes the style's JSON). Seen in vvvv over
+  Liberty and CARTO Voyager.
+- **A long GeoJSON line came out in stray pieces on the GPU** - since the 16-byte vertex (4g) a vertex
+  holds its place only from -0.5 to 1.5 tiles, and GeoJSON went to every tile whole: a far end was
+  clamped to that edge and its segment into the tile pointed the wrong way. GeoJSON is now cut to each
+  tile widened by a quarter (`TileClip`, Liang-Barsky lines, Sutherland-Hodgman rings, new feature
+  objects - the workers build tiles in parallel and a shared feature's Index and Bounds would race).
+  Fixture reports identical; seen in vvvv as one straight line.
+- **Fourteen public styles drawn offscreen** (StyleSurvey.ps1, scratchpad): OpenFreeMap liberty, bright,
+  positron, dark, fiord; VersaTiles colorful, graybeard, eclipse, neutrino, shadow; CARTO positron,
+  dark-matter, voyager; MapLibre demotiles (zoom 0-6 only). All draw; OpenFreeMap dark comes out nearly
+  black with faint labels - to compare with GL JS. Help patch `HowTo Choose a vector tile style` picks
+  them by number, a Geometry over them.

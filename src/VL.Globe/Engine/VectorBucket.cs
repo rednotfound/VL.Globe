@@ -219,6 +219,8 @@ internal static partial class VectorBucketBuilder
             // shader. GL JS tiles GeoJSON with geojson-vt, which rounds to 8192 steps a tile: so here
             geo = style.Features(geoJson, ref complete);
             if (!complete) return null;
+            // cut to the tile first: a vertex holds its place only from -0.5 to 1.5 tiles (TileClip)
+            geo = TileClip.Clip(geo, key);
         }
 
         var b = new Builder(key, projection, grid: source is GeoJsonSource) { Overscale = Math.Max(1, overscale) };

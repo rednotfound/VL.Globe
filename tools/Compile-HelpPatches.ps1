@@ -154,6 +154,8 @@ $OurNodes = @{
     'GlobePositionComponent' = 'new\s+[\w\.]*GlobePositionComponentNode\('
     'Group'                = 'new\s+[\w\.]*GlobeGroupNode\('
     'Group (Spectral)'     = 'new\s+[\w\.]*GlobeGroupSpectralNode\('
+    'Pick'                 = 'new\s+[\w\.]*GlobePickNode\('
+    'Graticule'            = 'new\s+[\w\.]*GlobeGraticuleNode\('
     # Globe.Navigate (ROADMAP 0.1 item 5)
     'CenterOn'             = 'new\s+[\w\.]*GlobeCenterOnNode\('
     'ZoomToLevel'          = 'new\s+[\w\.]*GlobeZoomToLevelNode\('

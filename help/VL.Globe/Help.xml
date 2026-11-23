@@ -8,6 +8,7 @@
 	<Topic title="Shapes on the globe">
 		<VLDocument link="HowTo Draw shapes on the globe.vl" tags="geometry,featureLayer,vectorStyle,layers,line,polygon,wkt,netTopologySuite,nts,draw,vector,drape" />
 		<VLDocument link="HowTo Draw vector tiles.vl" tags="vectorTiles,mapLibreStyle,maplibre,style,json,maputnik,openfreemap,liberty,url,file,read,labels,icons,buildings,mvt" />
+		<VLDocument link="HowTo Choose a vector tile style.vl" tags="vectorTiles,mapLibreStyle,style,openfreemap,versatiles,carto,positron,dark,voyager,liberty,bright,geometry,shapes,over,group,url" />
 	</Topic>
 	<Topic title="Moving the view">
 		<VLDocument link="HowTo Fly to a place.vl" tags="flyTo,zoomToBounds,centerOn,zoomToLevel,zoomIn,zoomOut,navigate,camera,view,animate,fly,bounds,fit,zoom,trigger,bang" />

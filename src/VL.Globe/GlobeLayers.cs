@@ -52,6 +52,8 @@ public sealed class GlobeLayer
     }
 
     internal IReadOnlyList<Geometry> Geometries = Array.Empty<Geometry>();
+    // FeatureLayer's features, one for each of Geometries (Pick hands them back); null for Geometry
+    internal IReadOnlyList<IFeature>? Features;
     internal GlobeVectorStyle Style = GlobeVectorStyle.Default;
     internal bool Enabled = true;
     internal string Name = "";
@@ -84,6 +86,32 @@ public sealed class GlobeLayer
         Style = style ?? GlobeVectorStyle.Default;
         Enabled = enabled;
         Name = name ?? "";
+    }
+}
+
+/// <summary>A grid of meridians and parallels on the globe.</summary>
+[ProcessNode(Name = "Graticule", Category = "Globe.Layers")]
+public sealed class GlobeGraticuleNode
+{
+    readonly GlobeLayer _layer = new() { Name = "Graticule" };
+    double _spacing = double.NaN;
+
+    /// <param name="spacing">Degrees between the lines.</param>
+    /// <param name="lineColor">Unconnected gives a translucent white.</param>
+    /// <param name="lineWidth">Pixels.</param>
+    /// <param name="enabled">Hides the grid while off.</param>
+    [return: Pin(Name = "Output")]
+    public GlobeLayer Update(double spacing = 10, Color4? lineColor = null, float lineWidth = 1f, bool enabled = true)
+    {
+        // VL.Mapsui's Graticule, as a layer draped into the tiles; built again only when the spacing changes
+        if (spacing != _spacing)
+        {
+            _spacing = spacing;
+            _layer.Geometries = Engine.Picking.Graticule(spacing);
+        }
+        _layer.Style = new GlobeVectorStyle(new Color4(0, 0, 0, 0), lineColor ?? new Color4(1, 1, 1, 0.5f), Math.Max(0, lineWidth));
+        _layer.Enabled = enabled;
+        return _layer;
     }
 }
 
@@ -149,7 +177,10 @@ public sealed class GlobeFeatureLayerNode
     [return: Pin(Name = "Output")]
     public GlobeLayer Update(IEnumerable<IFeature>? features = null, GlobeVectorStyle? style = null, string name = "Features", bool enabled = true)
     {
-        _layer.Set(features?.Select(f => f?.Geometry), style, enabled, name);
+        // the features Pick can hand back: the ones whose geometry is drawn, in the same order
+        var kept = features?.Where(f => f?.Geometry is { IsEmpty: false }).Select(f => f!).ToList();
+        _layer.Set(kept?.Select(f => f.Geometry), style, enabled, name);
+        _layer.Features = kept;
         return _layer;
     }
 }
