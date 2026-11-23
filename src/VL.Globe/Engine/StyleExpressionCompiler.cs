@@ -104,7 +104,7 @@ internal static partial class Expression
     {
         Literal, Zoom, Get, Has, GeometryType, Id, In, GlobalState, Coerce, Concat, Upcase, Downcase, ToColor, Coalesce,
         Rgb, Rgba, Add, Multiply, Subtract, Divide, Equal, NotEqual, Less, LessEqual, Greater, GreaterEqual, Not, All, Any,
-        Case, Match, Step, Interpolate,
+        Case, Match, Step, Interpolate, TypeOf,
     }
 
     sealed class Call : Node
@@ -139,7 +139,7 @@ internal static partial class Expression
                 "rgb" => Op.Rgb, "rgba" => Op.Rgba, "+" => Op.Add, "*" => Op.Multiply, "-" => Op.Subtract, "/" => Op.Divide,
                 "==" => Op.Equal, "!=" => Op.NotEqual, "<" => Op.Less, "<=" => Op.LessEqual, ">" => Op.Greater, ">=" => Op.GreaterEqual,
                 "!" => Op.Not, "all" => Op.All, "any" => Op.Any, "case" => Op.Case, "match" => Op.Match, "step" => Op.Step,
-                "interpolate" => Op.Interpolate,
+                "interpolate" => Op.Interpolate, "typeof" => Op.TypeOf,
                 _ => null,
             };
             if (op is null) return new Throws(ExceptionDispatchInfo.Capture(new StyleUnsupportedException($"expression '{name}'")));
@@ -279,6 +279,7 @@ internal static partial class Expression
                     for (int s = 0, i = 3; i + 1 < n; s++, i += 2) if (x >= stops[s]) pick = i + 1; else break;
                     return Arg(pick, ctx, want);
                 }
+                case Op.TypeOf: return TypeName(Arg(1, ctx));
                 case Op.Interpolate:
                 {
                     double x = ToNumber(Arg(2, ctx));
@@ -294,6 +295,35 @@ internal static partial class Expression
                 }
             }
             throw new StyleUnsupportedException($"expression '{_name}'");
+        }
+    }
+
+    // GL JS's typeOf with its type's toString: an array is array<item, N>, its item the common type or value
+    // (Liberty's boundary_3: ["==", ["typeof", ["get", "admin_level"]], "number"], 2026-11-23)
+    static string TypeName(object? v)
+    {
+        switch (v)
+        {
+            case null: return "null";
+            case bool: return "boolean";
+            case double: return "number";
+            case string: return "string";
+            case StyleColor: return "color";
+            case JsonElement { ValueKind: JsonValueKind.Object }: return "object";
+            case JsonElement { ValueKind: JsonValueKind.Array } a:
+            {
+                string? item = null;
+                int n = 0;
+                foreach (var x in a.EnumerateArray()) { n++; var t = TypeName(FromJson(x, Kind.Any)); item = item is null || item == t ? t : "value"; }
+                return $"array<{item ?? "value"}, {n}>";
+            }
+            case IReadOnlyList<object?> list:
+            {
+                string? item = null;
+                foreach (var x in list) { var t = TypeName(x); item = item is null || item == t ? t : "value"; }
+                return $"array<{item ?? "value"}, {list.Count}>";
+            }
+            default: return "value";
         }
     }
 

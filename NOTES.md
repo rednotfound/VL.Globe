@@ -564,3 +564,9 @@ looked fine - "which makes one think it works". Two causes, estimated at 100 m h
   accessor (`GetAccessor` once, then `Set(accessor, value)`) - fetched again each frame, before the
   first set, since a recompiled effect lays its parameters out anew. Submit ~2 ms. Draws themselves
   (DrawIndexed 0.1 ms, Apply 0.5 ms for 3000) were never the cost; measure before batching.
+- **"No city or region names" (the user, 2026-11-23): the place labels were there; the borders were not.**
+  Liberty's place layers (label_city, label_town, label_state, ...) were built and drawn - offscreen at
+  #8/34.9/135.6 and #11/35.0/135.76 every city, ward and prefecture name shows (`PlaceLabelProbe`,
+  `ViewProbe`). What was missing: `boundary_3` (prefecture and state borders), dropped in a lenient
+  parse for `typeof` in its filter. `typeof` added (GL JS's typeOf and its array<item, N> names);
+  borders drawn, solid - line-dasharray is not done. Where the user looked for names: to be asked.

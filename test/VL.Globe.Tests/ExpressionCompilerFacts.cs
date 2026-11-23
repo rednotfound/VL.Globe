@@ -22,6 +22,26 @@ public class ExpressionCompilerFacts
     }
 
     [Fact]
+    public void Typeof_names_a_value_s_type_as_GL_JS_does()
+    {
+        // Liberty's boundary_3 (prefecture and state borders) filters on it; dropped until 2026-11-23
+        var doc = Json("""
+            { "n": ["typeof", ["get", "admin_level"]], "s": ["typeof", "a"], "b": ["typeof", true], "z": ["typeof", ["get", "none"]],
+              "a": ["typeof", ["literal", [1, 2]]], "m": ["typeof", ["literal", [1, "x"]]],
+              "f": ["all", ["==", ["typeof", ["get", "admin_level"]], "number"], [">=", ["get", "admin_level"], 3]] }
+            """);
+        var ctx = new StyleContext { Zoom = 8, Properties = new Dictionary<string, object?> { ["admin_level"] = 4.0 } };
+        string T(string k) => (string)Expression.Evaluate(doc.GetProperty(k), ctx, Expression.Kind.Any)!;
+        Assert.Equal("number", T("n"));
+        Assert.Equal("string", T("s"));
+        Assert.Equal("boolean", T("b"));
+        Assert.Equal("null", T("z"));
+        Assert.Equal("array<number, 2>", T("a"));
+        Assert.Equal("array<value, 2>", T("m"));
+        Assert.True(Expression.Filter(doc.GetProperty("f"), ctx));
+    }
+
+    [Fact]
     public void A_filter_and_a_value_evaluate_per_feature_without_allocating()
     {
         // Liberty-like: a filter, a match, an interpolate by zoom, a legacy filter
