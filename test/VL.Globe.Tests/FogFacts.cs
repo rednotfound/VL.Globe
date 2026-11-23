@@ -1,5 +1,4 @@
 using Stride.Core.Mathematics;
-using VL.Globe.Engine;
 using VL.Globe.Tests.MapLibre;
 
 namespace VL.Globe.Tests;

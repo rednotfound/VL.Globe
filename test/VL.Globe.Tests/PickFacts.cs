@@ -1,10 +1,9 @@
 using NetTopologySuite.Features;
 using NetTopologySuite.Geometries;
-using VL.Globe.Engine;
 
 namespace VL.Globe.Tests;
 
-// ROADMAP 0.1 item 4: Pick (Engine/Picking.cs) and Graticule.
+// ROADMAP 0.1 item 4: Pick (Engine/Camera/Picking.cs) and Graticule.
 public class PickFacts
 {
     static readonly GeometryFactory F = new();

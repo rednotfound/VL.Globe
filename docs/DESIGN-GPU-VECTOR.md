@@ -17,7 +17,7 @@ draws it again from the current camera, which is cheap.
   buffers, `Apply`, `Draw`).
 - Parameter keys are taken from the compiled effect's reflection by name, not declared by hand.
 
-## The data, per vector tile (Engine/VectorBucket.cs, CPU, testable)
+## The data, per vector tile (Engine/Gpu/VectorBucket.cs, CPU, testable)
 
 One vertex buffer and one index buffer per vector tile, every style layer a range in them (one
 draw per layer per tile, as GL JS draws a bucket).
@@ -37,7 +37,7 @@ draw per layer per tile, as GL JS draws a bucket).
   the camera's zoom and passed as a uniform. MapLibre interpolates "composite" properties between
   two zoom stops on the GPU; not yet done here.
 
-## Drawing (Engine/VectorRenderer.cs)
+## Drawing (Engine/Gpu/VectorRenderer.cs)
 
 - For each style layer, for each vector tile: one draw. Depth test against the globe (back side
   hidden), no depth write, so later layers paint over earlier ones; the vertices are lifted a
@@ -130,7 +130,7 @@ ported against them:
   moves: buckets keep their texture coordinates; the image is uploaded again when it grows).
 - `Shaping.cs` - shapeText for horizontal text, ported by a subagent against the 8 expected JSONs
   (vertical text, images in text and unspaced scripts' dictionary breaking throw unsupported).
-- `SymbolLayout.cs` - symbol_layout.ts and quads.ts for point labels: text-field (tokens and
+- `VectorBucket.Symbols.cs` - symbol_layout.ts and quads.ts for point labels: text-field (tokens and
   expressions, concat), text-font stacks, sizes at the tile's zoom and the next, anchors (points, line
   starts, polygons' poles of inaccessibility), only inside the tile; glyph quads x 32 as GL JS stores them.
 - `GlobeSymbol.sdsl` - symbol_sdf: the anchor projected (on the sphere or the plane), the quad in
@@ -185,7 +185,7 @@ Steps, each against the fixtures:
   through Load / Peek / Pending as the glyphs; decoded unpremultiplied with SkiaSharp, premultiplied
   as GL JS's texture.ts (`Math.round(c * a / 255)`); `ImageAtlas` - RGBA, shelves 2048 wide, 1-px
   padding, one per style, an image never moves.
-- `SymbolLayout.cs` - icon-image (tokens, expressions), icon-size (layout at zoom + 1; per feature in
+- `VectorBucket.Symbols.cs` - icon-image (tokens, expressions), icon-size (layout at zoom + 1; per feature in
   the vertex), icon-anchor, icon-offset, icon-rotate, icon-padding (1-4 numbers, CSS order); shapeIcon
   and getIconQuads' one quad (the padding inside it), in the same SymbolVertex stream as text, an icon
   range before the layer's text range. The bucket's first icon decides SDF or not (GL JS's
@@ -214,7 +214,7 @@ their names beside them, no overlaps; road names along the roads kept (their shi
   quads an icon). `SymbolVertex` is 36 bytes now: GL JS's a_pixeloffset (x 16) and a_minFontScale
   (x 256), the shader's `offset / 32 * max(minFontScale, fontScale) + pixelOffset / 16`.
 - Most icon-text-fit fixtures mark their anchors with a **circle layer**, so circles came first:
-  `CircleLayout.cs` (circle_bucket.ts: a quad at every point inside the tile; the seven paint
+  `VectorBucket.Circles.cs` (circle_bucket.ts: a quad at every point inside the tile; the seven paint
   properties per feature in a 36-byte `CircleVertex`, or uniforms) and `GlobeCircle.sdsl` (circle
   shaders, pitch-alignment viewport, pitch-scale map or viewport; antialiasing, blur and stroke).
   circle-translate and pitch-alignment map are refused; circle-sort-key is not read (strict: refused).
@@ -225,7 +225,7 @@ their names beside them, no overlaps; road names along the roads kept (their shi
   the shield along a line. Liberty uses neither icon-text-fit nor circles: nothing new to see there.
 
 **Step 6, the same day: symbols on lines.**
-- `LinePlacements` (SymbolLayout.cs): the anchors along a feature's lines (getAnchors / getCenterAnchor,
+- `LinePlacements` (VectorBucket.Symbols.cs): the anchors along a feature's lines (getAnchors / getCenterAnchor,
   anchorIsTooClose), shared by text along lines and the two new cases:
   - text and icon upright at the line's anchors (text- and icon-rotation-alignment viewport; Liberty's
     shields): point symbols there - one line of text, the joint placement of point symbols;

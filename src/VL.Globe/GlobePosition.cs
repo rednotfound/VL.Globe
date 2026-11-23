@@ -3,7 +3,6 @@ using Stride.Core.Mathematics;
 using Stride.Engine;
 using Stride.Engine.Design;
 using VL.Core.Import;
-using VL.Globe.Engine;
 
 namespace VL.Globe;
 

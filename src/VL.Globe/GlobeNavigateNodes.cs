@@ -4,11 +4,10 @@ using Microsoft.Extensions.Logging;
 using NetTopologySuite.Geometries;
 using VL.Core;
 using VL.Core.Import;
-using VL.Globe.Engine;
 
 namespace VL.Globe;
 
-// The /// text is the tooltip; the reasoning lives here and in Engine/Navigation.cs.
+// The /// text is the tooltip; the reasoning lives here and in Engine/Camera/Navigation.cs.
 //
 // ROADMAP 0.1 item 5 (2026-11-23), in VL.Mapsui's shape: its Navigate nodes, each a node of its own so
 // the patch decides what drives it (a bang, a key, OSC, a timeline). Unlike Mapsui's CenterOn and

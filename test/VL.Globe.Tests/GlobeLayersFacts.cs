@@ -2,7 +2,6 @@ using NetTopologySuite.Features;
 using NetTopologySuite.Geometries;
 using SkiaSharp;
 using Stride.Core.Mathematics;
-using VL.Globe.Engine;
 
 namespace VL.Globe.Tests;
 

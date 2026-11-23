@@ -1,4 +1,4 @@
-// VL.Globe's labels (ROADMAP 4e), drawn by Engine/VectorRenderer.cs: GL JS's symbol_sdf shaders for
+// VL.Globe's labels (ROADMAP 4e), drawn by Engine/Gpu/VectorRenderer.cs: GL JS's symbol_sdf shaders for
 // point labels in the viewport (text-pitch-alignment and text-rotation-alignment viewport, GL JS's
 // defaults for point placement). The anchor is projected from its place on the globe (or the
 // Mercator plane, in MapLibre's render tests); each glyph's quad is laid out in screen pixels from

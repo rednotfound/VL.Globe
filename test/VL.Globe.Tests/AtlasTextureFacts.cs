@@ -1,5 +1,4 @@
 using Stride.Graphics;
-using VL.Globe.Engine;
 
 namespace VL.Globe.Tests;
 

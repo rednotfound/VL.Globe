@@ -1,7 +1,6 @@
 using System.Text.Json;
 using NetTopologySuite.Geometries;
 using Stride.Core.Mathematics;
-using VL.Globe.Engine;
 
 namespace VL.Globe.Tests;
 

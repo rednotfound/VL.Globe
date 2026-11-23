@@ -3,7 +3,6 @@ using Stride.Graphics;
 using Stride.Rendering;
 using Stride.Shaders;
 using Stride.Shaders.Compiler;
-using VL.Globe.Engine;
 using Matrix = Stride.Core.Mathematics.Matrix;
 using Vector4 = Stride.Core.Mathematics.Vector4;
 using Color4 = Stride.Core.Mathematics.Color4;

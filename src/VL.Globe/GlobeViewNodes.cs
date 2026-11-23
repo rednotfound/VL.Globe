@@ -47,7 +47,7 @@ public static class GlobeViewNodes
     public static global::Stride.Engine.Entity? GlobeWindowCamera(global::Stride.Engine.Entity? wired, global::Stride.Engine.Entity? own, out GlobeView? view)
     {
         var camera = wired ?? own;
-        view = camera?.Get<VL.Globe.Engine.GlobeCameraFrame>()?.View;
+        view = camera?.Get<VL.Globe.Engine.Camera.GlobeCameraFrame>()?.View;
         return camera;
     }
 

@@ -1,4 +1,4 @@
-// VL.Globe's circle layers, drawn by Engine/VectorRenderer.cs: GL JS's circle shaders for
+// VL.Globe's circle layers, drawn by Engine/Gpu/VectorRenderer.cs: GL JS's circle shaders for
 // circle-pitch-alignment viewport (its default). The centre is projected from its place on the globe
 // (or the Mercator plane, in MapLibre's render tests); the quad is extruded in screen pixels from
 // there by the radius and the stroke width - scaled with the perspective (circle-pitch-scale map, the

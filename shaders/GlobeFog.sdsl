@@ -1,4 +1,4 @@
-// VL.Globe's fog towards the horizon (ROADMAP 4f step 2), drawn by Engine/FogPass.cs over everything
+// VL.Globe's fog towards the horizon (ROADMAP 4f step 2), drawn by Engine/Gpu/FogPass.cs over everything
 // the globe drew: Mapbox's and Cesium's answer to a tilted view's distance, where the tiles are coarse
 // and a vector source's buildings are missing. Camera-relative: the eye is at the origin, so each
 // pixel's ray meets the globe (a sphere round GfCentre) at a distance found here, without the depth

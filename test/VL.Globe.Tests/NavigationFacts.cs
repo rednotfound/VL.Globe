@@ -1,9 +1,8 @@
 using NetTopologySuite.Geometries;
-using VL.Globe.Engine;
 
 namespace VL.Globe.Tests;
 
-// ROADMAP 0.1 item 5: the navigation nodes' arithmetic (Engine/Navigation.cs).
+// ROADMAP 0.1 item 5: the navigation nodes' arithmetic (Engine/Camera/Navigation.cs).
 public class NavigationFacts
 {
     static GlobeView View(double lon, double lat, double h, double heading = 0, double tilt = 0)

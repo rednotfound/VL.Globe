@@ -125,7 +125,7 @@ The plan as written:
 ### 3. Experiment: how vectors and extra raster layers reach the globe — decided 2026-11-21: draped
 
 Prototype (a) was built and judged by the user ("问题不大"): SkiaSharp draws NTS geometry into a
-transparent overlay per tile (`Engine/TileOverlay.cs`), laid over the imagery with `BinaryOperator.Over`
+transparent overlay per tile (`Engine/Draped/TileOverlay.cs`), laid over the imagery with `BinaryOperator.Over`
 — in the tile, its fades and the stand-ins that borrow it, so lines do not blink while tiles change.
 Overlay mips weight colour by alpha (no dark halo). Prototype (b), geometry, was not built: several
 times A's cost for a picture the user did not ask for; the GPU path belongs to the future vector node.
@@ -164,7 +164,7 @@ and labels are screen-facing 3D in both prototypes.
 in VL.Mapsui's shape (Features/Geometries + Style + Enabled + Name → a layer), into Globe's and
 GlobeWindow's **`Layers`**, drawn in order. Help patch `HowTo Draw shapes on the globe`. Changes are
 found by content (FromWKT and Cons rebuild objects every frame). **`Pick` and `Graticule` built 2026-11-23**
-(Engine/Picking.cs; help patches `HowTo Pick a feature`, `HowTo Draw a graticule`; seen drawing in vvvv, the
+(Engine/Camera/Picking.cs; help patches `HowTo Pick a feature`, `HowTo Draw a graticule`; seen drawing in vvvv, the
 pick's hover still to be tried by the user). Shapes after VectorTiles are drawn by the GPU (GeometryStyle).
 
 The plan as written:
@@ -196,7 +196,7 @@ stated threshold, and an ignore list of known failures.
   supported fixture passes or is in `render-tests.json`'s ignores; an ignored one that passes must
   leave; `passedAtLeast` may only go up, and does not count passes an empty image would also make.
   Results and `report.md` in `test\fixtures\maplibre\results`.
-- The renderer is new engine code, not FeatureLayer's: `Engine\MapStyle.cs` (a style-spec subset:
+- The renderer is new engine code, not FeatureLayer's: `Engine\Styling\MapStyle.cs` (a style-spec subset:
   CSS colours, legacy functions, the common expressions), `MapStylePainter.cs` (background, fill,
   line; inline GeoJSON; a viewport that is a test's canvas or a tile's square) and
   `LineTessellator.cs` (GL JS's `line_bucket.ts` joins and its shader's antialiasing).
@@ -215,7 +215,7 @@ Verified by 4b's fixtures and, at street level, by the user. Labels drawn this w
 a tile and are cut at its edge — the reason for the later vector node.
 
 **Step 1 done 2026-11-21 — the painter reads vector tiles:**
-- `Engine\VectorTile.cs`, an MVT decoder written by hand instead of NTS.IO.VectorTiles: that one
+- `Engine\VectorTiles\VectorTile.cs`, an MVT decoder written by hand instead of NTS.IO.VectorTiles: that one
   needs protobuf-net (not shipped by vvvv; another package could load another version) and converts
   to lon/lat, which the painter would convert back. Geometry is kept in Web Mercator world
   coordinates (0..1) for GeoJSON and tiles alike.
@@ -229,7 +229,7 @@ a tile and are cut at its edge — the reason for the later vector node.
 **Step 2 built 2026-11-21, not yet seen in vvvv — the node `VectorTiles [Globe.Layers]`** (the user
 chose: a layer into Layers, the style by URL):
 - Style (URL or file, default OpenFreeMap Liberty), Enabled (off), Name → Output, Attribution, Status.
-- `Engine\VectorTileService.cs`: the style, each source's TileJSON, tiles on demand (6 in flight),
+- `Engine\VectorTiles\VectorTileService.cs`: the style, each source's TileJSON, tiles on demand (6 in flight),
   disk cache `%LOCALAPPDATA%\VL.Globe\vector-tiles`, 7 days.
 - A **lenient** parse: unsupported sources and layers are left out, unsupported properties ignored,
   except those that would make a layer something else (`fill-pattern`, `line-gap-width`, offsets,
@@ -268,13 +268,13 @@ RESEARCH-VECTOR stage 3, the GPU** ("同意，开始做吧，stride也是有强�
 ### 4d. `VectorTiles` on the GPU — built 2026-11-21, the user judged it ("我觉得还行")
 
 Design: [DESIGN-GPU-VECTOR.md](DESIGN-GPU-VECTOR.md). Built the same night:
-- `Engine/VectorBucket.cs`: a vector tile's fills (NTS `PolygonTriangulator`) and lines (the same
+- `Engine/Gpu/VectorBucket.cs`: a vector tile's fills (NTS `PolygonTriangulator`) and lines (the same
   `LineTessellator`, now emitting the unextruded vertex) as vertices on the unit sphere relative to
   the tile's centre; one range per layer; paint that depends on the feature in the vertices.
 - `shaders/GlobeVector.sdsl`: lines extruded in pixels in the vertex shader, GL JS's edge ramp in
   the pixel shader, clipping to the tile's square by discard, lifted towards the eye over the tiles.
-- `Engine/VectorRenderer.cs` (an `IGraphicsRendererBase` in VL.Stride's `EntityRendererComponent`,
-  transparent stage) and `Engine/GpuVectorTiles.cs` (which tiles, built on workers, uploaded 4 a
+- `Engine/Gpu/VectorRenderer.cs` (an `IGraphicsRendererBase` in VL.Stride's `EntityRendererComponent`,
+  transparent stage) and `Engine/Gpu/GpuVectorTiles.cs` (which tiles, built on workers, uploaded 4 a
   frame, stand-ins by the nearest built ancestor).
 - `VectorTiles` gained `Rendering`: GPU (default) or Draped.
 - 9 xUnit facts (GpuVectorFacts), 170 green. The shader has never compiled yet: **rung 4 is next**
@@ -338,7 +338,7 @@ away, Mapbox hiding the distance in fog; Cesium's fog coarsens and culls horizon
    the buildings in; measure GPU memory and frame time tilted in vvvv before choosing the distance.
 
 **Steps 1 and 2 built 2026-11-22, not yet seen by the user moving:** `GlobeView.TiltLimit` (Google's
-numbers, `MaxTilt` the ceiling, zooming out lowers the tilt); `GlobeFog.sdsl` + `Engine/FogPass.cs`,
+numbers, `MaxTilt` the ceiling, zooming out lowers the tilt); `GlobeFog.sdsl` + `Engine/Gpu/FogPass.cs`,
 one full-screen pass after everything the globe draws, the ray's distance to the sphere solved per
 pixel (no depth), from 3 to 16 eye heights, the sky within ~3 degrees of the limb fogged too
 (`FogFacts` render it offscreen). Step 3 waits for the user's look: with the fog whole at 16 eye
@@ -388,7 +388,7 @@ while no tiles arrive" (4e) was read off that instrument and does not hold.
 4. Draw submission timed by part, then batched or its parameters cut, whichever the timing names.
 5. Drag inertia, if the feel is still behind once the frames are.
 
-**Step 1, half built 2026-11-22 night:** `Engine/FrameStats.cs` (`FrameStatsFacts`): `Globe perf` now
+**Step 1, half built 2026-11-22 night:** `Engine/Diagnostics/FrameStats.cs` (`FrameStatsFacts`): `Globe perf` now
 reads `N frames, fps, mean p50 p95 p99 max ms, M over 20 ms, moving|still`, and every second the
 camera moved is logged, smooth or not. `tools/GLJS-Yardstick.html`: GL JS 6.19.0 on the globe with
 Liberty, the same summary each second as `GLJS perf:` (on the page and in the console), a view
@@ -422,13 +422,13 @@ and how far it went.
 
 Run with `tools/Yardstick-Server.py <log>` (serves tools/, takes the page's POSTs - no browser
 extension) and a separate Chrome profile: `--user-data-dir=<temp> --app=http://127.0.0.1:8765/GLJS-Yardstick.html?bench=1&w=1250&h=800#<hash>`.
-The same motion in vvvv: `Engine/CameraBench.cs`, started by `VLGLOBE_BENCH=pan VLGLOBE_VIEW=#...`
+The same motion in vvvv: `Engine/Diagnostics/CameraBench.cs`, started by `VLGLOBE_BENCH=pan VLGLOBE_VIEW=#...`
 on a copy of the help patch with Enabled on; `CameraBenchFacts` checks it pans as GL JS's does.
 Sum either log up with `tools/Summarize-Perf.py <log> --from <pan 1 begins> --to <pan 2 ends> --moving`.
 
 **Step 2 built 2026-11-23 - the bytes halved, the misses not** (the same bench):
 - A vertex holds its place in the tile, 16 bytes (was 28); GlobeVector.sdsl projects it
-  (`Engine/TileProjection.cs`: only small quantities subtracted, small angles by polynomial - the
+  (`Engine/Tiles/TileProjection.cs`: only small quantities subtracted, small angles by polynomial - the
   GPU's sin is exact to ~1e-6 absolute, metres at z14; 0.22 mm at z14, `TileProjectionFacts`).
 - A line layer the same as an earlier one in every byte draws its span (casings and roads).
 - 16-bit indices in segments of 65536 vertices with a base vertex (GL JS's SegmentVector).
@@ -444,7 +444,7 @@ Sum either log up with `tools/Summarize-Perf.py <log> --from <pan 1 begins> --to
   with its parts (Update, place, upload, submit, and outside the node), then whatever that names.
 
 **Step 4, the root cause found 2026-11-23: garbage from building tiles, collected on every thread.**
-- `Globe frame:` lines (`Engine/FrameAnatomy.cs`) take each missed frame apart. In one bench, 40
+- `Globe frame:` lines (`Engine/Diagnostics/FrameAnatomy.cs`) take each missed frame apart. In one bench, 40
   missed frames overran by 354 ms in all and were paused by gen0 collections for 397 ms; in 26 of 40
   the pause alone was more than the overrun. 111 collections in those frames, 3.6 ms each.
 - The perf line now says who allocates: 90-955 MB a second while panning, ~50 of it on vvvv's main
@@ -574,7 +574,7 @@ the globe; horizon in the shader) with the user, first a probe that can fail (gl
 
 ### 5. Navigation — nodes built 2026-11-23, tested (294 green); not yet seen in vvvv
 
-**Built** (`GlobeNavigateNodes.cs`, `Engine/Navigation.cs`, category `Globe.Navigate`, VL.Mapsui's
+**Built** (`GlobeNavigateNodes.cs`, `Engine/Camera/Navigation.cs`, category `Globe.Navigate`, VL.Mapsui's
 shape): `CenterOn`, `ZoomToLevel`, `ZoomIn`, `ZoomOut`, `FlyTo`, `ZoomToBounds`. Each acts on a
 Trigger's rising edge (the view is also moved by Drag and the wheel every frame: a node setting it
 every frame would hold it), passes the view on (Output) and logs the view's hash. FlyTo is MapLibre's:
@@ -609,7 +609,7 @@ tiles stay above all tile layers whatever their place in Group. Help patch `HowT
 **The attribution in the window — built 2026-11-23** (the user: "别忘了支持Attribution的信息等等的呈现"), seen
 in vvvv by me (Tokyo, Liberty: "OpenFreeMap © OpenMapTiles Data from OpenStreetMap" bottom right), not yet
 by the user. As MapLibre's AttributionControl and Mapsui's renderer: no node, every Globe draws it while
-Enabled - `Engine/AttributionLayer.cs`, a VL.Skia layer put in the scene by VL.Stride's `SkiaRenderer`
+Enabled - `Engine/Tiles/AttributionLayer.cs`, a VL.Skia layer put in the scene by VL.Stride's `SkiaRenderer`
 (made in C#, `AfterScene`), 12 px on a half-white box, cut with an ellipsis when wider than the view.
 Globe's `Attribution` output is now every enabled layer's credit once, in order, joined by " | " (was:
 the imagery's only). FeatureLayer and Geometry have an `Attribution` pin for the user's own data (Mapsui's

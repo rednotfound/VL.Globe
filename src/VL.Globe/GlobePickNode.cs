@@ -9,7 +9,7 @@ namespace VL.Globe;
 
 // ROADMAP 0.1 item 4 (2026-11-23), VL.Mapsui's Pick on the globe: it answers about a position, not a
 // click - wire GlobeWindow's Cursor in for a continuous answer, put a S+H after it for a click (Mapsui's
-// reasoning, PickNode.cs there). The arithmetic is Engine/Picking.cs.
+// reasoning, PickNode.cs there). The arithmetic is Engine/Camera/Picking.cs.
 
 /// <summary>Finds the feature under a point of the screen: the topmost FeatureLayer or Geometry there.</summary>
 /// <remarks>
@@ -33,7 +33,7 @@ public sealed class GlobePickNode
     {
         hit = false; layer = ""; longitude = 0; latitude = 0;
         if (view is null || input is null) return null;
-        if (Engine.Picking.Pick(view, input, position.X, position.Y, tolerance) is not { } p) return null;
+        if (Engine.Camera.Picking.Pick(view, input, position.X, position.Y, tolerance) is not { } p) return null;
         hit = true;
         layer = p.layer.Name;
         longitude = p.longitude; latitude = p.latitude;

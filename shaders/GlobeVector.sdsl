@@ -1,4 +1,4 @@
-// VL.Globe's vector tiles on the GPU (docs/DESIGN-GPU-VECTOR.md), drawn by Engine/VectorRenderer.cs.
+// VL.Globe's vector tiles on the GPU (docs/DESIGN-GPU-VECTOR.md), drawn by Engine/Gpu/VectorRenderer.cs.
 // GL JS's line and fill shaders on a globe: a line vertex is extruded here, in pixels at its own
 // depth, so a line keeps its width on screen at every zoom; its edge is antialiased in the pixel
 // shader with GL JS's ramp, alpha = clamp(outset * (1 - |N|)), outset = half width + 0.5 px.
@@ -62,7 +62,7 @@ shader GlobeVector : ShaderBase
     }
 
     // The place in the tile (uv, v down) to the position relative to the tile's centre, raised by
-    // metres: Engine/TileProjection.cs, whose RelativeFloat is this arithmetic in C# (tested there).
+    // metres: Engine/Tiles/TileProjection.cs, whose RelativeFloat is this arithmetic in C# (tested there).
     // Only small quantities are subtracted - floats keep a z14 tile to well under a millimetre.
     // Small arguments by polynomial: the GPU's sin and atan are exact to ~1e-6 ABSOLUTE, a quarter of a
     // percent of a z14 tile's 4e-4 radians - metres. Adds and multiplies are exact to float's rounding.

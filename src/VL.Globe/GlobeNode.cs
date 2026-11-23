@@ -16,7 +16,6 @@ using Stride.Rendering.Materials.ComputeColors;
 using Microsoft.Extensions.Logging;
 using VL.Core;
 using VL.Core.Import;
-using VL.Globe.Engine;
 using Buffer = Stride.Graphics.Buffer;
 using NetTopologySuite.Geometries;
 using SkiaSharp;
@@ -199,7 +198,7 @@ public sealed class GlobeNode : IDisposable
         _context = nodeContext;
         _logger = nodeContext.GetLogger();
         _root.Transform.Children.Add(_gpu.Entity.Transform);
-        // the credits, bottom right over everything (Engine/AttributionLayer.cs)
+        // the credits, bottom right over everything (Engine/Tiles/AttributionLayer.cs)
         _skia = new VL.Stride.SkiaRenderer(nodeContext) { Layer = _attributionLayer, Space = VL.Skia.CommonSpace.PixelTopLeft };
         _root.Transform.Children.Add(new Entity("Globe attribution")
         {
@@ -309,8 +308,8 @@ public sealed class GlobeNode : IDisposable
                 if (!_gpuShapes.TryGetValue(l, out var entry) || entry.signature != signature)
                 {
                     entry.gpu?.Vector?.Dispose();
-                    var service = new Engine.VectorTileService("shapes:" + l.Name,
-                        System.Text.Encoding.UTF8.GetBytes(Engine.GeometryStyle.Json(l.Geometries, l.Style)));
+                    var service = new Engine.VectorTiles.VectorTileService("shapes:" + l.Name,
+                        System.Text.Encoding.UTF8.GetBytes(Engine.Styling.GeometryStyle.Json(l.Geometries, l.Style)));
                     service.Start();
                     entry = (signature, new GlobeLayer { Name = l.Name, Vector = service, Gpu = true });
                     _gpuShapes[l] = entry;

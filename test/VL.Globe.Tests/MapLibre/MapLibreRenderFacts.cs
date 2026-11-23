@@ -1,4 +1,3 @@
-using VL.Globe.Engine;
 using Xunit.Abstractions;
 
 namespace VL.Globe.Tests.MapLibre;

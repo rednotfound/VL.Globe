@@ -1,6 +1,5 @@
 using System.Text.Json;
 using Stride.Core.Mathematics;
-using VL.Globe.Engine;
 using VL.Globe.Tests.MapLibre;
 using Xunit.Abstractions;
 

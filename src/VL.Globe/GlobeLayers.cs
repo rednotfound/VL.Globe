@@ -12,7 +12,7 @@ namespace VL.Globe;
 //
 // Vector layers on the globe (ROADMAP 0.1 item 4). How they are drawn was decided by experiment
 // (item 3, 2026-11-21): DRAPED - each layer is drawn by SkiaSharp into each tile's overlay image and
-// laid over the map in the tile material (Engine/TileOverlay.cs), Cesium's and Mapsui's own way to
+// laid over the map in the tile material (Engine/Draped/TileOverlay.cs), Cesium's and Mapsui's own way to
 // put vectors on a globe or a raster map. The user judged it on screen ("问题不大"), and a MapLibre-like
 // GPU vector renderer stays a later, separate node (docs/RESEARCH-VECTOR.md).
 //
@@ -60,8 +60,8 @@ public sealed class GlobeLayer
     // FeatureLayer's and Geometry's credit for the user's own data (tile layers carry their source's)
     internal string Attribution = "";
     // a VectorTiles layer: a MapLibre style drawn by the painter instead of Geometries
-    internal Engine.VectorTileService? Vector;
-    // drawn by the GPU (Engine/GpuVectorTiles) instead of draped into the tiles' overlays
+    internal Engine.VectorTiles.VectorTileService? Vector;
+    // drawn by the GPU (Engine/Gpu/GpuVectorTiles) instead of draped into the tiles' overlays
     internal bool Gpu;
 
     /// <summary>True when the layer has something to drape.</summary>
@@ -109,7 +109,7 @@ public sealed class GlobeGraticuleNode
         if (spacing != _spacing)
         {
             _spacing = spacing;
-            _layer.Geometries = Engine.Picking.Graticule(spacing);
+            _layer.Geometries = Engine.Camera.Picking.Graticule(spacing);
         }
         _layer.Style = new GlobeVectorStyle(new Color4(0, 0, 0, 0), lineColor ?? new Color4(1, 1, 1, 0.5f), Math.Max(0, lineWidth));
         _layer.Enabled = enabled;
@@ -233,7 +233,7 @@ public enum GlobeVectorRendering
 public sealed class GlobeVectorTilesNode : IDisposable
 {
     readonly GlobeLayer _layer = new();
-    Engine.VectorTileService? _service;
+    Engine.VectorTiles.VectorTileService? _service;
     MapLibreStyle? _style;
 
     /// <param name="attribution">The credit the style's tile sources require.</param>
@@ -253,7 +253,7 @@ public sealed class GlobeVectorTilesNode : IDisposable
         {
             _style = style;
             _service?.Dispose();
-            _service = style is null ? null : new Engine.VectorTileService(style.Source);
+            _service = style is null ? null : new Engine.VectorTiles.VectorTileService(style.Source);
         }
         if (enabled) _service?.Start();
         _layer.Set(null, null, enabled && _service != null, name);

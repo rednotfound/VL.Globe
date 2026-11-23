@@ -35,7 +35,7 @@ public sealed class GlobeCameraNode : IDisposable
     readonly GlobeView _view = new();
     readonly Entity _entity = new("GlobeCamera");
     readonly CameraComponent _camera = new() { UseCustomViewMatrix = true, UseCustomAspectRatio = false };
-    readonly Engine.GlobeCameraFrame _frame = new();
+    readonly Engine.Camera.GlobeCameraFrame _frame = new();
     readonly VL.Stride.Input.CameraInputSourceComponent _input = new();
     readonly VL.Lib.Basics.Resources.IResourceHandle<global::Stride.Input.InputManager> _inputManager;
     readonly GlobeDragNode _drag;
@@ -44,7 +44,7 @@ public sealed class GlobeCameraNode : IDisposable
     bool _initialised, _wasReset;
     readonly ILogger _logger;
     // ROADMAP 4g: GL JS's bench motion, only when vvvv was started with VLGLOBE_BENCH=pan
-    readonly Engine.CameraBench? _bench = Engine.CameraBench.FromEnvironment();
+    readonly Engine.Diagnostics.CameraBench? _bench = Engine.Diagnostics.CameraBench.FromEnvironment();
 
     public GlobeCameraNode(NodeContext nodeContext)
     {
@@ -103,7 +103,7 @@ public sealed class GlobeCameraNode : IDisposable
         {
             _view.Longitude = initialLongitude;
             _view.Latitude = Math.Clamp(initialLatitude, -89.9, 89.9);
-            _view.Heading = Engine.Navigation.WrapHeading(initialHeading);
+            _view.Heading = Engine.Camera.Navigation.WrapHeading(initialHeading);
             _view.Tilt = Math.Clamp(initialTilt, 0, _view.MaxTilt);
             _initialised = true;
             _view.SetHeight(initialHeight);

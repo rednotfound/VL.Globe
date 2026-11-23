@@ -1,7 +1,6 @@
 using System.Diagnostics;
 using Stride.Core.Mathematics;
 using Stride.Graphics;
-using VL.Globe.Engine;
 using Xunit.Abstractions;
 
 namespace VL.Globe.Tests;
