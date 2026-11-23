@@ -190,7 +190,7 @@ public class GpuVectorFacts
             var ring = new (double, double)[] { (0.5, 0.5), (0.51, 0.5), (0.51, 0.51), (0.5, 0.51), (0.5, 0.5) };
             if (clockwise) ring = ring.Reverse().ToArray();
             var f = new StyleFeature { Kind = StyleFeature.Shape.Polygon };
-            f.Parts.Add(new() { ring });
+            f.SetParts(new[] { new[] { ring } });
             using var json = JsonDocument.Parse("""
                 { "version": 8, "sources": { "s": { "type": "geojson", "data": { "type": "FeatureCollection", "features": [] } } },
                   "layers": [ { "id": "b", "type": "fill-extrusion", "source": "s", "paint": { "fill-extrusion-height": 10 } } ] }

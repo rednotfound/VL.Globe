@@ -19,9 +19,29 @@ internal sealed class StyleFeature
     public enum Shape { Point, Line, Polygon }
     public Shape Kind;
     // Point: each part one coordinate. Line: each part one line. Polygon: each part one polygon, its rings.
-    public List<List<(double X, double Y)[]>> Parts = new();
-    public Dictionary<string, object?> Properties = new();
+    // A view of its layer's geometry (FeatureGeometry.cs: a decoded tile is a few large arrays, 4g step 4)
+    public FeatureParts Parts => new(_geometry, _firstPart, _partCount);
+    public IReadOnlyDictionary<string, object?> Properties = NoProperties;
     public object? Id;
+
+    static readonly IReadOnlyDictionary<string, object?> NoProperties = new Dictionary<string, object?>();
+    FeatureGeometry _geometry = FeatureGeometry.Empty;
+    int _firstPart, _partCount;
+
+    /// <summary>The feature's parts are <paramref name="count"/> parts of <paramref name="geometry"/> from <paramref name="first"/>.</summary>
+    public void SetGeometry(FeatureGeometry geometry, int first, int count) { _geometry = geometry; _firstPart = first; _partCount = count; _bounds = null; }
+
+    /// <summary>The feature's parts from lists (GeoJSON, tests): a geometry of its own.</summary>
+    public void SetParts(IEnumerable<IEnumerable<(double X, double Y)[]>> parts)
+    {
+        var b = new FeatureGeometryBuilder();
+        foreach (var part in parts)
+        {
+            foreach (var ring in part) b.AddRing(ring);
+            b.EndPart();
+        }
+        SetGeometry(b.Build(), 0, b.PartCount);
+    }
     public string GeometryType => Kind switch { Shape.Point => "Point", Shape.Line => "LineString", _ => "Polygon" };
 
     /// <summary>The world rectangle the geometry covers, computed once (features are not changed after reading).</summary>
@@ -663,7 +683,7 @@ internal static class MapStylePainter
 
     static SKColorF ToSk(StyleColor c) => new((float)c.R, (float)c.G, (float)c.B, (float)c.A);
 
-    static void AddRing(SKPath path, (double X, double Y)[] ring, MapViewport view)
+    static void AddRing(SKPath path, Ring ring, MapViewport view)
     {
         if (ring.Length == 0) return;
         path.MoveTo(view.Project(ring[0].X, ring[0].Y));
@@ -708,16 +728,18 @@ internal static class GeoJson
         // a geometry without coordinates is skipped, as GL JS does
         if (!g.TryGetProperty("coordinates", out var c) || c.ValueKind != JsonValueKind.Array) return;
         var f = new StyleFeature { Properties = props, Id = id };
+        var parts = new List<List<(double, double)[]>>();
         switch (type)
         {
-            case "Point": f.Kind = StyleFeature.Shape.Point; f.Parts.Add(new() { new[] { Pos(c) } }); break;
-            case "MultiPoint": f.Kind = StyleFeature.Shape.Point; foreach (var p in c.EnumerateArray()) f.Parts.Add(new() { new[] { Pos(p) } }); break;
-            case "LineString": f.Kind = StyleFeature.Shape.Line; f.Parts.Add(new() { Line(c) }); break;
-            case "MultiLineString": f.Kind = StyleFeature.Shape.Line; foreach (var l in c.EnumerateArray()) f.Parts.Add(new() { Line(l) }); break;
-            case "Polygon": f.Kind = StyleFeature.Shape.Polygon; f.Parts.Add(c.EnumerateArray().Select(Line).ToList()); break;
-            case "MultiPolygon": f.Kind = StyleFeature.Shape.Polygon; foreach (var p in c.EnumerateArray()) f.Parts.Add(p.EnumerateArray().Select(Line).ToList()); break;
+            case "Point": f.Kind = StyleFeature.Shape.Point; parts.Add(new() { new[] { Pos(c) } }); break;
+            case "MultiPoint": f.Kind = StyleFeature.Shape.Point; foreach (var p in c.EnumerateArray()) parts.Add(new() { new[] { Pos(p) } }); break;
+            case "LineString": f.Kind = StyleFeature.Shape.Line; parts.Add(new() { Line(c) }); break;
+            case "MultiLineString": f.Kind = StyleFeature.Shape.Line; foreach (var l in c.EnumerateArray()) parts.Add(new() { Line(l) }); break;
+            case "Polygon": f.Kind = StyleFeature.Shape.Polygon; parts.Add(c.EnumerateArray().Select(Line).ToList()); break;
+            case "MultiPolygon": f.Kind = StyleFeature.Shape.Polygon; foreach (var p in c.EnumerateArray()) parts.Add(p.EnumerateArray().Select(Line).ToList()); break;
             default: throw new StyleUnsupportedException($"GeoJSON {type}");
         }
+        f.SetParts(parts);
         into.Add(f);
     }
 

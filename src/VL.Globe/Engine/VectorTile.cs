@@ -33,12 +33,15 @@ internal static class VectorTile
         return layers;
     }
 
+    // One layer: its key and value tables, then its features - their geometry into one FeatureGeometry
+    // and their tags into one int array the layer shares (FeatureGeometry.cs; 4g step 4: a decoded tile
+    // of small objects was what the collections copied while tiles were built)
     static void ReadLayer(Pbf r, TileKey tile, Dictionary<string, List<StyleFeature>> into)
     {
         string name = "";
         uint extent = 4096;
-        var keys = new List<string>();
-        var values = new List<object?>();
+        var keyList = new List<string>();
+        var valueList = new List<object?>();
         var features = new List<(int start, int end)>();
         var data = r.Data;
         while (r.Next(out int field, out int wire))
@@ -47,19 +50,33 @@ internal static class VectorTile
             {
                 case 1 when wire == 2: name = r.String(); break;
                 case 2 when wire == 2: features.Add(r.Sub()); break;
-                case 3 when wire == 2: keys.Add(r.String()); break;
-                case 4 when wire == 2: { var (s, e) = r.Sub(); values.Add(ReadValue(new Pbf(data, s, e))); break; }
+                case 3 when wire == 2: keyList.Add(r.String()); break;
+                case 4 when wire == 2: { var (s, e) = r.Sub(); valueList.Add(ReadValue(new Pbf(data, s, e))); break; }
                 case 5 when wire == 0: extent = (uint)r.Varint(); break;
                 default: r.Skip(wire); break;
             }
         }
         double scale = 1.0 / (extent * (double)tile.TilesPerSide);
         double ox = (double)tile.X / tile.TilesPerSide, oy = (double)tile.Y / tile.TilesPerSide;
-        var list = new List<StyleFeature>(features.Count);
+        var keys = keyList.ToArray();
+        var values = valueList.ToArray();
+        var geometry = new FeatureGeometryBuilder();
+        var tags = new List<int>();
+        var read = new List<(StyleFeature f, int tagStart, int tagCount, int firstPart, int partCount)>(features.Count);
         foreach (var (s, e) in features)
         {
-            var f = ReadFeature(new Pbf(data, s, e), keys, values, ox, oy, scale);
-            if (f != null) list.Add(f);
+            int tagStart = tags.Count / 2, firstPart = geometry.PartCount;
+            var f = ReadFeature(new Pbf(data, s, e), keys.Length, values.Length, ox, oy, scale, geometry, tags);
+            if (f != null) read.Add((f, tagStart, tags.Count / 2 - tagStart, firstPart, geometry.PartCount - firstPart));
+        }
+        var g = geometry.Build();
+        var tagArray = tags.ToArray();
+        var list = new List<StyleFeature>(read.Count);
+        foreach (var (f, tagStart, tagCount, firstPart, partCount) in read)
+        {
+            f.SetGeometry(g, firstPart, partCount);
+            f.Properties = new TagProperties(keys, values, tagArray, tagStart, tagCount);
+            list.Add(f);
         }
         into[name] = list;
     }
@@ -84,10 +101,20 @@ internal static class VectorTile
         return v;
     }
 
-    static StyleFeature? ReadFeature(Pbf r, List<string> keys, List<object?> values, double ox, double oy, double scale)
+    // a feature's own points and rings, read before it is known to be kept: reused, one set a thread
+    [ThreadStatic] static List<(double X, double Y)>? t_points;
+    [ThreadStatic] static List<int>? t_ringEnds;
+    [ThreadStatic] static List<int>? t_tags;
+
+    // A feature into the layer's geometry and tags; null (and nothing added) for a type that is not one
+    static StyleFeature? ReadFeature(Pbf r, int keyCount, int valueCount, double ox, double oy, double scale,
+        FeatureGeometryBuilder into, List<int> layerTags)
     {
+        var points = t_points ??= new();
+        var ringEnds = t_ringEnds ??= new();
+        var tags = t_tags ??= new();
+        points.Clear(); ringEnds.Clear(); tags.Clear();
         int type = 0;
-        var props = new Dictionary<string, object?>();
         (int s, int e) geometry = (0, 0);
         object? id = null;
         while (r.Next(out int field, out int wire))
@@ -102,7 +129,7 @@ internal static class VectorTile
                     while (t.Position < e)
                     {
                         int k = (int)t.Varint(), v = (int)t.Varint();
-                        if (k < keys.Count && v < values.Count) props[keys[k]] = values[v];
+                        if (k < keyCount && v < valueCount) { tags.Add(k); tags.Add(v); }
                     }
                     break;
                 }
@@ -114,8 +141,7 @@ internal static class VectorTile
         if (type is < 1 or > 3) return null;
 
         // command integers: id & 7 (1 MoveTo, 2 LineTo, 7 ClosePath), count >> 3; zigzag parameters
-        var rings = new List<(double, double)[]>();
-        var current = new List<(double, double)>();
+        int ringStart = 0;
         var g = new Pbf(r.Data, geometry.s, geometry.e);
         long x = 0, y = 0;
         while (g.Position < geometry.e)
@@ -124,53 +150,67 @@ internal static class VectorTile
             int op = (int)(cmd & 7), count = (int)(cmd >> 3);
             if (op == 7)
             {
-                if (current.Count > 0) current.Add(current[0]);
+                if (points.Count > ringStart) points.Add(points[ringStart]);
                 continue;
             }
             for (int i = 0; i < count; i++)
             {
                 x += ZigZag(g.Varint());
                 y += ZigZag(g.Varint());
-                if (op == 1 && current.Count > 0 && type != 1) { rings.Add(current.ToArray()); current.Clear(); }
-                current.Add((ox + x * scale, oy + y * scale));
+                if (op == 1 && points.Count > ringStart && type != 1) { ringEnds.Add(points.Count); ringStart = points.Count; }
+                points.Add((ox + x * scale, oy + y * scale));
             }
         }
-        if (current.Count > 0) rings.Add(current.ToArray());
+        if (points.Count > ringStart) ringEnds.Add(points.Count);
 
-        var f = new StyleFeature { Properties = props, Id = id };
+        var f = new StyleFeature { Id = id };
+        var all = System.Runtime.InteropServices.CollectionsMarshal.AsSpan(points);
         switch (type)
         {
             case 1:
+                // every point its own part
                 f.Kind = StyleFeature.Shape.Point;
-                foreach (var ring in rings) foreach (var p in ring) f.Parts.Add(new() { new[] { p } });
+                foreach (var p in all) { into.Add(p.X, p.Y); into.EndRing(); into.EndPart(); }
                 break;
             case 2:
                 f.Kind = StyleFeature.Shape.Line;
-                foreach (var ring in rings) f.Parts.Add(new() { ring });
+                for (int i = 0, from = 0; i < ringEnds.Count; from = ringEnds[i++])
+                {
+                    into.AddRing(all[from..ringEnds[i]]);
+                    into.EndPart();
+                }
                 break;
             case 3:
                 f.Kind = StyleFeature.Shape.Polygon;
-                ClassifyRings(rings, f.Parts);
+                ClassifyRings(all, ringEnds, into);
                 break;
         }
+        layerTags.AddRange(tags);
         return f;
     }
 
     // MapLibre's classifyRings: a ring wound like the first one starts a polygon, the others are its holes
-    static void ClassifyRings(List<(double X, double Y)[]> rings, List<List<(double, double)[]>> into)
+    static void ClassifyRings(ReadOnlySpan<(double X, double Y)> points, List<int> ringEnds, FeatureGeometryBuilder into)
     {
         bool? ccw = null;
-        List<(double, double)[]>? polygon = null;
-        foreach (var ring in rings)
+        bool open = false;   // a polygon begun, its part not yet ended
+        for (int r = 0, from = 0; r < ringEnds.Count; from = ringEnds[r++])
         {
+            var ring = points[from..ringEnds[r]];
             double area = 0;
             for (int i = 0, j = ring.Length - 1; i < ring.Length; j = i++)
                 area += (ring[j].X - ring[i].X) * (ring[i].Y + ring[j].Y);
             if (area == 0) continue;
             ccw ??= area < 0;
-            if (ccw == area < 0) { polygon = new() { ring }; into.Add(polygon); }
-            else polygon?.Add(ring);
+            if (ccw == area < 0)
+            {
+                if (open) into.EndPart();
+                into.AddRing(ring);
+                open = true;
+            }
+            else if (open) into.AddRing(ring);
         }
+        if (open) into.EndPart();
     }
 
     static long ZigZag(ulong n) => (long)(n >> 1) ^ -(long)(n & 1);

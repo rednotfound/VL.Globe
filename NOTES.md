@@ -543,3 +543,11 @@ looked fine - "which makes one think it works". Two causes, estimated at 100 m h
   gen0 does not help: 1/8 of the collections, each 4-8 times as long - the pause follows what
   survives. Two earlier readings were wrong: "the bytes uploaded" (4g step 2) and "Update and draw"
   (they were only where the pause happened to land).
+- **Fewer collections did not shorten the pauses; fewer survivors did (2026-11-23, 4g step 4).**
+  Compiling the style expressions cut a tile's garbage by half and the misses not at all: the
+  collections came less often and each took longer. Logging what each collection promoted showed
+  why - the pause is ~1.5 ms per promoted MB - and promoted bytes followed the tiles decoded (one
+  decoded tile, 8.6 MB of small objects, per tile; twice that with the decoded cache off, the cache
+  having been the first suspect). Decoded tiles made of a few arrays halved what was promoted and
+  the misses fell to 0.8-1.6%. In .NET, an object that outlives one gen0 interval (~50 ms here) is
+  what costs; what dies young is nearly free.

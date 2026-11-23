@@ -622,7 +622,7 @@ internal static partial class VectorBucketBuilder
         readonly List<int> _left = new();
 
         // ear clipping of one ring without holes; false when it is not simple enough (left to NTS)
-        bool SimpleRing((double X, double Y)[] ring, uint color)
+        bool SimpleRing(VL.Globe.Engine.Ring ring, uint color)
         {
             var pts = _ring;
             pts.Clear();
@@ -697,7 +697,7 @@ internal static partial class VectorBucketBuilder
             }
         }
 
-        LinearRing? Ring((double X, double Y)[] ring)
+        LinearRing? Ring(VL.Globe.Engine.Ring ring)
         {
             var cs = new List<Coordinate>(ring.Length + 1);
             foreach (var (x, y) in ring)

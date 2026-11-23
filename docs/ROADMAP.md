@@ -463,6 +463,20 @@ Sum either log up with `tools/Summarize-Perf.py <log> --from <pan 1 begins> --to
   the line tessellator's arrays reused; (c) the main thread's ~50 MB a second; then whatever the
   probe names next. (Out of process tile building, GL JS's own design, only if (a)-(c) fall short.)
 
+**Step 4 so far (2026-11-23), each on the same bench; MapLibre's reports line for line unchanged:**
+- (a) Expressions compiled once (`StyleExpressionCompiler.cs`): a Tokyo z14 tile's shapes allocate
+  54 -> 6 MB, a z13's 206 -> 22 MB. Misses unchanged (3.1-4.7%): fewer collections, each longer.
+- The perf line now logs what the ephemeral collections promoted: a pause is ~1-1.5 ms a collection
+  plus ~1.5 ms a promoted MB. ~14 MB promoted a second - one decoded tile (8.6 MB) for each tile
+  decoded. Not the cache: with no decoded tile cached it promoted twice that (decoded twice). A tile
+  takes longer to build than the ~50 ms between collections, so all it is made of is copied.
+- A decoded tile as a few arrays (`FeatureGeometry.cs`: a layer's points one array, rings and parts
+  offsets; a feature's properties a view of the layer's key/value tables and one shared tag array):
+  decode 16.7 -> 9.5 MB allocated, 8.6 -> 3.4 MB alive; **promoted 7.1-7.6 MB a second, misses 1.6%
+  and 0.8%** (two runs), worst frame 28-31 ms. GL JS: 0%.
+- Left: ~17 collections a second (166 MB/s, most of it symbol layout: ~10 KB a label - shaping's
+  object a glyph) and 7 MB/s still promoted. Next: what is still promoted, then shaping's glyphs.
+
 ### 5. Navigation
 
 - `CenterOn`, `ZoomToLevel`, `ZoomIn`, `ZoomOut`.
