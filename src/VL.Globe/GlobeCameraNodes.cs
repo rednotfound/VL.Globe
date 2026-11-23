@@ -144,7 +144,8 @@ public sealed class GlobeDragNode
             if (!dragging) GlobeViewLog.Write(_logger, view);
         }
         if (!dragging) { _grabbed = null; return view; }
-        if (_grabbed is null) { _grabbed = view.PickDir(camDir); return view; }   // grabbed space: nothing to hold
+        // pressed in space: the horizon's nearest point is held, as MapLibre's globe does (GlobeView.HorizonToward)
+        if (_grabbed is null) { _grabbed = view.PickDir(camDir, horizon: true); return view; }
         view.DragTo(_grabbed.Value, camDir);
         return view;
     }

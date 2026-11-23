@@ -210,17 +210,39 @@ public sealed class GlobeView
     internal D3 CameraDirectionFromProjection(double px, double py) => new D3(px / ProjX, py / ProjY, 1).Normalized;
 
     /// <summary>The unit surface point along a camera-space direction, or null when it misses the globe.</summary>
-    internal D3? PickDir(D3 camDir)
+    /// <param name="horizon">When it misses: the point of the horizon nearest the direction instead (drags only).</param>
+    internal D3? PickDir(D3 camDir, bool horizon = false)
     {
         var (o, fwd, up) = Pose();
         var right = D3.Cross(fwd, up).Normalized;
         var d = (right * camDir.X + up * camDir.Y + fwd * camDir.Z).Normalized;
         double b = D3.Dot(o, d), c = D3.Dot(o, o) - Radius * (double)Radius;
         double disc = b * b - c;
-        if (disc < 0) return null;
-        double s = -b - Math.Sqrt(disc);
-        if (s <= 0) return null;
-        return (o + d * s).Normalized;
+        if (disc >= 0)
+        {
+            double s = -b - Math.Sqrt(disc);
+            if (s > 0) return (o + d * s).Normalized;
+        }
+        return horizon ? HorizonToward(o, d) : null;
+    }
+
+    // MapLibre's globe drag past the edge (the user's choice, 2026-11-23; before, the camera stopped as
+    // the cursor left the globe): the cursor in space holds the point of the horizon nearest its
+    // direction. Seen from the eye o the horizon is a cone round the direction to the centre, of
+    // half-angle a with sin a = R / |o|; the direction is turned toward the centre, in the plane of the
+    // two, onto the cone, and the point where that sight line touches the sphere is the one.
+    D3? HorizonToward(D3 o, D3 d)
+    {
+        double dist = o.Length, r = Radius;
+        if (dist <= r) return null;
+        var toCentre = o * (-1 / dist);
+        double cosA = Math.Sqrt(dist * dist - r * r) / dist, sinA = r / dist;
+        // d's part across the centre's direction: which way round the cone to go
+        var across = d - toCentre * D3.Dot(d, toCentre);
+        if (across.Length < 1e-15) return null;   // looking straight at the centre cannot miss
+        across = across * (1 / across.Length);
+        var tangent = toCentre * cosA + across * sinA;
+        return (o + tangent * Math.Sqrt(dist * dist - r * r)).Normalized;
     }
 
     // ---------------------------------------------------------------- the one primitive
@@ -247,20 +269,20 @@ public sealed class GlobeView
     // the cursor again with the camera 180 degrees round, which is the jump this replaced. A large
     // move's first Newton step can also overshoot the limit when the answer lies well inside it, so
     // "at the pole" is believed only when the rigid guess finds nothing nearer.
-    internal bool BringUnderCursor(D3 wanted, D3 camDir)
+    internal bool BringUnderCursor(D3 wanted, D3 camDir, bool horizon = false)
     {
         double lon0 = Longitude, lat0 = Latitude, heading = Heading;
-        var near = Refine(wanted, camDir);
+        var near = Refine(wanted, camDir, horizon);
         if (near == Fit.Exact) return true;
         double lonNear = Longitude, latNear = Latitude;
 
         Longitude = lon0; Latitude = lat0;
-        bool rig = RotateRig(wanted, camDir);
+        bool rig = RotateRig(wanted, camDir, horizon);
         Heading = heading;
         if (rig)
         {
             Latitude = Math.Clamp(Latitude, -MaxLatitude, MaxLatitude);
-            if (Refine(wanted, camDir) == Fit.Exact && Math.Abs(Wrap(Longitude - lon0)) < 90) return true;
+            if (Refine(wanted, camDir, horizon) == Fit.Exact && Math.Abs(Wrap(Longitude - lon0)) < 90) return true;
         }
         if (near == Fit.AtPole) { Longitude = lonNear; Latitude = latNear; return true; }
         Longitude = lon0; Latitude = lat0;
@@ -278,12 +300,12 @@ public sealed class GlobeView
     // the longitude was fitted - the cross-screen part; the grabbed point then stays below the cursor
     // and the camera stops, as a map stops at its edge. Failed: the cursor left the globe, or no
     // convergence from here.
-    Fit Refine(D3 wanted, D3 camDir)
+    Fit Refine(D3 wanted, D3 camDir, bool horizon = false)
     {
         var (east, north) = Frame(wanted);
         (double, double)? Residual()
         {
-            if (PickDir(camDir) is not { } p) return null;
+            if (PickDir(camDir, horizon) is not { } p) return null;
             var r = p - wanted;
             return (D3.Dot(r, east), D3.Dot(r, north));
         }
@@ -329,9 +351,9 @@ public sealed class GlobeView
     }
 
     /// <summary>The shortest move: rotate the whole rig about the centre by the rotation taking the point under the cursor to the wanted one.</summary>
-    bool RotateRig(D3 wanted, D3 camDir)
+    bool RotateRig(D3 wanted, D3 camDir, bool horizon = false)
     {
-        if (PickDir(camDir) is not { } now) return false;
+        if (PickDir(camDir, horizon) is not { } now) return false;
         var axis = D3.Cross(now, wanted);
         double sin = axis.Length, cos = Math.Clamp(D3.Dot(now, wanted), -1, 1);
         if (sin < 1e-15) return true;                          // already there
@@ -356,7 +378,7 @@ public sealed class GlobeView
     // ---------------------------------------------------------------- gestures
 
     /// <summary>One frame of a drag: the grabbed point is brought back under the cursor.</summary>
-    internal void DragTo(D3 grabbed, D3 camDir) => BringUnderCursor(grabbed, camDir);
+    internal void DragTo(D3 grabbed, D3 camDir) => BringUnderCursor(grabbed, camDir, horizon: true);
     internal void DragTo(D3 grabbed, double x, double y) => DragTo(grabbed, CameraDirection(x, y));
 
     /// <summary>Multiply the height by <paramref name="factor"/> keeping the point under the cursor where it is.</summary>

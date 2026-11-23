@@ -558,8 +558,9 @@ Trigger's rising edge (the view is also moved by Drag and the wheel every frame:
 every frame would hold it), passes the view on (Output) and logs the view's hash. FlyTo is MapLibre's:
 van Wijk and Nuij's path (rho 1.42) along the great circle, CSS ease, Duration 0 = S / 1.2 s (at most
 10); a drag or the wheel ends it. ZoomToBounds finds the height on the screen by bisection (a cap's
-radius left a box at 0.64 of the window). Help patch `HowTo Fly to a place`. Still to do from the list
-below: the drag that leaves the globe.
+radius left a box at 0.64 of the window). Help patch `HowTo Fly to a place`. The drag that leaves the
+globe: MapLibre's (the user's choice, 2026-11-23) - the cursor in space holds the horizon's nearest
+point (`GlobeView.HorizonToward`), so the drag goes on; only drags do, ScreenToGlobe still misses.
 
 The plan as written:
 

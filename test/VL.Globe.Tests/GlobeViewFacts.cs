@@ -116,15 +116,46 @@ public class GlobeViewFacts
         Assert.Equal(v.MaxHeight, v.Height);
     }
 
+    // Until 2026-11-23 a cursor off the globe left the camera where it was; the user chose MapLibre's
+    // globe instead: the cursor in space holds the horizon's nearest point, and the drag goes on.
     [Fact]
-    public void ACursorOffTheGlobeDoesNotMoveTheCamera()
+    public void ACursorOffTheGlobeHoldsTheNearestPointOfTheHorizon()
+    {
+        var v = View(10, 20, 3 * GlobeCoordinates.EarthRadius);
+        Assert.Null(v.Pick(5, 5));                     // a corner of the window shows space
+        var camDir = v.CameraDirection(5, 5);
+        var p = v.PickDir(camDir, horizon: true)!.Value;
+        var (eye, fwd, up) = v.Pose();
+        // on the silhouette: the sight line touches the sphere there
+        Assert.True(Math.Abs(D3.Dot(p * v.Radius - eye, p)) < 1e-12, "not a tangent point");
+        // in the plane of the cursor's direction and the centre's
+        var right = D3.Cross(fwd, up).Normalized;
+        var d = (right * camDir.X + up * camDir.Y + fwd * camDir.Z).Normalized;
+        var normal = D3.Cross(d, -eye).Normalized;
+        Assert.True(Math.Abs(D3.Dot(p * v.Radius - eye, normal)) < 1e-9, "not toward the cursor");
+        // a point on the globe is still the point on the globe
+        Assert.Equal(v.Pick(400, 300)!.Value, v.PickDir(v.CameraDirection(400, 300), horizon: true)!.Value);
+    }
+
+    [Fact]
+    public void ADragGoesOnPastTheEdgeAndComesBackExactly()
     {
         var v = View(0, 0, 3 * GlobeCoordinates.EarthRadius);
-        Assert.Null(v.Pick(5, 5));                     // a corner of the window shows space
         var grabbed = v.Pick(400, 300)!.Value;
-        var (lon, lat) = (v.Longitude, v.Latitude);
-        v.DragTo(grabbed, 5, 5);
-        Assert.Equal(lon, v.Longitude); Assert.Equal(lat, v.Latitude);
+        double lastLon = v.Longitude;
+        // out to the window's left edge, past the globe's rim (the globe is ~200 px across here)
+        for (int x = 400; x >= 5; x -= 15)
+        {
+            v.DragTo(grabbed, x, 300);
+            Assert.True(double.IsFinite(v.Longitude) && double.IsFinite(v.Latitude));
+            Assert.True(v.Longitude >= lastLon - 1e-9, $"turned back at x {x}");
+            lastLon = v.Longitude;
+        }
+        Assert.Null(v.Pick(5, 300));
+        Assert.True(v.Longitude > 60, $"stopped at the edge: longitude {v.Longitude:F1}");
+        // back onto the globe: the grabbed point under the cursor again
+        v.DragTo(grabbed, 380, 300);
+        Same(v.Pick(380, 300)!.Value, grabbed, 1);
     }
 
     [Fact]
