@@ -51,7 +51,7 @@ Guidance for Claude Code working in this repository.
    ROADMAP 4h (the dark globe through styles past a source's maxzoom, docs/DESIGN-OVERSCALED.md):
    GL JS read - it is B; the user chose B': ground passes take the true sphere's depth, the far side
    cut along the ray. Built 2026-11-23 night, 315 green, offscreen probes now draw the globe tiles' depth.
-   **NEXT: the user's look in vvvv (style 13 and others, down to street level), then the 4g bench.**
+   Seen by the user in vvvv: "似乎成功了". **NEXT: the 4g bench (SV_Depth costs early depth), then the user's pick.**
    Then (2026-11-23) the node surface made vvvv's (docs/DESIGN-NODES.md): navigation nodes [Globe.Navigate], pins in vvvv's
    order, one Input + Group, GlobeCamera as OrbitCamera. Next: the user's judgement of the gestures and the help patches' layout.**
    Research: [docs/RESEARCH-0.1.md](docs/RESEARCH-0.1.md), [docs/RESEARCH-VECTOR.md](docs/RESEARCH-VECTOR.md).
