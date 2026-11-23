@@ -112,7 +112,7 @@ internal static partial class VectorBucketBuilder
             foreach (var feature in features)
             {
                 ctx.Properties = feature.Properties; ctx.GeometryType = feature.GeometryType; ctx.Id = feature.Id;
-                if (l.Filter is { } filter && !Expression.Filter(filter, ctx)) continue;
+                if (l.Filter is { } filter && !Expression.FilterFeature(filter, ctx, l.Id)) continue;
                 uint color = (f & CirclePerFeature.Color) != 0 ? Pack(Expression.Color(layer.Color, ctx, StyleColor.Black)) : uint.MaxValue;
                 uint stroke = (f & CirclePerFeature.StrokeColor) != 0 ? Pack(Expression.Color(layer.StrokeColor, ctx, StyleColor.Black)) : uint.MaxValue;
                 System.Half H(JsonElement? e, CirclePerFeature bit, double fallback) => (System.Half)((f & bit) != 0 ? Expression.Number(e, ctx, fallback) : 0);

@@ -143,6 +143,8 @@ internal sealed class StyleContext
     public object? Id;
     public string? GeometryType;    // "Point", "LineString", "Polygon"
     public IReadOnlyDictionary<string, JsonElement> GlobalState = new Dictionary<string, JsonElement>();
+    // the style the features are built for: a lenient one leaves out a feature its filter cannot evaluate
+    public MapStyleDocument? Document;
 }
 
 /// <summary>Evaluates a style property value: a literal, a legacy function or an expression.</summary>
@@ -165,6 +167,23 @@ internal static partial class Expression
 
     /// <summary>A layer filter, expression or legacy syntax: true when the feature is drawn.</summary>
     public static bool Filter(JsonElement filter, StyleContext ctx) => CompiledFilter(filter).Test(ctx);
+
+    /// <summary>
+    /// A feature's filter while a layer is built: in a lenient style a feature it cannot evaluate (a number
+    /// compared with a string) is left out, as GL JS's evaluate returns the default and the feature goes;
+    /// strict (the render tests), it throws.
+    /// </summary>
+    // One feature's error dropped the whole layer: Liberty's road shields were never drawn ("comparing
+    // different types", one ref of another type), 2026-11-23.
+    public static bool FilterFeature(JsonElement filter, StyleContext ctx, string layerId)
+    {
+        try { return Filter(filter, ctx); }
+        catch (StyleUnsupportedException e) when (ctx.Document is { Lenient: true } doc)
+        {
+            doc.Skip($"{layerId}: {e.Message} (a feature its filter could not evaluate left out)");
+            return false;
+        }
+    }
 
     // MapLibre's isExpressionFilter (style-spec feature_filter): which syntax a filter is written in
     static bool IsExpressionFilter(JsonElement f)

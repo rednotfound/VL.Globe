@@ -575,3 +575,14 @@ looked fine - "which makes one think it works". Two causes, estimated at 100 m h
   Zooming builds tens of tiles a second; what survives follows the tiles built. Bench each motion.
 - I guessed once more without measuring (the one-way arrows' line arrays: 0.2 MB of 13.8) - the
   AllocMeter lap on the branch then named the real part in one run. Measure the stage first.
+- **"The city names went away from some time on" (the user, 2026-11-23): one label dropped the layer.**
+  A lenient style drops a layer for good the first time any tile's build throws "unsupported" in it -
+  and logged nothing. Replaying the user's 47 views in order (`ReplayProbe`, the hashes from their log)
+  found it at the 20th: zoomed out to z5 and tilted, a place name in a script written without spaces
+  (Thai, Burmese ...) needed a line break, Shaping refuses those (no dictionary segmenter in .NET), and
+  label_city, label_city_capital, label_state, label_country_2 were dropped for the rest of the session.
+  The same mechanism had always dropped Liberty's road shields: `["<=", ["get", "ref_length"], 6]` on a
+  road without ref_length compared null with a number. Now, lenient only: a label's unbreakable text is
+  set on one line (or that label left out), a feature whose filter cannot evaluate is left out (GL JS's
+  evaluate returns the default) - never the layer. Shields seen offscreen at Tokyo. Every new skip or
+  drop is now a "Globe style:" warning in vvvv's log. Strict (the render tests) unchanged.

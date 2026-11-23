@@ -222,7 +222,7 @@ internal static partial class VectorBucketBuilder
         }
 
         var b = new Builder(key, projection, grid: source is GeoJsonSource) { Overscale = Math.Max(1, overscale) };
-        var ctx = new StyleContext { Zoom = key.Zoom, GlobalState = style.GlobalState };
+        var ctx = new StyleContext { Zoom = key.Zoom, GlobalState = style.GlobalState, Document = style };
         if (withBackground) b.Background();
         foreach (var layer in layers)
         {
@@ -445,7 +445,7 @@ internal static partial class VectorBucketBuilder
             {
                 if (f.Kind == StyleFeature.Shape.Point) continue;
                 ctx.Properties = f.Properties; ctx.GeometryType = f.GeometryType; ctx.Id = f.Id;
-                if (l.Filter is { } filter && !Expression.Filter(filter, ctx)) continue;
+                if (l.Filter is { } filter && !Expression.FilterFeature(filter, ctx, l.Id)) continue;
                 double opacity = layer.OpacityPerFeature ? Expression.Number(layer.Opacity, ctx, 1) : 1;
                 if (layer.IsExtrusion)
                 {

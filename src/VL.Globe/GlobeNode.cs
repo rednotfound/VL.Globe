@@ -399,6 +399,7 @@ public sealed class GlobeNode : IDisposable
         // the distance to the view's centre, for the labels' perspective ratio: the eye's height above the ground
         if (_device is not null) _gpu.Update(_device, wanted, _wantedSet, gpuServices, _radius, _relativeEye, _cameraZoom, _frame,
             Math.Max(_lastEye.Length() - _radius, 1e-9));
+        foreach (var skip in _gpu.TakeNewSkips()) _logger.LogWarning("Globe style: {Skip}", skip);
         Stage("gpu vectors");
         // into the log: the renderer's error once, and how far the building is, once a second at most
         if (_gpu.Error != _gpuError) { _gpuError = _gpu.Error; if (_gpuError.Length > 0) _logger.LogError("Globe: {Error}", _gpuError); }

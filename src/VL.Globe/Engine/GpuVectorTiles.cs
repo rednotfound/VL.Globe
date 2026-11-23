@@ -125,6 +125,24 @@ internal sealed class GpuVectorTiles : IDisposable
     /// <summary>The renderer's Draw timings since the last call; resets them.</summary>
     public string TakeDrawStats() => _renderer.TakeStats();
     internal VectorRenderer.DrawTiming LastDraw => _renderer.Last;
+
+    // What a lenient style left out since the last call, each once: GlobeNode logs it. A layer dropped
+    // while a tile was built took the user's city names away and left no line in the log (2026-11-23).
+    readonly HashSet<string> _skipsSeen = new();
+    readonly List<string> _newSkips = new();
+    void CollectSkips(MapStyleDocument doc)
+    {
+        foreach (var s in doc.Skipped) if (_skipsSeen.Add(s)) _newSkips.Add(s);
+    }
+
+    /// <summary>The style's skipped or dropped parts seen first since the last call.</summary>
+    public IReadOnlyList<string> TakeNewSkips()
+    {
+        if (_newSkips.Count == 0) return Array.Empty<string>();
+        var list = _newSkips.ToArray();
+        _newSkips.Clear();
+        return list;
+    }
     public int TilesBuilt => _tilesBuilt;
     /// <summary>Tiles being built now; with <see cref="Frame"/>, for drawing a view offscreen in a test.</summary>
     internal int Building => _running;
@@ -181,6 +199,7 @@ internal sealed class GpuVectorTiles : IDisposable
             var info = Analyse(service);
             if (info is null) continue;
             var doc = info.Document;
+            CollectSkips(doc);
             var draws = new Dictionary<string, List<(Built built, Vector4 clip)>>();
             var symbolDraws = new Dictionary<string, List<(Built built, Vector4 clip)>>();
             var backgroundDraws = new List<(Built built, Vector4 clip)>();

@@ -213,7 +213,7 @@ internal static partial class VectorBucketBuilder
                 AllocMeter.Start();
                 ctx.Zoom = tileZoom;
                 ctx.Properties = f.Properties; ctx.GeometryType = f.GeometryType; ctx.Id = f.Id;
-                if (l.Filter is { } filter && !Expression.Filter(filter, ctx)) { AllocMeter.Lap(0, "filter"); continue; }
+                if (l.Filter is { } filter && !Expression.FilterFeature(filter, ctx, l.Id)) { AllocMeter.Lap(0, "filter"); continue; }
                 AllocMeter.Lap(0, "filter");
                 var text = TextOf(layer, ctx);
                 AllocMeter.Lap(1, "text");
@@ -246,10 +246,30 @@ internal static partial class VectorBucketBuilder
                 if (alongLine) justify = TextJustify.Center;
                 AllocMeter.Lap(5, "layout properties");
 
-                var shaping = hasText
-                    ? Shaping.ShapeText(Formatted.FromString(text!), store, stack, maxWidth, lineHeight, anchor, justify,
-                        spacing, (offset.X, offset.Y), WritingMode.Horizontal, false, layoutTextSize, layoutTextSizeThisZoom)
-                    : null;
+                Shaping? shaping = null;
+                if (hasText)
+                {
+                    try
+                    {
+                        shaping = Shaping.ShapeText(Formatted.FromString(text!), store, stack, maxWidth, lineHeight, anchor, justify,
+                            spacing, (offset.X, offset.Y), WritingMode.Horizontal, false, layoutTextSize, layoutTextSizeThisZoom);
+                    }
+                    catch (StyleUnsupportedException e) when (style.Lenient)
+                    {
+                        // One label's text, not the layer's: a Thai or Burmese place name too long for one line
+                        // (no dictionary to break it, Shaping.cs) dropped label_city for every tile after it -
+                        // the user's city names gone "from some time on" (2026-11-23). In a lenient parse the
+                        // text goes on one line, as a browser without a segmenter sets it; if even that fails,
+                        // only this label is left out. A strict parse (the render tests) still refuses it.
+                        style.Skip($"{l.Id}: {e.Message} (a label's text set on one line, or left out)");
+                        try
+                        {
+                            shaping = Shaping.ShapeText(Formatted.FromString(text!), store, stack, double.PositiveInfinity, lineHeight, anchor, justify,
+                                spacing, (offset.X, offset.Y), WritingMode.Horizontal, false, layoutTextSize, layoutTextSizeThisZoom);
+                        }
+                        catch (StyleUnsupportedException) { shaping = null; }
+                    }
+                }
                 AllocMeter.Lap(6, "shaping");
                 if (AllocMeter.On && shaping != null) foreach (var pl in shaping.PositionedLines) AllocMeter.Glyphs += pl.PositionedGlyphs.Count;
                 ImagePosition? image = hasIcon && sprites.TryGet(iconName!, out var position) ? position : null;
