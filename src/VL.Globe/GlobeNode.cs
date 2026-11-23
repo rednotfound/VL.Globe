@@ -202,16 +202,16 @@ public sealed class GlobeNode : IDisposable
     }
 
     /// <param name="tileSource">From OpenStreetMap or XyzTiles.</param>
+    /// <param name="layers">Vector layers from FeatureLayer or Geometry, drawn on the map in order, first at the bottom.</param>
     /// <param name="camera">The camera entity the scene is rendered with.</param>
-    /// <param name="enabled">Off: nothing is drawn or requested.</param>
     /// <param name="radius">The globe's radius in scene units.</param>
     /// <param name="background">The globe's colour where no tile has arrived, also while off. Transparent: none.</param>
+    /// <param name="screenHeight">The height of the view in pixels: SceneWindow's Client Bounds. GlobeWindow wires it.</param>
     /// <param name="maxZoom">The finest zoom ever requested.</param>
     /// <param name="screenSpaceError">Refine while a tile pixel would cover more screen pixels than this. 1.41 shows tiles at 0.71-1.41x, as MapLibre and Cesium do.</param>
     /// <param name="maxRequestsInFlight">Requests running at once.</param>
-    /// <param name="layers">Vector layers from FeatureLayer or Geometry, drawn on the map in order, first at the bottom.</param>
     /// <param name="fadeDuration">Seconds a finer tile takes to fade in over the one it replaces. 0: at once.</param>
-    /// <param name="screenHeight">The height of the view in pixels: SceneWindow's Client Bounds. GlobeWindow wires it.</param>
+    /// <param name="enabled">Off: nothing is drawn or requested.</param>
     /// <param name="tilesVisible">Tiles drawn this frame.</param>
     /// <param name="tilesLoading">Requests not yet answered.</param>
     /// <param name="requestsSent">Requests made since the source changed - cached tiles are not requests.</param>
@@ -221,9 +221,12 @@ public sealed class GlobeNode : IDisposable
     [return: Pin(Name = "Entity")]
     public Entity Update(
         out int tilesVisible, out int tilesLoading, out int requestsSent, out long bytesReceived, out string attribution, out string status,
-        GlobeTileSource? tileSource = null, Entity? camera = null, bool enabled = false, float radius = 1f, Color4 background = default,
-        int maxZoom = 19, float screenSpaceError = 1.41f, int maxRequestsInFlight = 6, float screenHeight = 1080f, float fadeDuration = 0.3f,
-        IEnumerable<GlobeLayer>? layers = null)
+        // vvvv's order (2026-11-23, the user: "vvvv gamma的节点有自己的要求和传统的"): the main inputs first,
+        // configuration between, Enabled last - as 237 of the 289 patched nodes with an Enabled pin in
+        // vvvv 7.4's packs, and the Gray Book's "Main input left".
+        GlobeTileSource? tileSource = null, IEnumerable<GlobeLayer>? layers = null, Entity? camera = null, float radius = 1f, Color4 background = default,
+        float screenHeight = 1080f, int maxZoom = 19, float screenSpaceError = 1.41f, int maxRequestsInFlight = 6, float fadeDuration = 0.3f,
+        bool enabled = false)
     {
         double updateStart = _clock.Elapsed.TotalMilliseconds;
         _stages.Clear();

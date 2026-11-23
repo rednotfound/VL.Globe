@@ -633,3 +633,17 @@ looked fine - "which makes one think it works". Two causes, estimated at 100 m h
   error in the log, the editor captured (PrintWindow - the editor's window has no title; in
   PowerShell 7 make the Bitmap in PowerShell and only P/Invoke in Add-Type, which cannot reference
   System.Drawing there). Not yet: pressing the bangs - the flight's feel is the user's to judge.
+- **Pin order is vvvv's, not ours** (2026-11-23, the user: "pin的顺序...做得还很不讲究"; "一般vvvv gamma的节点
+  有自己的要求和传统的"). The Gray Book has one rule: "Main input left, .. Reset typically right"
+  (reference/extending/design-guidelines.html, Order of Pins). The rest measured in vvvv 7.4's packs
+  (compiled *.vl.dll, `_P.Update` parameters, read with System.Reflection.Metadata): Enabled is the LAST
+  input in 237 of 289 patched process nodes that have one (first in 5); Skia's Renderer and SceneWindow:
+  the window's create pins (Bounds, Bound to Document ...), then Input, then Title, then configuration,
+  Enabled at the end. Caveat found doing it: a patched node's COMPILED parameter order is not its
+  displayed pin order (GlobeWindow's differs), so the count is close, not exact - the displayed order of
+  a patched definition is the order of its `<Pin>` elements in the .vl. Now: GlobeWindow Tile Source,
+  Layers, Input, Title, Initial Longitude/Latitude/Height, Min Height, Background, Enabled; outputs
+  View, Cursor, Longitude, Latitude, Height, Attribution, Status. Globe, VectorTiles, FeatureLayer,
+  Geometry: Enabled last; ZoomIn/ZoomOut: Trigger last. Pins link by name: patches keep their links
+  (all 8 help patches compiled; the bench patch drew in vvvv). VL.Mapsui's layer nodes have the same
+  Enabled-in-the-middle order (ours copied it) - not changed there.

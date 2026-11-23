@@ -86,10 +86,10 @@ public sealed class GlobeFeatureLayerNode
 
     /// <param name="features">The features to draw, in longitude and latitude.</param>
     /// <param name="style">How to draw them. Unconnected gives a default style.</param>
-    /// <param name="enabled">Hides the layer while off.</param>
     /// <param name="name">The layer's name.</param>
+    /// <param name="enabled">Hides the layer while off.</param>
     [return: Pin(Name = "Output")]
-    public GlobeLayer Update(IEnumerable<IFeature>? features = null, GlobeVectorStyle? style = null, bool enabled = true, string name = "Features")
+    public GlobeLayer Update(IEnumerable<IFeature>? features = null, GlobeVectorStyle? style = null, string name = "Features", bool enabled = true)
     {
         _layer.Set(features?.Select(f => f?.Geometry), style, enabled, name);
         return _layer;
@@ -105,10 +105,10 @@ public sealed class GlobeGeometryLayerNode
 
     /// <param name="geometries">The shapes to draw, in longitude and latitude.</param>
     /// <param name="style">How to draw them. Unconnected gives a default style.</param>
-    /// <param name="enabled">Hides the layer while off.</param>
     /// <param name="name">The layer's name.</param>
+    /// <param name="enabled">Hides the layer while off.</param>
     [return: Pin(Name = "Output")]
-    public GlobeLayer Update(IEnumerable<Geometry>? geometries = null, GlobeVectorStyle? style = null, bool enabled = true, string name = "Geometry")
+    public GlobeLayer Update(IEnumerable<Geometry>? geometries = null, GlobeVectorStyle? style = null, string name = "Geometry", bool enabled = true)
     {
         _layer.Set(geometries, style, enabled, name);
         return _layer;
@@ -144,13 +144,13 @@ public sealed class GlobeVectorTilesNode : IDisposable
     /// <param name="attribution">The credit the style's tile sources require.</param>
     /// <param name="status">What is drawn, what is skipped, and the tiles loading.</param>
     /// <param name="style">A MapLibre style, from MapLibreStyle (URL) or MapLibreStyle (File).</param>
-    /// <param name="enabled">Fetches and draws while on.</param>
     /// <param name="name">The layer's name.</param>
     /// <param name="rendering">GPU: geometry drawn every frame. Draped: drawn into the tiles' images.</param>
+    /// <param name="enabled">Fetches and draws while on.</param>
     [return: Pin(Name = "Output")]
     public GlobeLayer Update(out string attribution, out string status,
-        MapLibreStyle? style = null, bool enabled = false, string name = "VectorTiles",
-        GlobeVectorRendering rendering = GlobeVectorRendering.GPU)
+        MapLibreStyle? style = null, string name = "VectorTiles",
+        GlobeVectorRendering rendering = GlobeVectorRendering.GPU, bool enabled = false)
     {
         // a new style value - another one, or the same file read again - starts over; its tiles come
         // from the disk cache

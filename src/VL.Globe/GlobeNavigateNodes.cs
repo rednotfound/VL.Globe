@@ -76,10 +76,10 @@ public sealed class GlobeZoomInNode
     public GlobeZoomInNode(NodeContext nodeContext) => _steps = new ZoomSteps(nodeContext.GetLogger(), +1);
 
     /// <param name="view">From GlobeCamera.</param>
-    /// <param name="trigger">Zooms in once when this turns on; held on, still once.</param>
     /// <param name="smoothing">Seconds the zoom takes. 0: at once.</param>
+    /// <param name="trigger">Zooms in once when this turns on; held on, still once.</param>
     [return: Pin(Name = "Output")]
-    public GlobeView? Update(GlobeView? view, bool trigger = false, float smoothing = 0.3f) => _steps.Update(view, trigger, smoothing);
+    public GlobeView? Update(GlobeView? view, float smoothing = 0.3f, bool trigger = false) => _steps.Update(view, trigger, smoothing);
 }
 
 /// <summary>Zooms out one level about the centre of the view each time Trigger turns on, eased.</summary>
@@ -90,10 +90,10 @@ public sealed class GlobeZoomOutNode
     public GlobeZoomOutNode(NodeContext nodeContext) => _steps = new ZoomSteps(nodeContext.GetLogger(), -1);
 
     /// <param name="view">From GlobeCamera.</param>
-    /// <param name="trigger">Zooms out once when this turns on; held on, still once.</param>
     /// <param name="smoothing">Seconds the zoom takes. 0: at once.</param>
+    /// <param name="trigger">Zooms out once when this turns on; held on, still once.</param>
     [return: Pin(Name = "Output")]
-    public GlobeView? Update(GlobeView? view, bool trigger = false, float smoothing = 0.3f) => _steps.Update(view, trigger, smoothing);
+    public GlobeView? Update(GlobeView? view, float smoothing = 0.3f, bool trigger = false) => _steps.Update(view, trigger, smoothing);
 }
 
 // ZoomIn and ZoomOut: one level a rising edge, played out as the wheel's notches are (WheelSmoother)

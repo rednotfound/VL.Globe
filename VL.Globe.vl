@@ -156,9 +156,11 @@
           </Patch>
           <Patch Id="AJmjIfRzBxd6Di2uELJOAG" Name="Update">
             <Pin Id="SL7eUprBCwWoGKaZjwfsAz" Name="Tile Source" Kind="InputPin" />
-            <Pin Id="MTwNM9cKsAOSEqFhxzNFH5" Name="Enabled" Kind="InputPin" DefaultValue="False">
+            <Pin Id="O6jUqB7CjulgB76rwphBZx" Name="Layers" Kind="InputPin" Visibility="Optional" />
+            <Pin Id="BkhcgPbNYsum7T136ojfmH" Name="Input" Kind="InputPin" Visibility="Optional" />
+            <Pin Id="MS1pSC2B5MOFVTQMvyYeRv" Name="Title" Kind="InputPin" DefaultValue="Globe">
               <p:TypeAnnotation LastCategoryFullName="Primitive" LastDependency="VL.CoreLib.vl">
-                <Choice Kind="TypeFlag" Name="Boolean" />
+                <Choice Kind="TypeFlag" Name="String" />
               </p:TypeAnnotation>
             </Pin>
             <Pin Id="JnTsLaxmMEyvtMOWO8wG4m" Name="Initial Longitude" Kind="InputPin" DefaultValue="0">
@@ -186,14 +188,13 @@
                 <Choice Kind="TypeFlag" Name="RGBA" />
               </p:TypeAnnotation>
             </Pin>
-            <Pin Id="O6jUqB7CjulgB76rwphBZx" Name="Layers" Kind="InputPin" Visibility="Optional" />
-            <Pin Id="BkhcgPbNYsum7T136ojfmH" Name="Input" Kind="InputPin" Visibility="Optional" />
-            <Pin Id="MS1pSC2B5MOFVTQMvyYeRv" Name="Title" Kind="InputPin" DefaultValue="Globe">
+            <Pin Id="MTwNM9cKsAOSEqFhxzNFH5" Name="Enabled" Kind="InputPin" DefaultValue="False">
               <p:TypeAnnotation LastCategoryFullName="Primitive" LastDependency="VL.CoreLib.vl">
-                <Choice Kind="TypeFlag" Name="String" />
+                <Choice Kind="TypeFlag" Name="Boolean" />
               </p:TypeAnnotation>
             </Pin>
             <Pin Id="DwWGxdb5qxU2W2evXCMAS6" Name="View" Kind="OutputPin" />
+            <Pin Id="Ig5kbhJ0wgt6M6W2O2Lhd5" Name="Cursor" Kind="OutputPin" />
             <Pin Id="MIRH0rgQkuNLTXcD0vCwvl" Name="Longitude" Kind="OutputPin">
               <p:TypeAnnotation LastCategoryFullName="Primitive" LastDependency="VL.CoreLib.vl">
                 <Choice Kind="TypeFlag" Name="Float64" />
@@ -214,7 +215,6 @@
                 <Choice Kind="TypeFlag" Name="String" />
               </p:TypeAnnotation>
             </Pin>
-            <Pin Id="Ig5kbhJ0wgt6M6W2O2Lhd5" Name="Cursor" Kind="OutputPin" />
             <Pin Id="VPSiiTNpgkx92QakAhcqf3" Name="Status" Kind="OutputPin">
               <p:TypeAnnotation LastCategoryFullName="Primitive" LastDependency="VL.CoreLib.vl">
                 <Choice Kind="TypeFlag" Name="String" />
