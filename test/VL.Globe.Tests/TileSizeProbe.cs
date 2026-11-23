@@ -37,7 +37,7 @@ public class TileSizeProbe(ITestOutputHelper output)
         bool here = true;
         if (doc.Tile((VectorSource)source, key, ref here, false, null) is { } data && data.TryGetValue("building", out var buildings))
         {
-            var heights = buildings.Select(f => f.Properties.GetValueOrDefault("render_height")).ToList();
+            var heights = Enumerable.Range(0, buildings.Count).Select(i => buildings.Get(i).Properties.GetValueOrDefault("render_height")).ToList();
             output.WriteLine($"{buildings.Count} buildings, {heights.Count(h => h is null)} without render_height; first: {string.Join(" ", heights.Take(12))}");
         }
         output.WriteLine($"{key}: {b!.VertexCount} vertices x {VectorVertex.Size} B + {b.IndexCount} indices x 2 B = {((long)b.VertexCount * VectorVertex.Size + b.IndexCount * 2L) / 1e6:F1} MB, built in {b.Ms:F0} ms");

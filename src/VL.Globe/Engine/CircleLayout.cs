@@ -96,7 +96,7 @@ internal static partial class VectorBucketBuilder
         bool _inCircleLayer;   // Rewind takes back the circles only of a circle layer that threw
 
         // GL JS circle_bucket.ts addFeature, granularity 1: one quad per point of every ring
-        public void Circle(GpuStyleLayer layer, List<StyleFeature> features, StyleContext ctx)
+        public void Circle(GpuStyleLayer layer, FeatureTable features, StyleContext ctx)
         {
             _layerVertexStart = _vertices.Count; _layerIndexStart = _indices.Count; _layerRangeStart = _ranges.Count;
             _layerCircleVertexStart = _circleVertices.Count; _layerCircleIndexStart = _circleIndices.Count;

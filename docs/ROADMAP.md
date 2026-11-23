@@ -516,9 +516,11 @@ Sum either log up with `tools/Summarize-Perf.py <log> --from <pan 1 begins> --to
   `StyleFeature`s, as many `TagProperties` and 206k boxed doubles (ids), and 51k `LineLabel`s with
   a float[] and a Vector3[] each. Bytes grow only in vertex arrays (17 MB, large-object heap). Done:
   a feature is its own property view and keeps its id unboxed - the 181k views and ~180k doubles
-  gone; zoom bench 3.4% -> 2.8% (37 of 1306 frames), worst 39 ms. Next, by count: features as
-  indices into their layer (no object a feature), a line label's arrays in one array a tile, the
-  value strings kept as bytes until asked for. A dump stalls vvvv ~0.8 s: never bench while dumping.
+  gone; zoom bench 3.4% -> 2.8% (37 of 1306 frames), worst 39 ms. Then features as rows of their
+  layer's arrays (`FeatureTable`, enumerated through one reused cursor - no object a feature): zoom
+  bench **1.2%** twice (16 of 1314 frames), worst 31-35 ms; Tokyo offscreen unchanged (22-26 pixels
+  of 255k differ, as between two runs of the same code). Next, by count: a line label's arrays in
+  one array a tile, the value strings kept as bytes until asked for. A dump stalls vvvv ~0.8 s: never bench while dumping.
 
 ### 5. Navigation
 

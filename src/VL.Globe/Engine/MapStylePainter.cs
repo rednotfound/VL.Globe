@@ -89,6 +89,9 @@ internal sealed class StyleFeature : IReadOnlyDictionary<string, object?>
     FeatureGeometry _geometry = FeatureGeometry.Empty;
     int _firstPart, _partCount;
 
+    /// <summary>Its place in its <see cref="FeatureTable"/>.</summary>
+    public int Index;
+
     /// <summary>The feature's parts are <paramref name="count"/> parts of <paramref name="geometry"/> from <paramref name="first"/>.</summary>
     public void SetGeometry(FeatureGeometry geometry, int first, int count) { _geometry = geometry; _firstPart = first; _partCount = count; _bounds = null; }
 
@@ -168,7 +171,7 @@ internal abstract class StyleSource { }
 
 internal sealed class GeoJsonSource : StyleSource
 {
-    public List<StyleFeature>? Features;   // inline, or once loaded from Url
+    public FeatureTable? Features;   // inline, or once loaded from Url
     public string? Url;
 }
 
@@ -239,11 +242,11 @@ internal sealed class MapStyleDocument
 
     // decoded tiles, the most recently used last; a miss that is pending is not remembered
     const int TileCacheSize = 256;
-    readonly Dictionary<(string, TileKey), LinkedListNode<((string, TileKey) key, Dictionary<string, List<StyleFeature>>? layers)>> _tiles = new();
-    readonly LinkedList<((string, TileKey) key, Dictionary<string, List<StyleFeature>>? layers)> _lru = new();
+    readonly Dictionary<(string, TileKey), LinkedListNode<((string, TileKey) key, Dictionary<string, FeatureTable>? layers)>> _tiles = new();
+    readonly LinkedList<((string, TileKey) key, Dictionary<string, FeatureTable>? layers)> _lru = new();
 
     /// <summary>A vector tile's layers, decoded once; null when it cannot be had, and <paramref name="complete"/> false when it may still come.</summary>
-    public Dictionary<string, List<StyleFeature>>? Tile(VectorSource source, TileKey key, ref bool complete, bool fetch = true, ICollection<string>? missing = null)
+    public Dictionary<string, FeatureTable>? Tile(VectorSource source, TileKey key, ref bool complete, bool fetch = true, ICollection<string>? missing = null)
     {
         var url = source.Url(key);
         var k = (url, key);   // keyed by tile too: a template without {z}/{x}/{y} serves one file for every tile
@@ -262,7 +265,7 @@ internal sealed class MapStyleDocument
     /// <summary>Drops every decoded tile (probes measure a decode as a tile coming for the first time).</summary>
     internal void ForgetDecoded() { lock (_tiles) { _tiles.Clear(); _lru.Clear(); } }
 
-    bool Cached((string, TileKey) k, out Dictionary<string, List<StyleFeature>>? layers)
+    bool Cached((string, TileKey) k, out Dictionary<string, FeatureTable>? layers)
     {
         lock (_tiles)
         {
@@ -272,13 +275,13 @@ internal sealed class MapStyleDocument
         return false;
     }
 
-    Dictionary<string, List<StyleFeature>>? LoadAndDecode(string url, TileKey key, (string, TileKey) k, ref bool complete, bool fetch, ICollection<string>? missing)
+    Dictionary<string, FeatureTable>? LoadAndDecode(string url, TileKey key, (string, TileKey) k, ref bool complete, bool fetch, ICollection<string>? missing)
     {
         // without fetch (a stand-in tile on the globe) only what is already here is drawn; a miss
         // leaves it incomplete, so it is drawn again once the tile has come for another reason
         var bytes = fetch || Peek is null ? Load?.Invoke(url) : Peek(url);
         if (bytes is null && (!fetch && Peek != null || Pending?.Invoke(url) == true)) { complete = false; missing?.Add(url); return null; }
-        Dictionary<string, List<StyleFeature>>? layers = null;
+        Dictionary<string, FeatureTable>? layers = null;
         if (bytes != null)
         {
             lock (_decoded) _decoded[key.Zoom] = _decoded.GetValueOrDefault(key.Zoom) + 1;
@@ -300,13 +303,13 @@ internal sealed class MapStyleDocument
     }
 
     /// <summary>A GeoJSON source's features, loaded once; unreadable or invalid data draws nothing, as in GL JS.</summary>
-    public List<StyleFeature> Features(GeoJsonSource g, ref bool complete)
+    public FeatureTable Features(GeoJsonSource g, ref bool complete)
     {
         lock (g)
         {
             if (g.Features != null) return g.Features;
             var bytes = g.Url is null ? null : Load?.Invoke(g.Url);
-            if (bytes is null && g.Url != null && Pending?.Invoke(g.Url) == true) { complete = false; return new List<StyleFeature>(); }
+            if (bytes is null && g.Url != null && Pending?.Invoke(g.Url) == true) { complete = false; return FeatureTable.Empty; }
             var features = new List<StyleFeature>();
             if (bytes != null)
             {
@@ -320,7 +323,7 @@ internal sealed class MapStyleDocument
                     features.Clear();
                 }
             }
-            return g.Features = features;
+            return g.Features = new FeatureTable(features.ToArray());
         }
     }
 
@@ -467,7 +470,7 @@ internal sealed class MapStyleDocument
                 {
                     features.Clear();   // invalid GeoJSON draws nothing, as in GL JS
                 }
-                return new GeoJsonSource { Features = features };
+                return new GeoJsonSource { Features = new FeatureTable(features.ToArray()) };
             }
             case "vector":
             {
@@ -606,7 +609,7 @@ internal static class MapStylePainter
     static double SharpCorner(MapViewport view, double idealZoom, double dataZoom)
         => Math.Pow(2, idealZoom - dataZoom) > 16 ? 0 : 15 * Math.Pow(2, view.Zoom - idealZoom) * view.PixelRatio;
 
-    static void DrawFeatures(SKCanvas canvas, MapStyleDocument.Layer layer, List<StyleFeature> features, StyleContext ctx, MapViewport view, double sharpCorner)
+    static void DrawFeatures(SKCanvas canvas, MapStyleDocument.Layer layer, FeatureTable features, StyleContext ctx, MapViewport view, double sharpCorner)
     {
         float pr = (float)view.PixelRatio;
         // a vector tile covers 16 globe tiles at street level: what lies off this canvas is skipped

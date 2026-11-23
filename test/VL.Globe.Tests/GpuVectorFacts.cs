@@ -196,7 +196,7 @@ public class GpuVectorFacts
                   "layers": [ { "id": "b", "type": "fill-extrusion", "source": "s", "paint": { "fill-extrusion-height": 10 } } ] }
                 """);
             var doc = MapStyleDocument.Parse(json.RootElement.Clone(), lenient: true);
-            var b = VectorBucketBuilder.BuildFeatures(new TileKey(0, 0, 0), Layers(doc)[0], new List<StyleFeature> { f }, new StyleContext { Zoom = 0 });
+            var b = VectorBucketBuilder.BuildFeatures(new TileKey(0, 0, 0), Layers(doc)[0], new FeatureTable(new[] { f }), new StyleContext { Zoom = 0 });
             var centre = (0.505 * 512, 0.505 * 512);
             int checkedWalls = 0;
             foreach (var v in b.VertexSpan)

@@ -14,7 +14,7 @@ namespace VL.Globe.Engine;
 internal static class VectorTile
 {
     /// <summary>The layers of one tile (gzip or raw), by name; geometry placed in tile <paramref name="tile"/>'s square of the world.</summary>
-    public static Dictionary<string, List<StyleFeature>> Decode(byte[] data, TileKey tile)
+    public static Dictionary<string, FeatureTable> Decode(byte[] data, TileKey tile)
     {
         if (data.Length > 2 && data[0] == 0x1f && data[1] == 0x8b)
         {
@@ -23,7 +23,7 @@ internal static class VectorTile
             gz.CopyTo(ms);
             data = ms.ToArray();
         }
-        var layers = new Dictionary<string, List<StyleFeature>>();
+        var layers = new Dictionary<string, FeatureTable>();
         var r = new Pbf(data, 0, data.Length);
         while (r.Next(out int field, out int wire))
         {
@@ -36,7 +36,7 @@ internal static class VectorTile
     // One layer: its key and value tables, then its features - their geometry into one FeatureGeometry
     // and their tags into one int array the layer shares (FeatureGeometry.cs; 4g step 4: a decoded tile
     // of small objects was what the collections copied while tiles were built)
-    static void ReadLayer(Pbf r, TileKey tile, Dictionary<string, List<StyleFeature>> into)
+    static void ReadLayer(Pbf r, TileKey tile, Dictionary<string, FeatureTable> into)
     {
         string name = "";
         uint extent = 4096;
@@ -62,23 +62,24 @@ internal static class VectorTile
         var values = valueList.ToArray();
         var geometry = new FeatureGeometryBuilder();
         var tags = new List<int>();
-        var read = new List<(StyleFeature f, int tagStart, int tagCount, int firstPart, int partCount)>(features.Count);
+        // a feature is a row of these arrays, not an object (FeatureTable)
+        var kinds = new List<StyleFeature.Shape>(features.Count);
+        var tagStarts = new List<int>(features.Count); var tagCounts = new List<int>(features.Count);
+        var firstParts = new List<int>(features.Count); var partCounts = new List<int>(features.Count);
+        var ids = new List<double>(features.Count);
+        bool anyId = false;
         foreach (var (s, e) in features)
         {
             int tagStart = tags.Count / 2, firstPart = geometry.PartCount;
-            var f = ReadFeature(new Pbf(data, s, e), keys.Length, values.Length, ox, oy, scale, geometry, tags);
-            if (f != null) read.Add((f, tagStart, tags.Count / 2 - tagStart, firstPart, geometry.PartCount - firstPart));
+            var kind = ReadFeature(new Pbf(data, s, e), keys.Length, values.Length, ox, oy, scale, geometry, tags, out var id);
+            if (kind is null) continue;
+            kinds.Add(kind.Value);
+            tagStarts.Add(tagStart); tagCounts.Add(tags.Count / 2 - tagStart);
+            firstParts.Add(firstPart); partCounts.Add(geometry.PartCount - firstPart);
+            ids.Add(id ?? double.NaN); anyId |= id != null;
         }
-        var g = geometry.Build();
-        var tagArray = tags.ToArray();
-        var list = new List<StyleFeature>(read.Count);
-        foreach (var (f, tagStart, tagCount, firstPart, partCount) in read)
-        {
-            f.SetGeometry(g, firstPart, partCount);
-            f.SetTags(keys, values, tagArray, tagStart, tagCount);
-            list.Add(f);
-        }
-        into[name] = list;
+        into[name] = new FeatureTable(kinds.ToArray(), tagStarts.ToArray(), tagCounts.ToArray(), firstParts.ToArray(), partCounts.ToArray(),
+            anyId ? ids.ToArray() : null, keys, values, tags.ToArray(), geometry.Build());
     }
 
     static object? ReadValue(Pbf r)
@@ -107,9 +108,10 @@ internal static class VectorTile
     [ThreadStatic] static List<int>? t_tags;
 
     // A feature into the layer's geometry and tags; null (and nothing added) for a type that is not one
-    static StyleFeature? ReadFeature(Pbf r, int keyCount, int valueCount, double ox, double oy, double scale,
-        FeatureGeometryBuilder into, List<int> layerTags)
+    static StyleFeature.Shape? ReadFeature(Pbf r, int keyCount, int valueCount, double ox, double oy, double scale,
+        FeatureGeometryBuilder into, List<int> layerTags, out double? featureId)
     {
+        featureId = null;
         var points = t_points ??= new();
         var ringEnds = t_ringEnds ??= new();
         var tags = t_tags ??= new();
@@ -163,18 +165,18 @@ internal static class VectorTile
         }
         if (points.Count > ringStart) ringEnds.Add(points.Count);
 
-        var f = new StyleFeature();
-        if (id is { } numeric) f.SetNumericId(numeric);
+        featureId = id;
+        var kind = StyleFeature.Shape.Point;   // type is 1 to 3 here
         var all = System.Runtime.InteropServices.CollectionsMarshal.AsSpan(points);
         switch (type)
         {
             case 1:
                 // every point its own part
-                f.Kind = StyleFeature.Shape.Point;
+                kind = StyleFeature.Shape.Point;
                 foreach (var p in all) { into.Add(p.X, p.Y); into.EndRing(); into.EndPart(); }
                 break;
             case 2:
-                f.Kind = StyleFeature.Shape.Line;
+                kind = StyleFeature.Shape.Line;
                 for (int i = 0, from = 0; i < ringEnds.Count; from = ringEnds[i++])
                 {
                     into.AddRing(all[from..ringEnds[i]]);
@@ -182,12 +184,12 @@ internal static class VectorTile
                 }
                 break;
             case 3:
-                f.Kind = StyleFeature.Shape.Polygon;
+                kind = StyleFeature.Shape.Polygon;
                 ClassifyRings(all, ringEnds, into);
                 break;
         }
         layerTags.AddRange(tags);
-        return f;
+        return kind;
     }
 
     // MapLibre's classifyRings: a ring wound like the first one starts a polygon, the others are its holes

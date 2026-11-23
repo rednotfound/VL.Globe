@@ -136,3 +136,83 @@ internal readonly struct Ring : IReadOnlyList<(double X, double Y)>
         public void Dispose() { }
     }
 }
+
+/// <summary>
+/// A layer's features: for a vector tile a few arrays (no object a feature), for GeoJSON its objects.
+/// Enumerated through one reused <see cref="StyleFeature"/> - a feature seen in a loop is valid until
+/// the next; to keep one, keep its <see cref="StyleFeature.Index"/> and ask <see cref="Get"/> later.
+/// </summary>
+// 4g step 4, 2026-11-23: a heap dump while zooming found 160-180k StyleFeature objects surviving into
+// gen1/gen2 - one per feature of every decoded tile - copied by every collection that promoted them.
+internal sealed class FeatureTable
+{
+    public static readonly FeatureTable Empty = new(Array.Empty<StyleFeature>());
+
+    readonly StyleFeature[]? _objects;
+    readonly StyleFeature.Shape[] _kinds = Array.Empty<StyleFeature.Shape>();
+    readonly int[] _tagStarts = Array.Empty<int>(), _tagCounts = Array.Empty<int>();
+    readonly int[] _firstParts = Array.Empty<int>(), _partCounts = Array.Empty<int>();
+    readonly double[]? _ids;            // NaN: no id
+    readonly string[] _keys = Array.Empty<string>();
+    readonly object?[] _values = Array.Empty<object?>();
+    readonly int[] _tags = Array.Empty<int>();
+    readonly FeatureGeometry _geometry = FeatureGeometry.Empty;
+
+    public int Count { get; }
+
+    /// <summary>Features that are objects already (GeoJSON, tests).</summary>
+    public FeatureTable(StyleFeature[] objects)
+    {
+        _objects = objects;
+        for (int i = 0; i < objects.Length; i++) objects[i].Index = i;
+        Count = objects.Length;
+    }
+
+    /// <summary>A vector tile layer's features as arrays over its geometry, tags and key/value tables.</summary>
+    public FeatureTable(StyleFeature.Shape[] kinds, int[] tagStarts, int[] tagCounts, int[] firstParts, int[] partCounts,
+        double[]? ids, string[] keys, object?[] values, int[] tags, FeatureGeometry geometry)
+    {
+        _kinds = kinds; _tagStarts = tagStarts; _tagCounts = tagCounts; _firstParts = firstParts; _partCounts = partCounts;
+        _ids = ids; _keys = keys; _values = values; _tags = tags; _geometry = geometry;
+        Count = kinds.Length;
+    }
+
+    /// <summary>Feature <paramref name="i"/> as an object of its own, to keep.</summary>
+    public StyleFeature Get(int i)
+    {
+        if (_objects != null) return _objects[i];
+        var f = new StyleFeature();
+        Load(f, i);
+        return f;
+    }
+
+    void Load(StyleFeature f, int i)
+    {
+        f.Kind = _kinds[i];
+        f.SetGeometry(_geometry, _firstParts[i], _partCounts[i]);
+        f.SetTags(_keys, _values, _tags, _tagStarts[i], _tagCounts[i]);
+        if (_ids != null && !double.IsNaN(_ids[i])) f.SetNumericId(_ids[i]); else f.Id = null;
+        f.Index = i;
+    }
+
+    public Enumerator GetEnumerator() => new(this);
+
+    public struct Enumerator
+    {
+        readonly FeatureTable _table;
+        readonly StyleFeature? _cursor;
+        int _i;
+        public Enumerator(FeatureTable table)
+        {
+            _table = table; _i = -1;
+            _cursor = table._objects is null ? new StyleFeature() : null;
+        }
+        public StyleFeature Current => _table._objects?[_i] ?? _cursor!;
+        public bool MoveNext()
+        {
+            if (++_i >= _table.Count) return false;
+            if (_cursor != null) _table.Load(_cursor, _i);
+            return true;
+        }
+    }
+}

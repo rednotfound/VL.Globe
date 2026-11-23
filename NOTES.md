@@ -592,3 +592,8 @@ looked fine - "which makes one think it works". Two causes, estimated at 100 m h
   `TagProperties` + one boxed id per feature, three objects per line label. Merging the feature, its
   property view and its id removed ~360k of them: zoom bench 3.4% -> 2.8%. `dotnet-gcdump collect`
   freezes the process ~0.8 s - those frames are the tool's, not ours.
+- **A feature is a row, not an object** (2026-11-23): a decoded MVT layer is a `FeatureTable` - kinds,
+  tag ranges, part ranges and ids in arrays - walked through one reused `StyleFeature` cursor. A
+  feature seen in a loop is valid until the next: keep its `Index` and `Get(i)` it later (the fill
+  outlines did). Zoom bench 2.8% -> 1.2% (two runs), worst 31-35 ms. ViewProbe differs by ~22 pixels
+  between two runs of the same code (label timing): compare a change against that, not against zero.

@@ -206,8 +206,8 @@ internal static partial class VectorBucketBuilder
     {
         complete = true;
         var clock = Stopwatch.StartNew();
-        Dictionary<string, List<StyleFeature>>? data = null;
-        List<StyleFeature>? geo = null;
+        Dictionary<string, FeatureTable>? data = null;
+        FeatureTable? geo = null;
         if (source is VectorSource vector)
         {
             data = style.Tile(vector, key, ref complete, fetch, missing);
@@ -233,7 +233,7 @@ internal static partial class VectorBucketBuilder
             // Its other half, `zoom < floor(minzoom)`, is not followed: a tilted view draws the far z13
             // tiles at the camera's zoom, and their 3D buildings (minzoom 14) are wanted there (ROADMAP 4f).
             if (key.Zoom + (layer.IsSymbol ? Math.Log2(b.Overscale) : 0) >= layer.Layer.MaxZoom) continue;
-            List<StyleFeature>? features = geo;
+            FeatureTable? features = geo;
             if (features is null && (data is null || layer.Layer.SourceLayer is not { } sl || !data.TryGetValue(sl, out features))) continue;
             try
             {
@@ -255,7 +255,7 @@ internal static partial class VectorBucketBuilder
     }
 
     /// <summary>One layer's features into a bucket of their own (tests).</summary>
-    internal static VectorBucket BuildFeatures(TileKey key, GpuStyleLayer layer, List<StyleFeature> features, StyleContext ctx)
+    internal static VectorBucket BuildFeatures(TileKey key, GpuStyleLayer layer, FeatureTable features, StyleContext ctx)
     {
         var b = new Builder(key);
         b.Layer(layer, features, ctx);
@@ -430,7 +430,7 @@ internal static partial class VectorBucketBuilder
             _ranges.Add(new VectorRange(-1, RangeKind.Background, start, _indices.Count - start));
         }
 
-        public void Layer(GpuStyleLayer layer, List<StyleFeature> features, StyleContext ctx)
+        public void Layer(GpuStyleLayer layer, FeatureTable features, StyleContext ctx)
         {
             _layerVertexStart = _vertices.Count; _layerIndexStart = _indices.Count; _layerRangeStart = _ranges.Count;
             _layerSymbolVertexStart = _symbolVertices.Count; _layerSymbolIndexStart = _symbolIndices.Count; _layerLabelStart = _labels.Count;
@@ -440,7 +440,8 @@ internal static partial class VectorBucketBuilder
             // range: one bucket serves every zoom the tile is overscaled to (z14 data at z19), so
             // minzoom/maxzoom are checked per frame (GpuStyleLayer.Uniforms).
             int fillStart = _indices.Count;
-            var outlines = new List<(StyleFeature f, uint color)>();
+            // a feature seen in the loop is a reused cursor: kept by its index (FeatureTable)
+            var outlines = new List<(int feature, uint color)>();
             foreach (var f in features)
             {
                 if (f.Kind == StyleFeature.Shape.Point) continue;
@@ -464,7 +465,7 @@ internal static partial class VectorBucketBuilder
                     if (layer.Antialias)
                     {
                         var outline = layer.OutlinePerFeature ? Expression.Color(layer.OutlineColor ?? layer.Color, ctx, StyleColor.Black) : new StyleColor(1, 1, 1, 1);
-                        outlines.Add((f, Pack(outline.WithOpacity(opacity))));
+                        outlines.Add((f.Index, Pack(outline.WithOpacity(opacity))));
                     }
                 }
                 else
@@ -488,7 +489,7 @@ internal static partial class VectorBucketBuilder
                 if (_indices.Count > fillStart) _ranges.Add(new VectorRange(layer.Index, RangeKind.Fill, fillStart, _indices.Count - fillStart));
                 int outlineStart = _indices.Count;
                 // GL JS's antialiasing outline, one device pixel: a 1 px line here
-                foreach (var (f, color) in outlines) Outline(f, color);
+                foreach (var (i, color) in outlines) Outline(features.Get(i), color);
                 if (_indices.Count > outlineStart) _ranges.Add(new VectorRange(layer.Index, RangeKind.Outline, outlineStart, _indices.Count - outlineStart));
             }
             else if (_indices.Count > fillStart)

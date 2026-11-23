@@ -142,7 +142,7 @@ internal static partial class VectorBucketBuilder
         int _layerSymbolVertexStart, _layerSymbolIndexStart, _layerLabelStart, _layerLineLabelStart;
 
         // GL JS symbol_layout.ts performSymbolLayout + addFeature, for point placement
-        public void Symbol(GpuStyleLayer layer, List<StyleFeature> features, StyleContext ctx, MapStyleDocument style,
+        public void Symbol(GpuStyleLayer layer, FeatureTable features, StyleContext ctx, MapStyleDocument style,
             bool fetch, ICollection<string>? missing, ref bool complete)
         {
             _layerVertexStart = _vertices.Count; _layerIndexStart = _indices.Count; _layerRangeStart = _ranges.Count;
