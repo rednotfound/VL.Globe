@@ -645,6 +645,13 @@ The plan as written:
 
 ### 7. Gestures and tidying (before the release)
 
+**The drag near the poles — fixed 2026-11-23** (the user: "视野在南北极附近拖拽的时候还是会抖动，甚至会闪动到北极去";
+the user chose GL JS's way): below MapLibre zoom 12 the drag is GL JS's globe pan (computeGlobePanCenter: the
+pixel move times the centre's degrees per pixel, latitude within ±85.051129, longitude speed capped at 60° far
+out), above it the exact grab; chosen at the press (`GlobeView.DragSession`). The grab with north up had no
+answer past the pole and took the far side's - 125-180° in one frame (`PoleDragFacts`). Packed; the user's
+look in vvvv still to come.
+
 - **Ask the user about the vertical drag direction.** `Position in Projection` is assumed y-up and
   nobody has asked. Then move the Drag and ZoomByWheel logs from Information to Debug.
 - **Teach `Compile-HelpPatches.ps1` to decompile `VL.Globe.vl.dll`** and run the dropped-link check
