@@ -19,7 +19,7 @@
     <PackageReference Include="VL.Core" Version="2025.7.4" ExcludeAssets="runtime" />
     <!-- VLGame (the graphics device) and, transitively, Stride 4.2.1.2487 - the version vvvv 7.4 ships. -->
     <PackageReference Include="VL.Stride.Runtime" Version="2025.7.4" ExcludeAssets="runtime" />
-    <!-- experiment/vectors: SkiaSharp for drawing NTS geometry into tile overlays; vvvv ships it (2.88.8), as VL.Mapsui references it -->
+    <!-- SkiaSharp: the draped path (Engine\Draped) and the attribution; vvvv ships it (2.88.8), as VL.Mapsui references it -->
     <PackageReference Include="VL.Core.Skia" Version="2025.7.4" ExcludeAssets="runtime" />
   </ItemGroup>
   <ItemGroup>

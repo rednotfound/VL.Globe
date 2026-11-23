@@ -124,46 +124,11 @@ $patches = @(Get-ChildItem (Join-Path $RepoRoot 'help') -Filter '*.vl' -Recurse 
 if ($patches.Count -eq 0) { throw "No help patch matches -Patch '$Patch'" }
 
 # Every node this package contributes, by the name the patch uses, and the C# a resolved call
-# must contain. A static method compiles to `Class.Method(`; a process node to `new ClassNode(`.
-# 32 entries (ToFeatures, ZoomAt, Refresh removed 2026-09-25; Attribution 2026-09-26), the same set as tools\Test-VLPatch.ps1's $ourNodes and docs\MAPSUI-SURFACE.md.
+# must contain: tools\Nodes.psd1, which Test-VLPatch.ps1's F1 audit reads too.
 #
 # A node the patch names that is NOT in this table is itself a failure, so that adding a node
-# to the package and forgetting it here shows up the first time a patch uses it.
-$OurNodes = @{
-    # Globe
-    'ToGlobe'              = 'GlobeCoordinates\.ToGlobe\('
-    'ToGlobe (Coordinate)' = 'GlobeCoordinates\.ToGlobeCoordinate\('
-    'FromGlobe'            = 'GlobeCoordinates\.FromGlobe\('
-    'Globe'                = 'new\s+[\w\.]*GlobeNode\('
-    'OpenStreetMap'        = 'new\s+[\w\.]*OpenStreetMapNode\('
-    'XyzTiles'             = 'new\s+[\w\.]*XyzTilesNode\('
-    'GlobeCamera'          = 'new\s+[\w\.]*GlobeCameraNode\('
-    'Drag'                 = 'new\s+[\w\.]*GlobeDragNode\('
-    'ZoomByWheel'          = 'new\s+[\w\.]*GlobeZoomByWheelNode\('
-    'DragRotate'           = 'new\s+[\w\.]*GlobeDragRotateNode\('
-    'ScreenToGlobe'        = 'GlobeViewNodes\.ScreenToGlobe\('
-    'Geometry'             = 'new\s+[\w\.]*GlobeGeometryLayerNode\('
-    'FeatureLayer'         = 'new\s+[\w\.]*GlobeFeatureLayerNode\('
-    'VectorTiles'          = 'new\s+[\w\.]*GlobeVectorTilesNode\('
-    'MapLibreStyle (URL)'  = 'new\s+[\w\.]*MapLibreStyleUrlNode\('
-    'MapLibreStyle (File)' = 'new\s+[\w\.]*MapLibreStyleFileNode\('
-    'VectorStyle'          = 'GlobeStyleNodes\.VectorStyle\('
-    'GlobeToScreen'        = 'GlobeViewNodes\.GlobeToScreen\('
-    'GlobeViewInfo'        = 'GlobeViewNodes\.GlobeViewInfo\('
-    'GlobeWindow'          = 'GlobeWindow_P\.Create\('     # patched in VL.Globe.vl, not C#
-    'GlobePositionComponent' = 'new\s+[\w\.]*GlobePositionComponentNode\('
-    'Group'                = 'new\s+[\w\.]*GlobeGroupNode\('
-    'Group (Spectral)'     = 'new\s+[\w\.]*GlobeGroupSpectralNode\('
-    'Pick'                 = 'new\s+[\w\.]*GlobePickNode\('
-    'Graticule'            = 'new\s+[\w\.]*GlobeGraticuleNode\('
-    # Globe.Navigate (ROADMAP 0.1 item 5)
-    'CenterOn'             = 'new\s+[\w\.]*GlobeCenterOnNode\('
-    'ZoomToLevel'          = 'new\s+[\w\.]*GlobeZoomToLevelNode\('
-    'ZoomIn'               = 'new\s+[\w\.]*GlobeZoomInNode\('
-    'ZoomOut'              = 'new\s+[\w\.]*GlobeZoomOutNode\('
-    'FlyTo'                = 'new\s+[\w\.]*GlobeFlyToNode\('
-    'ZoomToBounds'         = 'new\s+[\w\.]*GlobeZoomToBoundsNode\('
-}
+# to the package and forgetting it there shows up the first time a patch uses it.
+$OurNodes = (Import-PowerShellDataFile (Join-Path $PSScriptRoot 'Nodes.psd1')).Nodes
 
 # Process nodes must be constructed in __Create__ and only updated in Update. Built per frame, the
 # map node opened 17,000 TCP connections in 13 minutes and took a home network down (NOTES.md,

@@ -26,7 +26,7 @@
 
 .EXAMPLE
     .\tools\Test-VLPatch.ps1
-    .\tools\Test-VLPatch.ps1 -Path 'help\VL.Mapsui\HowTo Show a map.vl'
+    .\tools\Test-VLPatch.ps1 -Path 'help\VL.Globe\Overview\HowTo Open a globe window.vl'
 #>
 param(
     [string]$Path,
@@ -395,31 +395,19 @@ if (-not $Path) {
 # the node's Node Info. Measured 2026-09-24: 511 of vvvv 7.4's 689 shipped help patches carry flags.
 if (-not $Path) {
     Write-Host "`nvalidating help flags (F1)" -ForegroundColor Cyan
-    # The 32 public nodes of VL.Mapsui (src\VL.Mapsui; 36 until ToFeatures, ZoomAt and Refresh were removed 2026-09-25, and Attribution 2026-09-26): every [ProcessNode] and every
-    # public static method of a [Name]d static class. A node added to the package and not here is
-    # invisible to this audit, so keep the two in step - docs\MAPSUI-SURFACE.md lists the same set.
-    $ourNodes = @(
-        'Mapsui|Map', 'Mapsui|ViewportInfo', 'Mapsui|LayerInfo', 'Mapsui|Pick',
-        'Mapsui.Project|ScreenToWorld', 'Mapsui.Project|WorldToScreen', 'Mapsui.Debug|DiagnosticsLayer',
-        'Mapsui.Layers|OpenStreetMap', 'Mapsui.Layers|XYZ', 'Mapsui.Layers|FeatureLayer', 'Mapsui.Layers|Geometry',
-        'Mapsui.Layers|TileCache', 'Mapsui.Layers|Graticule', 'Mapsui.Layers|VisibleRange',
-        'Mapsui.Styles|VectorStyle', 'Mapsui.Styles|SymbolStyle', 'Mapsui.Styles|LabelStyle',
-        'Mapsui.Styles|StyleByGeometry', 'Mapsui.Styles|StyleByValue',
-        'Mapsui.Navigate|CenterOn', 'Mapsui.Navigate|ZoomToLevel', 'Mapsui.Navigate|ZoomByWheel',
-        'Mapsui.Navigate|DragBetween', 'Mapsui.Navigate|ZoomToLayer', 'Mapsui.Navigate|ZoomToLayers',
-        'Mapsui.Navigate|Drag', 'Mapsui.Navigate|ZoomIn', 'Mapsui.Navigate|ZoomOut',
-        'Mapsui.Widgets|ScaleBar', 'Mapsui.Widgets|ZoomButtons', 'Mapsui.Widgets|Click',
-        'Mapsui.Skia|ToSkiaLayer')
+    # Every public node of VL.Globe, by name (tools\Nodes.psd1, the table Compile-HelpPatches.ps1
+    # checks resolution against). Names are unique across the Globe categories.
+    $ourNodes = @((Import-PowerShellDataFile (Join-Path $PSScriptRoot 'Nodes.psd1')).Nodes.Keys | Sort-Object)
     $high = @{}; $low = @{}; $used = @{}
     foreach ($vl in Get-ChildItem (Join-Path $RepoRoot 'help') -Filter *.vl -Recurse -File) {
         $raw = [IO.File]::ReadAllText($vl.FullName)
-        # (?:\s*<PinReference[^>]*/>)* : a node whose pins carry defaults (Map's Initial pins, the
-        # Renderer's Bounds) lists them as PinReference elements AFTER the Choice and before
-        # </p:NodeReference>. Without this the audit could not see Map or ToSkiaLayer in any patch
-        # and reported both as never flagged High while both were.
-        $pattern = '<p:NodeReference LastCategoryFullName="([^"]+)" LastDependency="VL\.Mapsui\.vl">(?:(?!</p:NodeReference>).)*?<Choice Kind="(?:OperationCallFlag|ProcessAppFlag)" Name="([^"]+)" />(?:\s*<PinReference[^>]*/>)*\s*</p:NodeReference>\s*(?:<p:HelpFocus[^>]*>(High|Low)</p:HelpFocus>)?'
+        # Anything may stand between the Choice and </p:NodeReference>: PinReferences (a node whose
+        # pins carry defaults) and a CategoryReference (Graticule's). Allowing only PinReferences
+        # reported Graticule as never flagged High while it was (2026-11-24); allowing nothing hid
+        # VL.Mapsui's Map and ToSkiaLayer the same way.
+        $pattern = '<p:NodeReference LastCategoryFullName="(Globe[^"]*)" LastDependency="VL\.Globe\.(?:vl|dll)">(?:(?!</p:NodeReference>).)*?<Choice Kind="(?:OperationCallFlag|ProcessAppFlag)" Name="([^"]+)" />(?:(?!</p:NodeReference>).)*?</p:NodeReference>\s*(?:<p:HelpFocus[^>]*>(High|Low)</p:HelpFocus>)?'
         foreach ($m in [regex]::Matches($raw, $pattern, 'Singleline')) {
-            $key = "$($m.Groups[1].Value)|$($m.Groups[2].Value)"
+            $key = $m.Groups[2].Value
             $used[$key] = $true
             if ($m.Groups[3].Success) {
                 $table = if ($m.Groups[3].Value -eq 'High') { $high } else { $low }

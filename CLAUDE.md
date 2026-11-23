@@ -181,5 +181,4 @@ URL hash, its zoom one below ours). Ask for the time; load the hash in a test wi
 `GlobeView.TryApplyHash`, or paste it into a MapLibre page to see GL JS's picture of the same view.
 
 `tools\` was copied from vl-mapsui on 2026-11-09 with the package name replaced; the node table in
-`Compile-HelpPatches.ps1` is VL.Globe's own. `Test-VLPatch.ps1` and `HelpPatchGen.ps1` still carry
-VL.Mapsui's node lists (ROADMAP item 6).
+`Compile-HelpPatches.ps1` and `Test-VLPatch.ps1` read VL.Globe's own `tools\Nodes.psd1`.

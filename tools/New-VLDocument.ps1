@@ -25,7 +25,7 @@
     node to documents that reference this package.
 
 .PARAMETER ForwardDll
-    Paths to forward, relative to the .vl file, e.g. './lib/net8.0/VL.GIS.Core.dll'.
+    Paths to forward, relative to the .vl file, e.g. './lib/net8.0/VL.Globe.dll'.
     Emitted as <PlatformDependency ... IsForward="true" />.
 
 .PARAMETER ProjectReference
@@ -41,9 +41,9 @@
     Ordered dictionary / hashtable of packageId -> version.
 
 .EXAMPLE
-    .\tools\New-VLDocument.ps1 -OutFile .\VL.GIS.vl -DefaultCategory GIS `
+    .\tools\New-VLDocument.ps1 -OutFile .\VL.Globe.vl -DefaultCategory Globe `
         -NugetDependency ([ordered]@{ 'VL.CoreLib' = '2025.7.0' }) `
-        -ForwardDll './lib/net8.0/VL.GIS.Core.dll'
+        -ForwardDll './lib/net8.0/VL.Globe.dll'
 #>
 param(
     [Parameter(Mandatory)][string]$OutFile,

@@ -760,3 +760,25 @@ looked fine - "which makes one think it works". Two causes, estimated at 100 m h
   way to pan a globe"): below MapLibre zoom 12 the pixel move moves the centre by its degrees per
   pixel (computeGlobePanCenter, latitude within ±85.051129, longitude speed capped at 60° when far);
   above it the exact grab. Done so (the user chose it): `GlobeView.DragSession`, chosen at the press.
+
+## 2026-11-24 — engineering: the engine in folders, and two tools that checked nothing
+
+- **The F1 audit audited VL.Mapsui** (`Test-VLPatch.ps1`, copied 2026-11-09): its node list was
+  Mapsui's 32 and its pattern matched `LastDependency="VL.Mapsui.vl"`, so here it printed "0 of 32"
+  as an `ok` line and could never fail. Now it reads `tools\Nodes.psd1` (shared with
+  `Compile-HelpPatches.ps1`): 31 of 31. Its pattern also allowed only PinReferences between the
+  Choice and `</p:NodeReference>`; Graticule's CategoryReference stands there, so a flagged node read
+  as unflagged.
+- **Probes passed**: seven probe classes returned early without `VLGLOBE_PROBE=1` and counted as eight
+  passes in every run. `[Probe]` skips them instead (338 passed, 8 skipped).
+- **Hand-written IDs**: `Test-VLPatch.ps1` fails every help patch and VL.Globe.vl on "illegal IDs" -
+  IDs whose first character is outside A-V (every ID in vvvv 7.4's shipped help starts A-V). They came
+  in with the Navigation and GlobeCamera-as-OrbitCamera commits (2026-11-23), written by hand, not by
+  `New-VLId.ps1`. vvvv loaded and re-saved them; not yet replaced.
+- **Partial classes cannot span namespaces**: moving SymbolLayout.cs to `Symbols\` broke the build -
+  it holds parts of the GPU bucket's `GpuStyleLayer`/`VectorBucketBuilder`. It lives in `Gpu\` as
+  `VectorBucket.Symbols.cs`. And a member named `Fog` in VectorRenderer is why `Engine.Fog` was
+  written qualified: now `Gpu.Fog`.
+- **The repository mixes LF and CRLF** (CRLF: TileGeometry, TileSelector, GlobeCameraNodes,
+  GlobeCoordinates, GlobeView, the csproj, two test files). An edit script that matches `\n` misses the
+  CRLF files in silence; split on the file's own newline.

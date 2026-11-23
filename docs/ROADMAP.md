@@ -656,8 +656,9 @@ look in vvvv still to come.
   nobody has asked. Then move the Drag and ZoomByWheel logs from Information to Debug.
 - **Teach `Compile-HelpPatches.ps1` to decompile `VL.Globe.vl.dll`** and run the dropped-link check
   on patched definitions. The first GlobeWindow's height link was silently dropped.
-- `Test-VLPatch.ps1` and `HelpPatchGen.ps1` still carry VL.Mapsui's node lists: run
-  `Test-VLPackage.ps1` and fix what it reports.
+- ~~`Test-VLPatch.ps1` and `HelpPatchGen.ps1` still carry VL.Mapsui's node lists: run
+  `Test-VLPackage.ps1` and fix what it reports.~~ 2026-11-24: both read `tools\Nodes.psd1`;
+  HelpPatchGen.ps1 (VL.Mapsui's generator) removed.
 - Help patches:
   - XyzTiles has one;
   - every node has an F1 HelpFocus;
