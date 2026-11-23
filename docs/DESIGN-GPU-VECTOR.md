@@ -319,6 +319,12 @@ What each part of the GPU path now is, and the measurement that made it so:
   parts offsets; a feature's properties a view of the layer's key/value tables. A tile takes longer to
   build than the ~50 ms between collections, so everything it is made of was copied by them - ~1.5 ms
   of pause per promoted MB. Promoted 14 -> 7 MB a second; **misses 0.8-1.6%**.
+- **Tile buffers are made on the workers** (`GpuTile.Upload` in the job): the device is free-threaded
+  (vvvv's creation flags `None`, logged), Stride's creation touches only the device. Worst frame 24 ms.
+- **Line labels off the screen are not walked** (GL JS's isVisible) and paths are built only for
+  collisions: the label step's spikes went from 7 ms to 0.2.
+- **Parameters are set through accessors**: `ParameterCollection.Set(key, value)` was ~4 of a frame's
+  5.5 ms of submit. Submit ~2 ms. **Bench: 0.0-0.1% missed, worst frame 19-20 ms (GL JS 0%, 17).**
 - The rule that came out of it: **what outlives a gen0 interval costs; what dies young is nearly free.**
   Long-lived data as few large arrays. Measured with `AllocationProbe` (by hand) and the perf line's
   promoted bytes; the details and the wrong turns are in ROADMAP 4g and NOTES.md.
