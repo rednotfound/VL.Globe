@@ -75,7 +75,7 @@ internal sealed class FrameAnatomy
         if (draws == 1)
         {
             var l = draw.Labels;
-            sb.Append(c, $" + draw {draw.Total:F1} (place {draw.Place:F1} [index {l.Index:F1}, placement {l.Placement:F1}, commit {l.Commit:F1}, opacities {l.Opacities:F1}, lines {l.Lines:F1}], upload {draw.Upload:F1}, submit {draw.Submit:F1}, {draw.Items} items)");
+            sb.Append(c, $" + draw {draw.Total:F1} (place {draw.Place:F1} [index {l.Index:F1}, placement {l.Placement:F1}, commit {l.Commit:F1}, opacities {l.Opacities:F1}, lines {l.Lines:F1}], upload {draw.Upload:F1}, submit {draw.Submit:F1} [vector sets {draw.Parts.VectorSets:F1}, apply {draw.Parts.VectorApply:F1}, draw {draw.Parts.VectorDraw:F1}; text sets {draw.Parts.TextSets:F1}, apply {draw.Parts.TextApply:F1}, draw {draw.Parts.TextDraw:F1}], {draw.Items} items)");
         }
         else sb.Append(c, $" + {draws} draws");
         sb.Append(c, $" + outside {interval - _updateMs - drawMs:F1}");

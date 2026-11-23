@@ -267,8 +267,10 @@ internal sealed class VectorRenderer : IGraphicsRendererBase
         Texture? sceneDepth = null;
         try
         {
+            Array.Clear(_submitTicks);
             foreach (var item in frame.Items)
             {
+                long tItem = System.Diagnostics.Stopwatch.GetTimestamp();
                 bool extrusion = item.Pass is Pass.ExtrusionDepth or Pass.ExtrusionColor;
                 if (extrusion && sceneDepth is null) sceneDepth = UseOwnDepth(commandList);
                 else if (item.Pass == Pass.ExtrusionDepth && pass == Pass.ExtrusionColor) { RestoreDepth(commandList, sceneDepth!); sceneDepth = UseOwnDepth(commandList); }
@@ -338,8 +340,11 @@ internal sealed class VectorRenderer : IGraphicsRendererBase
                     SetText(symbolParameters, "GsNearest", t.Nearest ? 1f : 0f);
                     SetText(symbolParameters, "GsRotateWithMap", t.RotateWithMap ? 1f : 0f);
                     if (_symbolKeys.TryGetValue("GlobeSymbol.GsAtlas", out var atlasKey)) symbolParameters.Set((ObjectParameterKey<Texture>)atlasKey, t.Atlas);
+                    long tApply = System.Diagnostics.Stopwatch.GetTimestamp();
                     symbolEffect.Apply(graphicsContext);
+                    long tDraw = System.Diagnostics.Stopwatch.GetTimestamp();
                     commandList.DrawIndexed(item.Count, item.Start);
+                    Tally(1, tItem, tApply, tDraw);
                     ItemsDrawn++;
                     continue;
                 }
@@ -356,8 +361,11 @@ internal sealed class VectorRenderer : IGraphicsRendererBase
                 Set(parameters, "GvStraight", item.Pass == Pass.LineList && !GlOutlines ? 1f : 0f);
                 Set(parameters, "GvGlOutline", item.Pass == Pass.LineList && GlOutlines ? 1f : 0f);
                 Set(parameters, "GvExtrusion", extrusion ? 1f : 0f);
+                long tApplyV = System.Diagnostics.Stopwatch.GetTimestamp();
                 effect.Apply(graphicsContext);
+                long tDrawV = System.Diagnostics.Stopwatch.GetTimestamp();
                 commandList.DrawIndexed(item.Count, item.Start, item.BaseVertex);
+                Tally(0, tItem, tApplyV, tDrawV);
                 ItemsDrawn++;
             }
         }
@@ -369,12 +377,27 @@ internal sealed class VectorRenderer : IGraphicsRendererBase
             _uploadMax = Math.Max(_uploadMax, uploadMs); _uploadSum += uploadMs;
             _submitMax = Math.Max(_submitMax, submitMs); _submitSum += submitMs;
             _drawFrames++;
-            Last = new DrawTiming(Last.Serial + 1, placeMs, uploadMs, submitMs, ItemsDrawn, _fades.Last);
+            Last = new DrawTiming(Last.Serial + 1, placeMs, uploadMs, submitMs, ItemsDrawn, _fades.Last, SubmitPartsMs());
         }
     }
 
     /// <summary>The latest Draw's parts, ms: GlobeNode logs them for a frame that missed its vsync (ROADMAP 4g step 4).</summary>
-    internal readonly record struct DrawTiming(long Serial, double Place, double Upload, double Submit, int Items, LabelFades.StepTiming Labels = default)
+    // 4g step 4: where a submit's time goes, vector and text items apart - state and parameters, Apply
+    // (the constant buffers uploaded), DrawIndexed - ms
+    readonly long[] _submitTicks = new long[6];
+    void Tally(int kind, long start, long apply, long draw)
+    {
+        long end = System.Diagnostics.Stopwatch.GetTimestamp();
+        _submitTicks[3 * kind] += apply - start; _submitTicks[3 * kind + 1] += draw - apply; _submitTicks[3 * kind + 2] += end - draw;
+    }
+    SubmitParts SubmitPartsMs()
+    {
+        double Ms(int i) => _submitTicks[i] * 1000.0 / System.Diagnostics.Stopwatch.Frequency;
+        return new SubmitParts(Ms(0), Ms(1), Ms(2), Ms(3), Ms(4), Ms(5));
+    }
+    internal readonly record struct SubmitParts(double VectorSets, double VectorApply, double VectorDraw, double TextSets, double TextApply, double TextDraw);
+
+    internal readonly record struct DrawTiming(long Serial, double Place, double Upload, double Submit, int Items, LabelFades.StepTiming Labels = default, SubmitParts Parts = default)
     {
         public double Total => Place + Upload + Submit;
     }
