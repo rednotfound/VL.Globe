@@ -110,7 +110,7 @@
               <Choice Kind="TypeFlag" Name="Boolean" />
             </p:TypeAnnotation>
           </Pad>
-          <Pad Id="KplloAYIgscKzgpEIS6enV" Bounds="110,418,330,20" ShowValueBox="true" isIOBox="true" Value="&lt; Duration 0 lets the distance choose, as MapLibre">
+          <Pad Id="KplloAYIgscKzgpEIS6enV" Bounds="440,400,330,20" ShowValueBox="true" isIOBox="true" Value="&lt; Duration 0 lets the distance choose, as MapLibre">
             <p:TypeAnnotation LastCategoryFullName="Primitive" LastDependency="VL.CoreLib.vl">
               <Choice Kind="TypeFlag" Name="String" />
             </p:TypeAnnotation>

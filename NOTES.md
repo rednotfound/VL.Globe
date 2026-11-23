@@ -628,3 +628,8 @@ looked fine - "which makes one think it works". Two causes, estimated at 100 m h
   building-3d has `fill-extrusion-opacity: 0.8` (GL JS too, depth first, then colour on the nearest
   face). I first called "a few" translucent - those had water or roads behind them; the user saw
   that all are. Read the style's paint before calling a look a bug.
+- **Navigation nodes, rung 2-4** (2026-11-23): `Compile-HelpPatches` PASS (8 patches; the six
+  Globe.Navigate nodes resolved and built in Create); `HowTo Fly to a place` opened in vvvv with no
+  error in the log, the editor captured (PrintWindow - the editor's window has no title; in
+  PowerShell 7 make the Bitmap in PowerShell and only P/Invoke in Add-Type, which cannot reference
+  System.Drawing there). Not yet: pressing the bangs - the flight's feel is the user's to judge.
