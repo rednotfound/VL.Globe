@@ -65,12 +65,20 @@
             <Pin Id="1FeogdvbzDp8mFmQp5zvqY" Name="Bounds" Kind="InputPin" DefaultValue="926, 114, 800, 800" />
             <Pin Id="Mtrb1uvZwnZuDMjJxyZLLK" Name="Bound to Document" Kind="InputPin" DefaultValue="True" />
             <Pin Id="cgTAOGSf9uih4vmuGMGKAu" Name="Input" Kind="InputPin" />
+            <Pin Id="6gfEHUZIGUdIKSxr2Hv9Y1" Name="Camera" Kind="InputPin" />
             <Pin Id="WfpTbmRsHdRXfr8nBNXYK7" Name="Enabled" Kind="InputPin" />
-            <Pin Id="Gh5Qhy50B7P6nLsbWsXAJK" Name="Initial Longitude" Kind="InputPin" DefaultValue="139.7671" />
-            <Pin Id="il8Krk3QCI33jOqw5LoVFq" Name="Initial Latitude" Kind="InputPin" DefaultValue="35.6812" />
-            <Pin Id="xtpuPzNP3MzTtpcqpyZ9Nf" Name="Initial Height" Kind="InputPin" DefaultValue="20000" />
             <Pin Id="Ul36ohkjXRS4ASfzgUOVm0" Name="Title" Kind="InputPin" DefaultValue="Fly to a place" />
             <Pin Id="HnCO3V3xkhTOa1bFFHiCv1" Name="View" Kind="OutputPin" />
+          </Node>
+          <Node Bounds="350,210,180,19" Id="wL4IQ9FMVWMk0OzWDKQJAC">
+            <p:NodeReference LastCategoryFullName="Globe" LastDependency="VL.Globe.vl">
+              <Choice Kind="NodeFlag" Name="Node" Fixed="true" />
+              <Choice Kind="ProcessAppFlag" Name="GlobeCamera" />
+            </p:NodeReference>
+            <Pin Id="cXs7aDOulnUUIqBtAUm8Ss" Name="Initial Longitude" Kind="InputPin" DefaultValue="139.7671" />
+            <Pin Id="cuzM2fwc3gsTIG02FE2xNh" Name="Initial Latitude" Kind="InputPin" DefaultValue="35.6812" />
+            <Pin Id="4yblVdHnOm27ZrE2ke02Ne" Name="Initial Height" Kind="InputPin" DefaultValue="20000" />
+            <Pin Id="TVNR9wEchSXmmtS0UCeKgi" Name="Output" Kind="OutputPin" />
           </Node>
           <Pad Id="JtcdMoCkcXSUyQBiAXqozA" Comment="Fly" Bounds="60,320,35,35" ShowValueBox="true" isIOBox="true" Value="False">
             <p:TypeAnnotation LastCategoryFullName="Primitive" LastDependency="VL.CoreLib.vl">
@@ -274,6 +282,7 @@
         <Link Id="pwgXQ5DykBDzPzcJ1R40IB" Ids="KXbC8WKMxKHO9MFO0Wjypi,wskIuwk7tWSNqi0xTEfYiW" />
         <Link Id="OUx9sxCZW4AF7BvFHeEqs2" Ids="3rirXJtivfaO99UzCLLNbG,c4yEa41G2lGFgkU3dV7Hqw" />
         <Link Id="hNXsMRymnlNzgyk6TL7Bu7" Ids="KXbC8WKMxKHO9MFO0Wjypi,R10zTA5JF4x2J3hLKcZsFi" />
+        <Link Id="v9UF8kF6JMvBiTCMbkAhGd" Ids="TVNR9wEchSXmmtS0UCeKgi,6gfEHUZIGUdIKSxr2Hv9Y1" />
       </Patch>
     </Node>
   </Patch>

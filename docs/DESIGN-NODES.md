@@ -105,4 +105,10 @@ layers and the start of the view as its own pins — the family would follow lat
   Initial Longitude, Initial Latitude, Initial Height, Min Height*, Background, Scene*, Enabled | View,
   Cursor, Longitude, Latitude, Height, Attribution, Status. Several raster layers: the bottom one is drawn,
   the rest named in Status (stacking: ROADMAP item 6).
-- Step 2, the camera — next.
+- **Step 2, the camera — built 2026-11-23**, seen in vvvv (wired and own camera; the camera's drag logic
+  alive on the window's mouse). GlobeCamera: Initial Longitude, Initial Latitude, Initial Height, Initial
+  Heading, Initial Tilt, Min Height, Max Height, Field Of View, Max Tilt, Radius, Mouse*, Screen Height*,
+  Reset, Enabled | Output, View. GlobeWindow: Bounds, Bound to Document | Input, Camera, Title, Background,
+  Scene*, Enabled | View, Cursor, Attribution, Status. The help patches got a GlobeCamera where their
+  window had Initial values, and GlobeViewInfo where they read the height. The feel of the gestures:
+  the user's to judge.

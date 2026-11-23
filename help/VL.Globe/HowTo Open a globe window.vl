@@ -64,14 +64,30 @@
             <Pin Id="A8EWcJCu6jBtNz5HJyuXYF" Name="Bounds" Kind="InputPin" DefaultValue="926, 114, 800, 800" />
             <Pin Id="EZP6Hw2TiMLIECaLHcOXTZ" Name="Bound to Document" Kind="InputPin" DefaultValue="True" />
             <Pin Id="KIyc1orFsTdwRu5d2OOz1h" Name="Input" Kind="InputPin" />
+            <Pin Id="jzs8jaDkjQWL3Ecs0HniBx" Name="Camera" Kind="InputPin" />
             <Pin Id="EqRmEftGJHv6mUOu2NIk35" Name="Enabled" Kind="InputPin" />
-            <Pin Id="CzXoA3n7BDCqFU4tIvRWSq" Name="Initial Longitude" Kind="InputPin" DefaultValue="139.7" />
-            <Pin Id="IRwBvzwJz99k4XmmNQVOGa" Name="Initial Latitude" Kind="InputPin" DefaultValue="35.68" />
-            <Pin Id="J1TGpxC9L5ZDx2HowKgRUP" Name="Initial Height" Kind="InputPin" DefaultValue="12000000" />
             <Pin Id="Fj5M1fIY4WK9B8oSi8VWna" Name="Title" Kind="InputPin" DefaultValue="Open a globe window" />
-            <Pin Id="JJ9VJ8gqYpvHgYl4tuTHan" Name="Height" Kind="OutputPin" />
+            <Pin Id="XUGfzeJMH8NHH7wgaINy2z" Name="View" Kind="OutputPin" />
             <Pin Id="A1tNWPIOJ84reFj6EI8zf3" Name="Attribution" Kind="OutputPin" />
             <Pin Id="MytfgT3q6LPQdKV84VjHI7" Name="Status" Kind="OutputPin" />
+          </Node>
+          <Node Bounds="350,210,180,19" Id="OTUXcMILJFbi8xIvSBwQOO">
+            <p:NodeReference LastCategoryFullName="Globe" LastDependency="VL.Globe.vl">
+              <Choice Kind="NodeFlag" Name="Node" Fixed="true" />
+              <Choice Kind="ProcessAppFlag" Name="GlobeCamera" />
+            </p:NodeReference>
+            <Pin Id="uXppcrSXU176W33VFoF4FB" Name="Initial Longitude" Kind="InputPin" DefaultValue="139.7" />
+            <Pin Id="7fDn1abrDUQftwH5MeDRmi" Name="Initial Latitude" Kind="InputPin" DefaultValue="35.68" />
+            <Pin Id="tmDXJTHBLv47aF1PvrCNg0" Name="Initial Height" Kind="InputPin" DefaultValue="12000000" />
+            <Pin Id="1ExqCtgfSHg0G3FH85Hw0X" Name="Output" Kind="OutputPin" />
+          </Node>
+          <Node Bounds="350,290,110,19" Id="FryRPfkKVSrusG1IwhXSY3">
+            <p:NodeReference LastCategoryFullName="Globe" LastDependency="VL.Globe.vl">
+              <Choice Kind="NodeFlag" Name="Node" Fixed="true" />
+              <Choice Kind="OperationCallFlag" Name="GlobeViewInfo" />
+            </p:NodeReference>
+            <Pin Id="YNHHc5cmoRq6qcXtD4wFoq" Name="View" Kind="InputPin" />
+            <Pin Id="PRGd9oL1BRrTeMpNkB9nsc" Name="Height" Kind="OutputPin" />
           </Node>
           <Pad Id="JhU0SwUNS01WixDD688Vrg" Bounds="340,250,320,20" ShowValueBox="true" isIOBox="true" Value="&lt; a window with its own camera: drag moves, the wheel zooms">
             <p:TypeAnnotation LastCategoryFullName="Primitive" LastDependency="VL.CoreLib.vl">
@@ -124,9 +140,11 @@
         </ProcessDefinition>
         <Link Id="KGi58gp7Bg7EEoLPE3BH7U" Ids="PyDvZXlNY1BSQGxHSuXtMC,KIyc1orFsTdwRu5d2OOz1h" />
         <Link Id="DEmgT59tIIYJOeu0t6Ll5I" Ids="SwoX2dSx9tFUuiGeat2o3p,EqRmEftGJHv6mUOu2NIk35" />
-        <Link Id="QX6jwiqZ0lo8HnJ4M9ZPLa" Ids="JJ9VJ8gqYpvHgYl4tuTHan,F0e6Zr2jZj93PDaKgJgiMF" />
+        <Link Id="QX6jwiqZ0lo8HnJ4M9ZPLa" Ids="PRGd9oL1BRrTeMpNkB9nsc,F0e6Zr2jZj93PDaKgJgiMF" />
         <Link Id="H0N6i9BNvlws9GaUKly9Xs" Ids="A1tNWPIOJ84reFj6EI8zf3,GdgDhiI7En2smyMw1GUDej" />
         <Link Id="TFx7ZEvUjA6ChO9jXxcXaw" Ids="MytfgT3q6LPQdKV84VjHI7,VeMdG7dJEwlMbRQ4m1H0ih" />
+        <Link Id="Z7Pci4oPLMaajn5dY9DUaP" Ids="1ExqCtgfSHg0G3FH85Hw0X,jzs8jaDkjQWL3Ecs0HniBx" />
+        <Link Id="NqLJaqpQJk5JsxSssmIkhF" Ids="XUGfzeJMH8NHH7wgaINy2z,YNHHc5cmoRq6qcXtD4wFoq" />
       </Patch>
     </Node>
   </Patch>

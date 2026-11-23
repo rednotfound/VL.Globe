@@ -663,3 +663,22 @@ looked fine - "which makes one think it works". Two causes, estimated at 100 m h
   did not). Two traps on the way: a test cannot name `Spread.X` (VL.CoreLib has a namespace
   `VL.Lib.Collections.Spread`) - build through `Spread<T>.Empty.ToBuilder()`; and a help patch vvvv had
   saved was LF without BOM while the others are CRLF with BOM - edit scripts must take each file's own.
+- **Step 2 of DESIGN-NODES built** (2026-11-23): GlobeCamera as OrbitCamera. It puts VL.Stride's
+  `CameraInputSourceComponent` on its entity (the window rendering it fills `InputSource`, as OrbitCamera's
+  patch does), reads the first `IMouseDevice` (Position 0..1 -> projection space, IsButtonDown - an
+  extension in Stride.Input: `using Stride.Input;` at the top, since inside namespace VL.Globe the name
+  `Stride.Input` means VL.Stride.Input), the wheel from `VL.Stride.Resources.GetInputManagerHandle(nodeContext)`'s
+  Events filtered by that device (as Stride's SplitMouseDevice), the window's height from SurfaceSize;
+  runs Drag, ZoomByWheel and DragRotate inside. Initial Heading/Tilt, Reset, Enabled; output Output.
+  GlobeWindow: Camera pin (wired, else its own GlobeCamera, chosen by GlobeWindowCamera), no Initial pins,
+  no Longitude/Latitude/Height outputs (GlobeViewInfo reads them from View). Seen in vvvv: wired (the
+  help's GlobeCamera, 3000 m) and own camera (the whole globe); the camera's drag logic alive with the
+  window's mouse device in both. Traps on the way, each silent:
+  - `[Smell(SymbolSmell.Hidden)]` on a C# operation made it UNRESOLVABLE inside VL.Globe.vl itself: the
+    node was left out of GlobeWindow_P.Update, its outputs null, "Globe: no Camera", a blank window - and
+    every compile check green. `Advanced` resolves (and hides it from the NodeBrowser's default list).
+  - vvvvc said "Object is no GlobeView!" for every help patch reading GlobeWindow's View, while the editor
+    ran them: the definition's View and Camera pins needed explicit type annotations.
+  - Seen only by reading the compiled IL: ilspycmd is not installed here; scratchpad `IlCalls.ps1` lists a
+    method's IL with calls resolved (System.Reflection.Metadata + Emit.OpCodes, PowerShell 7 only).
+  - `tools`-like generator `make_fly_help.py` (scratchpad) is retired: the help patches are edited in place.

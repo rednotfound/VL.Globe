@@ -151,12 +151,20 @@
             <Pin Id="LHG4rpPgddq5DvrnwWoUW5" Name="Bounds" Kind="InputPin" DefaultValue="926, 114, 800, 800" />
             <Pin Id="Q0lZzQg8Zg92Ajwrx8qBnW" Name="Bound to Document" Kind="InputPin" DefaultValue="True" />
             <Pin Id="SHnELELX8XX55ec8Xqjct0" Name="Input" Kind="InputPin" />
+            <Pin Id="uzK8UXgrsqlvYQqGL9TMkn" Name="Camera" Kind="InputPin" />
             <Pin Id="PYTzErdpA12r4YO24nuBei" Name="Enabled" Kind="InputPin" />
-            <Pin Id="Hb6kT2JSJWIccFySKgGyXB" Name="Initial Longitude" Kind="InputPin" DefaultValue="139.7620" />
-            <Pin Id="IYKoHUZYZTUMBU9jt106uc" Name="Initial Latitude" Kind="InputPin" DefaultValue="35.6830" />
-            <Pin Id="MG7VaTirweJzm5XzVqFxr8" Name="Initial Height" Kind="InputPin" DefaultValue="3000" />
             <Pin Id="HQWIBVBdVQGwLnNojukGqN" Name="Title" Kind="InputPin" DefaultValue="Draw shapes on the globe" />
             <Pin Id="S6urMsRhtcrxucxhRiukoC" Name="Status" Kind="OutputPin" />
+          </Node>
+          <Node Bounds="350,380,180,19" Id="ECcNQf2suOoOOsgAwpIYiI">
+            <p:NodeReference LastCategoryFullName="Globe" LastDependency="VL.Globe.vl">
+              <Choice Kind="NodeFlag" Name="Node" Fixed="true" />
+              <Choice Kind="ProcessAppFlag" Name="GlobeCamera" />
+            </p:NodeReference>
+            <Pin Id="zqHxqcAsblDvliin8NvY40" Name="Initial Longitude" Kind="InputPin" DefaultValue="139.7620" />
+            <Pin Id="XDNXvzMWKYCBf1BTHaFiMP" Name="Initial Latitude" Kind="InputPin" DefaultValue="35.6830" />
+            <Pin Id="McImI4JfAPXrSLU0FhEQBK" Name="Initial Height" Kind="InputPin" DefaultValue="3000" />
+            <Pin Id="P9K2zzSxxnF1eKUpTXYgwM" Name="Output" Kind="OutputPin" />
           </Node>
           <Pad Id="C9uJEfMlq5zJG4Ltvjk8fU" Bounds="340,418,320,20" ShowValueBox="true" isIOBox="true" Value="&lt; Group: leftmost at the bottom - the tiles, then the shapes">
             <p:TypeAnnotation LastCategoryFullName="Primitive" LastDependency="VL.CoreLib.vl">
@@ -190,6 +198,7 @@
         <Link Id="CkBd9Vavq0fdy0eAF5kWHg" Ids="C3oPzM0a5NtCbFcp0dya2b,0lR8acRYSi4MDF8kWCBX1K" />
         <Link Id="K3ch3DR9LUbw7u63ZJVhec" Ids="FlZBDhx90blz9s4L2QCdDz,PYTzErdpA12r4YO24nuBei" />
         <Link Id="A46K1vDcLioNzR4l249jME" Ids="S6urMsRhtcrxucxhRiukoC,GqzLvqKKqdmDEmUdysaXO0" />
+        <Link Id="wnJNH6nysbCjCwBZWJOBrU" Ids="P9K2zzSxxnF1eKUpTXYgwM,uzK8UXgrsqlvYQqGL9TMkn" />
       </Patch>
     </Node>
   </Patch>

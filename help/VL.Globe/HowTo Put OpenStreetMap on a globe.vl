@@ -167,11 +167,17 @@
             <Pin Id="SqjixlQJ1c0R1wMIincnAo" Name="Initial Height" Kind="InputPin" DefaultValue="12000000" />
             <Pin Id="Neu2PRUbEgmkO5ZtoG0JGq" Name="Min Height" Kind="InputPin" DefaultValue="20" />
             <Pin Id="TJgI2PZcvOr8TmXTweToZl" Name="Screen Height" Kind="InputPin" />
-            <Pin Id="Tr1X3pEUFnMVSRT2xfteft" Name="Camera" Kind="OutputPin" />
+            <Pin Id="Tr1X3pEUFnMVSRT2xfteft" Name="Output" Kind="OutputPin" />
+            <Pin Id="aOThkmiC7XKnZAcUeWgTJ2" Name="Mouse" Kind="InputPin" DefaultValue="False" />
             <Pin Id="KZ4MbYDrBKufVj5MpLu9XY" Name="View" Kind="OutputPin" />
-            <Pin Id="NAc2UfWqDqBxHbd4rz5RML" Name="Longitude" Kind="OutputPin" />
-            <Pin Id="KQREusXOUfn1RWrrLq8BFl" Name="Latitude" Kind="OutputPin" />
-            <Pin Id="KxHPxImuECptMJMKjt0sXc" Name="Height" Kind="OutputPin" />
+          </Node>
+          <Node Bounds="520,240,110,19" Id="6RBfpDN864w7lqPIPwGC5O">
+            <p:NodeReference LastCategoryFullName="Globe" LastDependency="VL.Globe.vl">
+              <Choice Kind="NodeFlag" Name="Node" Fixed="true" />
+              <Choice Kind="OperationCallFlag" Name="GlobeViewInfo" />
+            </p:NodeReference>
+            <Pin Id="wWntOPejFuwN1x0Srplu0Y" Name="View" Kind="InputPin" />
+            <Pin Id="3OmglyZPYfOfDWZE6PWODS" Name="Height" Kind="OutputPin" />
           </Node>
           <Node Bounds="300,560,125,19" Id="TvnJPlpYyrIfb2qPQXnHE1">
             <p:NodeReference LastCategoryFullName="Stride.Input" LastDependency="VL.Stride.Engine.vl">
@@ -306,7 +312,7 @@
         <Link Id="TzI9kihICvm0DXit06sUky" Ids="SvYyQ7d5Aots0PpTnfz9P8,FLte66XIUu2XVUYzWsHC5Q" />
         <Link Id="RnqMy4nuT8d2yMGxUypbkC" Ids="L8AbuKhs93kaqiRojC3kCH,Lo6eX6n3UhGu7JBnzyBkW4" />
         <Link Id="SYwNd5QTVePiOWAsUi08KK" Ids="C7Z5QeWTDeq6F3Kh8fWX9g,BEmshGzzJzTNRTk8MVkXB3" />
-        <Link Id="UGz5zmaLP4REAJl9PoSzaK" Ids="KxHPxImuECptMJMKjt0sXc,NljKtZfIt6qypxCZ78U8qV" />
+        <Link Id="UGz5zmaLP4REAJl9PoSzaK" Ids="3OmglyZPYfOfDWZE6PWODS,NljKtZfIt6qypxCZ78U8qV" />
         <Link Id="Ab5r5I1ICBlfOLeKSa6xZF" Ids="Tr1X3pEUFnMVSRT2xfteft,VkZa6ZaCY3zXbiKX0H5aRH" />
         <Link Id="GBgFhShNhYDymBSE5KA1I9" Ids="KZ4MbYDrBKufVj5MpLu9XY,SsKArKryzsYFdrUwgWhYFx" />
         <Link Id="S6P6z8CcuCRBr2Il4Y2idS" Ids="L8AbuKhs93kaqiRojC3kCH,Pk6SFmMGXsxU3vLP9EXaro" />
@@ -332,6 +338,7 @@
         <Link Id="IPY1AQKlGNBeMF5A7hzVm9" Ids="LyG5wd83vK21WEUSvEAjr1,N5G2OO9u5azORphSDEDr15" />
         <Link Id="PxAaW9b1IfYXZG7tNdTa7r" Ids="OmPLrkTiIP1rNTunc1dOrH,AQ4Mrxz3PUKBGaEcyvak8j" />
         <Link Id="BnIOfiqo3lDFzI0Efr4PGh" Ids="MXEikTxDJNorWMoCi7v5Nc,RXYHLhAWP4J9TtYgIwW2k3" />
+        <Link Id="FQvIMDtNkv9hpsSIKEOPEO" Ids="KZ4MbYDrBKufVj5MpLu9XY,wWntOPejFuwN1x0Srplu0Y" />
 
       </Patch>
     </Node>

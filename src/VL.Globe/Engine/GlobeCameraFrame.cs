@@ -14,4 +14,7 @@ internal sealed class GlobeCameraFrame : EntityComponent
 {
     /// <summary>The eye in scene units, in double: the camera's view matrix places it at the origin.</summary>
     public D3 Eye;
+
+    /// <summary>The camera's state, for GlobeWindow given this camera on its Camera pin.</summary>
+    public GlobeView? View;
 }

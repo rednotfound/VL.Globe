@@ -147,22 +147,26 @@
             <Pin Id="ISbwBLntSIhMojb8xDJe3U" Name="Node Context" Kind="InputPin" IsHidden="true" />
             <Pin Id="ImJ9CALmrnzpNj6bSFHcr1" Name="Bounds" Kind="InputPin" DefaultValue="592, 114, 1250, 800" />
             <Pin Id="TFFtrE1zxyScexNmv8lFFf" Name="Bound to Document" Kind="InputPin" DefaultValue="True" />
-            <Pin Id="P0rLUMzqnhLcXCFz1TYsWf" Name="Initial Longitude" Kind="InputPin" DefaultValue="139.7671" />
             <Pin Id="BtfThqv2ap5ThhPiRVvHoD" Name="Input" Kind="InputPin" />
-            <Pin Id="J2fgywvFUYxpkQHtoDgtIj" Name="Initial Latitude" Kind="InputPin" DefaultValue="35.6812" />
+            <Pin Id="uzK8UXgrsqlvYQqGL9TMkn" Name="Camera" Kind="InputPin" />
             <Pin Id="HKlMaIFwV0GP5rMYuDrO7p" Name="Scene" Kind="InputPin" IsHidden="true" />
-            <Pin Id="Adns35BFXNa6wH3vNYkZYh" Name="Initial Height" Kind="InputPin" DefaultValue="1500" />
             <Pin Id="A4wWnK9CFnSqApz0sQFRxl" Name="Enabled" Kind="InputPin" />
-            <Pin Id="AFFRIwczxgfLCd8duxfzPe" Name="Min Height" Kind="InputPin" IsHidden="true" />
             <Pin Id="D8Bv3RxATb8OsUoQuj4AHf" Name="Background" Kind="InputPin" />
             <Pin Id="FyT2kEcPVHF04NYX106UUU" Name="Title" Kind="InputPin" DefaultValue="Draw vector tiles" />
             <Pin Id="OljP7W6xNKXQRYHZme3n9u" Name="View" Kind="OutputPin" />
-            <Pin Id="PfHABiI5MSCMMV6zv2a99g" Name="Longitude" Kind="OutputPin" />
-            <Pin Id="RnR32b5TNSjNMktYPHWyJv" Name="Latitude" Kind="OutputPin" />
-            <Pin Id="GqFz0ZlNAUiMFiDZJC8OrF" Name="Height" Kind="OutputPin" />
             <Pin Id="E0cdzfs776LNgFeVgNFAaO" Name="Attribution" Kind="OutputPin" />
             <Pin Id="I5iFsxov69rIeDAYcKjxTK" Name="Status" Kind="OutputPin" />
             <Pin Id="KtN3dZRlmqBMDUFtOFNvPk" Name="Cursor" Kind="OutputPin" />
+          </Node>
+          <Node Bounds="350,350,180,19" Id="ECcNQf2suOoOOsgAwpIYiI">
+            <p:NodeReference LastCategoryFullName="Globe" LastDependency="VL.Globe.vl">
+              <Choice Kind="NodeFlag" Name="Node" Fixed="true" />
+              <Choice Kind="ProcessAppFlag" Name="GlobeCamera" />
+            </p:NodeReference>
+            <Pin Id="zqHxqcAsblDvliin8NvY40" Name="Initial Longitude" Kind="InputPin" DefaultValue="139.7671" />
+            <Pin Id="XDNXvzMWKYCBf1BTHaFiMP" Name="Initial Latitude" Kind="InputPin" DefaultValue="35.6812" />
+            <Pin Id="McImI4JfAPXrSLU0FhEQBK" Name="Initial Height" Kind="InputPin" DefaultValue="1500" />
+            <Pin Id="P9K2zzSxxnF1eKUpTXYgwM" Name="Output" Kind="OutputPin" />
           </Node>
           <Pad Id="SZcwfOYdvkPcI0kGqGH6K1" Bounds="340,388,320,20" ShowValueBox="true" isIOBox="true" Value="&lt; show the Attribution wherever the map is shown">
             <p:TypeAnnotation LastCategoryFullName="Primitive" LastDependency="VL.CoreLib.vl">
@@ -195,6 +199,7 @@
         <Link Id="PkBqcrXUuqitbjzlv8zkIV" Ids="CWx72kLZL5EcReJgUBXoCF,BtfThqv2ap5ThhPiRVvHoD" />
         <Link Id="PL8tY1QUjbuhMY9Z8R71Wa" Ids="T0zVQn4a9xuvhQpCnlvBNI,A4wWnK9CFnSqApz0sQFRxl" />
         <Link Id="MzxNmajtRsXtiohb8lBYi8" Ids="I5iFsxov69rIeDAYcKjxTK,AVJjneKTLxVSGh0nhDUjDd" />
+        <Link Id="wnJNH6nysbCjCwBZWJOBrU" Ids="P9K2zzSxxnF1eKUpTXYgwM,uzK8UXgrsqlvYQqGL9TMkn" />
       </Patch>
     </Node>
   </Patch>

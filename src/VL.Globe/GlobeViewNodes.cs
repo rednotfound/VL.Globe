@@ -1,5 +1,6 @@
 using System;
 using Stride.Core.Mathematics;
+using VL.Core;
 using VL.Core.Import;
 using VL.Globe;
 
@@ -37,6 +38,17 @@ public static class GlobeViewNodes
         longitude = Math.Atan2(p.X, p.Z) * 180 / Math.PI;
         latitude = Math.Asin(Math.Clamp(p.Y, -1, 1)) * 180 / Math.PI;
         success = true;
+    }
+
+    // GlobeWindow's own, in the NodeBrowser's advanced list only: the camera wired to its Camera pin, else the one it keeps, and that camera's view
+    // (a GlobeCamera's; null for any other camera). DESIGN-NODES step 2, 2026-11-23.
+    /// <summary>The camera GlobeWindow shows the globe with: the one wired to its Camera pin, else its own.</summary>
+    [Smell(SymbolSmell.Advanced)]   // Hidden made it unresolvable inside VL.Globe.vl itself (2026-11-23)
+    public static global::Stride.Engine.Entity? GlobeWindowCamera(global::Stride.Engine.Entity? wired, global::Stride.Engine.Entity? own, out GlobeView? view)
+    {
+        var camera = wired ?? own;
+        view = camera?.Get<VL.Globe.Engine.GlobeCameraFrame>()?.View;
+        return camera;
     }
 
     /// <summary>Where on the screen a longitude/latitude is drawn; Visible is false behind the globe or the camera.</summary>

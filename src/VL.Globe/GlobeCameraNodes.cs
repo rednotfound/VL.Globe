@@ -2,6 +2,7 @@ using System;
 using Stride.Core.Mathematics;
 using Microsoft.Extensions.Logging;
 using Stride.Engine;
+using Stride.Input;   // IsButtonDown is an extension there
 using VL.Core;
 using VL.Core.Import;
 
@@ -19,18 +20,28 @@ namespace VL.Globe;
 // computed its ray from last frame's camera); the ray is converted to camera space against the pose
 // it was computed from, so the lag never shows as drift.
 
-/// <summary>A camera that moves like a map: looks straight down at a place from a height that never reaches the ground.</summary>
+/// <summary>A camera that moves like a map: drag to move, the wheel to zoom, right drag to turn and tilt.</summary>
 /// <remarks>
-/// Wire Camera to SceneWindow's Camera, to the scene, to Globe and to a Mouse node; wire View through Drag and ZoomByWheel.
+/// For GlobeWindow's Camera, or SceneWindow's Camera and the scene with Globe. It reads the mouse of the window it is shown in, as OrbitCamera does.
+/// Reset goes back to the Initial values.
 /// </remarks>
+// DESIGN-NODES step 2 (the user's decision, 2026-11-23): shaped as Stride's OrbitCamera - Initial pins, the
+// mouse read by the camera itself (a CameraInputSourceComponent on its entity, which the window rendering
+// it fills, as OrbitCamera's patch does), Reset, Enabled last. Drag, ZoomByWheel and DragRotate stay as
+// nodes for patches that want their own gestures (Mouse off), and are what this camera runs inside.
 [ProcessNode(Name = "GlobeCamera", Category = "Globe")]
-public sealed class GlobeCameraNode
+public sealed class GlobeCameraNode : IDisposable
 {
     readonly GlobeView _view = new();
     readonly Entity _entity = new("GlobeCamera");
     readonly CameraComponent _camera = new() { UseCustomViewMatrix = true, UseCustomAspectRatio = false };
     readonly Engine.GlobeCameraFrame _frame = new();
-    bool _initialised;
+    readonly VL.Stride.Input.CameraInputSourceComponent _input = new();
+    readonly VL.Lib.Basics.Resources.IResourceHandle<global::Stride.Input.InputManager> _inputManager;
+    readonly GlobeDragNode _drag;
+    readonly GlobeZoomByWheelNode _wheel;
+    readonly GlobeDragRotateNode _rotate;
+    bool _initialised, _wasReset;
     readonly ILogger _logger;
     // ROADMAP 4g: GL JS's bench motion, only when vvvv was started with VLGLOBE_BENCH=pan
     readonly Engine.CameraBench? _bench = Engine.CameraBench.FromEnvironment();
@@ -40,45 +51,79 @@ public sealed class GlobeCameraNode
         _logger = nodeContext.GetLogger();
         _entity.Add(_camera);
         _entity.Add(_frame);
+        _entity.Add(_input);
+        _frame.View = _view;
+        _inputManager = VL.Stride.Resources.GetInputManagerHandle(nodeContext);
+        _drag = new GlobeDragNode(nodeContext);
+        _wheel = new GlobeZoomByWheelNode(nodeContext);
+        _rotate = new GlobeDragRotateNode(nodeContext);
     }
 
-    /// <param name="initialLongitude">Degrees east to look at, applied once on open.</param>
-    /// <param name="initialLatitude">Degrees north to look at, applied once on open.</param>
-    /// <param name="initialHeight">Metres above the surface, applied once on open.</param>
+    public void Dispose() => _inputManager.Dispose();
+
+    /// <param name="initialLongitude">Degrees east to look at, on open and on Reset.</param>
+    /// <param name="initialLatitude">Degrees north to look at, on open and on Reset.</param>
+    /// <param name="initialHeight">Metres above the surface, on open and on Reset.</param>
+    /// <param name="initialHeading">Degrees clockwise from north the top of the view points to, on open and on Reset.</param>
+    /// <param name="initialTilt">Degrees from looking straight down, on open and on Reset.</param>
     /// <param name="minHeight">The camera never comes lower, in metres.</param>
     /// <param name="maxHeight">The camera never goes higher, in metres.</param>
-    /// <param name="radius">The globe's radius in scene units - the same as Globe's.</param>
     /// <param name="fieldOfView">Vertical field of view in degrees.</param>
-    /// <param name="view">The camera's state, for Drag and ZoomByWheel.</param>
-    /// <param name="longitude">Degrees east straight below the camera.</param>
-    /// <param name="latitude">Degrees north straight below the camera.</param>
-    /// <param name="height">Metres the camera is above the surface.</param>
-    /// <param name="heading">Degrees clockwise from north that the top of the view points to.</param>
-    /// <param name="tilt">Degrees the view is tilted from straight down.</param>
     /// <param name="maxTilt">The most the view can be tilted, in degrees.</param>
-    /// <param name="screenHeight">The height of the view in pixels: SceneWindow's Client Bounds. GlobeWindow wires it.</param>
-    [return: Pin(Name = "Camera")]
+    /// <param name="radius">The globe's radius in scene units - the same as Globe's.</param>
+    /// <param name="mouse">Moves with the mouse of the window it is shown in. Off: only Drag, ZoomByWheel and the navigation nodes move it.</param>
+    /// <param name="screenHeight">The height of the view in pixels; 0 takes it from the window it is shown in.</param>
+    /// <param name="reset">Goes back to the Initial values.</param>
+    /// <param name="enabled">Off: the mouse does not move it.</param>
+    /// <param name="view">The camera's state, for the navigation nodes, ScreenToGlobe and GlobeViewInfo.</param>
+    [return: Pin(Name = "Output")]
     public Entity Update(
-        out GlobeView view, out double longitude, out double latitude, out double height, out double heading, out double tilt,
-        double initialLongitude = 0, double initialLatitude = 20, double initialHeight = 1.5e7,
-        double minHeight = 20, double maxHeight = 2.5e7, float radius = 1f, float fieldOfView = 45f, double maxTilt = 60, float screenHeight = 1080f)
+        out GlobeView view,
+        double initialLongitude = 0, double initialLatitude = 20, double initialHeight = 1.5e7, double initialHeading = 0, double initialTilt = 0,
+        double minHeight = 20, double maxHeight = 2.5e7, float fieldOfView = 45f, double maxTilt = 60, float radius = 1f,
+        [Pin(Visibility = VL.Model.PinVisibility.Optional)] bool mouse = true,
+        [Pin(Visibility = VL.Model.PinVisibility.Optional)] float screenHeight = 0f,
+        bool reset = false, bool enabled = true)
     {
         _view.MinHeight = Math.Max(1, minHeight);
         _view.MaxHeight = Math.Max(_view.MinHeight, maxHeight);
         _view.Radius = radius > 0 ? radius : 1f;
         _view.FovY = MathUtil.DegreesToRadians(Math.Clamp(fieldOfView, 1f, 170f));
         _view.MaxTilt = Math.Clamp(maxTilt, 0, 85);
-        _view.Height_px = Math.Max(1, screenHeight);   // for GlobeViewInfo's resolution and zoom
+
+        // the window this camera is shown in: its mouse, and its size (Stride's SplitMouseDevice reads them so)
+        var device = _input.InputSource is { } source ? FirstMouse(source) : null;
+        float height = screenHeight > 0 ? screenHeight : device is { SurfaceSize.Y: > 0 } d ? d.SurfaceSize.Y : 1080f;
+        _view.Height_px = Math.Max(1, height);   // for GlobeViewInfo's resolution and zoom
         if (_view.Tilt > _view.MaxTilt) _view.RotateBy(0, 0);   // a lowered limit applies at once
-        if (!_initialised)
+
+        bool resetNow = reset && !_wasReset;
+        _wasReset = reset;
+        if (!_initialised || resetNow)
         {
             _view.Longitude = initialLongitude;
             _view.Latitude = Math.Clamp(initialLatitude, -89.9, 89.9);
+            _view.Heading = Engine.Navigation.WrapHeading(initialHeading);
+            _view.Tilt = Math.Clamp(initialTilt, 0, _view.MaxTilt);
             _initialised = true;
             _view.SetHeight(initialHeight);
+            if (resetNow) GlobeViewLog.Write(_logger, _view);
         }
         else _view.SetHeight(_view.Height);   // a changed Min/Max applies at once
         _bench?.Step(_view, _logger);
+
+        if (enabled && mouse && device is not null)
+        {
+            // projection space, y up, as Mouse [Stride.Input]'s Position in Projection
+            var p = device.Position;
+            var position = new Vector2(p.X * 2 - 1, 1 - p.Y * 2);
+            float wheel = 0;
+            foreach (var e in _inputManager.Resource.Events)
+                if (e is global::Stride.Input.MouseWheelEvent w && ReferenceEquals(w.Device, device)) wheel += w.WheelDelta;
+            _drag.Update(_view, position, device.IsButtonDown(global::Stride.Input.MouseButton.Left));
+            _wheel.Update(_view, position, wheel);
+            _rotate.Update(_view, position, device.IsButtonDown(global::Stride.Input.MouseButton.Right));
+        }
 
         // Camera-relative (ROADMAP item 1): the eye stays in double in the frame component, the view
         // is rotation only. An absolute view put the eye at ~1.0 in float - a 0.4 m lattice.
@@ -95,13 +140,14 @@ public sealed class GlobeCameraNode
         _camera.VerticalFieldOfView = fieldOfView;
 
         view = _view;
-        longitude = _view.Longitude;
-        latitude = _view.Latitude;
-        // Height is where the CAMERA is: with a tilt the view's Height is the distance to the centre point.
-        height = _view.EyeAltitude;
-        heading = _view.Heading;
-        tilt = _view.Tilt;
         return _entity;
+    }
+
+    static global::Stride.Input.IMouseDevice? FirstMouse(global::Stride.Input.IInputSource source)
+    {
+        foreach (var d in source.Devices.Values)
+            if (d is global::Stride.Input.IMouseDevice m) return m;
+        return null;
     }
 }
 
