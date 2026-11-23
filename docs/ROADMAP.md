@@ -557,7 +557,8 @@ Sum either log up with `tools/Summarize-Perf.py <log> --from <pan 1 begins> --to
 **Built** (the user chose B', GL JS's way): ground passes take the true sphere's depth at their pixel
 (`GlobeVector.sdsl`, `GvSphere`), the far side cut along the ray; `OverscaledGroundFacts` over the globe
 tiles' depth (red before: 0 of 120000 px), 315 green, fixture reports unchanged. Seen by the user in
-vvvv: "似乎成功了". Left: the 4g bench (SV_Depth turns off early depth for these draws).
+vvvv: "似乎成功了". Zoom bench after it (Tokyo #14.82/35.68778/139.76758/-78.6/54.5, 2026-11-23 19:16):
+0.1% missed (1 of 1324 frames), worst 21 ms - no cost seen. Done. (Was: the 4g bench (SV_Depth turns off early depth for these draws).
 
 
 **The whole plan, the user's words and the evidence: [DESIGN-OVERSCALED.md](DESIGN-OVERSCALED.md).**
