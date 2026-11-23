@@ -7,7 +7,7 @@
   <NugetDependency Id="SUAeOTPJlryUSKynrWmHb6" Location="BruTile" Version="5.0.6" />
   <Patch Id="SKTxI1h5DmCeNE0Z0nE6G4">
     <Canvas Id="Roygb3bQuVqK15xRv6xKxz" DefaultCategory="Globe" CanvasType="FullCategory">
-      <Node Name="GlobeWindow" Bounds="100,220" Id="VBrh8tKkQ1kPaTaEgq0sJb" Summary="A window that shows a globe. The mouse moves it." Remarks="Connect OpenStreetMap to Input and switch Enabled on: left drag moves the globe, the wheel zooms, right drag turns and tilts.&#xD;&#xA;More layers (VectorTiles, FeatureLayer, Geometry, more tiles) through Group: leftmost at the bottom.&#xD;&#xA;Camera: a GlobeCamera, to start somewhere else or to share the view; unconnected, the window keeps its own.&#xD;&#xA;Scene: Stride entities shown with the globe.&#xD;&#xA;Cursor is the mouse in projection space, for ScreenToGlobe; View for GlobeViewInfo and the navigation nodes." Tags="renderer,window,globe,map">
+      <Node Name="GlobeWindow" Bounds="100,220" Id="VBrh8tKkQ1kPaTaEgq0sJb" Summary="A window that shows a globe. The mouse moves it." Remarks="Connect OpenStreetMap to Input: left drag moves the globe, the wheel zooms, right drag turns and tilts.&#xD;&#xA;More layers (VectorTiles, FeatureLayer, Geometry, more tiles) through Group: leftmost at the bottom.&#xD;&#xA;Camera: a GlobeCamera, to start somewhere else or to share the view; unconnected, the window keeps its own.&#xD;&#xA;Scene: Stride entities shown with the globe.&#xD;&#xA;Cursor is the mouse in projection space, for ScreenToGlobe; View for GlobeViewInfo and the navigation nodes." Tags="renderer,window,globe,map">
         <p:NodeReference>
           <Choice Kind="ContainerDefinition" Name="Process" />
           <FullNameCategoryReference ID="Primitive" />
@@ -144,7 +144,7 @@
               </p:TypeAnnotation>
             </Pin>
             <Pin Id="BkhcgPbNYsum7T136ojfmH" Name="Scene" Kind="InputPin" Visibility="Optional" />
-            <Pin Id="MTwNM9cKsAOSEqFhxzNFH5" Name="Enabled" Kind="InputPin" DefaultValue="False">
+            <Pin Id="MTwNM9cKsAOSEqFhxzNFH5" Name="Enabled" Kind="InputPin" DefaultValue="True">
               <p:TypeAnnotation LastCategoryFullName="Primitive" LastDependency="VL.CoreLib.vl">
                 <Choice Kind="TypeFlag" Name="Boolean" />
               </p:TypeAnnotation>

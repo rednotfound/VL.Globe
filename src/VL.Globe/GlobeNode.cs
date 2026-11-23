@@ -40,7 +40,7 @@ namespace VL.Globe;
 /// <summary>Map tiles on a globe: fetches only the tiles the camera can see, at the zoom its distance earns.</summary>
 /// <remarks>
 /// Put Entity into the scene. Camera is the camera entity you render with (OrbitCamera's output).
-/// Off until Enabled. Show the tile source's Attribution.
+/// On by default, as vvvv's windows are; its layers decide what is fetched. The credits are drawn bottom right.
 /// </remarks>
 [ProcessNode(Name = "Globe", Category = "Globe")]
 public sealed class GlobeNode : IDisposable
@@ -232,7 +232,7 @@ public sealed class GlobeNode : IDisposable
     /// <param name="screenSpaceError">Refine while a tile pixel would cover more screen pixels than this. 1.41 shows tiles at 0.71-1.41x, as MapLibre and Cesium do.</param>
     /// <param name="maxRequestsInFlight">Requests running at once.</param>
     /// <param name="fadeDuration">Seconds a finer tile takes to fade in over the one it replaces. 0: at once.</param>
-    /// <param name="enabled">Off: nothing is drawn or requested.</param>
+    /// <param name="enabled">Off: nothing is drawn or requested - the globe shows its Background colour.</param>
     /// <param name="tilesVisible">Tiles drawn this frame.</param>
     /// <param name="tilesLoading">Requests not yet answered.</param>
     /// <param name="requestsSent">Requests made since the source changed - cached tiles are not requests.</param>
@@ -247,7 +247,10 @@ public sealed class GlobeNode : IDisposable
         // vvvv 7.4's packs, and the Gray Book's "Main input left".
         GlobeLayer? input = null, Entity? camera = null, float radius = 1f, Color4 background = default,
         float screenHeight = 1080f, int maxZoom = 19, float screenSpaceError = 1.41f, int maxRequestsInFlight = 6, float fadeDuration = 0.3f,
-        bool enabled = false)
+        // On, as SceneWindow's and Skia's Renderer's Enabled are (the user, 2026-11-23: off, nobody can tell
+        // whether the window is working). What is fetched is each layer's matter; help patches still ship
+        // with a toggle wired and off (Normalize-HelpPatches), so browsing help fetches nothing.
+        bool enabled = true)
     {
         double updateStart = _clock.Elapsed.TotalMilliseconds;
         _stages.Clear();
