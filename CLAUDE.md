@@ -48,7 +48,8 @@ Guidance for Claude Code working in this repository.
    accessors - bench misses 3-5% -> 0.0-0.1%, worst frame 19-20 ms (GL JS 0%, 17). Zoom bench (2026-11-23, dotnet-gcdump):
    features as rows of arrays, line labels as structs, value strings made at first read, each draw's values in one buffer -
    3.4% -> ~0.7% (GL JS 0.2-0.4%); the user: "好很多", then stopped 4g there (ROADMAP 4g, "Stopped here", lists what is left).
-   Next: the user's choice - ROADMAP 0.1's remaining items.**
+   Then (2026-11-23) the node surface made vvvv's (docs/DESIGN-NODES.md): navigation nodes [Globe.Navigate], pins in vvvv's
+   order, one Input + Group, GlobeCamera as OrbitCamera. Next: the user's judgement of the gestures and the help patches' layout.**
    Research: [docs/RESEARCH-0.1.md](docs/RESEARCH-0.1.md), [docs/RESEARCH-VECTOR.md](docs/RESEARCH-VECTOR.md).
 2. Read **[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)** — what exists and why.
 3. Read **[NOTES.md](NOTES.md)** — every failure so far, before touching the same code.
@@ -76,10 +77,10 @@ at country scale; judge every change at the lowest height.
 
 | node | state |
 |---|---|
-| `GlobeWindow [Globe]` — patched in `VL.Globe.vl` | built; the front door (`HowTo Open a globe window`); the user judged it on screen |
+| `GlobeWindow [Globe]` — patched in `VL.Globe.vl` | the front door; since 2026-11-23 Input (layers) + Camera + Title + Background + Scene + Enabled, pins in vvvv's order (`ManuallySortedPins`); docs/DESIGN-NODES.md |
 | `Globe [Globe]` — the tile engine | camera-relative, rounded levels, mipmaps, fades both ways, background sphere; user-judged |
-| `OpenStreetMap`, `XyzTiles [Globe]` | built; disk cache shared with VL.Mapsui by folder convention; `XyzTiles` has no help patch |
-| `GlobeCamera`, `Drag`, `ZoomByWheel [Globe]` | north stays up; wheel eased (one notch = Wheel Delta 1); vertical drag direction never asked (ROADMAP item 2) |
+| `OpenStreetMap`, `XyzTiles`, `Group`, `Group (Spectral)` [Globe.Layers] | layers since 2026-11-23 (one Input, as Skia's Group); the bottom tile layer is drawn, more not yet stacked; disk cache shared with VL.Mapsui |
+| `GlobeCamera`, `Drag`, `ZoomByWheel`, `DragRotate [Globe]` | GlobeCamera as OrbitCamera since 2026-11-23: reads its window's mouse, Initial pins, Reset, Enabled; north stays up; a drag past the edge holds the horizon |
 | `GlobePositionComponent [Globe]` | stands an entity on the globe, placed at draw time; user-judged |
 | `ScreenToGlobe`, `GlobeToScreen`, `GlobeViewInfo [Globe]` | built; user-judged |
 | `Geometry`, `FeatureLayer [Globe.Layers]`, `VectorStyle [Globe.Styles]` | built, draped into the tiles; seen in vvvv |
