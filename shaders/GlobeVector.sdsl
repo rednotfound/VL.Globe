@@ -243,7 +243,15 @@ shader GlobeVector : ShaderBase
             if (hits && length(p) > b) discard;
             float t = hits ? c / (b + sqrt(disc)) : length(p);
             float4 onSphere = mul(float4(d * (t * (1 - GvLift)), 1), GvProjection);
-            streams.Depth = onSphere.z / onSphere.w;
+            float depth = onSphere.z / onSphere.w;
+            // A slope-scaled offset, as glPolygonOffset's factor: this depth is the pixel centre's, written
+            // to every sample, while the globe's tiles under it are depth-tested per sample. Seen at a
+            // grazing angle a pixel spans metres of ground, and the samples on its near side found the
+            // tile nearer than the centre by more than the lift - under ~13 degrees the globe's own grey
+            // covered the map, a band at 4.5 eye heights (the user, 2026-11-24, eye 20 m, tilt 60).
+            // Moved towards the eye by the depth the pixel spans; looking down it is next to nothing.
+            depth -= 0.75 * (abs(ddx(depth)) + abs(ddy(depth)));
+            streams.Depth = depth;
         }
         float alpha = streams.GvTint.a;
         float3 tint = streams.GvTint.rgb;

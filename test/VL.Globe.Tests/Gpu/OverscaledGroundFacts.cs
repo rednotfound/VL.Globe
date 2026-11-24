@@ -108,6 +108,36 @@ public class OverscaledGroundFacts(ITestOutputHelper output)
         Assert.True(Count(overGlobe, 1) > 1000);
     }
 
+    // 2026-11-24, the user: at the lowest eye and the steepest tilt a grey band lay over the far map - the
+    // globe's tiles won the depth test there. The ground's depth is the pixel centre's, written to every
+    // sample; the tiles are tested per sample, and at a grazing angle a pixel spans more depth than the
+    // lift. Multisampled as vvvv draws; every sample of the ground must be the fill's, pure red.
+    [Theory]
+    [InlineData("#20.55/35.76023/139.81223/72.4/60")]   // eye 20 m, tilt 60: the band began ~90 m off
+    [InlineData("#16.40/35.76023/139.81223/72.4/60")]   // eye 354 m: ~1.6 km off
+    public void AtAGrazingAngleTheGroundIsNotHiddenByTheGlobesTilesMultisampled(string hash)
+    {
+        const double W = 400, H = 300;
+        var style = System.Text.Encoding.UTF8.GetBytes($$"""
+            {
+              "version": 8,
+              "sources": { "ground": { "type": "geojson", "data": { "type": "Polygon", "coordinates": {{Box(139.3, 35.3, 140.3, 36.3)}} } } },
+              "layers": [ { "id": "ground", "type": "fill", "source": "ground", "paint": { "fill-color": "#ff0000" } } ]
+            }
+            """);
+        var (_, overGlobe) = Draw(style, hash, W, H, global::Stride.Graphics.MultisampleCount.X4);
+        int pure = 0;
+        for (int i = 0; i < overGlobe.Length; i += 4) if (overGlobe[i] > 250 && overGlobe[i + 1] < 8 && overGlobe[i + 2] < 8) pure++;
+        // the view looks at the ground below its horizon: the top rows may be sky
+        var v = new GlobeView { MinHeight = 1, Width = W, Height_px = H, FovY = Math.PI / 4, TiltByZoomLimit = false };
+        v.ProjX = 1 / Math.Tan(Math.PI / 8) / (W / H); v.ProjY = 1 / Math.Tan(Math.PI / 8);
+        Assert.True(v.TryApplyHash(hash));
+        int ground = 0;
+        for (int y = 0; y < H; y++) for (int x = 0; x < W; x++) if (v.Pick(x + 0.5, y + 0.5) is not null) ground++;
+        output.WriteLine($"{hash}: pure red {pure} of {ground} ground px");
+        Assert.True(pure > ground * 0.995, $"pure red {pure} of {ground}");
+    }
+
     static int Count(byte[] px, int channel)
     {
         int n = 0;
@@ -116,7 +146,8 @@ public class OverscaledGroundFacts(ITestOutputHelper output)
         return n;
     }
 
-    static (byte[] alone, byte[] overGlobe) Draw(byte[] style, string hash, double W, double H)
+    static (byte[] alone, byte[] overGlobe) Draw(byte[] style, string hash, double W, double H,
+        global::Stride.Graphics.MultisampleCount samples = global::Stride.Graphics.MultisampleCount.None)
     {
         const double FovY = Math.PI / 4;
         var v = new GlobeView { MinHeight = 1, Width = W, Height_px = H, FovY = FovY, TiltByZoomLimit = false };
@@ -144,7 +175,7 @@ public class OverscaledGroundFacts(ITestOutputHelper output)
             Thread.Sleep(30);
         }
         Assert.True(gpu.Frame!.Items.Count > 0, gpu.Status);
-        return (GpuFixtureRenderer.RenderGlobe(gpu.Frame!, view, projection, (int)W, (int)H, false),
-            GpuFixtureRenderer.RenderGlobe(gpu.Frame!, view, projection, (int)W, (int)H, false, tiles));
+        return (GpuFixtureRenderer.RenderGlobe(gpu.Frame!, view, projection, (int)W, (int)H, false, null, samples),
+            GpuFixtureRenderer.RenderGlobe(gpu.Frame!, view, projection, (int)W, (int)H, false, tiles, samples));
     }
 }

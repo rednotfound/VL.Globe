@@ -828,3 +828,17 @@ looked fine - "which makes one think it works". Two causes, estimated at 100 m h
   (new): old shaders shadowed, new ones not; a constant 4 shadowed. **My rung 4 of the fix had looked at
   outlines only, in a crop - not whether the shadows were still there.** The tests compile the MS
   shader but never draw with it.
+- **A grey band over the far map at the lowest eye and steepest tilt** (the user, 2026-11-24; "only at
+  the lowest, at the largest tilt"): from ~4.5 eye heights off (eye 20 m: 90 m; eye 354 m: 1.6 km) the
+  globe's own tiles won the depth test and their grey lay over the ground, the buildings drawn over it.
+  Not light, shadow or fog (the user switched them off; still there). Found in vvvv by switching parts
+  off (globe tiles off: gone; buildings off: still there), then offscreen: lift 0 z-fought everywhere,
+  0.006 none. Cause: the ground's depth (the sphere's, ROADMAP 4h) is the pixel centre's, written to
+  every MSAA sample, the tiles are tested per sample - at a grazing angle a pixel spans more depth than
+  the lift (0.0015 of the distance); with X4's sample offsets the break is ~14 degrees, as seen. Fixed
+  with a slope-scaled offset (glPolygonOffset's factor): the depth moved towards the eye by 0.75 of
+  its ddx + ddy. `OverscaledGroundFacts.AtAGrazingAngle...` draws both views multisampled: 44,000 of
+  120,000 ground pixels pure without the offset, all with it.
+- **My vvvv hung on exit twice** (20:30, 20:5x; the log stops at the WM_CLOSE, the renderer window
+  stays): both the first launch after a pack, later launches closed. Stopped with the user's leave
+  (my pids only). Not yet looked into.
