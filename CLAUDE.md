@@ -51,7 +51,7 @@ A reported view is drawn offscreen by `Probes\ViewProbe` (VLGLOBE_PROBE=1 VLGLOB
 | `GlobeCamera`, `Drag`, `ZoomByWheel`, `DragRotate [Globe]` | GlobeCamera as OrbitCamera since 2026-11-23: reads its window's mouse, Initial pins, Reset, Enabled; north stays up; a drag past the edge holds the horizon |
 | `GlobePositionComponent [Globe]` | stands an entity on the globe, placed at draw time; user-judged |
 | `ScreenToGlobe`, `GlobeToScreen`, `GlobeViewInfo [Globe]` | built; user-judged |
-| `Geometry`, `FeatureLayer [Globe.Layers]`, `VectorStyle [Globe.Styles]` | built, draped into the tiles; seen in vvvv |
+| `Geometry`, `FeatureLayer [Globe.Layers]`, `VectorStyle [Globe.Styles]` | built; GPU layers of their own since 2026-11-24 (the user: one way, with or without VectorTiles), over every raster layer; seen in vvvv |
 | `VectorTiles [Globe.Layers]` | built 2026-11-21: a MapLibre style's fills/lines/background from vector tiles, with or without a Tile Source; drawn by the GPU (judged by the user moving; the drape, "不太行", removed 2026-11-24) |
 | `ToGlobe`, `ToGlobe (Coordinate)`, `FromGlobe [Globe]` | built, 4 rungs, **absolute** — right under OrbitCamera; under GlobeCamera use GlobePositionComponent |
 
@@ -106,7 +106,7 @@ A reported view is drawn offscreen by `Probes\ViewProbe` (VLGLOBE_PROBE=1 VLGLOB
   depth writes there are dropped in silence; 3D buildings draw on their own copy of the scene's depth.
 - **Measure before fixing a hitch**: the `Globe perf` lines in vvvv's log, with `GC.GetTotalPauseDuration`;
   a gen-2 count in the same second was not the cause.
-- **Draped overlays render on worker threads** (shapes, upper tile layers); a stand-in's overlay
+- **Draped overlays render on worker threads** (upper tile layers; shapes until 2026-11-24); a stand-in's overlay
   draws only what is cached and is redrawn once the tile is wanted. SkSL shaders crash SkiaSharp 2.88's CPU backend.
 - **Edit scripts read and write with `newline=''`**: Git Bash `sed -i` turned a CRLF file into LF, and
   Python's text mode turned LF into CRLF — each a "whole file changed" diff.

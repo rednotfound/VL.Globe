@@ -191,17 +191,18 @@ public sealed partial class GlobeNode : IDisposable
         return (bottom.Raster, leaves.Where(l => !ReferenceEquals(l, bottom)).ToList());
     }
 
-    // Shapes after a GPU VectorTiles layer (GeometryStyle): each FeatureLayer or Geometry there drawn by the
-    // GPU from a style of its own, made again only when the layer's content changes; services of layers
-    // gone are disposed.
+    // Every FeatureLayer, Geometry and Graticule is a layer of its own drawn by the GPU (GeometryStyle), with
+    // or without VectorTiles in the Input - as MapLibre's and deck.gl's GeoJSON layers, and Cesium's
+    // primitives (Cesium drapes imagery only). They were draped into the tiles' images by Skia unless a
+    // VectorTiles layer came before them; the user, 2026-11-24: "有vectorTiles和没有都应该统一的画法 ...
+    // 肯定是要作为独立的layer存在". Each made again only when the layer's content changes; services of layers
+    // gone are disposed. Raster layers stay in the tiles' images, so shapes are drawn over every one of them.
     readonly Dictionary<GlobeLayer, (long signature, GlobeLayer gpu)> _gpuShapes = new(ReferenceEqualityComparer.Instance);
 
     List<GlobeLayer> ShapesOnTheGpu(List<GlobeLayer> layers)
     {
-        int firstGpu = layers.FindIndex(l => l is { Vector: not null });
         var seen = new HashSet<GlobeLayer>(ReferenceEqualityComparer.Instance);
-        if (firstGpu >= 0)
-            for (int i = firstGpu + 1; i < layers.Count; i++)
+        for (int i = 0; i < layers.Count; i++)
             {
                 var l = layers[i];
                 if (l.Raster is not null || l.Vector is not null || l.Geometries.Count == 0) continue;

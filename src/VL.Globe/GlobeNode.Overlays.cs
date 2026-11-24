@@ -25,8 +25,8 @@ namespace VL.Globe;
 // The Globe node's draped layers: rendered into each tile's overlay on worker threads, uploaded a few a frame.
 public sealed partial class GlobeNode
 {
-    // Layers draped into the tiles: raster layers above the bottom one, and shapes before any
-    // VectorTiles layer (ROADMAP 0.1 items 3-4, 6). Overlays are rendered on worker threads and
+    // Layers draped into the tiles: the raster layers above the bottom one (ROADMAP 0.1 item 6); shapes
+    // and vector tiles are GPU layers (GlobeNode.ShapesOnTheGpu). Overlays are rendered on worker threads and
     // uploaded here, at most OverlaysPerFrame a frame; a stand-in's overlay, drawn from what was
     // cached, is drawn again once the tile is wanted and may fetch.
     long _signature;
@@ -39,13 +39,11 @@ public sealed partial class GlobeNode
     // it is disposed this many frames later instead of at once.
     readonly List<(Texture texture, int frame)> _retired = new();
 
-    static SKColor ToSk(Color4 c) => new((byte)Math.Clamp(c.R * 255, 0, 255), (byte)Math.Clamp(c.G * 255, 0, 255), (byte)Math.Clamp(c.B * 255, 0, 255), (byte)Math.Clamp(c.A * 255, 0, 255));
-
     void UpdateOverlays(IEnumerable<GlobeLayer>? layers)
     {
         foreach (var r in _retired.Where(r => _frame - r.frame > 60).ToList()) { r.texture.Dispose(); _retired.Remove(r); }
-        // VectorTiles are drawn by the GPU, never draped
-        var list = layers?.Where(l => l is { Enabled: true } && l.HasContent && l.Vector is null).Select(l => l!).ToList() ?? new List<GlobeLayer>();
+        // only raster layers: VectorTiles and shapes are drawn by the GPU, never draped
+        var list = layers?.Where(l => l is { Enabled: true, Raster: not null }).Select(l => l!).ToList() ?? new List<GlobeLayer>();
         var h = new HashCode();
         h.Add(list.Count);
         foreach (var l in list) h.Add(l.Signature());
@@ -53,8 +51,7 @@ public sealed partial class GlobeNode
         if (signature != _signature)
         {
             _signature = signature;
-            _layers = list.Select(l => l.Raster is { } raster ? (OverlayLayer)new RasterOverlay(raster, l.Opacity)
-                : new ShapesOverlay(l.Geometries, new TileOverlay.Style(ToSk(l.Style.LineColor), l.Style.LineWidth, ToSk(l.Style.FillColor)))).ToList();
+            _layers = list.Select(l => (OverlayLayer)new RasterOverlay(l.Raster!, l.Opacity)).ToList();
             _overlayVersion++;
         }
         if (_device is null) return;

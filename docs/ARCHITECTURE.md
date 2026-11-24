@@ -99,7 +99,7 @@ per subsystem (`GlobalUsings.cs` names them all), and the tests mirror it in `te
 | `Styling\` | the MapLibre style both paths read (MapStyleDocument), expressions, shapes as a style |
 | `Gpu\` | buckets (`VectorBucket*.cs`: fills/lines, symbols, circles), the renderer, fog, atlas textures |
 | `Symbols\` | GL JS's text shaping, glyphs, sprites, icons, label placement, collision and fades |
-| `Draped\` | shapes (before any VectorTiles layer) and tile layers above the bottom one, drawn by SkiaSharp into each tile's overlay |
+| `Draped\` | tile layers above the bottom one, drawn by SkiaSharp into each tile's overlay (shapes are GPU layers since 2026-11-24) |
 | `Camera\` | navigation, picking, the camera-relative frame |
 | `Diagnostics\` | frame stats, allocation meter, the camera bench (`VLGLOBE_BENCH`) |
 
@@ -135,14 +135,16 @@ Each frame, on vvvv's main thread:
    spot throughout. The weights are keyed `ComputeFloat4`s set every frame, **alpha 1**: Stride's
    `BinaryOperator.Add` is `ComputeColorAdd3ds`, an alpha-weighted blend. An ancestor under a running
    fade is never evicted.
-7. **Drape the layers** (`TileOverlay`, Cesium's and Mapsui's own way): every shown tile whose overlay
-   is out of date gets one, at most 6 per frame, nearest first — the layers' geometry in its Web
+7. **Drape the raster layers above the bottom one** (Cesium's imagery layers): every shown tile whose
+   overlay is out of date gets one, at most 6 per frame, nearest first — the layers' tiles in its Web
    Mercator square drawn by SkiaSharp into a transparent 256 px image, mipped with colour weighted by
    alpha, and laid over the imagery with `BinaryOperator.Over`. The same look is used by the tile's
    fades and by stand-ins borrowing it. A replaced overlay is disposed 60 frames later, since a fade or
    stand-in may still sample it. Layers change by content, not identity.
-   Draped since 2026-11-24: Geometry/FeatureLayer before any VectorTiles layer (after one they go to
-   the GPU, `GeometryStyle`) and tile layers above the bottom one. VectorTiles were draped too, by a
+   Only raster layers since 2026-11-24: Geometry, FeatureLayer and Graticule are GPU layers of their
+   own (`GeometryStyle`), with or without VectorTiles - the user: one way to draw them, "作为独立的
+   layer存在"; drawn over every raster layer. They had been draped by Skia (`TileOverlay`, removed)
+   unless a VectorTiles layer came before them. VectorTiles were draped too, by a
    SkiaSharp MapLibre painter measured against the render tests (ROADMAP 4b, 4c); judged "不太行"
    and removed with the `Rendering` pin (docs/HISTORY.md, NOTES.md 2026-11-24).
 7b. **VectorTiles on the GPU** (the only way since 2026-11-24; ROADMAP 4d, docs/DESIGN-GPU-VECTOR.md) —

@@ -20,17 +20,6 @@ public class GlobeLayersFacts
     }
 
     [Fact]
-    public void LaterLayersAreDrawnOverEarlierOnes()
-    {
-        var blue = new TileOverlay.Style(SKColors.Transparent, 0, new SKColor(0, 0, 255));
-        var red = new TileOverlay.Style(SKColors.Transparent, 0, new SKColor(255, 0, 0));
-        var sq = new Geometry[] { Square(T) };
-        var px = TileOverlay.Rasterize(T, new[] { ((IReadOnlyList<Geometry>)sq, blue), (sq, red) }, 32)!;
-        Assert.Equal(255, px[(16 * 32 + 16) * 4]);       // red on top
-        Assert.Equal(0, px[(16 * 32 + 16) * 4 + 2]);
-    }
-
-    [Fact]
     public void ALayerChangesByContentNotByIdentity()
     {
         // FromWKT and Cons hand over new objects every frame: the same coordinates must not redraw

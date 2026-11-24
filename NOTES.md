@@ -842,3 +842,11 @@ looked fine - "which makes one think it works". Two causes, estimated at 100 m h
 - **My vvvv hung on exit twice** (20:30, 20:5x; the log stops at the WM_CLOSE, the renderer window
   stays): both the first launch after a pack, later launches closed. Stopped with the user's leave
   (my pids only). Not yet looked into.
+- **Shapes are GPU layers, always** (the user, 2026-11-24: "有vectorTiles和没有都应该统一的画法 ... 肯定是要作为
+  独立的layer存在"): Geometry, FeatureLayer and Graticule were draped into the tiles' images by Skia unless
+  a VectorTiles layer came before them. Now every one is a GeoJSON style of its own (GeometryStyle) on the
+  GPU; `TileOverlay` removed; the drape holds raster layers above the bottom one only, so shapes lie over
+  every raster layer whatever their place in the Group. No test noticed the change of path (all green
+  before and after): `ShapeLayerFacts` now draws two shape layers with no VectorTiles and checks the order
+  (fails with the order swapped). Seen in vvvv: the shapes help (OSM under) and the graticule help. Open:
+  the 45 N parallel drew dotted for a stretch west of France (graticule help, whole-globe view).

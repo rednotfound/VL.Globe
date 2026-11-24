@@ -10,11 +10,10 @@ namespace VL.Globe;
 
 // The /// text is the tooltip; the reasoning is here.
 //
-// Vector layers on the globe (ROADMAP 0.1 item 4). How they are drawn was decided by experiment
-// (item 3, 2026-11-21): DRAPED - each layer is drawn by SkiaSharp into each tile's overlay image and
-// laid over the map in the tile material (Engine/Draped/TileOverlay.cs), Cesium's and Mapsui's own way to
-// put vectors on a globe or a raster map. The user judged it on screen ("问题不大"), and a MapLibre-like
-// GPU vector renderer stays a later, separate node (docs/RESEARCH-VECTOR.md).
+// Vector layers on the globe (ROADMAP 0.1 item 4). Draped into the tiles' images by SkiaSharp at first
+// (item 3, 2026-11-21, "问题不大"); since 2026-11-24 every FeatureLayer, Geometry and Graticule is a GPU
+// layer of its own, as MapLibre's GeoJSON layers, with or without VectorTiles - the user: "有vectorTiles和
+// 没有都应该统一的画法 ... 肯定是要作为独立的layer存在" (GlobeNode.ShapesOnTheGpu, Styling/GeometryStyle).
 //
 // Shaped as VL.Mapsui's FeatureLayer / Geometry / VectorStyle, so a patch moves between the 2D map and
 // the globe by changing the category: Features + Style + Name + Enabled in, a layer out.
@@ -103,7 +102,7 @@ public sealed class GlobeGraticuleNode
     [return: Pin(Name = "Output")]
     public GlobeLayer Update(double spacing = 10, Color4? lineColor = null, float lineWidth = 1f, bool enabled = true)
     {
-        // VL.Mapsui's Graticule, as a layer draped into the tiles; built again only when the spacing changes
+        // VL.Mapsui's Graticule, a layer of lines drawn by the GPU; built again only when the spacing changes
         if (spacing != _spacing)
         {
             _spacing = spacing;

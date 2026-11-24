@@ -27,7 +27,7 @@
               <p:stringtype p:Assembly="VL.Core" p:Type="VL.Core.StringType">Comment</p:stringtype>
             </p:ValueBoxSettings>
           </Pad>
-          <Pad Id="NjCxkv5ndK0meGR0vRzZ1f" Bounds="60,90,680,40" ShowValueBox="true" isIOBox="true" Value="Switch Enabled on: meridians and parallels every Spacing degrees, draped over the tiles like any other layer.">
+          <Pad Id="NjCxkv5ndK0meGR0vRzZ1f" Bounds="60,90,680,40" ShowValueBox="true" isIOBox="true" Value="Switch Enabled on: meridians and parallels every Spacing degrees, drawn over the map like any other layer.">
             <p:TypeAnnotation LastCategoryFullName="Primitive" LastDependency="VL.CoreLib.vl">
               <Choice Kind="TypeFlag" Name="String" />
             </p:TypeAnnotation>

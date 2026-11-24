@@ -1,17 +1,14 @@
 using System.Collections.Generic;
-using NetTopologySuite.Geometries;
 using SkiaSharp;
 
 namespace VL.Globe.Engine.Draped;
 
-// One tile's overlay: the draped layers of Globe's Layers drawn in order into one image - FeatureLayer
-// and Geometry by TileOverlay, tile layers above the bottom one as images. Runs on a worker thread.
-// VectorTiles were drawn here too by a MapLibre painter until 2026-11-24; the GPU draws them now.
+// One tile's overlay: the tile layers above the bottom one drawn in order into one image. Runs on a
+// worker thread. VectorTiles were drawn here too by a MapLibre painter until 2026-11-24, FeatureLayer,
+// Geometry and Graticule by Skia until the same day; the GPU draws them now, as layers of their own.
 
 /// <summary>A layer as the overlay renderer draws it.</summary>
 internal abstract record OverlayLayer;
-
-internal sealed record ShapesOverlay(IReadOnlyList<Geometry> Geometries, TileOverlay.Style Style) : OverlayLayer;
 
 // A tile layer above the bottom one (ROADMAP item 6, 2026-11-23): the same XYZ square as the globe tile,
 // drawn at its opacity. The bottom tile layer is the globe's own imagery (mipmaps, fades, stand-ins);
@@ -62,9 +59,6 @@ internal static class OverlayRenderer
             {
                 switch (layer)
                 {
-                    case ShapesOverlay g:
-                        TileOverlay.DrawOn(canvas, tile, g.Geometries, g.Style, size);
-                        break;
                     case RasterOverlay r:
                         complete &= DrawRaster(canvas, tile, r, size, fetch);
                         break;
