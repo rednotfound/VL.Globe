@@ -647,6 +647,21 @@ The plan as written:
 - `ZoomButtons`, `Click`, the attribution shown in the window.
 - **Several imagery layers with `Opacity`**, if item 3's draped path did not already deliver them.
 
+### 6b. Light — asked by the user 2026-11-24, survey first
+
+Asked: "支持光影，尤其是在显示了vectortiles的建筑的时候". Today the buildings carry GL JS's default light
+only (`GlobeVector.sdsl`: viewport-anchored, intensity 0.5, the walls' vertical gradient); no direction
+can be set, nothing casts a shadow. Three steps, the user's choices (2026-11-24):
+
+- **A. A light that can be set** - two kinds, as two nodes: a fixed direction, and the sun from a date
+  and time. The style's own `light` read as well.
+- **B. Ambient occlusion** on the buildings: wall feet and the ground beside them darker, in the shader.
+- **The user's own Stride models are lit by the same light** ("需要").
+- **C. Cast shadows** (a shadow map from the light, the ground receiving it in screen space): after A
+  and B are judged, decided then whether in 0.1.
+
+Design and the survey: docs/DESIGN-LIGHT.md.
+
 ### 7. Gestures and tidying (before the release)
 
 **The drag near the poles — fixed 2026-11-23** (the user: "视野在南北极附近拖拽的时候还是会抖动，甚至会闪动到北极去";
