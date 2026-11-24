@@ -90,6 +90,40 @@ internal sealed class VectorRenderer : IGraphicsRendererBase
     // antialiased line (blended straight) is drawn: the user judged that one on screen, 2026-11-21.
     public bool GlOutlines;
 
+    /// <summary>The light the buildings are lit by this frame; null: GL JS's default light.</summary>
+    // Read from the scene in Draw (ROADMAP 6b, docs/DESIGN-LIGHT.md): the first directional light of the
+    // visibility group's RenderLightCollection, as Stride's ForwardLightingRenderFeature reads it - so
+    // SunLight [Globe.Lights] and vvvv's own DirectionalLight both light them. Null in the render tests.
+    public SceneLight? Light;
+    /// <summary>What the last draw found of the scene's lights, for the Globe node's log.</summary>
+    public volatile string LightInfo = "";
+
+    internal readonly record struct SceneLight(Vector3 TowardsLight, Vector3 Color, float Intensity);
+
+    /// <summary>The scene's first directional light: towards it in the globe's axes, its sRGB colour, GL JS's intensity (Stride's 1 = 0.5).</summary>
+    internal static SceneLight? ReadLight(RenderContext context, out string info)
+    {
+        // the visibility group being drawn, else the scene instance's groups (whichever holds the lights)
+        var key = global::Stride.Rendering.Lights.ForwardLightingRenderFeature.CurrentLights;
+        var lights = context.VisibilityGroup?.Tags.Get(key);
+        string where = context.VisibilityGroup is null ? "no visibility group" : lights is null ? "no lights in the visibility group" : "the visibility group";
+        if (lights is null && global::Stride.Engine.SceneInstance.GetCurrent(context) is { } scene)
+            foreach (var group in scene.VisibilityGroups)
+                if (group.Tags.Get(key) is { } found) { lights = found; where += ", the scene's"; break; }
+        if (lights is null) { info = where + ": no light collection"; return null; }
+        var kinds = new List<string>();
+        foreach (var l in lights) kinds.Add(l.Type?.GetType().Name ?? "null");
+        info = $"{where}: {kinds.Count} light(s) [{string.Join(", ", kinds)}]";
+        foreach (var l in lights)
+        {
+            if (l.Type is not global::Stride.Rendering.Lights.LightDirectional || l.Intensity <= 0) continue;
+            var linear = l.Color * (1f / l.Intensity);   // RenderLight.Color is linear and times the intensity
+            var srgb = new Vector3(MathUtil.LinearToSRgb(linear.R), MathUtil.LinearToSRgb(linear.G), MathUtil.LinearToSRgb(linear.B));
+            return new SceneLight(-Vector3.Normalize(l.Direction), srgb, Math.Clamp(0.5f * l.Intensity, 0f, 1f));
+        }
+        return null;
+    }
+
     DynamicEffectInstance? _effect, _symbolEffect, _circleEffect, _fogEffect;
     readonly FogPass _fog = new();
     /// <summary>Fog towards the horizon over everything the globe draws (GlobeFog.sdsl).</summary>
@@ -162,9 +196,13 @@ internal sealed class VectorRenderer : IGraphicsRendererBase
             _fogEffect!.UpdateEffect(context.GraphicsDevice);
             if (_effect.Effect is null || _symbolEffect.Effect is null || _circleEffect.Effect is null || _fogEffect.Effect is null) return;   // still compiling
             var view = context.RenderContext.RenderView;
+            Light = ReadLight(context.RenderContext, out var lightInfo);
             if (frame.Items.Count > 0)
                 DrawFrame(context.CommandList, context.GraphicsContext, _effect, _symbolEffect, _circleEffect, view.View, view.Projection, view.ViewSize.Y, frame,
                     Lift, linearize: true, flat: false);
+            // after the draw, which reads the effect's parameter names
+            LightInfo = (Light is null ? "the default light - " : $"the scene's directional light, towards ({Light.Value.TowardsLight.X:F2}, {Light.Value.TowardsLight.Y:F2}, {Light.Value.TowardsLight.Z:F2}) - ") + lightInfo
+                + (_keys.Count == 0 ? "" : _keys.ContainsKey("GlobeVector.GvLight") ? "; GvLight in the effect" : "; GvLight NOT in the compiled effect");
             // last, over the tiles, the vector layers and the labels (ROADMAP 4f step 2)
             // by the eye's own height, in double: CameraToCenter comes from the tile selection, which does
             // not run while the Globe is off - it was 1e-9 then, and the fog covered the whole window
@@ -213,6 +251,12 @@ internal sealed class VectorRenderer : IGraphicsRendererBase
         _stamp++;   // every accessor fetched again this frame, before any parameter is set
         AtlasTexture.Flush(commandList, frame.Atlases);
         EnsurePipelines(commandList.GraphicsDevice);
+        // An effect compiled again (its source changed: vvvv may first hand out the cached one) lays out
+        // other parameters: its names are read again. Read once per renderer, a parameter added to the
+        // shader stayed "compiled away" in vvvv and was never set (GvLight, 2026-11-24).
+        if (!ReferenceEquals(_keysOf, effect.Effect)) { _keys.Clear(); _resolved.Clear(); _keysOf = effect.Effect; }
+        if (!ReferenceEquals(_symbolKeysOf, symbolEffect.Effect)) { _symbolKeys.Clear(); _symbolResolved.Clear(); _symbolKeysOf = symbolEffect.Effect; }
+        if (!ReferenceEquals(_circleKeysOf, circleEffect.Effect)) { _circleKeys.Clear(); _circleResolved.Clear(); _circleKeysOf = circleEffect.Effect; }
         if (_circleKeys.Count == 0)
             foreach (var cb in circleEffect.Effect.Bytecode.Reflection.ConstantBuffers)
                 foreach (var m in cb.Members)
@@ -298,6 +342,8 @@ internal sealed class VectorRenderer : IGraphicsRendererBase
         var viewport = commandList.Viewport;
         Set(parameters, "GvViewport", new Vector2(viewport.Width, viewport.Height));
         Set(parameters, "GvFade", frame.ExtrusionFade);
+        Set(parameters, "GvLight", Light is { } light ? new Vector4(light.TowardsLight, 1) : Vector4.Zero);
+        Set(parameters, "GvLightColor", Light is { } lit ? new Vector4(lit.Color, lit.Intensity) : new Vector4(1, 1, 1, 0.5f));
         // the sphere ground layers take their depth from (ROADMAP 4h): its centre in view space and
         // |eye - centre|^2 - R^2, formed in double - at street level it is a small difference of large values
         if (frame.Eye is { } eye)
@@ -603,6 +649,7 @@ internal sealed class VectorRenderer : IGraphicsRendererBase
     // accessor fetched again each frame (a recompiled effect lays its parameters out anew).
     readonly Dictionary<object, Slot?> _resolved = new(ReferenceEqualityComparer.Instance),
         _symbolResolved = new(ReferenceEqualityComparer.Instance), _circleResolved = new(ReferenceEqualityComparer.Instance);
+    object? _keysOf, _symbolKeysOf, _circleKeysOf;   // the compiled effects the key tables were read from
     int _stamp;   // DrawFrame's count: an accessor older than this frame is fetched again
 
     abstract class Slot { }

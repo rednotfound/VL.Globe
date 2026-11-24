@@ -790,3 +790,22 @@ looked fine - "which makes one think it works". Two causes, estimated at 100 m h
   the two help patches' `<Pin Name="Rendering">` removed in place. What went with it: an overlay no
   longer waits for vector tiles (`OverlayMissing`, `Came`), so a draped overlay is redrawn only when
   the layers change or a stand-in becomes wanted. 334 pass (4 drape facts fewer).
+
+## 2026-11-24 — light (ROADMAP 6b): a parameter added to a shader was never set in vvvv
+
+- **The GlobeVector effect's parameter names were read once per renderer** (`_keys`, on the first
+  DrawFrame) and a name not found was remembered as "compiled away" and never set. vvvv may hand out the
+  cached effect first and the recompiled one later, whose layout has the new names: `GvLight` would
+  have stayed unset forever. The tables are now read again whenever the compiled effect object changes.
+  Not proven to have been the cause of anything seen (the log then said "GvLight in the effect"), but
+  the assumption "a key found stays right" was wrong for keys not found.
+- **A log line computed before the first draw lied**: "GvLight not in the effect" was checked while the
+  name table was still empty. Computed after DrawFrame now.
+- **The first rung-4 baseline is suspect**: the run meant to show GL JS's default light logged "default"
+  for its first frame only (the log line was on change of a bool, logged once), and its picture equals
+  the sun's to within 8 levels. A red sun proved the scene's light reaches the shader (buildings red),
+  and an offscreen test (`SceneLightFacts`) proves the direction is used; a true baseline (no SunLight,
+  same build) is still to be taken.
+- **Stride lights read back**: `context.RenderContext.VisibilityGroup.Tags.Get(ForwardLightingRenderFeature.CurrentLights)`
+  holds the scene's lights during EntityRendererComponent's draw in vvvv 7.4 (seen: 1 LightDirectional);
+  RenderLight.Direction is the way the light travels, Color linear and times the intensity.

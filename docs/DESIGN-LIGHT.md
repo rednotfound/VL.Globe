@@ -37,7 +37,12 @@ the light travels) and `Color` (linear, times the intensity). `VectorRenderer.Dr
 `context.RenderContext.VisibilityGroup` at hand. (Read from Stride 4.2.1's assemblies; not yet seen at
 run time - a null check and a test.)
 
-## The design (proposed)
+## The design (proposed; the user's choices 2026-11-24 below)
+
+**Decided 2026-11-24:** `DirectionalLight [Globe]` keeps both `Camera` and `Anchor` (MapLibre's shape,
+seven inputs); ambient occlusion on by default; first `SunLight` and reading the scene's lights (prove
+the path in vvvv), then `DirectionalLight`, then AO. Intensity is Stride's (1 = vvvv's DirectionalLight
+default, so the user's models look as with vvvv's own light); the buildings read Stride 1 as GL JS's 0.5.
 
 **A light is a Stride light entity in the scene, as in vvvv.** Our nodes output an `Entity` with a
 `LightComponent` (`LightDirectional`); the user wires it into the Scene with their models, exactly as

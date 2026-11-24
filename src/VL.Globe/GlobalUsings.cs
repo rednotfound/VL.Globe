@@ -7,3 +7,4 @@ global using VL.Globe.Engine.Symbols;
 global using VL.Globe.Engine.Draped;
 global using VL.Globe.Engine.Camera;
 global using VL.Globe.Engine.Diagnostics;
+global using VL.Globe.Engine.Lighting;

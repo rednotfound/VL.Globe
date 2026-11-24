@@ -36,6 +36,8 @@ shader GlobeVector : ShaderBase
         stage float GvGlOutline;        // 1: the line list as GL JS's fill_outline: aliased, alpha 1 - smoothstep(distance)
         stage float2 GvViewport;        // the target's size in pixels
         stage float2 GvFade;            // fill-extrusion fades out between these distances from the eye (y 0: never)
+        stage float4 GvLight;           // xyz: towards the scene's directional light, the globe's axes; w 1: use it (else GL JS's default)
+        stage float4 GvLightColor;      // rgb: the light's sRGB colour; a: GL JS's intensity, 0-1 (default white, 0.5)
         stage float4 GvSphere;          // the globe's centre in view space, xyz; w: |eye - centre|^2 - radius^2 (from double)
     }
 
@@ -170,21 +172,28 @@ shader GlobeVector : ShaderBase
         streams.GvOutset = outset;
         if (GvExtrusion > 0.5)
         {
-            // GL JS's fill_extrusion.vertex.glsl with its default light: anchored to the viewport at
+            // GL JS's fill_extrusion.vertex.glsl. Its default light: anchored to the viewport at
             // [1.15, 210, 30] (radial, azimuthal, polar) = (0.2875, -0.498, 0.996) in the map's
             // east / south / up; intensity 0.5, colour white, 0.03 ambient. In sRGB, as GL JS.
+            // A directional light in the scene (SunLight, vvvv's DirectionalLight; ROADMAP 6b) replaces
+            // it: its direction at GL JS's radial 1.15, its colour and intensity in GL JS's formula,
+            // and no light once it is below the vertex's horizon (a night sun lit walls from under the ground).
             float3 p, east, north;
             Frame(dr, position, p, east, north);
             float2 e = float2(streams.GvExtrude.xy);
             float3 n = dot(e, e) > 0 ? normalize(e.x * east - e.y * north) : p;
-            float3 light = 0.2875 * east + 0.498 * north + 0.996 * p;
+            bool scene = GvLight.w > 0.5;
+            float3 light = scene ? 1.15 * GvLight.xyz : 0.2875 * east + 0.498 * north + 0.996 * p;
+            float intensity = GvLightColor.a;
+            float3 lightColor = GvLightColor.rgb;
             float4 color = streams.GvColorIn * GvColor;
             float value = dot(color.rgb, float3(0.2126, 0.7152, 0.0722));
             float3 rgb = color.rgb + 0.03;
             float directional = saturate(dot(n, light));
-            directional = lerp(0.5, max(1.5 - value, 1.0), directional);
+            if (scene) directional *= smoothstep(-0.05, 0.05, dot(p, GvLight.xyz));
+            directional = lerp(1 - intensity, max(1 - value + intensity, 1.0), directional);
             directional *= streams.GvEdgeIn.x;   // the wall's vertical gradient; 1 on a roof
-            rgb = saturate(rgb * directional);
+            rgb = clamp(rgb * directional * lightColor, lerp(0, 0.3, 1 - lightColor), 1);
             // Mapbox's fill-extrusion-cutoff-fade-range: out before the tiles fall to a zoom without heights
             float fade = GvFade.y > 0 ? 1 - smoothstep(GvFade.x, GvFade.y, length(v.xyz)) : 1;
             streams.GvTint = float4(ToLinear(rgb), color.a * fade);

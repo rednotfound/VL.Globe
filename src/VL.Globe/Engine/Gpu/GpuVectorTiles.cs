@@ -122,6 +122,8 @@ internal sealed class GpuVectorTiles : IDisposable
     }
 
     public string Error => _renderer.Error;
+    /// <summary>Which light the last draw lit the buildings by, and what it found of the scene's lights (ROADMAP 6b).</summary>
+    public string LightInfo => _renderer.LightInfo;
     /// <summary>The renderer's Draw timings since the last call; resets them.</summary>
     public string TakeDrawStats() => _renderer.TakeStats();
     internal VectorRenderer.DrawTiming LastDraw => _renderer.Last;

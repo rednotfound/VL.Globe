@@ -162,9 +162,18 @@ internal static class GpuFixtureRenderer
         }
     }
 
-    public static byte[] Render(MapStyleDocument style, int width, int height, double pixelRatio)
+    public static byte[] Render(MapStyleDocument style, int width, int height, double pixelRatio) => Render(style, width, height, pixelRatio, null);
+
+    public static byte[] Render(MapStyleDocument style, int width, int height, double pixelRatio, VectorRenderer.SceneLight? light)
     {
-        lock (Lock) return RenderCore(style, width, height, pixelRatio);
+        lock (Lock)
+        {
+            // the buildings' light, as vvvv's Draw reads it from the scene (ROADMAP 6b); none in MapLibre's fixtures
+            var renderer = Shared.Value.Renderer;
+            renderer.Light = light;
+            try { return RenderCore(style, width, height, pixelRatio); }
+            finally { renderer.Light = null; }
+        }
     }
 
     static byte[] RenderCore(MapStyleDocument style, int width, int height, double pixelRatio)

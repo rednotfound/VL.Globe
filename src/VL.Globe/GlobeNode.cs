@@ -93,6 +93,7 @@ public sealed partial class GlobeNode : IDisposable
     string _gpuError = "";
     int _gpuBuiltLogged = -1;
     double _gpuLoggedAt = -10;
+    string _lightInfo = "";
 
     public GlobeNode(NodeContext nodeContext)
     {
@@ -329,6 +330,13 @@ public sealed partial class GlobeNode : IDisposable
         foreach (var skip in _gpu.TakeNewSkips()) _logger.LogWarning("Globe style: {Skip}", skip);
         Stage("gpu vectors");
         // into the log: the renderer's error once, and how far the building is, once a second at most
+        // which light the buildings are drawn with, once per change (ROADMAP 6b): the scene's light is read
+        // on the render thread, and nothing else shows whether it was found
+        if (gpuServices.Count > 0 && _gpu.LightInfo is var lightInfo && lightInfo != _lightInfo)
+        {
+            _lightInfo = lightInfo;
+            _logger.LogInformation("Globe: buildings lit by {Light}", lightInfo);
+        }
         if (_gpu.Error != _gpuError) { _gpuError = _gpu.Error; if (_gpuError.Length > 0) _logger.LogError("Globe: {Error}", _gpuError); }
         if (gpuServices.Count > 0 && _gpu.TilesBuilt != _gpuBuiltLogged && _clock.Elapsed.TotalSeconds - _gpuLoggedAt > 1)
         {
