@@ -98,3 +98,21 @@ style key (Mapbox's name, default 0 there) or on by default here - to decide on 
 - The shader: offscreen probes (VLGLOBE_PROBE=1) of a street-level tilted view with the light from two
   sides; the user's look in vvvv, a model of theirs beside the buildings.
 - MapLibre's render tests fetched so far (409) carry no `light`; fetch the fill-extrusion/light ones.
+
+## Built (2026-11-24)
+
+- **A.** `SunLight [Globe.Lights]` (Date Time, Color, Intensity, Cast Shadows, Enabled -> Entity): a Stride
+  `LightDirectional` entity. `VectorRenderer.ReadLight` takes the scene's first directional light from the
+  visibility group; `GlobeVector.sdsl` lights fill-extrusion with it in GL JS's formula. No light in the
+  scene: GL JS's default, unchanged. Seen in vvvv against a baseline of the same build.
+- **B.** Ambient occlusion: a wall darkened by 0.35 at its foot, gone at 3 m, per pixel. Barely visible
+  from 1 km up; the ground halo not built.
+- **C, first cut.** `ShadowPass`: the buildings' depth items drawn again into a 2048² map along the sun
+  (orthographic, fitted round the view out to 4 x the eye's height + 1 km, 1-6 km, texels snapped to the
+  ground, 1.5 km of margin towards the sun); received by a full-screen pass (`GlobeShadow`/`GlobeShadowMS`
+  for a multisampled depth) on the depth the buildings were drawn on, before the labels: 3 x 3 PCF,
+  normal offset 1.5 texels, faces turned from the sun skipped (their light already darkens them; they drew
+  acne stripes), strength 0.45, faded over the last fifth of the distance. On when the light's own Stride
+  `Shadow.Enabled` is (SunLight's Cast Shadows, on by default; vvvv's DirectionalLight's shadow too).
+  Not yet: a second cascade (edges blocky at ~3 m texels from 1 km up), buildings outside the camera's
+  tiles casting, the user's models casting onto the ground and buildings.

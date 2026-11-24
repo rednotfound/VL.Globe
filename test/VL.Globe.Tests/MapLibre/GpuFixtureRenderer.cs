@@ -22,7 +22,7 @@ internal static class GpuFixtureRenderer
     {
         public required GraphicsDevice Device;
         public required GraphicsContext Context;
-        public required EffectInstance Effect, SymbolEffect, CircleEffect, FogEffect, DepthEffect;
+        public required EffectInstance Effect, SymbolEffect, CircleEffect, FogEffect, DepthEffect, ShadowEffect, ShadowEffectMS;
         // fades off, as MapLibre's render tests run (fadeDuration 0): every label placed in its first frame
         public readonly VectorRenderer Renderer = new() { GlOutlines = true, FadeDuration = 0, Ao = 0 };
     }
@@ -38,7 +38,7 @@ internal static class GpuFixtureRenderer
         string repo = RenderHarness.RepoRoot();
         var dir = Path.Combine(Path.GetTempPath(), "vlglobe-shaders-" + Environment.ProcessId);
         Directory.CreateDirectory(dir);
-        foreach (var f in new[] { "GlobeVector.sdsl", "GlobeSymbol.sdsl", "GlobeCircle.sdsl", "GlobeFog.sdsl" }) File.Copy(Path.Combine(repo, "shaders", f), Path.Combine(dir, f), overwrite: true);
+        foreach (var f in new[] { "GlobeVector.sdsl", "GlobeSymbol.sdsl", "GlobeCircle.sdsl", "GlobeFog.sdsl", "GlobeShadowBase.sdsl", "GlobeShadow.sdsl", "GlobeShadowMS.sdsl" }) File.Copy(Path.Combine(repo, "shaders", f), Path.Combine(dir, f), overwrite: true);
         var nuget = Environment.GetEnvironmentVariable("NUGET_PACKAGES") ?? Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".nuget", "packages");
         var assets = Path.Combine(nuget, "stride.graphics", "4.2.1.2487", "stride", "Assets");
         foreach (var f in new[] { "ShaderBase.sdsl", "ShaderBaseStream.sdsl" }) File.Copy(Path.Combine(assets, f), Path.Combine(dir, f), overwrite: true);
@@ -58,7 +58,9 @@ internal static class GpuFixtureRenderer
             effect.UpdateEffect(device);
             return effect;
         }
-        return new Gpu { Device = device, Context = new GraphicsContext(device), Effect = Compile("GlobeVector"), SymbolEffect = Compile("GlobeSymbol"), CircleEffect = Compile("GlobeCircle"), FogEffect = Compile("GlobeFog"), DepthEffect = Compile("GlobeTileDepth") };
+        return new Gpu { Device = device, Context = new GraphicsContext(device), Effect = Compile("GlobeVector"), SymbolEffect = Compile("GlobeSymbol"), CircleEffect = Compile("GlobeCircle"), FogEffect = Compile("GlobeFog"), DepthEffect = Compile("GlobeTileDepth"),
+            // compiled here so a shadow shader that does not compile fails the tests, not vvvv (2026-11-24: an SDSL "override" did)
+            ShadowEffect = Compile("GlobeShadow"), ShadowEffectMS = Compile("GlobeShadowMS") };
     }
 
     /// <summary>The fog alone over a transparent target, read back (RGBA, premultiplied).</summary>

@@ -1,0 +1,78 @@
+// VL.Globe's cast shadows (ROADMAP 6b, C), the receiving half, drawn by Engine/Gpu/ShadowPass.cs: one
+// full-screen triangle after the buildings, before the labels. Each pixel's position is found from the
+// depth the buildings were drawn on (the scene's depth and the buildings' own: the ground, the user's
+// models, the buildings), carried into the sun's shadow map and compared there; a pixel in shadow is
+// darkened by multiplying what is drawn (the blend state multiplies the target by this colour).
+// GlobeShadow reads a single-sampled depth, GlobeShadowMS a multisampled one (vvvv's window): only
+// DepthAt differs.
+shader GlobeShadowBase : ShaderBase
+{
+    cbuffer PerDraw
+    {
+        stage float4 GhProjection;          // the camera's projection: M11, M22, M31, M32 (a pixel to a direction)
+        stage float2 GhDepth;               // its M33, M43: depth to view-space z
+        stage float4x4 GhViewToShadow;      // view space to the shadow map's clip space
+        stage float2 GhViewport;            // the target's size in pixels
+        stage float GhTexel;                // one shadow-map texel, in its uv
+        stage float GhBias;                 // depth bias, in the shadow map's depth units
+        stage float GhStrength;             // 0: no shadow, 1: black
+        stage float2 GhFade;                // the view distance where the shadow begins to fade and where it is gone
+        stage float3 GhLightView;           // towards the light, in view space
+        stage float GhOffset;               // how far a point is moved along its normal before the lookup (normal offset), view units
+    }
+
+    stage Texture2D<float> GhShadowMap;
+
+    stage stream float2 GhPositionIn : POSITION;   // a full-screen triangle, in clip space
+    stage stream float2 GhClip;
+
+    abstract float DepthAt(int2 pixel);
+
+    stage override void VSMain()
+    {
+        streams.ShadingPosition = float4(streams.GhPositionIn, 0, 1);
+        streams.GhClip = streams.GhPositionIn;
+    }
+
+    float Lit(float2 uv, float depth)
+    {
+        int size = (int)round(1 / GhTexel);
+        int2 texel = int2(floor(uv * size));
+        float lit = 0;
+        // 3 x 3 texels, each compared (PCF without a comparison sampler)
+        [unroll] for (int y = -1; y <= 1; y++)
+            [unroll] for (int x = -1; x <= 1; x++)
+            {
+                int2 t = clamp(texel + int2(x, y), 0, size - 1);
+                lit += depth - GhBias <= GhShadowMap.Load(int3(t, 0)) ? 1 : 0;
+            }
+        return lit / 9;
+    }
+
+    stage override void PSMain()
+    {
+        int2 pixel = int2(streams.ShadingPosition.xy);
+        float d = DepthAt(pixel);
+        if (d >= 1) discard;                                    // nothing drawn here: the sky
+        // view space from depth and the pixel's direction - not through an inverted projection, whose near
+        // plane at street level leaves nothing of a float inverse (GlobeFog)
+        float z = -GhDepth.y / (d + GhDepth.x);                 // clip.z = z M33 + M43, clip.w = -z
+        float2 slope = (streams.GhClip + GhProjection.zw) / GhProjection.xy;
+        float3 view = float3(slope * -z, z);
+        // the surface's normal from the neighbouring pixels' positions, turned towards the eye. A face turned
+        // away from the sun is already dark by its light (GlobeVector): it gets no shadow on top, and has
+        // none of the stripes a face at a grazing angle to the light draws against its own depth (acne).
+        float3 n = normalize(cross(ddy(view), ddx(view)));
+        if (dot(n, view) > 0) n = -n;
+        float facing = dot(n, GhLightView);
+        if (facing < 0.05) discard;
+        view += n * GhOffset;
+        float4 s = mul(float4(view, 1), GhViewToShadow);
+        float2 uv = float2(s.x * 0.5 + 0.5, 0.5 - s.y * 0.5);
+        if (any(uv < 0) || any(uv > 1) || s.z < 0 || s.z > 1) discard;
+        float shade = (1 - Lit(uv, s.z)) * (1 - smoothstep(GhFade.x, GhFade.y, -z));
+        if (shade < 0.002) discard;
+        float k = 1 - GhStrength * shade;
+        streams.ColorTarget = float4(k, k, k, 1);
+    }
+};

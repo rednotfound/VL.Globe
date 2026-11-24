@@ -32,10 +32,14 @@ public sealed class SunLightNode
     /// <param name="dateTime">The moment, in UTC (a local time is converted). Unconnected: now.</param>
     /// <param name="color">The light's colour. Unconnected: white.</param>
     /// <param name="intensity">As Stride's lights: 1 is vvvv's DirectionalLight's default.</param>
+    /// <param name="castShadows">The buildings and Stride's models cast shadows.</param>
     /// <param name="enabled">Off: the scene has no sun.</param>
+    // Cast Shadows (Mapbox's cast-shadows) on by default (2026-11-24, the user: "我对影子很在意"): it is
+    // Stride's own switch on the light, so Stride shadows the user's models too and the Globe its buildings
     [return: Pin(Name = "Entity")]
-    public Entity Update(DateTime? dateTime = null, Color4? color = null, float intensity = 1f, bool enabled = true)
+    public Entity Update(DateTime? dateTime = null, Color4? color = null, float intensity = 1f, bool castShadows = true, bool enabled = true)
     {
+        if (_type.Shadow.Enabled != castShadows) _type.Shadow.Enabled = castShadows;
         var c = color ?? Color4.White;
         if (_type.Color is not ColorRgbProvider rgb || rgb.Value != c.ToColor3())
             _type.Color = new ColorRgbProvider(c.ToColor3());

@@ -1,0 +1,7 @@
+// GlobeShadowBase reading a multisampled depth (vvvv's window): its first sample.
+shader GlobeShadowMS : GlobeShadowBase
+{
+    stage Texture2DMS<float> GhSceneDepth;
+
+    float DepthAt(int2 pixel) { return GhSceneDepth.Load(pixel, 0); }
+};

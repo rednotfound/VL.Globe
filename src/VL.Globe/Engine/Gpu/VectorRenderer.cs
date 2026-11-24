@@ -102,7 +102,7 @@ internal sealed class VectorRenderer : IGraphicsRendererBase
     /// <summary>What the last draw found of the scene's lights, for the Globe node's log.</summary>
     public volatile string LightInfo = "";
 
-    internal readonly record struct SceneLight(Vector3 TowardsLight, Vector3 Color, float Intensity);
+    internal readonly record struct SceneLight(Vector3 TowardsLight, Vector3 Color, float Intensity, bool Shadows = false);
 
     /// <summary>The scene's first directional light: towards it in the globe's axes, its sRGB colour, GL JS's intensity (Stride's 1 = 0.5).</summary>
     internal static SceneLight? ReadLight(RenderContext context, out string info)
@@ -120,16 +120,21 @@ internal sealed class VectorRenderer : IGraphicsRendererBase
         info = $"{where}: {kinds.Count} light(s) [{string.Join(", ", kinds)}]";
         foreach (var l in lights)
         {
-            if (l.Type is not global::Stride.Rendering.Lights.LightDirectional || l.Intensity <= 0) continue;
+            if (l.Type is not global::Stride.Rendering.Lights.LightDirectional directional || l.Intensity <= 0) continue;
             var linear = l.Color * (1f / l.Intensity);   // RenderLight.Color is linear and times the intensity
             var srgb = new Vector3(MathUtil.LinearToSRgb(linear.R), MathUtil.LinearToSRgb(linear.G), MathUtil.LinearToSRgb(linear.B));
-            return new SceneLight(-Vector3.Normalize(l.Direction), srgb, Math.Clamp(0.5f * l.Intensity, 0f, 1f));
+            // the light's own shadow switch (Stride's, as vvvv's DirectionalLight sets it): the buildings cast then too
+            bool shadows = directional.Shadow is { Enabled: true };
+            info += shadows ? ", shadows on" : ", shadows off";
+            return new SceneLight(-Vector3.Normalize(l.Direction), srgb, Math.Clamp(0.5f * l.Intensity, 0f, 1f), shadows);
         }
         return null;
     }
 
-    DynamicEffectInstance? _effect, _symbolEffect, _circleEffect, _fogEffect;
+    DynamicEffectInstance? _effect, _symbolEffect, _circleEffect, _fogEffect, _shadowEffect, _shadowEffectMS;
     readonly FogPass _fog = new();
+    readonly ShadowPass _shadow = new();
+    MutablePipelineState? _castPipeline;
     /// <summary>Fog towards the horizon over everything the globe draws (GlobeFog.sdsl).</summary>
     // off: the user, 2026-11-22, of the fog whole at 5 eye heights - "这么夸张得雾的话，我宁愿没有呢"
     // (MapLibre has none by default). Kept, unused, until a thin haze at the limb is asked for.
@@ -193,17 +198,24 @@ internal sealed class VectorRenderer : IGraphicsRendererBase
                 _circleEffect.Initialize(context.RenderContext.Services);
                 _fogEffect = new DynamicEffectInstance("GlobeFog");
                 _fogEffect.Initialize(context.RenderContext.Services);
+                _shadowEffect = new DynamicEffectInstance("GlobeShadow");
+                _shadowEffect.Initialize(context.RenderContext.Services);
+                _shadowEffectMS = new DynamicEffectInstance("GlobeShadowMS");
+                _shadowEffectMS.Initialize(context.RenderContext.Services);
             }
             _effect.UpdateEffect(context.GraphicsDevice);
             _symbolEffect!.UpdateEffect(context.GraphicsDevice);
             _circleEffect!.UpdateEffect(context.GraphicsDevice);
             _fogEffect!.UpdateEffect(context.GraphicsDevice);
+            _shadowEffect!.UpdateEffect(context.GraphicsDevice);
+            _shadowEffectMS!.UpdateEffect(context.GraphicsDevice);
             if (_effect.Effect is null || _symbolEffect.Effect is null || _circleEffect.Effect is null || _fogEffect.Effect is null) return;   // still compiling
             var view = context.RenderContext.RenderView;
             Light = ReadLight(context.RenderContext, out var lightInfo);
             if (frame.Items.Count > 0)
                 DrawFrame(context.CommandList, context.GraphicsContext, _effect, _symbolEffect, _circleEffect, view.View, view.Projection, view.ViewSize.Y, frame,
-                    Lift, linearize: true, flat: false);
+                    Lift, linearize: true, flat: false,
+                    _shadowEffect.Effect is null ? null : _shadowEffect, _shadowEffectMS.Effect is null ? null : _shadowEffectMS);
             // after the draw, which reads the effect's parameter names
             LightInfo = (Light is null ? "the default light - " : $"the scene's directional light, towards ({Light.Value.TowardsLight.X:F1}, {Light.Value.TowardsLight.Y:F1}, {Light.Value.TowardsLight.Z:F1}) - ") + lightInfo
                 + (_keys.Count == 0 ? "" : _keys.ContainsKey("GlobeVector.GvLight") ? "; GvLight in the effect" : "; GvLight NOT in the compiled effect");
@@ -249,7 +261,8 @@ internal sealed class VectorRenderer : IGraphicsRendererBase
     // linearize: The colours are sRGB and the target linear (vvvv); false draws in sRGB space, as GL JS blends.
     // flat: The buckets are on the Mercator plane (x east, y north, z up), not the sphere.
     internal void DrawFrame(CommandList commandList, GraphicsContext graphicsContext, EffectInstance effect, EffectInstance symbolEffect,
-        EffectInstance circleEffect, Matrix view, Matrix projection, float viewHeight, Frame frame, float lift, bool linearize, bool flat)
+        EffectInstance circleEffect, Matrix view, Matrix projection, float viewHeight, Frame frame, float lift, bool linearize, bool flat,
+        EffectInstance? shadowEffect = null, EffectInstance? shadowEffectMS = null)
     {
         ItemsDrawn = 0;
         _stamp++;   // every accessor fetched again this frame, before any parameter is set
@@ -379,6 +392,26 @@ internal sealed class VectorRenderer : IGraphicsRendererBase
         parameters.Set((ObjectParameterKey<Buffer>)_keys["GlobeVector.GvDraws"], _draws!);
         bool vectorApplied = false;
         Pass? appliedPass = null;
+        // the buildings' shadows (ROADMAP 6b, C): cast into the sun's map now, received after the buildings
+        ShadowPass.Fit? shadowFit = null;
+        if (Light is { Shadows: true } sun && frame.Eye is { } shadowEye && !flat && (shadowEffect is not null || shadowEffectMS is not null)
+            && frame.Items.Exists(x => x.Pass == Pass.ExtrusionDepth))
+            shadowFit = ShadowPass.FitFor(view, projection, shadowEye, frame.Radius, sun.TowardsLight);
+        if (shadowFit is { } castFit)
+        {
+            CastShadows(commandList, graphicsContext, effect, frame, castFit);
+            Set(parameters, "GvProjection", projection);
+        }
+        bool shadowsReceived = false;
+        void ReceiveShadows()
+        {
+            if (shadowsReceived || shadowFit is not { } fit || _ownDepth is null) return;
+            shadowsReceived = true;
+            var receiver = _ownDepth.MultisampleCount != MultisampleCount.None ? shadowEffectMS : shadowEffect;
+            if (receiver is null) return;
+            _shadow.Receive(commandList, graphicsContext, receiver, _ownDepth, projection, fit);
+            pass = null; boundVertices = null; vectorApplied = false;   // its pipeline and buffers replaced ours
+        }
         try
         {
             Array.Clear(_submitTicks);
@@ -389,7 +422,7 @@ internal sealed class VectorRenderer : IGraphicsRendererBase
                 bool extrusion = item.Pass is Pass.ExtrusionDepth or Pass.ExtrusionColor;
                 if (extrusion && sceneDepth is null) sceneDepth = UseOwnDepth(commandList);
                 else if (item.Pass == Pass.ExtrusionDepth && pass == Pass.ExtrusionColor) { RestoreDepth(commandList, sceneDepth!); sceneDepth = UseOwnDepth(commandList); }
-                else if (!extrusion && sceneDepth is not null) { RestoreDepth(commandList, sceneDepth); sceneDepth = null; }
+                else if (!extrusion && sceneDepth is not null) { RestoreDepth(commandList, sceneDepth); sceneDepth = null; ReceiveShadows(); }
                 if (!ReferenceEquals(item.Vertices, boundVertices))
                 {
                     commandList.SetVertexBuffer(0, item.Vertices, 0, item.Pass switch { Pass.Text => SymbolVertex.Size, Pass.Circle => CircleVertex.Size, _ => VectorVertex.Size });
@@ -485,6 +518,7 @@ internal sealed class VectorRenderer : IGraphicsRendererBase
                 Tally(0, tItem, tApplyV, tDrawV);
                 ItemsDrawn++;
             }
+            if (sceneDepth is not null) { RestoreDepth(commandList, sceneDepth); sceneDepth = null; ReceiveShadows(); }
         }
         finally
         {
@@ -621,7 +655,8 @@ internal sealed class VectorRenderer : IGraphicsRendererBase
         {
             _ownDepth?.Dispose();
             var own = d;
-            own.Flags = (d.Flags & ~TextureFlags.DepthStencilReadOnly) | TextureFlags.DepthStencil;
+            // readable too: the shadows are received from it (ShadowPass)
+            own.Flags = (d.Flags & ~TextureFlags.DepthStencilReadOnly) | TextureFlags.DepthStencil | TextureFlags.ShaderResource;
             _ownDepth = Texture.New(commandList.GraphicsDevice, own);
         }
         _targetCount = commandList.RenderTargetCount;
@@ -633,6 +668,53 @@ internal sealed class VectorRenderer : IGraphicsRendererBase
     }
 
     void RestoreDepth(CommandList commandList, Texture scene) => commandList.SetRenderTargets(scene, _targetCount, _targets);
+
+    // The buildings' depth items once more, into the sun's shadow map: GlobeVector with view space -> the
+    // map's clip space as its projection, depth only (ShadowPass).
+    void CastShadows(CommandList commandList, GraphicsContext graphicsContext, EffectInstance effect, Frame frame, ShadowPass.Fit fit)
+    {
+        _shadow.BeginCasting(commandList);
+        try
+        {
+            if (_castPipeline is null)
+            {
+                _castPipeline = new MutablePipelineState(commandList.GraphicsDevice);
+                var c = _castPipeline.State;
+                c.SetDefaults();
+                c.InputElements = _depthPipeline!.State.InputElements;
+                c.BlendState = BlendStates.ColorDisabled;
+                c.DepthStencilState = DepthStencilStates.Default;
+                c.RasterizerState = RasterizerStates.CullNone;
+                c.PrimitiveType = PrimitiveType.TriangleList;
+            }
+            _castPipeline.State.RootSignature = effect.RootSignature;
+            _castPipeline.State.EffectBytecode = effect.Effect.Bytecode;
+            _castPipeline.State.Output.CaptureState(commandList);
+            _castPipeline.Update();
+            var parameters = effect.Parameters;
+            Set(parameters, "GvProjection", fit.ViewToShadow);
+            Set(parameters, "GvStraight", 0f);
+            Set(parameters, "GvGlOutline", 0f);
+            Set(parameters, "GvExtrusion", 1f);
+            commandList.SetPipelineState(_castPipeline.CurrentState);
+            effect.Apply(graphicsContext);
+            Buffer? bound = null;
+            for (int i = 0; i < frame.Items.Count; i++)
+            {
+                var item = frame.Items[i];
+                if (item.Pass != Pass.ExtrusionDepth) continue;
+                if (!ReferenceEquals(item.Vertices, bound))
+                {
+                    commandList.SetVertexBuffer(0, item.Vertices, 0, VectorVertex.Size);
+                    commandList.SetIndexBuffer(item.Indices, 0, false);
+                    bound = item.Vertices;
+                }
+                commandList.SetVertexBuffer(1, _drawIds!, i * sizeof(float), 0);
+                commandList.DrawIndexed(item.Count, item.Start, item.BaseVertex);
+            }
+        }
+        finally { _shadow.EndCasting(commandList); }
+    }
 
     void SetCircle<T>(ParameterCollection parameters, string name, T value) where T : struct
         => SetBy(parameters, _circleKeys, _circleResolved, "GlobeCircle.", name, value);

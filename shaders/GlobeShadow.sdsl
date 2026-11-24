@@ -1,0 +1,7 @@
+// GlobeShadowBase reading a single-sampled depth (the offscreen tests).
+shader GlobeShadow : GlobeShadowBase
+{
+    stage Texture2D<float> GhSceneDepth;
+
+    float DepthAt(int2 pixel) { return GhSceneDepth.Load(int3(pixel, 0)); }
+};
