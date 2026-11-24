@@ -1,7 +1,7 @@
 # Every node VL.Globe contributes: the name a patch uses -> the C# a resolved call must contain
 # (a static method compiles to `Class.Method(`, a process node to `new ClassNode(`).
 # Read by Compile-HelpPatches.ps1 (the node table of rung 2) and Test-VLPatch.ps1 (the F1 audit),
-# so a node added to the package is added here once. 31 nodes on 2026-11-24.
+# so a node added to the package is added here once. 32 nodes on 2026-11-24.
 @{
     Nodes = @{
         # Globe
@@ -32,6 +32,8 @@
         'VectorStyle'            = 'GlobeStyleNodes\.VectorStyle\('
         'MapLibreStyle (URL)'    = 'new\s+[\w\.]*MapLibreStyleUrlNode\('
         'MapLibreStyle (File)'   = 'new\s+[\w\.]*MapLibreStyleFileNode\('
+        # Globe.Lights
+        'SunLight'               = 'new\s+[\w\.]*SunLightNode\('
         # Globe.Navigate
         'CenterOn'               = 'new\s+[\w\.]*GlobeCenterOnNode\('
         'ZoomToLevel'            = 'new\s+[\w\.]*GlobeZoomToLevelNode\('

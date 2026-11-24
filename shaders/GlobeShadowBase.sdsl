@@ -30,7 +30,8 @@ shader GlobeShadowBase : ShaderBase
     stage stream float2 GhPositionIn : POSITION;   // a full-screen triangle, in clip space
     stage stream float2 GhClip;
 
-    abstract float DepthAt(int2 pixel);
+    abstract float DepthAt(int2 pixel, int sample);
+    abstract int Samples();
 
     stage override void VSMain()
     {
@@ -60,32 +61,65 @@ shader GlobeShadowBase : ShaderBase
         return lit / 9;
     }
 
-    stage override void PSMain()
+    // a pixel's place in view space from its depth and its direction - not through an inverted projection,
+    // whose near plane at street level leaves nothing of a float inverse (GlobeFog)
+    float3 ViewAt(int2 pixel, int sample)
     {
-        int2 pixel = int2(streams.ShadingPosition.xy);
-        float d = DepthAt(pixel);
-        if (d >= 1) discard;                                    // nothing drawn here: the sky
-        // view space from depth and the pixel's direction - not through an inverted projection, whose near
-        // plane at street level leaves nothing of a float inverse (GlobeFog)
+        float d = DepthAt(clamp(pixel, 0, int2(GhViewport) - 1), sample);
         float z = -GhDepth.y / (d + GhDepth.x);                 // clip.z = z M33 + M43, clip.w = -z
-        float2 slope = (streams.GhClip + GhProjection.zw) / GhProjection.xy;
-        float3 view = float3(slope * -z, z);
-        // the surface's normal from the neighbouring pixels' positions, turned towards the eye. A face turned
+        float2 clip = float2((pixel.x + 0.5) / GhViewport.x * 2 - 1, 1 - (pixel.y + 0.5) / GhViewport.y * 2);
+        float2 slope = (clip + GhProjection.zw) / GhProjection.xy;
+        return float3(slope * -z, z);
+    }
+
+    // how much shadow one sample of a pixel is in: 0 none, 1 full
+    float Shade(int2 pixel, int sample)
+    {
+        if (DepthAt(pixel, sample) >= 1) return 0;              // nothing drawn here: the sky
+        float3 view = ViewAt(pixel, sample);
+        // the surface's normal from the neighbouring pixels' positions, turned towards the eye: on each axis
+        // the neighbour nearer in depth, so that along an outline the normal is the pixel's own face's, not
+        // one across the edge (ddx/ddy left a seam of unshaded dots along every building). A face turned
         // away from the sun is already dark by its light (GlobeVector): it gets no shadow on top, and has
         // none of the stripes a face at a grazing angle to the light draws against its own depth (acne).
-        float3 n = normalize(cross(ddy(view), ddx(view)));
+        float3 right = ViewAt(pixel + int2(1, 0), sample) - view, left = view - ViewAt(pixel - int2(1, 0), sample);
+        float3 down = ViewAt(pixel + int2(0, 1), sample) - view, up = view - ViewAt(pixel - int2(0, 1), sample);
+        float3 dx = abs(right.z) < abs(left.z) ? right : left;
+        float3 dy = abs(down.z) < abs(up.z) ? down : up;
+        float3 n = normalize(cross(dy, dx));
         if (dot(n, view) > 0) n = -n;
-        if (dot(n, GhLightView) < 0.05) discard;
-        float distance = -z;
+        if (dot(n, GhLightView) < 0.05) return 0;
+        float distance = -view.z;
         float lit;
         float hand = smoothstep(GhSplit.x, GhSplit.y, distance);   // 0: the near map, 1: the far one
         float nearLit = hand < 1 ? Lit(0, view, n) : -1;
         float farLit = hand > 0 || nearLit < 0 ? Lit(1, view, n) : -1;
-        if (nearLit < 0 && farLit < 0) discard;
+        if (nearLit < 0 && farLit < 0) return 0;
         if (nearLit < 0) lit = farLit;
         else if (farLit < 0) lit = nearLit;
         else lit = lerp(nearLit, farLit, hand);
-        float shade = (1 - lit) * (1 - smoothstep(GhFade.x, GhFade.y, distance));
+        return (1 - lit) * (1 - smoothstep(GhFade.x, GhFade.y, distance));
+    }
+
+    stage override void PSMain()
+    {
+        int2 pixel = int2(streams.ShadingPosition.xy);
+        // inside a surface every sample has the pixel's depth: shaded once. On an outline (a multisampled
+        // target, a building's edge against the ground) each sample is shaded and the pixel gets their
+        // mean - shaded once from the first sample, the outlines lost their antialiasing: a staircase.
+        // (Stride 4.2's shader parser has no SV_SampleIndex, which would run this per sample.)
+        int count = Samples();
+        float first = DepthAt(pixel, 0);
+        bool outline = false;
+        [loop] for (int s = 1; s < count; s++)
+            if (abs(DepthAt(pixel, s) - first) > 1e-6) outline = true;
+        float shade = 0;
+        if (!outline) shade = Shade(pixel, 0);
+        else
+        {
+            [loop] for (int s = 0; s < count; s++) shade += Shade(pixel, s);
+            shade /= count;
+        }
         if (shade < 0.002) discard;
         float k = 1 - GhStrength * shade;
         streams.ColorTarget = float4(k, k, k, 1);

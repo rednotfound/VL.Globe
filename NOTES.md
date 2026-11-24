@@ -811,3 +811,13 @@ looked fine - "which makes one think it works". Two causes, estimated at 100 m h
 - **Stride lights read back**: `context.RenderContext.VisibilityGroup.Tags.Get(ForwardLightingRenderFeature.CurrentLights)`
   holds the scene's lights during EntityRendererComponent's draw in vvvv 7.4 (seen: 1 LightDirectional);
   RenderLight.Direction is the way the light travels, Color linear and times the intensity.
+- **The shadow pass took the buildings' antialiasing away** (seen by the user, 2026-11-24): shaded once
+  per pixel from the first MSAA sample, a pixel half roof, half shaded ground was darkened whole or not
+  at all - a staircase along every outline, plus a seam of unshaded dots where the ddx/ddy normal was
+  taken across the edge and the face counted as turned from the sun. `SV_SampleIndex` (per-sample
+  shading) does not exist for Stride 4.2's shader parser - it routed the stream through the vertex
+  shader (X4502). Now: an outline pixel (its samples' depths differ) is shaded per sample and averaged,
+  the rest once; the normal from the neighbour nearer in depth on each axis.
+- **SunLight unconnected is now**: after sunset there is no shadow at all, which looks broken. The help
+  patch feeds `Create (Year Month Day Hour Minute Second Kind)` [System.DateTime] with Kind Utc (1:00 =
+  10:00 in Tokyo); Kind Local is the computer's clock, not the place's.
