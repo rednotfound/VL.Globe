@@ -801,11 +801,13 @@ looked fine - "which makes one think it works". Two causes, estimated at 100 m h
   the assumption "a key found stays right" was wrong for keys not found.
 - **A log line computed before the first draw lied**: "GvLight not in the effect" was checked while the
   name table was still empty. Computed after DrawFrame now.
-- **The first rung-4 baseline is suspect**: the run meant to show GL JS's default light logged "default"
-  for its first frame only (the log line was on change of a bool, logged once), and its picture equals
-  the sun's to within 8 levels. A red sun proved the scene's light reaches the shader (buildings red),
-  and an offscreen test (`SceneLightFacts`) proves the direction is used; a true baseline (no SunLight,
-  same build) is still to be taken.
+- **The first rung-4 baseline was not one**: the run meant to show GL JS's default light logged
+  "default" for its first frame and was in fact lit by the sun - its picture equalled the sun's to within
+  8 levels, and "no difference" was read as "the light does nothing". A red sun proved the light reaches
+  the shader, `SceneLightFacts` that the direction is used offscreen; then a baseline patch without
+  SunLight, same build, same view (10:36): 82,000 samples differ - roofs ~20 % darker under a 31° sun,
+  the shaded walls on the north side instead of the east. **A comparison needs both pictures from the
+  same build in one sitting, each with its log line saying which light it had.**
 - **Stride lights read back**: `context.RenderContext.VisibilityGroup.Tags.Get(ForwardLightingRenderFeature.CurrentLights)`
   holds the scene's lights during EntityRendererComponent's draw in vvvv 7.4 (seen: 1 LightDirectional);
   RenderLight.Direction is the way the light travels, Color linear and times the intensity.

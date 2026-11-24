@@ -201,7 +201,7 @@ internal sealed class VectorRenderer : IGraphicsRendererBase
                 DrawFrame(context.CommandList, context.GraphicsContext, _effect, _symbolEffect, _circleEffect, view.View, view.Projection, view.ViewSize.Y, frame,
                     Lift, linearize: true, flat: false);
             // after the draw, which reads the effect's parameter names
-            LightInfo = (Light is null ? "the default light - " : $"the scene's directional light, towards ({Light.Value.TowardsLight.X:F2}, {Light.Value.TowardsLight.Y:F2}, {Light.Value.TowardsLight.Z:F2}) - ") + lightInfo
+            LightInfo = (Light is null ? "the default light - " : $"the scene's directional light, towards ({Light.Value.TowardsLight.X:F1}, {Light.Value.TowardsLight.Y:F1}, {Light.Value.TowardsLight.Z:F1}) - ") + lightInfo
                 + (_keys.Count == 0 ? "" : _keys.ContainsKey("GlobeVector.GvLight") ? "; GvLight in the effect" : "; GvLight NOT in the compiled effect");
             // last, over the tiles, the vector layers and the labels (ROADMAP 4f step 2)
             // by the eye's own height, in double: CameraToCenter comes from the tile selection, which does
