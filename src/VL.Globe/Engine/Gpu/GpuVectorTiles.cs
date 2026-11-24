@@ -137,6 +137,8 @@ internal sealed class GpuVectorTiles : IDisposable
     }
 
     public string Error => _renderer.Error;
+    /// <summary>The height in pixels of the view the layers were last drawn into; 0 before the first draw.</summary>
+    public float ViewHeight => _renderer.ViewHeight;
     /// <summary>Which light the last draw lit the buildings by, and what it found of the scene's lights (ROADMAP 6b).</summary>
     public string LightInfo => _renderer.LightInfo;
     /// <summary>The renderer's Draw timings since the last call; resets them.</summary>

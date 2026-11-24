@@ -109,6 +109,23 @@ public sealed partial class GlobeNode : IDisposable
     // Background pin into it was dropped in silence (2026-11-24; the decompiled GlobeWindow_P.Update passed
     // null) - the patched definition would need its pin retyped. Transparent: no tiles, the layers alone.
 
+    // The height tiles are chosen for: the pin when set; else the view the globe was last drawn into (its
+    // renderer reads the viewport at draw time - one frame late, as a camera's aspect ratio in Stride and
+    // CesiumJS's drawing buffer height); before the first draw the GlobeCamera's window, else 1080.
+    string _heightFrom = "";
+    float ScreenHeight(float pin, Entity? camera)
+    {
+        var (height, from) = PickScreenHeight(pin, _gpu.ViewHeight, camera?.Get<GlobeCameraFrame>()?.View?.Height_px ?? 0);
+        if (from != _heightFrom) { _heightFrom = from; _logger.LogInformation("Globe: screen height {Height} px, from {From}", height, from); }
+        return height;
+    }
+
+    internal static (float height, string from) PickScreenHeight(float pin, float drawn, double camera)
+        => pin > 0 ? (pin, "the Screen Height pin")
+         : drawn > 0 ? (drawn, "the view it is drawn in")
+         : camera > 0 ? ((float)camera, "the camera's window")
+         : (1080f, "the default (not drawn yet)");
+
     readonly AttributionLayer _attributionLayer = new();
     readonly VL.Stride.SkiaRenderer _skia;
     string _attribution = "";
@@ -129,7 +146,7 @@ public sealed partial class GlobeNode : IDisposable
     /// <param name="camera">The camera entity the scene is rendered with.</param>
     /// <param name="radius">The globe's radius in scene units.</param>
     /// <param name="background">The globe's colour under its layers, also while off. Transparent (unconnected): no globe, the layers alone - GlobeWindow gives a dark blue.</param>
-    /// <param name="screenHeight">The height of the view in pixels: SceneWindow's Client Bounds. GlobeWindow wires it.</param>
+    /// <param name="screenHeight">The height of the view in pixels. 0: the height of the view the globe is drawn in.</param>
     /// <param name="maxZoom">The finest zoom ever requested.</param>
     /// <param name="screenSpaceError">Refine while a tile pixel would cover more screen pixels than this. 1.41 shows tiles at 0.71-1.41x, as MapLibre and Cesium do.</param>
     /// <param name="maxRequestsInFlight">Requests running at once, per tile layer.</param>
@@ -148,7 +165,7 @@ public sealed partial class GlobeNode : IDisposable
         // configuration between, Enabled last - as 237 of the 289 patched nodes with an Enabled pin in
         // vvvv 7.4's packs, and the Gray Book's "Main input left".
         GlobeLayer? input = null, Entity? camera = null, float radius = 1f, Color4 background = default,
-        float screenHeight = 1080f, int maxZoom = 19, float screenSpaceError = 1.41f, int maxRequestsInFlight = 6, float fadeDuration = 0.3f,
+        [Pin(Visibility = VL.Model.PinVisibility.Optional)] float screenHeight = 0f, int maxZoom = 19, float screenSpaceError = 1.41f, int maxRequestsInFlight = 6, float fadeDuration = 0.3f,
         // On, as SceneWindow's and Skia's Renderer's Enabled are (the user, 2026-11-23: off, nobody can tell
         // whether the window is working). What is fetched is each layer's matter; help patches still ship
         // with a toggle wired and off (Normalize-HelpPatches), so browsing help fetches nothing.
@@ -167,7 +184,7 @@ public sealed partial class GlobeNode : IDisposable
         try
         {
             var entity = UpdateCore(out tilesVisible, out tilesLoading, out requestsSent, out bytesReceived, out _, out status,
-                camera, enabled, radius, background, maxZoom, screenSpaceError, maxRequestsInFlight, screenHeight, fadeDuration, layers);
+                camera, enabled, radius, background, maxZoom, screenSpaceError, maxRequestsInFlight, ScreenHeight(screenHeight, camera), fadeDuration, layers);
             attribution = Attribution(input);
             _attributionLayer.Text = enabled ? attribution : "";
             return entity;

@@ -186,8 +186,16 @@ internal sealed class VectorRenderer : IGraphicsRendererBase
         if (_drawData.Length < capacity) _drawData = new DrawData[capacity];
     }
 
+    /// <summary>The height in pixels of the view this renderer last drew into; 0 before the first draw.</summary>
+    // Read at draw time, as Stride's SceneCameraRenderer takes a camera's aspect ratio and VL.Stride's
+    // WithRenderView and SkiaRenderer their space: the render context's viewport. The Globe's tile selection
+    // uses it next frame - no window height wired back through a FrameDelay in the patch (the user, 2026-11-25).
+    public volatile float ViewHeight;
+
     public void Draw(RenderDrawContext context)
     {
+        var viewport = context.RenderContext.ViewportState.Viewport0;
+        if (viewport.Height > 0) ViewHeight = viewport.Height;
         var frame = Current;
         ItemsDrawn = 0;
         // the fog is drawn with no vector layer too: it covers the raster tiles as well

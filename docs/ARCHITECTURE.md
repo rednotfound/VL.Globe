@@ -53,14 +53,16 @@ GlobeCamera ──View──► Drag ──Result──► ZoomByWheel
 Mouse [Stride.Input] ──Output──► RootScene        (it hears the window only inside the scene)
 Mouse ──Position in Projection──► Drag.Position, ZoomByWheel.Position
 Mouse ──Left Pressed──► Drag.Dragging ;  Mouse ──Mouse Wheel Delta──► ZoomByWheel.Wheel Delta
-SceneWindow ──Client Bounds──► Height (2D.Rectangle) ──► FrameDelay ──► Globe.Screen Height
 SceneWindow: Enable Default Post Effects = False, Present Interval = One, Enable Default Camera = False
 ```
 
-- **Screen Height** is how many pixels a tile texel covers, so it decides the detail. It comes from
-  the window, one frame late (SceneWindow is downstream of Globe; FrameDelay breaks the loop). The
-  Height node is `2D.Rectangle`'s — SceneWindow's `Client Bounds` is RectangleF; Stride's `Rectangle`
-  Height was dropped by the compiler without a word.
+- **The view's height** is how many pixels a tile texel covers, so it decides the detail. Since
+  2026-11-25 nothing is wired for it: Globe's renderer reads the viewport at draw time
+  (`RenderContext.ViewportState.Viewport0`) and the next frame's selection uses it - as Stride's
+  `SceneCameraRenderer` takes a camera's aspect ratio, VL.Stride's `WithRenderView`/`SkiaRenderer`
+  their space, and CesiumJS its drawing-buffer height. Globe's `Screen Height` is an optional pin
+  (0: that). It was `SceneWindow ──Client Bounds──► Height ──► FrameDelay ──► Screen Height` in the
+  patch and inside GlobeWindow (the user: vvvv gamma avoids such loops).
 - **Post effects off**: SceneWindow's defaults tone-map and anti-alias the frame — map colours came
   out darker (10,26,56 shown as 0,7,50) and the text soft. Map tiles are finished pixels.
 - **Present Interval One**: the pin has no default and ran `Immediate`; a fast drag tore.

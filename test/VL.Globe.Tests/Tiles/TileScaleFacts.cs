@@ -44,7 +44,7 @@ public class TileScaleFacts(ITestOutputHelper output)
     [Fact]
     public void AScreenHeightTooLargeMakesTheTextSmall()
     {
-        // The contrast: Globe's Screen Height pin defaults to 1080; told 1080 while the window is 808,
+        // The contrast: Globe told 1080 (its height before the first draw) while the window is 808,
         // the text is drawn below its size again.
         var pairs = new[] { 200.0, 500, 1000, 5000, 20000, 100000 }.Select(h => (h, wrong: Centre(h, 1080, 808).pxPerTexel, right: Centre(h, 808, 808).pxPerTexel)).ToList();
         foreach (var (h, wrong, right) in pairs) output.WriteLine($"{h} m: told 1080 -> {wrong:F2}, told 808 -> {right:F2}");

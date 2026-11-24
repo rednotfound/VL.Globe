@@ -874,3 +874,12 @@ looked fine - "which makes one think it works". Two causes, estimated at 100 m h
   fixed Group could not. `Compile-HelpPatches.ps1` failed it ("not constructed in __Create__"): inside a ForEach
   the generated C# builds a process node per slice (`if (!iterator.MoveNext(out state)) { new Node() }`); the
   check now accepts that. Intro text: tile layers, vector tiles and shapes stack alike.
+- **No FrameDelay for the view's height** (2026-11-25, the user: vvvv gamma avoids such loops; survey: Stride's
+  SceneCameraRenderer, VL.Stride's WithRenderView/WithinCommonSpace/SkiaRenderer read
+  `RenderContext.ViewportState.Viewport0` at draw time, Skia hands `CallerInfo.ViewportBounds` upstream, CesiumJS
+  reads `drawingBufferHeight` in the frame; no forum thread recommends Client Bounds -> FrameDelay, and Client
+  Bounds is wrong on the first frame). `VectorRenderer.Draw` records the viewport height, Globe's selection uses it
+  next frame; `Screen Height` is an optional pin (0: that; before the first draw the GlobeCamera's window, else
+  1080). Removed from GlobeWindow and `HowTo Build your own globe scene` (decompiled: both cameras and the Globe
+  get 0, Background still flows). Seen in vvvv: "screen height 1080 px, from the camera's window", then "800 px,
+  from the view it is drawn in". A Globe drawn in two windows of different heights takes the last one drawn.

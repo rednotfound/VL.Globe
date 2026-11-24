@@ -19,7 +19,6 @@
                 <Choice Kind="NodeFlag" Name="Node" Fixed="true" />
                 <Choice Kind="ProcessAppFlag" Name="GlobeCamera" />
               </p:NodeReference>
-              <Pin Id="Fz2GmHvnXZtZGvhmrUfEM1" Name="Screen Height" Kind="InputPin" />
               <Pin Id="M4TkM41hHkU4fU6wAVbsKy" Name="Output" Kind="OutputPin" />
               <Pin Id="H5AkJHbOLw97UJZDOHM05M" Name="View" Kind="OutputPin" />
             </Node>
@@ -46,7 +45,6 @@
             </Pin>
               <Pin Id="TLSPX75K1fwRrNo5PiapAA" Name="Enabled" Kind="InputPin" />
               <Pin Id="MS2sctTBhw5rCAsILTAMAR" Name="Background" Kind="InputPin" />
-              <Pin Id="RvdwA5eS1xw3RksQPGOYup" Name="Screen Height" Kind="InputPin" />
               <Pin Id="LPZklW1vpTnweVxfbqNlHo" Name="Entity" Kind="OutputPin" />
               <Pin Id="DMoen1SFJD8KTbd0mYms3w" Name="Attribution" Kind="OutputPin" />
               <Pin Id="OmGugU4cmf5gN3PPZrPw6B" Name="Status" Kind="OutputPin" />
@@ -96,35 +94,7 @@
               <Pin Id="SvRpVPzBEx8Y0tUt5x7QG3" Name="Present Interval" Kind="InputPin" DefaultValue="One" />
               <Pin Id="BonOIQd827Ozif5PxXbTgx" Name="Title" Kind="InputPin" />
               <Pin Id="GEBmAnuyZ92VGqJZMuFbMX" Name="Output" Kind="OutputPin" />
-              <Pin Id="GXNmRpFV6EBAqoDghzdgqn" Name="Client Bounds" Kind="OutputPin" />
             </Node>
-            <Node Bounds="100,480,46,19" Id="StxDEWeDQeTpHeX2mO7fTu">
-              <p:NodeReference LastCategoryFullName="2D.Rectangle" LastDependency="VL.CoreLib.vl">
-                <Choice Kind="NodeFlag" Name="Node" Fixed="true" />
-                <Choice Kind="OperationCallFlag" Name="Height" />
-                <CategoryReference Kind="RecordType" Name="Rectangle" NeedsToBeDirectParent="true" />
-              </p:NodeReference>
-              <Pin Id="VQ33EeMj3BXg2WUXeRfAOM" Name="Input" Kind="StateInputPin" />
-              <Pin Id="Pp6fDczROXHPQ9TSXZ4FaX" Name="Height" Kind="OutputPin" />
-            </Node>
-            <Node Bounds="100,530,70,19" Id="K2s5bY8qX4ZXHal5peAJCV">
-              <p:NodeReference LastCategoryFullName="Control" LastDependency="VL.CoreLib.vl">
-                <Choice Kind="NodeFlag" Name="Node" Fixed="true" />
-                <Choice Kind="ProcessAppFlag" Name="FrameDelay" />
-              </p:NodeReference>
-              <Pin Id="Mgtw0T4rS6laMw4y5tjawx" Name="Initial Value" Kind="InputPin" DefaultValue="800" />
-              <Pin Id="SKSIvTvblRf2AXLmCSHg6J" Name="Value" Kind="InputPin" />
-              <Pin Id="FIurQ7sf9vJPmBbyuZXsCv" Name="Value" Kind="OutputPin" />
-            </Node>
-            <Pad Id="HL8AUvYm55BmOh0hg5qD5C" Bounds="190,525,330,34" ShowValueBox="true" isIOBox="true" Value="&lt; the window's real height reaches Globe one frame late: it is downstream, and the tiles' detail depends on it">
-              <p:TypeAnnotation LastCategoryFullName="Primitive" LastDependency="VL.CoreLib.vl">
-                <Choice Kind="TypeFlag" Name="String" />
-              </p:TypeAnnotation>
-              <p:ValueBoxSettings>
-                <p:fontsize p:Type="Int32">9</p:fontsize>
-                <p:stringtype p:Assembly="VL.Core" p:Type="VL.Core.StringType">Comment</p:stringtype>
-              </p:ValueBoxSettings>
-            </Pad>
           </Canvas>
           <Patch Id="LrkrQdbiH9FsxIoydgqNhj" Name="Create" ManuallySortedPins="true">
             <Pin Id="SL7ppt5RhCZleruS8IEBIz" Name="Bounds" Kind="InputPin" Visibility="Optional" />
@@ -171,7 +141,6 @@
             <Fragment Id="D7jrXh4ifrUcJSsv5lMw1x" Patch="AJmjIfRzBxd6Di2uELJOAG" Enabled="true" />
           </ProcessDefinition>
           <Link Id="NRxIhHzLcxGendEYxV3HvH" Ids="UzrLQcOB6dtIXlF1Cbsa42,Ig5kbhJ0wgt6M6W2O2Lhd5" IsHidden="true" />
-          <Link Id="HezOyEVlui8yhVIkFDbkSr" Ids="FIurQ7sf9vJPmBbyuZXsCv,Fz2GmHvnXZtZGvhmrUfEM1" />
           <Link Id="IqQUDxliZBWRelArFOUfZq" Ids="SL7ppt5RhCZleruS8IEBIz,RD5i1LTCrG4Hw60evvNTu8" IsHidden="true" />
           <Link Id="EPnqXhPKOVVMYjt699l0wL" Ids="AbXn6Zbwp9Awy0l3cHTUlC,KtZfO8yHT5RXmDu4v6xgLw" IsHidden="true" />
           <Link Id="CLXmaHhkFmPMdR9Mqrzndd" Ids="SL7eUprBCwWoGKaZjwfsAz,Li4Y2I3N7vgqdMoovuj7eA" IsHidden="true" />
@@ -189,9 +158,6 @@
           <Link Id="SKpUq14KyOMUu8qusa8ccl" Ids="LPZklW1vpTnweVxfbqNlHo,GHs7btgGi1O4dffC0si7Ju" />
           <Link Id="U9NylfSTwyQwmin8I2Q8Kp" Ids="JPf4tekKYo1pUREGy0Hgmf,C57eMcGYfG5dWKorSzBKOo" />
           <Link Id="S0CfeHFFOclyupJlnfg1I4" Ids="T9A8v2DNjEc7JgoBfpKVSV,Eh9Wyjcf0x2X83eD0oN8iy" />
-          <Link Id="PtzhRQCHeGjy2kcXqDF55f" Ids="GXNmRpFV6EBAqoDghzdgqn,VQ33EeMj3BXg2WUXeRfAOM" />
-          <Link Id="EGWGuZ9VJjeagrptcQwqaR" Ids="Pp6fDczROXHPQ9TSXZ4FaX,SKSIvTvblRf2AXLmCSHg6J" />
-          <Link Id="SZDNFzk9dM6AkFoTWPrp1L" Ids="FIurQ7sf9vJPmBbyuZXsCv,RvdwA5eS1xw3RksQPGOYup" />
           <Link Id="AXepSpw6ACEWTNdd0WJhLO" Ids="M4TkM41hHkU4fU6wAVbsKy,LlCENbPo0fL7mtQXz7ZXTZ" />
           <Link Id="GQYZzOettyyUONYN8tWu38" Ids="S2j3SSD03BWaQq5ybjUDjA,Eva4ik2obqnsfUFps398Lk" IsHidden="true" />
         </Patch>
