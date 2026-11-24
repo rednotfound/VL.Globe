@@ -662,7 +662,7 @@ can be set, nothing casts a shadow. Three steps, the user's choices (2026-11-24)
 
 Design and the survey: docs/DESIGN-LIGHT.md.
 
-### 6c. Raster layers on the GPU — asked by the user 2026-11-24, designed, not started
+### 6c. Raster layers on the GPU — asked by the user 2026-11-24; step 1 done 2026-11-24
 
 Shapes became GPU layers of their own on 2026-11-24 (Geometry, FeatureLayer, Graticule; the drape kept
 the raster layers above the first). The user: raster layers too ("应该把栅格图层也做成GPU图层"), for one
@@ -671,6 +671,12 @@ architecture, the same behaviour everywhere, and COG/COPC later. Every raster la
 (1) the layers above the first, the drape removed; (2) as good as the globe's own imagery, judged by
 the user side by side; (3) the first layer too, the tiles' imagery material removed.
 Design and the survey of MapLibre and Cesium: docs/DESIGN-RASTER-GPU.md.
+
+**Step 1 done 2026-11-24**: `Engine/Gpu/RasterTiles.cs` (textures per source, fetched and mipmapped on the
+thread pool, fades both ways per wanted globe tile), the `Raster` pass in `VectorRenderer` and GlobeVector.sdsl,
+`GpuVectorTiles.Update` taking the Input's layers in order (`GpuLayer`); `GlobeNode.Overlays.cs` and
+`Engine/Draped` removed. `RasterLayerFacts` (order among shapes, opacity, an ancestor through its rectangle, the
+pole cap, multisampled). Seen in vvvv (Stack tile layers, Enabled on): "似乎问题不大". **Next: step 2.**
 
 ### 7. Gestures and tidying (before the release)
 

@@ -1,7 +1,7 @@
-namespace VL.Globe.Tests.Draped;
+namespace VL.Globe.Tests.Tiles;
 
-// The overlays' mip chain (raster layers above the bottom one): straight alpha, no dark halo.
-public class MipChainFacts
+// The raster layers' mip chain (TileTextures, straightAlpha): straight alpha, no dark halo.
+public class StraightAlphaMipFacts
 {
     [Fact]
     public void AStraightAlphaMipKeepsTheLineColourNotBlack()

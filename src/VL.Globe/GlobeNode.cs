@@ -36,7 +36,7 @@ namespace VL.Globe;
 // Enabled defaults to off, as everywhere in this family: opening a document runs it, and whoever
 // opened it has not agreed to fetch anything yet. Off draws nothing and requests nothing.
 //
-// In parts: GlobeNode.Tiles.cs, .Show.cs (drawing and fades), .Overlays.cs, .Background.cs, .Perf.cs.
+// In parts: GlobeNode.Tiles.cs, .Show.cs (drawing and fades), .Background.cs, .Perf.cs.
 
 /// <summary>Map tiles on a globe: fetches only the tiles the camera can see, at the zoom its distance earns.</summary>
 /// <remarks>
@@ -56,9 +56,9 @@ public sealed partial class GlobeNode : IDisposable
     readonly HashSet<TileKey> _pending = new();
     readonly HashSet<TileKey> _failed = new();
     readonly HashSet<TileKey> _shown = new();
-    // this frame's wanted tiles: only they fetch vector tiles for their overlays; an ancestor shown
-    // while they load draws what is already here (on 2026-11-21 stand-ins fetched 118 tiles, 31 MB,
-    // for one street-level view: low-zoom vector tiles reach 1.3 MB)
+    // this frame's wanted tiles: only they fetch vector tiles; an ancestor shown while they load draws
+    // what is already here (on 2026-11-21 stand-ins fetched 118 tiles, 31 MB, for one street-level
+    // view: low-zoom vector tiles reach 1.3 MB)
     HashSet<TileKey> _wantedSet = new();
     readonly ConcurrentQueue<(TileKey key, byte[]? bytes, GlobeTileSource source)> _arrived = new();
     GraphicsDevice? _device;
@@ -161,8 +161,8 @@ public sealed partial class GlobeNode : IDisposable
         if (_lastUpdateAt >= 0 && _anatomy.Explain(updateStart - _lastUpdateAt, updateStart, _gcPauseAtStart, _gen0AtStart, _gen2AtStart, _gpu.LastDraw) is { } slow)
             _logger.LogInformation("Globe frame: {Frame}", slow);
         // One Input (docs/DESIGN-NODES.md): its layers in order. The bottom tile layer gives the globe's
-        // own imagery; every layer after it - more tile layers at their opacity (ROADMAP item 6), the
-        // draped vectors - is drawn over it in order, into each tile's overlay.
+        // own imagery; every layer after it - more tile layers at their opacity, vector tiles, shapes - is
+        // a GPU layer drawn over it in order (ROADMAP 6c: raster layers on the GPU too, no drape left).
         var (tileSource, layers) = SplitLayers(input);
         layers = ShapesOnTheGpu(layers);
         try
@@ -179,10 +179,10 @@ public sealed partial class GlobeNode : IDisposable
     /// <summary>
     /// The globe's own imagery and what is drawn over it, from the Input's layers in order: the bottom
     /// tile layer is the imagery when it is opaque; any other layer - and that one too when its Opacity
-    /// is below 1, over plain tiles in the Background colour - goes into the overlay.
+    /// is below 1, over plain tiles in the Background colour - is a GPU layer over it.
     /// </summary>
     // The bottom layer's Opacity was first left without effect ("it is the imagery"); the user: "没有必要，
-    // 因为用户知道自己再做什么" (2026-11-23). Translucent, it goes the overlay's way like the layers above it.
+    // 因为用户知道自己再做什么" (2026-11-23). Translucent, it goes the GPU's way like the layers above it.
     internal static (GlobeTileSource? imagery, List<GlobeLayer> over) SplitLayers(GlobeLayer? input)
     {
         var leaves = input?.Leaves().ToList() ?? new List<GlobeLayer>();
@@ -196,7 +196,7 @@ public sealed partial class GlobeNode : IDisposable
     // primitives (Cesium drapes imagery only). They were draped into the tiles' images by Skia unless a
     // VectorTiles layer came before them; the user, 2026-11-24: "有vectorTiles和没有都应该统一的画法 ...
     // 肯定是要作为独立的layer存在". Each made again only when the layer's content changes; services of layers
-    // gone are disposed. Raster layers stay in the tiles' images, so shapes are drawn over every one of them.
+    // gone are disposed. Raster layers are GPU layers too since ROADMAP 6c: all in the Input's order.
     readonly Dictionary<GlobeLayer, (long signature, GlobeLayer gpu)> _gpuShapes = new(ReferenceEqualityComparer.Instance);
 
     List<GlobeLayer> ShapesOnTheGpu(List<GlobeLayer> layers)
@@ -268,7 +268,6 @@ public sealed partial class GlobeNode : IDisposable
             : $"{wanted.Count} wanted, zoom {wanted.Min(t => t.Zoom)}..{wanted.Max(t => t.Zoom)}; {_loaded.Count} loaded, {_pending.Count} loading, {_failedCount} failed"
               + (_lastError.Length > 0 ? " - last error: " + _lastError : "")
               + (layersOnly ? "; no tile layer: layers on plain tiles" : "")
-              + (_overlaysDrawn > 0 ? $"; overlays {_overlayMs:F0} ms each" : "")
               + (_gpu.Status.Length > 0 ? "; " + _gpu.Status : "");
         var head = _status.Split(';')[0];
         if (head != _lastLogged) { _logger.LogInformation("Globe: {Status}", _status); _lastLogged = head; }
@@ -318,28 +317,31 @@ public sealed partial class GlobeNode : IDisposable
         foreach (var w in wanted) if (_loaded.TryGetValue(w, out var s)) s.LastUsed = _frame;
         AdvanceFades();
         Stage("fades");
-        UpdateOverlays(layers);
-        Stage("overlays");
-        // the GPU's vector tiles follow the wanted tiles, not the ones shown: they need no imagery,
-        // and the wanted set covers the view at the right zoom even while the raster loads
-        var gpuServices = enabled && layers is not null
-            ? layers.Where(l => l is { Enabled: true, Vector: not null }).Select(l => l.Vector!).ToList()
-            : new List<VectorTileService>();
+        // The GPU's layers, in the Input's order: vector tiles and raster layers (ROADMAP 6c). They follow the
+        // wanted tiles, not the ones shown: they need no imagery of the globe's, and the wanted set covers
+        // the view at the right zoom even while the globe's own tiles load.
+        var gpuLayers = enabled && layers is not null
+            ? layers.Where(l => l is { Enabled: true } && (l.Vector is not null || l.Raster is not null))
+                .Select(l => new GpuLayer(l.Vector, l.Raster, l.Opacity)).ToList()
+            : new List<GpuLayer>();
+        bool gpuVectors = gpuLayers.Any(l => l.Vector is not null);
+        _gpu.RasterFade = _fadeDuration;
+        _gpu.RasterRequests = Math.Max(1, maxRequestsInFlight);
         // the distance to the view's centre, for the labels' perspective ratio: the eye's height above the ground
-        if (_device is not null) _gpu.Update(_device, wanted, _wantedSet, gpuServices, _radius, _relativeEye, _cameraZoom, _frame,
+        if (_device is not null) _gpu.Update(_device, wanted, _wantedSet, gpuLayers, _radius, _relativeEye, _cameraZoom, _frame,
             Math.Max(_lastEye.Length() - _radius, 1e-9));
         foreach (var skip in _gpu.TakeNewSkips()) _logger.LogWarning("Globe style: {Skip}", skip);
         Stage("gpu vectors");
         // into the log: the renderer's error once, and how far the building is, once a second at most
         // which light the buildings are drawn with, once per change (ROADMAP 6b): the scene's light is read
         // on the render thread, and nothing else shows whether it was found
-        if (gpuServices.Count > 0 && _gpu.LightInfo is var lightInfo && lightInfo != _lightInfo)
+        if (gpuVectors && _gpu.LightInfo is var lightInfo && lightInfo != _lightInfo)
         {
             _lightInfo = lightInfo;
             _logger.LogInformation("Globe: buildings lit by {Light}", lightInfo);
         }
         if (_gpu.Error != _gpuError) { _gpuError = _gpu.Error; if (_gpuError.Length > 0) _logger.LogError("Globe: {Error}", _gpuError); }
-        if (gpuServices.Count > 0 && _gpu.TilesBuilt != _gpuBuiltLogged && _clock.Elapsed.TotalSeconds - _gpuLoggedAt > 1)
+        if (gpuVectors && _gpu.TilesBuilt != _gpuBuiltLogged && _clock.Elapsed.TotalSeconds - _gpuLoggedAt > 1)
         {
             _gpuBuiltLogged = _gpu.TilesBuilt; _gpuLoggedAt = _clock.Elapsed.TotalSeconds;
             _logger.LogInformation("Globe: {Status} (zoom {Zoom:F2})", _gpu.Status, _cameraZoom);

@@ -26,7 +26,7 @@ the LTS line** (user, 2026-11-20); `tools\Find-Vvvv.ps1` stays below 8.0.
 | `GlobeWindow [Globe]` | **patched** process | `VL.Globe.vl` | the front door: the whole chain below in one node, with its own window; tells Globe the window's real height |
 | `OpenStreetMap [Globe]` | process | `TileSources.cs` | an `HttpTileSource` for OSM, built once (an HttpTileSource owns an HttpClient and is not disposable) |
 | `XyzTiles [Globe]` | process | `TileSources.cs` | any `{z}/{x}/{y}` server + its required attribution; one source per URL |
-| `Globe [Globe]` | process | `GlobeNode.cs` (+ `.Tiles`, `.Show`, `.Overlays`, `.Background`, `.Perf`) | the engine: select → request → build → draw → fade → drape the `Layers`; outputs one Stride `Entity` |
+| `Globe [Globe]` | process | `GlobeNode.cs` (+ `.Tiles`, `.Show`, `.Background`, `.Perf`) | the engine: select → request → build → draw → fade, the other `Layers` on the GPU; outputs one Stride `Entity` |
 | `Geometry`, `FeatureLayer [Globe.Layers]` | process | `GlobeLayers.cs` | NTS geometries / features in one style → a layer for `Layers`, VL.Mapsui's shape |
 | `VectorStyle [Globe.Styles]` | static | `GlobeLayers.cs` | fill, line colour, line width in pixels; unwired colours default as Mapsui's |
 | `GlobeCamera [Globe]` | process | `GlobeCameraNodes.cs` | a geographic camera state and the Stride camera entity it drives, camera-relative |
@@ -97,9 +97,8 @@ per subsystem (`GlobalUsings.cs` names them all), and the tests mirror it in `te
 | `Tiles\` | which tiles (TileSelector, DrawSet), their meshes and projection, mipmaps, fades, attribution |
 | `VectorTiles\` | MVT decoding (Pbf, VectorTile) into FeatureTables, the service fetching style tiles |
 | `Styling\` | the MapLibre style both paths read (MapStyleDocument), expressions, shapes as a style |
-| `Gpu\` | buckets (`VectorBucket*.cs`: fills/lines, symbols, circles), the renderer, fog, atlas textures |
+| `Gpu\` | buckets (`VectorBucket*.cs`: fills/lines, symbols, circles), raster layers (`RasterTiles.cs`), the renderer, fog, atlas textures |
 | `Symbols\` | GL JS's text shaping, glyphs, sprites, icons, label placement, collision and fades |
-| `Draped\` | tile layers above the bottom one, drawn by SkiaSharp into each tile's overlay (shapes are GPU layers since 2026-11-24) |
 | `Camera\` | navigation, picking, the camera-relative frame |
 | `Diagnostics\` | frame stats, allocation meter, the camera bench (`VLGLOBE_BENCH`) |
 
@@ -135,13 +134,14 @@ Each frame, on vvvv's main thread:
    spot throughout. The weights are keyed `ComputeFloat4`s set every frame, **alpha 1**: Stride's
    `BinaryOperator.Add` is `ComputeColorAdd3ds`, an alpha-weighted blend. An ancestor under a running
    fade is never evicted.
-7. **Drape the raster layers above the bottom one** (Cesium's imagery layers): every shown tile whose
-   overlay is out of date gets one, at most 6 per frame, nearest first — the layers' tiles in its Web
-   Mercator square drawn by SkiaSharp into a transparent 256 px image, mipped with colour weighted by
-   alpha, and laid over the imagery with `BinaryOperator.Over`. The same look is used by the tile's
-   fades and by stand-ins borrowing it. A replaced overlay is disposed 60 frames later, since a fade or
-   stand-in may still sample it. Layers change by content, not identity.
-   Only raster layers since 2026-11-24: Geometry, FeatureLayer and Graticule are GPU layers of their
+7. **The raster layers above the bottom one are GPU layers** (ROADMAP 6c step 1, docs/DESIGN-RASTER-GPU.md):
+   `RasterTiles` per source fetches and mipmaps its images on the thread pool (straight alpha, sRGB), and
+   each frame gives every wanted globe tile its own square's image or the finest loaded ancestor's through
+   a rectangle (stand-in and overscale alike), with GL JS's cross-fade both ways (two images mixed in the
+   shader). `VectorRenderer`'s `Raster` pass draws them on the tile's background grid (pole caps included),
+   with the ground's depth, in the Input's order among the vector layers. Until 2026-11-24 they were draped
+   by SkiaSharp into each tile's overlay image (`GlobeNode.Overlays`, `Engine/Draped`, removed).
+   Geometry, FeatureLayer and Graticule are GPU layers of their
    own (`GeometryStyle`), with or without VectorTiles - the user: one way to draw them, "作为独立的
    layer存在"; drawn over every raster layer. They had been draped by Skia (`TileOverlay`, removed)
    unless a VectorTiles layer came before them. VectorTiles were draped too, by a
@@ -216,8 +216,8 @@ it too — rounding makes its two sides 0.71× and 1.41× instead of 1× and 2×
 
 Process nodes only (a static node runs 60×/s). Network work runs on the thread pool and only
 enqueues bytes; every GPU resource is created and every entity added or removed in `Update`, on the
-main thread. A tile from a source that has since been replaced is dropped on arrival. Draped
-overlays render on pool threads; GPU vector buckets on VL.Globe's own worker threads (below normal
+main thread. A tile from a source that has since been replaced is dropped on arrival. Raster
+layers' images decode on pool threads; GPU vector buckets on VL.Globe's own worker threads (below normal
 priority). **Measured in the log** while GPU vectors draw: a `Globe perf` line each second (frame
 percentiles, frames over 20 ms, the node's longest Update, MB uploaded, GC collections, bytes
 allocated and promoted, pauses, and every frame's parts - Update, gpu vectors, label place and

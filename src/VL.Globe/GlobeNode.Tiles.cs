@@ -39,14 +39,7 @@ public sealed partial class GlobeNode
         public bool FadeOut;             // false: own image fades IN over the ancestor; true: fades OUT to it
         public double FadeStart;
         public int LastUsed;
-        public Texture? Overlay;         // the vector layers draped into this tile (OverlayRenderer)
-        public int OverlayVersion = -1;  // the layers' version the overlay shows
-        public int OverlayStamp;         // bumped on every new overlay image, for the stand-ins borrowing it
-        public bool OverlayIncomplete;   // drawn while a vector tile it needs was still on its way
-        public Task<(byte[]? bytes, bool complete, double ms)>? OverlayJob;
-        public int OverlayJobVersion;
-        public bool OverlayJobFetch, OverlayFetched;   // drawn as a wanted tile (fetching vector tiles) or as a stand-in (only what was here)
-        public void Dispose() { Texture.Dispose(); Overlay?.Dispose(); Vertices.Dispose(); Indices.Dispose(); }
+        public void Dispose() { Texture.Dispose(); Vertices.Dispose(); Indices.Dispose(); }
     }
 
     const int MaxCreatedPerFrame = 8;
@@ -87,7 +80,7 @@ public sealed partial class GlobeNode
     {
         var texture = bytes is null
             ? Texture.New2D(device, 1, 1, PixelFormat.R8G8B8A8_UNorm_SRgb, new[] { (Color)plain })
-            : LoadMipmapped(device, bytes);
+            : TileTextures.LoadMipmapped(device, bytes);
         var (vb, ib, mesh, tileCentre) = BuildMesh(device, key);
 
         // Emissive only, as in the lab: the map is the light, so the globe reads the same in any scene.
@@ -106,12 +99,9 @@ public sealed partial class GlobeNode
         return new Slot { Entity = entity, Texture = texture, Vertices = vb, Indices = ib, Centre = tileCentre, Model = modelComponent, Plain = material, LastUsed = _frame };
     }
 
-    // What a tile looks like: its imagery, with its overlay laid over it (BinaryOperator.Over is the
-    // 3ds over, straight alpha: front x a + back x (1 - a)) - the same for the tile itself, the fades
-    // and the stand-ins that borrow it, so vectors do not blink while tiles change.
-    static IComputeColor Look(Slot s, Vector2 scale, Vector2 offset)
-        => s.Overlay is null ? Sampled(s.Texture, scale, offset)
-         : new ComputeBinaryColor(Sampled(s.Texture, scale, offset), Sampled(s.Overlay, scale, offset), BinaryOperator.Over);
+    // What a tile looks like: its imagery - the same for the tile itself, the fades and the stand-ins that
+    // borrow it. (The raster layers above it were laid over it here as an overlay drawn by Skia until ROADMAP 6c.)
+    static IComputeColor Look(Slot s, Vector2 scale, Vector2 offset) => Sampled(s.Texture, scale, offset);
 
     static IComputeColor Sampled(Texture texture, Vector2 scale, Vector2 offset) => new ComputeTextureColor(texture)
     {
@@ -159,41 +149,6 @@ public sealed partial class GlobeNode
         return (vb, ib, mesh, tileCentre);
     }
 
-    // A tile's image with its whole mip chain (MipChain). Formats other than 4-byte RGBA/BGRA load
-    // as before, without mips - an unknown format draws soft or shimmering, never not at all.
-    static Texture LoadMipmapped(GraphicsDevice device, byte[] bytes)
-    {
-        using var stream = new MemoryStream(bytes);
-        using var source = Image.Load(stream, loadAsSRGB: true);
-        var pb = source.PixelBuffer[0];
-        var format = pb.Format;
-        bool fourBytes = format is PixelFormat.R8G8B8A8_UNorm_SRgb or PixelFormat.R8G8B8A8_UNorm or PixelFormat.B8G8R8A8_UNorm_SRgb or PixelFormat.B8G8R8A8_UNorm;
-        if (!fourBytes || pb.Width < 2)
-            return Texture.New(device, source, TextureFlags.ShaderResource, GraphicsResourceUsage.Immutable);
-
-        int w = pb.Width, h = pb.Height;
-        var level0 = new byte[w * h * 4];
-        for (int y = 0; y < h; y++)
-            System.Runtime.InteropServices.Marshal.Copy(pb.DataPointer + y * pb.RowStride, level0, y * w * 4, w * 4);
-        bool srgb = format is PixelFormat.R8G8B8A8_UNorm_SRgb or PixelFormat.B8G8R8A8_UNorm_SRgb;
-        return FromLevels(device, level0, w, h, format, srgb, straightAlpha: false);
-    }
-
-    static Texture FromLevels(GraphicsDevice device, byte[] level0, int w, int h, PixelFormat format, bool srgb, bool straightAlpha)
-    {
-        var levels = MipChain.Build(level0, w, h, srgb, straightAlpha);
-
-        using var image = Image.New2D(w, h, MipMapCount.Auto, format);
-        for (int m = 0; m < levels.Count && m < image.Description.MipLevels; m++)
-        {
-            var dst = image.GetPixelBuffer(0, 0, m);
-            var (pixels, lw, lh) = levels[m];
-            for (int y = 0; y < lh; y++)
-                System.Runtime.InteropServices.Marshal.Copy(pixels, y * lw * 4, dst.DataPointer + y * dst.RowStride, lw * 4);
-        }
-        return Texture.New(device, image, TextureFlags.ShaderResource, GraphicsResourceUsage.Immutable);
-    }
-
     void Evict()
     {
         if (_loaded.Count <= MaxSlots) return;
@@ -220,8 +175,6 @@ public sealed partial class GlobeNode
         _outFades.Clear();
         foreach (var si in _standIns.Values) { _root.Transform.Children.Remove(si.Entity.Transform); si.Dispose(); }
         _standIns.Clear();
-        foreach (var r in _retired) r.texture.Dispose();
-        _retired.Clear();
         _requests = 0;
         _failedCount = 0;
         _lastError = "";

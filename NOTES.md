@@ -850,3 +850,11 @@ looked fine - "which makes one think it works". Two causes, estimated at 100 m h
   before and after): `ShapeLayerFacts` now draws two shape layers with no VectorTiles and checks the order
   (fails with the order swapped). Seen in vvvv: the shapes help (OSM under) and the graticule help. Open:
   the 45 N parallel drew dotted for a stretch west of France (graticule help, whole-globe view).
+- **Raster layers on the GPU, ROADMAP 6c step 1** (2026-11-24): the layers above the first are drawn by
+  `VectorRenderer`'s `Raster` pass on each wanted globe tile's background grid (its pole caps included), the
+  image its own square's or the finest loaded ancestor's through a rectangle, fades both ways in the shader
+  (`RasterTiles`). The Skia overlay is gone. First compile failed in the tests: `return;` in GlobeVector's
+  PSMain is X3080 - Stride's generated PSMain returns its streams; if/else instead. Tests offline: the cache
+  holds zoom-2 images only, the URL is `127.0.0.1:9` (refused), so every finer square draws an ancestor; a
+  gradient image checks the rectangle to 3 levels. Seen by the user in vvvv: "似乎问题不大". Not yet compared
+  side by side with the globe's own imagery (step 2); the fades have no test of their own.

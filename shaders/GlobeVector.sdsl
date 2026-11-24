@@ -40,7 +40,24 @@ shader GlobeVector : ShaderBase
         stage float GvAo;               // ambient occlusion at the foot of a wall, 0-1 (0: none, as GL JS)
         stage float4 GvLightColor;      // rgb: the light's sRGB colour; a: GL JS's intensity, 0-1 (default white, 0.5)
         stage float4 GvSphere;          // the globe's centre in view space, xyz; w: |eye - centre|^2 - radius^2 (from double)
+        stage float GvRaster;           // 1: a raster layer's square (ROADMAP 6c), its colour from the two images below
+        stage float4 GvRasterOwnRect;   // the square in its own image, u0 v0 u1 v1
+        stage float4 GvRasterOtherRect; // ... in the image it fades from
+        stage float2 GvRasterMix;       // x: the own image's weight (GL JS's u_fade_t); y: the layer's opacity
     }
+
+    // a raster layer's images: sRGB textures with their mips (TileTextures), clamped at the edge - wrapping
+    // blended a tile's opposite edge into its border once mips were sampled - and anisotropic, as the
+    // globe's own imagery: a tilted view sees the ground at a grazing angle
+    stage Texture2D GvRasterOwn;
+    stage Texture2D GvRasterOther;
+    stage SamplerState GvRasterSampler
+    {
+        Filter = ANISOTROPIC;
+        AddressU = Clamp;
+        AddressV = Clamp;
+        MaxAnisotropy = 16;
+    };
 
     stage stream float GvDrawIn : TEXCOORD4;     // per instance: the draw's index in GvDraws (a float: exact to 2^24)
     stage stream float GvDrawId;                 // to the pixel shader: the same for the whole draw, rounded there
@@ -57,6 +74,12 @@ shader GlobeVector : ShaderBase
     stage stream float2 GvScreen;   // GL JS's v_pos: the vertex in pixels, interpolated along the line
     stage stream float3 GvViewPos;  // the vertex in view space, before the lift
     stage stream float GvRaise;     // fill-extrusion: the metres above the ground, per pixel (ambient occlusion)
+
+    float3 ToSrgb(float3 c)
+    {
+        c = saturate(c);
+        return c <= 0.0031308 ? c * 12.92 : 1.055 * pow(c, 1 / 2.4) - 0.055;
+    }
 
     float3 ToLinear(float3 c)
     {
@@ -253,13 +276,30 @@ shader GlobeVector : ShaderBase
             depth -= 0.75 * (abs(ddx(depth)) + abs(ddy(depth)));
             streams.Depth = depth;
         }
-        float alpha = streams.GvTint.a;
-        float3 tint = streams.GvTint.rgb;
-        // ambient occlusion (ROADMAP 6b, B): a wall darkened over its lowest 3 metres, per pixel - Mapbox's
-        // fill-extrusion-ambient-occlusion-wall-radius, 3 m; computed from the height, not the screen
-        if (GvExtrusion > 0.5 && GvAo > 0) tint *= 1 - GvAo * (1 - smoothstep(0, 3, streams.GvRaise));
-        if (GvIsLine > 0.5) alpha *= saturate(streams.GvOutset * (1 - abs(streams.GvEdge)));
-        if (GvGlOutline > 0.5) alpha *= 1 - smoothstep(0, 1, length(streams.GvScreen - streams.ShadingPosition.xy));
-        streams.ColorTarget = GvStraight > 0.5 ? float4(tint, alpha) : float4(tint * alpha, alpha);
+        // A raster layer: its image, mixed with the one it fades from, premultiplied - the images are sRGB
+        // textures, so sampled linear (vvvv); the render tests' sRGB pipeline gets sRGB back. GvRaster is
+        // the draw's, the same for every pixel: no divergent gradients for the samples. (No return: Stride's PSMain returns its streams.)
+        if (GvRaster > 0.5)
+        {
+            float2 st = saturate(uv);
+            float4 own = GvRasterOwn.Sample(GvRasterSampler, lerp(GvRasterOwnRect.xy, GvRasterOwnRect.zw, st));
+            float4 other = GvRasterOther.Sample(GvRasterSampler, lerp(GvRasterOtherRect.xy, GvRasterOtherRect.zw, st));
+            float w = GvRasterMix.x;
+            float a = own.a * w + other.a * (1 - w);
+            float3 rgb = own.rgb * own.a * w + other.rgb * other.a * (1 - w);
+            if (GvLinearize < 0.5) rgb = a > 0 ? ToSrgb(rgb / a) * a : 0;
+            streams.ColorTarget = float4(rgb, a) * GvRasterMix.y;
+        }
+        else
+        {
+            float alpha = streams.GvTint.a;
+            float3 tint = streams.GvTint.rgb;
+            // ambient occlusion (ROADMAP 6b, B): a wall darkened over its lowest 3 metres, per pixel - Mapbox's
+            // fill-extrusion-ambient-occlusion-wall-radius, 3 m; computed from the height, not the screen
+            if (GvExtrusion > 0.5 && GvAo > 0) tint *= 1 - GvAo * (1 - smoothstep(0, 3, streams.GvRaise));
+            if (GvIsLine > 0.5) alpha *= saturate(streams.GvOutset * (1 - abs(streams.GvEdge)));
+            if (GvGlOutline > 0.5) alpha *= 1 - smoothstep(0, 1, length(streams.GvScreen - streams.ShadingPosition.xy));
+            streams.ColorTarget = GvStraight > 0.5 ? float4(tint, alpha) : float4(tint * alpha, alpha);
+        }
     }
 };

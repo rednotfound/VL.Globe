@@ -17,6 +17,9 @@ namespace VL.Globe.Engine.Gpu;
 // The GPU path's bookkeeping (docs/DESIGN-GPU-VECTOR.md), owned by the Globe node: which vector tiles
 // the shown globe tiles need, their buckets built on worker threads and uploaded a few a frame, and
 // each frame's draw list for VectorRenderer - layer by layer in style order, tile by tile.
+/// <summary>A layer the GPU draws, in the Input's order: a style's vector tiles, or a raster tile layer at its opacity.</summary>
+internal readonly record struct GpuLayer(VectorTileService? Vector, GlobeTileSource? Raster = null, float Opacity = 1);
+
 internal sealed class GpuVectorTiles : IDisposable
 {
     public readonly Entity Entity;
@@ -49,6 +52,15 @@ internal sealed class GpuVectorTiles : IDisposable
     // overscale (GL JS lays symbols out again past the source's maxzoom: spacing in the shown pixels)
     readonly Dictionary<(VectorTileService service, string source, TileKey key, int scale), Entry> _entries = new();
     readonly Dictionary<VectorTileService, StyleInfo> _styles = new();
+    // the raster layers' textures and fades, by source (ROADMAP 6c): kept a while after a layer leaves the
+    // Input, so switching it off and on does not fetch again
+    readonly Dictionary<GlobeTileSource, RasterTiles> _rasters = new(ReferenceEqualityComparer.Instance);
+    const int KeepRasterFrames = 600;
+    /// <summary>Seconds a raster layer's finer image takes to fade in over the one it replaces (the Globe's Fade Duration).</summary>
+    public double RasterFade = 0.3;
+    /// <summary>Requests a raster layer has running at once (the Globe's Max Requests In Flight).</summary>
+    public int RasterRequests = 6;
+    readonly System.Diagnostics.Stopwatch _clock = System.Diagnostics.Stopwatch.StartNew();
     readonly VectorRenderer.Frame[] _frames = { new(), new() };
     // the background grids, by tile: no data in them, built at once on this thread
     readonly Dictionary<TileKey, (Built built, int lastUsed)> _backgrounds = new();
@@ -152,15 +164,22 @@ internal sealed class GpuVectorTiles : IDisposable
     internal VectorRenderer.Frame? Frame => _renderer.Current;
 
     // counted as they change, not summed every frame
-    public string Status => _styles.Count == 0 ? "" :
+    public string Status => (_styles.Count == 0 ? "" :
         $"GPU vectors: {_tilesBuilt} tiles built ({_buildMs:F0} ms each on {Workers.Count} workers), " +
         $"{_running} building, {_gpuBytes >> 20} MB, {_renderer.ItemsDrawn} draws" +
-        (_renderer.Error.Length > 0 ? " - " + _renderer.Error : "");
+        (_renderer.Error.Length > 0 ? " - " + _renderer.Error : ""))
+        + (_rasters.Count == 0 ? "" : (_styles.Count == 0 ? "" : "; ") + "GPU rasters: " + string.Join(", ", _rasters.Values.Select(r =>
+            $"{r.Loaded} loaded, {r.Loading} loading" + (r.LastError.Length > 0 ? " - last error: " + r.LastError : ""))));
 
     // shown: the globe tiles whose area is drawn; wanted: those that fetch vector tiles; zoom: the
     // camera's, MapLibre's (512-px tiles), at which the zoom-dependent paint is evaluated
     public void Update(GraphicsDevice device, IReadOnlyCollection<TileKey> shown, IReadOnlySet<TileKey> wanted,
         IReadOnlyList<VectorTileService> services, float radius, D3? eye, double zoom, int frame, double cameraToCenter = 1)
+        => Update(device, shown, wanted, services.Select(s => new GpuLayer(s)).ToList(), radius, eye, zoom, frame, cameraToCenter);
+
+    // input: the Input's layers, in order - each drawn over the ones before it, raster or vector (ROADMAP 6c)
+    public void Update(GraphicsDevice device, IReadOnlyCollection<TileKey> shown, IReadOnlySet<TileKey> wanted,
+        IReadOnlyList<GpuLayer> input, float radius, D3? eye, double zoom, int frame, double cameraToCenter = 1)
     {
         _frame = frame;
         _timer.Restart();
@@ -197,8 +216,19 @@ internal sealed class GpuVectorTiles : IDisposable
         // the buildings fade out over the reach's last part, so they do not end in a line - off
         result.ExtrusionFade = BuildingFade && reach > 0 ? new Vector2((float)(FadeFrom * reach * radius), (float)(reach * radius)) : default;
 
-        foreach (var service in services.Distinct())
+        Matrix WorldOf(Built tile) => Matrix.Scaling(radius) * Matrix.Translation(TileGeometry.Translation(tile.Bucket.Centre, radius, eye));
+        // the raster layers' squares nearest first: their requests go in this order
+        List<TileKey>? nearest = null;
+        var servicesDone = new HashSet<VectorTileService>();
+        foreach (var gpuLayer in input)
         {
+            if (gpuLayer.Raster is { } rasterSource)
+            {
+                nearest ??= eye is null ? shown.ToList() : shown.OrderBy(g => TileSelector.DistanceToTile(g, eyeUnit)).ToList();
+                AddRaster(rasterSource, gpuLayer.Opacity, nearest);
+                continue;
+            }
+            if (gpuLayer.Vector is not { } service || !servicesDone.Add(service)) continue;
             var info = Analyse(service);
             if (info is null) continue;
             var doc = info.Document;
@@ -363,8 +393,40 @@ internal sealed class GpuVectorTiles : IDisposable
                 VectorDrawList.AddLayer(result.Items, layer, color, width, outline, list, World, linearize: true);
             }
         }
+        foreach (var gone in _rasters.Where(kv => _frame - kv.Value.LastUsedFrame > KeepRasterFrames).Select(kv => kv.Key).ToList())
+        {
+            _rasters[gone].Dispose();
+            _rasters.Remove(gone);
+        }
         if (result.Items.Capacity > itemsCapacity) (_itemsGrewFrom, _itemsGrewTo) = (itemsCapacity, result.Items.Capacity);
         Lap(6);
+
+        // A raster layer's squares (RasterTiles), each on the globe tile's own grid - the background's, with
+        // its pole caps (VectorBucketBuilder.BackgroundBucket) - its image sampled through the rectangle
+        // the square is of it, mixed with the image it fades from
+        void AddRaster(GlobeTileSource source, float opacity, List<TileKey> squares)
+        {
+            if (!_rasters.TryGetValue(source, out var raster)) _rasters[source] = raster = new RasterTiles(source);
+            var draws = raster.Step(device, squares, _frame, _clock.Elapsed.TotalSeconds, RasterFade, RasterRequests);
+            if (opacity <= 0) return;
+            var whole = VectorDrawList.Widen(new Vector4(0, 0, 1, 1));
+            foreach (var d in draws)
+            {
+                if (raster.TextureOf(d.Own) is not { } own) continue;
+                var other = d.Other is { } o ? raster.TextureOf(o) : null;
+                var grid = Background(device, d.Square);
+                if (grid.Vertices is null || !grid.ByLayer.TryGetValue(-1, out var ranges)) continue;
+                var ownRect = RasterTiles.Rect(d.Own, d.Square);
+                var draw = other is null
+                    ? new VectorRenderer.RasterDraw(own, ownRect, own, ownRect, 1, opacity)
+                    : new VectorRenderer.RasterDraw(own, ownRect, other, RasterTiles.Rect(d.Other!.Value, d.Square), d.OwnWeight, opacity);
+                var w = WorldOf(grid);
+                var centre = grid.Bucket.Centre.ToVector3();
+                foreach (var r in ranges)
+                    result.Items.Add(new VectorRenderer.Item(grid.Vertices, grid.Indices!, r.Start, r.Count, w, centre, Vector4.One, 0, false, whole,
+                        VectorRenderer.Pass.Raster, 1 << d.Square.Zoom, Geo: grid.Bucket.Geo, BaseVertex: r.BaseVertex, Raster: draw));
+            }
+        }
         _renderer.Current = result;
         if (_frame % 30 == 0) Evict();
         Lap(7);
@@ -613,5 +675,7 @@ internal sealed class GpuVectorTiles : IDisposable
         foreach (var k in _entries.Keys.ToList()) Drop(k);
         foreach (var b in _backgrounds.Values) b.built.Dispose();
         _backgrounds.Clear();
+        foreach (var r in _rasters.Values) r.Dispose();
+        _rasters.Clear();
     }
 }

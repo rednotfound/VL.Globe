@@ -23,7 +23,9 @@ internal sealed class VectorRenderer : IGraphicsRendererBase
     // showing through each other
     // Text: a symbol layer's glyph quads, drawn by GlobeSymbol.sdsl over everything, no depth (GL JS)
     // Circle: a circle layer's quads, drawn by GlobeCircle.sdsl, no depth, as Text
-    internal enum Pass { Triangles, LineList, ExtrusionDepth, ExtrusionColor, Text, Circle }
+    // Raster: a raster tile layer's square (ROADMAP 6c), the globe tile's grid with its image - GlobeVector
+    // with the textures bound, one Apply a draw
+    internal enum Pass { Triangles, LineList, ExtrusionDepth, ExtrusionColor, Text, Circle, Raster }
 
     // what a Text item draws with besides its buffers: the atlas and the layer's paint this frame.
     // Icons are Text items too: IconMode 1 an image, 2 an SDF image; Nearest GL JS's gl.NEAREST
@@ -34,9 +36,13 @@ internal sealed class VectorRenderer : IGraphicsRendererBase
     // what a Circle item draws with: the layer's paint this frame, its colours premultiplied
     internal sealed record CircleDraw(CirclePaint Paint, Vector4 Color, Vector4 StrokeColor, float CameraToCenter, float PixelRatio);
 
+    // what a Raster item draws with: its image and the one it fades from (the same when none), each through
+    // the rectangle the square is of it (u0 v0 u1 v1), mixed own * OwnWeight + other * (1 - OwnWeight), at the layer's opacity
+    internal sealed record RasterDraw(Texture Own, Vector4 OwnRect, Texture Other, Vector4 OtherRect, float OwnWeight, float Opacity);
+
     internal readonly record struct Item(Buffer Vertices, Buffer Indices, int Start, int Count, Matrix World, Vector3 Centre,
         Vector4 Color, float HalfWidth, bool IsLine, Vector4 Clip, Pass Pass = Pass.Triangles, float Tiles = 1, TextDraw? Text = null,
-        CircleDraw? Circle = null, TileProjection.Geo Geo = default, int BaseVertex = 0);
+        CircleDraw? Circle = null, TileProjection.Geo Geo = default, int BaseVertex = 0, RasterDraw? Raster = null);
 
     internal sealed class Frame
     {
@@ -139,7 +145,7 @@ internal sealed class VectorRenderer : IGraphicsRendererBase
     // off: the user, 2026-11-22, of the fog whole at 5 eye heights - "这么夸张得雾的话，我宁愿没有呢"
     // (MapLibre has none by default). Kept, unused, until a thin haze at the limb is asked for.
     public bool Fog = false;
-    MutablePipelineState? _pipeline, _linePipeline, _depthPipeline, _extrusionPipeline, _textPipeline, _circlePipeline;
+    MutablePipelineState? _pipeline, _linePipeline, _depthPipeline, _extrusionPipeline, _textPipeline, _circlePipeline, _rasterPipeline;
     readonly Dictionary<string, ParameterKey> _symbolKeys = new(), _circleKeys = new();
     // labels: GL JS's placement and fades - a placement 2 ms a frame, begun again 300 ms after the last
     // commit when the camera or the tiles have changed; between, only the glyphs along lines follow
@@ -294,11 +300,12 @@ internal sealed class VectorRenderer : IGraphicsRendererBase
             foreach (var r in effect.Effect.Bytecode.Reflection.ResourceBindings)
                 if (r.KeyInfo.Key is { } key) _keys[r.KeyInfo.KeyName] = key;
             // a key not found would leave its value unset in silence: say which were found
-            if (!_keys.ContainsKey("GlobeVector.GvDraws") || !_keys.ContainsKey("GlobeVector.GvProjection"))
+            if (!_keys.ContainsKey("GlobeVector.GvDraws") || !_keys.ContainsKey("GlobeVector.GvProjection")
+                || !_keys.ContainsKey("GlobeVector.GvRasterOwn") || !_keys.ContainsKey("GlobeVector.GvRasterOther"))
                 throw new InvalidOperationException("GlobeVector's parameters not found; the effect has: " + string.Join(", ", _keys.Keys));
         }
 
-        var pipelines = new[] { _pipeline!, _linePipeline!, _depthPipeline!, _extrusionPipeline!, _textPipeline!, _circlePipeline! };
+        var pipelines = new[] { _pipeline!, _linePipeline!, _depthPipeline!, _extrusionPipeline!, _textPipeline!, _circlePipeline!, _rasterPipeline! };
         foreach (var p in pipelines)
         {
             var e = p == _textPipeline ? symbolEffect : p == _circlePipeline ? circleEffect : effect;
@@ -498,6 +505,29 @@ internal sealed class VectorRenderer : IGraphicsRendererBase
                     ItemsDrawn++;
                     continue;
                 }
+                if (item.Raster is { } raster)
+                {
+                    // its own Apply: the textures are the draw's, not in GvDraws
+                    commandList.SetVertexBuffer(1, _drawIds!, itemIndex * sizeof(float), 0);
+                    Set(parameters, "GvStraight", 0f);
+                    Set(parameters, "GvGlOutline", 0f);
+                    Set(parameters, "GvExtrusion", 0f);
+                    Set(parameters, "GvRaster", 1f);
+                    Set(parameters, "GvRasterOwnRect", raster.OwnRect);
+                    Set(parameters, "GvRasterOtherRect", raster.OtherRect);
+                    Set(parameters, "GvRasterMix", new Vector2(raster.OwnWeight, raster.Opacity));
+                    parameters.Set((ObjectParameterKey<Texture>)_keys["GlobeVector.GvRasterOwn"], raster.Own);
+                    parameters.Set((ObjectParameterKey<Texture>)_keys["GlobeVector.GvRasterOther"], raster.Other);
+                    long tApplyR = System.Diagnostics.Stopwatch.GetTimestamp();
+                    effect.Apply(graphicsContext);
+                    Set(parameters, "GvRaster", 0f);
+                    vectorApplied = false;
+                    long tDrawR = System.Diagnostics.Stopwatch.GetTimestamp();
+                    commandList.DrawIndexed(item.Count, item.Start, item.BaseVertex);
+                    Tally(0, tItem, tApplyR, tDrawR);
+                    ItemsDrawn++;
+                    continue;
+                }
                 // the draw's index: slot 1 at its element with stride 0, so every vertex reads it. A per-instance
                 // element offset by the start instance (DrawIndexedInstanced) was read per vertex instead -
                 // Stride's input layout lost the classification (2026-11-23, colours by index in a fixture)
@@ -633,6 +663,15 @@ internal sealed class VectorRenderer : IGraphicsRendererBase
         c.DepthStencilState = DepthStencilStates.None;
         c.RasterizerState = RasterizerStates.CullNone;
         c.PrimitiveType = PrimitiveType.TriangleList;
+        // raster layers: as a fill - premultiplied, the ground's depth read, not written
+        _rasterPipeline = new MutablePipelineState(device);
+        var r = _rasterPipeline.State;
+        r.SetDefaults();
+        r.InputElements = s.InputElements;
+        r.BlendState = BlendStates.AlphaBlend;
+        r.DepthStencilState = DepthStencilStates.DepthRead;
+        r.RasterizerState = RasterizerStates.CullNone;
+        r.PrimitiveType = PrimitiveType.TriangleList;
     }
 
     // fill-extrusion needs to write depth, and vvvv's forward renderer binds the scene's depth

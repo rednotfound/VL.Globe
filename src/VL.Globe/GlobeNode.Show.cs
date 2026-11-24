@@ -50,7 +50,6 @@ public sealed partial class GlobeNode
         public required D3 Centre;
         public required ModelComponent Model;
         public TileKey From;
-        public int FromOverlayVersion;
         public void Dispose() { Vertices.Dispose(); Indices.Dispose(); }
     }
     readonly Dictionary<TileKey, StandIn> _standIns = new();
@@ -125,15 +124,14 @@ public sealed partial class GlobeNode
             {
                 var (vb, ib, mesh, centre) = BuildMesh(_device, square);
                 var (entity, model) = MakeEntity(square, mesh, StandInMaterial(square, fromKey, from), centre);
-                si = new StandIn { Entity = entity, Vertices = vb, Indices = ib, Centre = centre, Model = model, From = fromKey, FromOverlayVersion = from.OverlayStamp };
+                si = new StandIn { Entity = entity, Vertices = vb, Indices = ib, Centre = centre, Model = model, From = fromKey };
                 _standIns[square] = si;
                 _root.Transform.Children.Add(entity.Transform);
             }
-            else if (si.From != fromKey || si.FromOverlayVersion != from.OverlayStamp)
+            else if (si.From != fromKey)
             {
-                si.Model.Materials[0] = StandInMaterial(square, fromKey, from);   // a nearer ancestor arrived, or its overlay changed
+                si.Model.Materials[0] = StandInMaterial(square, fromKey, from);   // a nearer ancestor arrived
                 si.From = fromKey;
-                si.FromOverlayVersion = from.OverlayStamp;
             }
         }
         foreach (var square in _standIns.Keys.Where(k => !keep.Contains(k)).ToList())
