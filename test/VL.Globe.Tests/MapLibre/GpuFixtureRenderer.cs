@@ -135,7 +135,7 @@ internal static class GpuFixtureRenderer
     /// <summary>A globe frame as vvvv draws it (on the sphere, linearised, lifted, fogged) over an opaque ground, read back RGBA.
     /// With <paramref name="globeTiles"/>, those tiles' depth first, as the globe's own tiles are in vvvv's scene.</summary>
     public static byte[] RenderGlobe(VectorRenderer.Frame frame, Matrix view, Matrix projection, int width, int height, bool fog, IEnumerable<TileKey>? globeTiles = null,
-        MultisampleCount samples = MultisampleCount.None)
+        MultisampleCount samples = MultisampleCount.None, VectorRenderer.SceneLight? light = null)
     {
         lock (Lock)
         {
@@ -150,8 +150,10 @@ internal static class GpuFixtureRenderer
             cl.Clear(target, new Color4(0.2f, 0.2f, 0.2f, 1));
             cl.Clear(depth, DepthStencilClearOptions.DepthBuffer | DepthStencilClearOptions.Stencil, 1, 0);
             if (globeTiles != null) DrawGlobeTileDepth(gpu, cl, globeTiles, frame.Eye!.Value, frame.Radius, view, projection);
-            var renderer = new VectorRenderer { FadeDuration = 0 };   // one frame: every label placed in it
-            renderer.DrawFrame(cl, gpu.Context, gpu.Effect, gpu.SymbolEffect, gpu.CircleEffect, view, projection, height, frame, renderer.Lift, linearize: false, flat: false);
+            // one frame: every label placed in it; with a light, its shadows as vvvv draws them
+            var renderer = new VectorRenderer { FadeDuration = 0, Light = light };
+            renderer.DrawFrame(cl, gpu.Context, gpu.Effect, gpu.SymbolEffect, gpu.CircleEffect, view, projection, height, frame, renderer.Lift, linearize: false, flat: false,
+                shadowEffect: gpu.ShadowEffect, shadowEffectMS: gpu.ShadowEffectMS);
             if (fog && VectorRenderer.FogOf(frame) is { } f)
             {
                 using var pass = new FogPass();

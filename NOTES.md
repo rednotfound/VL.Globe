@@ -821,3 +821,10 @@ looked fine - "which makes one think it works". Two causes, estimated at 100 m h
 - **SunLight unconnected is now**: after sunset there is no shadow at all, which looks broken. The help
   patch feeds `Create (Year Month Day Hour Minute Second Kind)` [System.DateTime] with Kind Utc (1:00 =
   10:00 in Tokyo); Kind Local is the computer's clock, not the place's.
+- **That fix blackened walls in vvvv and drew no shadow offscreen** (the user's view
+  #17.41/35.68526/139.80589/87.4/47.9, 18:42): `Texture2DMS.GetDimensions` through Stride 4.2's SDSL gave
+  a wrong sample count - samples read past the last. The count now comes from C# (`GhSamples`, the scene
+  depth's MultisampleCount). Found by `ViewProbe` with `VLGLOBE_SUN=2026-11-24T01:00:00Z VLGLOBE_MSAA=4`
+  (new): old shaders shadowed, new ones not; a constant 4 shadowed. **My rung 4 of the fix had looked at
+  outlines only, in a crop - not whether the shadows were still there.** The tests compile the MS
+  shader but never draw with it.

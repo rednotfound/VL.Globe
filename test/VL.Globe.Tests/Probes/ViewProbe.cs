@@ -59,15 +59,22 @@ public class ViewProbe(ITestOutputHelper output)
         var projection = Matrix.PerspectiveFovRH((float)FovY, (float)(W / H), (float)(height * 0.01), 10f);
         foreach (var i in gpu.Frame!.Items.Where(i => i.Pass == VectorRenderer.Pass.ExtrusionColor))
             output.WriteLine($"  extrusion z{Math.Log2(i.Tiles)} clip {i.Clip} {i.Count} indices");
+        output.WriteLine($"light: {Sun()?.ToString() ?? "default"}");
         foreach (bool fog in new[] { false, true })
         {
             var px = GpuFixtureRenderer.RenderGlobe(gpu.Frame!, viewRotation, projection, (int)W, (int)H, fog, tiles,
-                Environment.GetEnvironmentVariable("VLGLOBE_MSAA") == "4" ? global::Stride.Graphics.MultisampleCount.X4 : global::Stride.Graphics.MultisampleCount.None);
+                Environment.GetEnvironmentVariable("VLGLOBE_MSAA") == "4" ? global::Stride.Graphics.MultisampleCount.X4 : global::Stride.Graphics.MultisampleCount.None, Sun());
             var file = Path.Combine(Path.GetTempPath(), $"vlglobe-view{(fog ? "-fog" : "")}.bmp");
             Bmp(file, px, (int)W, (int)H);
             output.WriteLine("wrote " + file);
         }
     }
+
+    // VLGLOBE_SUN=2026-11-24T01:00Z: SunLight at that moment, white, intensity 1, shadows on
+    static VectorRenderer.SceneLight? Sun() =>
+        Environment.GetEnvironmentVariable("VLGLOBE_SUN") is { Length: > 0 } s
+            ? new VectorRenderer.SceneLight(SunPosition.Direction(DateTime.Parse(s, null, System.Globalization.DateTimeStyles.AdjustToUniversal)), Vector3.One, 0.5f, Shadows: true)
+            : null;
 
     static void Bmp(string file, byte[] rgba, int w, int h)
     {

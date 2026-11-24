@@ -22,6 +22,7 @@ shader GlobeShadowBase : ShaderBase
         stage float GhStrength;             // 0: no shadow, 1: black
         stage float2 GhFade;                // the view distance where the shadow begins to fade and where it is gone
         stage float3 GhLightView;           // towards the light, in view space
+        stage int GhSamples;                // the scene depth's samples per pixel: 1, or 2, 4, 8 multisampled
     }
 
     stage Texture2D<float> GhShadowMap0;
@@ -31,7 +32,6 @@ shader GlobeShadowBase : ShaderBase
     stage stream float2 GhClip;
 
     abstract float DepthAt(int2 pixel, int sample);
-    abstract int Samples();
 
     stage override void VSMain()
     {
@@ -107,8 +107,10 @@ shader GlobeShadowBase : ShaderBase
         // inside a surface every sample has the pixel's depth: shaded once. On an outline (a multisampled
         // target, a building's edge against the ground) each sample is shaded and the pixel gets their
         // mean - shaded once from the first sample, the outlines lost their antialiasing: a staircase.
-        // (Stride 4.2's shader parser has no SV_SampleIndex, which would run this per sample.)
-        int count = Samples();
+        // (Stride 4.2's shader parser has no SV_SampleIndex, which would run this per sample. The count
+        // comes from C#: Texture2DMS.GetDimensions, through Stride's translation, gave a wrong one - every
+        // sample read past the last, walls black in vvvv and no shadow at all offscreen.)
+        int count = GhSamples;
         float first = DepthAt(pixel, 0);
         bool outline = false;
         [loop] for (int s = 1; s < count; s++)

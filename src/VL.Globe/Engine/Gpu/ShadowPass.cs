@@ -171,6 +171,7 @@ internal sealed class ShadowPass : IDisposable
         Set(p, "GhStrength", Strength);
         Set(p, "GhFade", fit.Fade);
         Set(p, "GhLightView", fit.LightView);
+        Set(p, "GhSamples", Math.Max(1, (int)sceneDepth.MultisampleCount));   // None = 1, X2 = 2, X4 = 4, X8 = 8
         SetTexture(p, "GhShadowMap0", _maps[0]!);
         SetTexture(p, "GhShadowMap1", _maps[1]!);
         SetTexture(p, "GhSceneDepth", sceneDepth);
