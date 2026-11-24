@@ -34,6 +34,7 @@ engine"), the tests mirroring them, probes skipped unless `VLGLOBE_PROBE=1`, the
 `tools\Nodes.psd1`. Step 3, the user's choices: VectorTiles' drape retired (the `Rendering` pin gone), the hand-written
 IDs replaced; the family's `tools\` stay per repository, no CI. `GlobeNode.cs` split into partial
 files by concern (Tiles, Show, Overlays, Background, Perf; 2026-11-24). Still open: where terrain goes.
+**Next (2026-11-24): ROADMAP 6c, raster layers on the GPU, step 1** - docs/DESIGN-RASTER-GPU.md (the user chose one architecture). Shapes are GPU layers since ca1f0bf. Light/shadows: ROADMAP 6b, docs/DESIGN-LIGHT.md. Open: the 45 N parallel dotted west of France; my vvvv hung on exit twice (NOTES.md); overlapping buildings doubling in colour (stencil, offered); SunLight's output `Entity` vs DirectionalLight's `Output` (asked).
 
 **Waiting on the user:** their judgement of the gestures and the help patches' layout
 (docs/DESIGN-NODES.md); the drag near the poles and the attribution, not yet seen by them in vvvv.

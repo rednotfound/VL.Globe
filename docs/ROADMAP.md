@@ -662,6 +662,16 @@ can be set, nothing casts a shadow. Three steps, the user's choices (2026-11-24)
 
 Design and the survey: docs/DESIGN-LIGHT.md.
 
+### 6c. Raster layers on the GPU — asked by the user 2026-11-24, designed, not started
+
+Shapes became GPU layers of their own on 2026-11-24 (Geometry, FeatureLayer, Graticule; the drape kept
+the raster layers above the first). The user: raster layers too ("应该把栅格图层也做成GPU图层"), for one
+architecture, the same behaviour everywhere, and COG/COPC later. Every raster layer a `Raster` pass of
+`VectorRenderer` in the Input's order; the globe's tiles keep shape, depth and Background. Three steps:
+(1) the layers above the first, the drape removed; (2) as good as the globe's own imagery, judged by
+the user side by side; (3) the first layer too, the tiles' imagery material removed.
+Design and the survey of MapLibre and Cesium: docs/DESIGN-RASTER-GPU.md.
+
 ### 7. Gestures and tidying (before the release)
 
 **The drag near the poles — fixed 2026-11-23** (the user: "视野在南北极附近拖拽的时候还是会抖动，甚至会闪动到北极去";
