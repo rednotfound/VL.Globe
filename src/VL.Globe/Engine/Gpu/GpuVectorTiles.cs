@@ -59,7 +59,10 @@ internal sealed class GpuVectorTiles : IDisposable
     /// <summary>Seconds a raster layer's finer image takes to fade in over the one it replaces (the Globe's Fade Duration).</summary>
     public double RasterFade = 0.3;
     /// <summary>Requests a raster layer has running at once (the Globe's Max Requests In Flight).</summary>
-    public int RasterRequests = 6;
+    public int RasterMaxRequests = 6;
+    /// <summary>The raster layers' requests not yet answered, made, and the bytes arrived: the Globe's outputs.</summary>
+    public (int loading, int requests, long bytes) RasterCounts
+        => (_rasters.Values.Sum(r => r.Loading), _rasters.Values.Sum(r => r.Requests), _rasters.Values.Sum(r => r.Bytes));
     readonly System.Diagnostics.Stopwatch _clock = System.Diagnostics.Stopwatch.StartNew();
     readonly VectorRenderer.Frame[] _frames = { new(), new() };
     // the background grids, by tile: no data in them, built at once on this thread
@@ -407,7 +410,7 @@ internal sealed class GpuVectorTiles : IDisposable
         void AddRaster(GlobeTileSource source, float opacity, List<TileKey> squares)
         {
             if (!_rasters.TryGetValue(source, out var raster)) _rasters[source] = raster = new RasterTiles(source);
-            var draws = raster.Step(device, squares, _frame, _clock.Elapsed.TotalSeconds, RasterFade, RasterRequests);
+            var draws = raster.Step(device, squares, _frame, _clock.Elapsed.TotalSeconds, RasterFade, RasterMaxRequests);
             if (opacity <= 0) return;
             var whole = VectorDrawList.Widen(new Vector4(0, 0, 1, 1));
             foreach (var d in draws)

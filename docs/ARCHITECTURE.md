@@ -26,7 +26,7 @@ the LTS line** (user, 2026-11-20); `tools\Find-Vvvv.ps1` stays below 8.0.
 | `GlobeWindow [Globe]` | **patched** process | `VL.Globe.vl` | the front door: the whole chain below in one node, with its own window; tells Globe the window's real height |
 | `OpenStreetMap [Globe]` | process | `TileSources.cs` | an `HttpTileSource` for OSM, built once (an HttpTileSource owns an HttpClient and is not disposable) |
 | `XyzTiles [Globe]` | process | `TileSources.cs` | any `{z}/{x}/{y}` server + its required attribution; one source per URL |
-| `Globe [Globe]` | process | `GlobeNode.cs` (+ `.Tiles`, `.Show`, `.Background`, `.Perf`) | the engine: select → request → build → draw → fade, the other `Layers` on the GPU; outputs one Stride `Entity` |
+| `Globe [Globe]` | process | `GlobeNode.cs` (+ `.Tiles`, `.Show`, `.Background`, `.Perf`) | the engine: select → build the sphere's tiles (shape, depth, Background) → every `Input` layer on the GPU, in order; outputs one Stride `Entity` |
 | `Geometry`, `FeatureLayer [Globe.Layers]` | process | `GlobeLayers.cs` | NTS geometries / features in one style → a layer for `Layers`, VL.Mapsui's shape |
 | `VectorStyle [Globe.Styles]` | static | `GlobeLayers.cs` | fill, line colour, line width in pixels; unwired colours default as Mapsui's |
 | `GlobeCamera [Globe]` | process | `GlobeCameraNodes.cs` | a geographic camera state and the Stride camera entity it drives, camera-relative |
@@ -118,36 +118,35 @@ Each frame, on vvvv's main thread:
    lon/lat clamped into the tile, not its bounding sphere), × screen height / (2 tan(fov/2)).
    Default **1.41 = √2: the ideal level rounded**, as MapLibre (raster `roundZoom`) and Cesium
    (imagery `Math.round`) choose imagery; tiles show at 0.71–1.41×. Bounded by `Max Zoom` and 400.
-3. **Request** (`DrawSet.Requests`, pure): every wanted tile's zoom-2 ancestor first, then the tile,
-   skipping loaded/pending/failed; at most `Max Requests In Flight` at once, on the thread pool via
-   `HttpTileSource.GetTileAsync` (which reads and writes the disk cache itself).
-4. **Build** what arrived, at most 8 per frame: decode (`Image.Load`, sRGB), a **mip chain built on
-   the CPU in linear light** (`MipChain`: 2 × 2 boxes; averaging sRGB bytes darkens thin lines and
-   text), sampled trilinear and clamped; a mesh of offsets from the tile centre (rows and columns
-   linear in Mercator, `SegmentsFor(zoom) = max(8, 64 >> zoom)`); an emissive-only material.
-5. **Draw** (`DrawSet.Resolve`, pure): each wanted tile, or its nearest arrived ancestor; never a tile
-   together with one of its ancestors (coplanar → z-fight).
-6. **Fade** (`Fade`, MapLibre's raster fade, `Fade Duration` 0.3 s): a tile that replaces a drawn
-   ancestor gets a second material, `own × f + ancestor-part × (1 − f)`, the ancestor sampled at the
-   child's part (`uv × scale + offset`); zooming out, the drawn descendants fade to their parts of the
-   parent before the parent replaces them — only when they cover it (`Fade.Covers`). One layer per
-   spot throughout. The weights are keyed `ComputeFloat4`s set every frame, **alpha 1**: Stride's
-   `BinaryOperator.Add` is `ComputeColorAdd3ds`, an alpha-weighted blend. An ancestor under a running
-   fade is never evicted.
-7. **The raster layers above the bottom one are GPU layers** (ROADMAP 6c step 1, docs/DESIGN-RASTER-GPU.md):
-   `RasterTiles` per source fetches and mipmaps its images on the thread pool (straight alpha, sRGB), and
-   each frame gives every wanted globe tile its own square's image or the finest loaded ancestor's through
-   a rectangle (stand-in and overscale alike), with GL JS's cross-fade both ways (two images mixed in the
-   shader). `VectorRenderer`'s `Raster` pass draws them on the tile's background grid (pole caps included),
-   with the ground's depth, in the Input's order among the vector layers. Until 2026-11-24 they were draped
-   by SkiaSharp into each tile's overlay image (`GlobeNode.Overlays`, `Engine/Draped`, removed).
+3. **Build** the sphere's tiles (since ROADMAP 6c step 3, 2026-11-24, the globe is a sphere in its
+   `Background` colour and nothing else - the user: "地球globe就是蓝色的球就结束"): `DrawSet.Requests`'
+   order (each wanted tile's zoom-2 ancestor first, nearest first), at most 8 per frame; a mesh of offsets
+   from the tile centre (rows and columns linear in Mercator, `SegmentsFor(zoom) = max(8, 64 >> zoom)`, caps
+   to the poles) and one emissive material shared by all, the colour as a 1 × 1 sRGB texture. The tiles
+   are the globe's shape and depth: the scene's entities and the buildings' shadows are tested against
+   them. A transparent `Background` builds none.
+4. **Draw** (`DrawSet.Resolve`, pure): each wanted tile, or its nearest built ancestor's colour on the
+   square's own mesh (a stand-in); never a tile together with one of its ancestors (coplanar → z-fight).
+   No fades: one colour.
+5. **Every layer of the Input on the GPU, in order** (ROADMAP 6c, docs/DESIGN-RASTER-GPU.md). Raster
+   layers - OpenStreetMap, XyzTiles, the first one too: `RasterTiles` per source fetches (`HttpTileSource`,
+   its disk cache shared with VL.Mapsui; at most `Max Requests In Flight`, coarse first) and decodes its
+   images on the thread pool with a **mip chain built on the CPU in linear light** (`MipChain`; averaging
+   sRGB bytes darkens thin lines and text), and each frame gives every wanted globe tile its own square's
+   image or the finest loaded ancestor's through a rectangle (stand-in and overscale alike), with GL JS's
+   cross-fade both ways (`Fade Duration`; two images mixed in the shader, `own × f + ancestor × (1 − f)`;
+   zooming out the finer squares fade to the coarser image before it replaces them). `VectorRenderer`'s
+   `Raster` pass draws them on the tile's background grid (pole caps included), anisotropic, with the
+   ground's depth, among the vector layers. Until 2026-11-24 the first raster layer was the tiles' own
+   material (fades as material swaps) and the others were draped by SkiaSharp into each tile's overlay
+   image (`GlobeNode.Overlays`, `Engine/Draped`); both removed.
    Geometry, FeatureLayer and Graticule are GPU layers of their
    own (`GeometryStyle`), with or without VectorTiles - the user: one way to draw them, "作为独立的
    layer存在"; drawn over every raster layer. They had been draped by Skia (`TileOverlay`, removed)
    unless a VectorTiles layer came before them. VectorTiles were draped too, by a
    SkiaSharp MapLibre painter measured against the render tests (ROADMAP 4b, 4c); judged "不太行"
    and removed with the `Rendering` pin (docs/HISTORY.md, NOTES.md 2026-11-24).
-7b. **VectorTiles on the GPU** (the only way since 2026-11-24; ROADMAP 4d, docs/DESIGN-GPU-VECTOR.md) —
+5b. **VectorTiles on the GPU** (the only way since 2026-11-24; ROADMAP 4d, docs/DESIGN-GPU-VECTOR.md) —
    MapLibre's architecture, *geometry cached, pixels drawn every frame*:
    - `VectorTile.cs` decodes an MVT layer into a `FeatureTable` (`FeatureGeometry.cs`): points, rings,
      parts, tags and ids as a few arrays, values in a `ValueTable` whose strings are made at their
@@ -176,13 +175,14 @@ Each frame, on vvvv's main thread:
      the pixel shader, clipping to the tile's square by discard (rectangles overlapping by 2e-4),
      vertices lifted 0.0015 of their distance towards the eye, depth tested and not written.
      Outlines are hardware-antialiased lines blended straight (the coverage goes into alpha only).
-8. **Every tile's translation** is set from this frame's eye; the **background sphere** (radius
+6. **Every tile's translation** is set from this frame's eye; the **background sphere** (radius
    0.995, `Background` colour, a 1 × 1 sRGB texture — an emissive `ComputeColor` drew black) too,
    and it is drawn whenever there is a camera, Enabled or not.
-9. **Evict** least-recently-used tiles beyond 600; **report** `Tiles Visible`, `Tiles Loading`,
-   `Requests Sent`, `Bytes Received`, `Attribution`, `Status` — logging `Status` when its head changes.
+7. **Evict** least-recently-used tiles beyond 600 (each raster layer its images beyond 600); **report**
+   `Tiles Visible`, and the raster layers' `Tiles Loading`, `Requests Sent`, `Bytes Received`;
+   `Attribution`, `Status` — logging `Status` when its head changes.
 
-`Enabled` off requests nothing and draws only the background. A source change resets everything.
+`Enabled` off requests nothing and draws only the background.
 A one-level seam where neighbours differ stays visible on a still globe; MapLibre and Cesium accept
 it too — rounding makes its two sides 0.71× and 1.41× instead of 1× and 2×.
 

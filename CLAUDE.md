@@ -34,7 +34,7 @@ engine"), the tests mirroring them, probes skipped unless `VLGLOBE_PROBE=1`, the
 `tools\Nodes.psd1`. Step 3, the user's choices: VectorTiles' drape retired (the `Rendering` pin gone), the hand-written
 IDs replaced; the family's `tools\` stay per repository, no CI. `GlobeNode.cs` split into partial
 files by concern (Tiles, Show, Overlays, Background, Perf; 2026-11-24). Still open: where terrain goes.
-**ROADMAP 6c step 1 done (2026-11-24)**: raster layers above the first are GPU layers (`Engine/Gpu/RasterTiles.cs`, the `Raster` pass), the Skia drape removed; the user, in vvvv: "似乎问题不大". **Next: 6c step 2** (side by side with the globe's imagery, the user judges), then step 3 - docs/DESIGN-RASTER-GPU.md. Shapes are GPU layers since ca1f0bf. Light/shadows: ROADMAP 6b, docs/DESIGN-LIGHT.md. Open: the 45 N parallel dotted west of France; my vvvv hung on exit twice (NOTES.md); overlapping buildings doubling in colour (stencil, offered); SunLight's output `Entity` vs DirectionalLight's `Output` (asked).
+**ROADMAP 6c done (2026-11-24)**: every raster layer is a GPU layer (`Engine/Gpu/RasterTiles.cs`, the `Raster` pass), the globe is a sphere in its Background colour - shape and depth only (the user: "地球globe就是蓝色的球就结束"); judged in vvvv. Offered, not asked yet: a Group (Spectral) cell in `Stack tile layers`. Shapes are GPU layers since ca1f0bf. Light/shadows: ROADMAP 6b, docs/DESIGN-LIGHT.md. Open: the 45 N parallel dotted west of France; my vvvv hung on exit twice (NOTES.md); overlapping buildings doubling in colour (stencil, offered); SunLight's output `Entity` vs DirectionalLight's `Output` (asked).
 
 **Waiting on the user:** their judgement of the gestures and the help patches' layout
 (docs/DESIGN-NODES.md); the drag near the poles and the attribution, not yet seen by them in vvvv.
@@ -47,8 +47,8 @@ A reported view is drawn offscreen by `Probes\ViewProbe` (VLGLOBE_PROBE=1 VLGLOB
 | node | state |
 |---|---|
 | `GlobeWindow [Globe]` — patched in `VL.Globe.vl` | the front door; since 2026-11-23 Input (layers) + Camera + Title + Background + Scene + Enabled, pins in vvvv's order (`ManuallySortedPins`); docs/DESIGN-NODES.md |
-| `Globe [Globe]` — the tile engine | camera-relative, rounded levels, mipmaps, fades both ways, background sphere; user-judged |
-| `OpenStreetMap`, `XyzTiles`, `Group`, `Group (Spectral)` [Globe.Layers] | layers since 2026-11-23 (one Input, as Skia's Group); the bottom opaque one is the globe's imagery, the others GPU layers in the Input's order (6c step 1); disk cache shared with VL.Mapsui |
+| `Globe [Globe]` — the engine | camera-relative, rounded levels; the sphere in its Background colour, every Input layer on the GPU in order (raster: mipmaps, fades both ways); user-judged |
+| `OpenStreetMap`, `XyzTiles`, `Group`, `Group (Spectral)` [Globe.Layers] | layers since 2026-11-23 (one Input, as Skia's Group); every one a GPU layer in the Input's order (6c); disk cache shared with VL.Mapsui |
 | `GlobeCamera`, `Drag`, `ZoomByWheel`, `DragRotate [Globe]` | GlobeCamera as OrbitCamera since 2026-11-23: reads its window's mouse, Initial pins, Reset, Enabled; north stays up; a drag past the edge holds the horizon |
 | `GlobePositionComponent [Globe]` | stands an entity on the globe, placed at draw time; user-judged |
 | `ScreenToGlobe`, `GlobeToScreen`, `GlobeViewInfo [Globe]` | built; user-judged |
@@ -56,7 +56,7 @@ A reported view is drawn offscreen by `Probes\ViewProbe` (VLGLOBE_PROBE=1 VLGLOB
 | `VectorTiles [Globe.Layers]` | built 2026-11-21: a MapLibre style's fills/lines/background from vector tiles, with or without a Tile Source; drawn by the GPU (judged by the user moving; the drape, "不太行", removed 2026-11-24) |
 | `ToGlobe`, `ToGlobe (Coordinate)`, `FromGlobe [Globe]` | built, 4 rungs, **absolute** — right under OrbitCamera; under GlobeCamera use GlobePositionComponent |
 
-353 tests pass and 8 probes are skipped (incl. MapLibre v6.19.0's render tests — 409 fixtures, fetched by script — run offscreen on a D3D11 device of the test's own, on the GPU path: 329 pass). Branch `feature/camera-relative`, pushed to `github.com/rednotfound/VL.Globe`
+351 tests pass and 8 probes are skipped (incl. MapLibre v6.19.0's render tests — 409 fixtures, fetched by script — run offscreen on a D3D11 device of the test's own, on the GPU path: 329 pass). Branch `feature/camera-relative`, pushed to `github.com/rednotfound/VL.Globe`
 (public); not merged, not published. Verified on vvvv **7.4 (LTS)**; `Find-Vvvv.ps1` stays below 8.0.
 
 ## Facts this repo paid for (details in NOTES.md)
@@ -107,8 +107,8 @@ A reported view is drawn offscreen by `Probes\ViewProbe` (VLGLOBE_PROBE=1 VLGLOB
   depth writes there are dropped in silence; 3D buildings draw on their own copy of the scene's depth.
 - **Measure before fixing a hitch**: the `Globe perf` lines in vvvv's log, with `GC.GetTotalPauseDuration`;
   a gen-2 count in the same second was not the cause.
-- **No drape left** (2026-11-24): raster layers above the first are a `Raster` pass of GlobeVector on each wanted
-  globe tile's background grid, an ancestor's image through a rectangle. **Stride's PSMain returns its streams**:
+- **No drape, no imagery of the globe's own** (2026-11-24): every raster layer is a `Raster` pass of GlobeVector on
+  each wanted globe tile's background grid, an ancestor's image through a rectangle; the tiles are one colour. **Stride's PSMain returns its streams**:
   a `return;` in an SDSL pixel shader is X3080 - branch with if/else. SkSL shaders crash SkiaSharp 2.88's CPU backend.
 - **Edit scripts read and write with `newline=''`**: Git Bash `sed -i` turned a CRLF file into LF, and
   Python's text mode turned LF into CRLF — each a "whole file changed" diff.

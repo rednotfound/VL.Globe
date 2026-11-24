@@ -55,6 +55,10 @@ internal sealed class RasterTiles : IDisposable
     public int Loaded => _entries.Values.Count(e => e.Texture != null);
     public int Loading => _running;
     public string LastError { get; private set; } = "";
+    /// <summary>Requests made, and bytes of image data arrived (from the network or the disk cache).</summary>
+    public int Requests { get; private set; }
+    long _bytes;
+    public long Bytes => System.Threading.Interlocked.Read(ref _bytes);
 
     /// <summary>The source tile a globe tile draws: its own square, or above the source's maxzoom the ancestor there.</summary>
     internal TileKey SourceKey(TileKey globeTile) => globeTile.AncestorAt(_maxZoom);
@@ -155,11 +159,13 @@ internal sealed class RasterTiles : IDisposable
         var e = new Entry { LastUsed = _frame };
         _entries[key] = e;
         _running++;
+        Requests++;
         var http = _source.Http;
         e.Job = Task.Run(async () =>
         {
             var bytes = await http.GetTileAsync(new BruTile.TileInfo { Index = new BruTile.TileIndex(key.X, key.Y, key.Zoom) }).ConfigureAwait(false);
             if (bytes is not { Length: > 0 } || _disposed) return null;
+            System.Threading.Interlocked.Add(ref _bytes, bytes.Length);
             // decoded and mipmapped here, not in Update; a translucent PNG's levels averaged by alpha
             return TileTextures.LoadMipmapped(device, bytes, straightAlpha: true);
         });

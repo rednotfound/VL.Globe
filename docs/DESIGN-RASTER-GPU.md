@@ -57,6 +57,8 @@ layer above a shape cannot cover it, and Opacity, fades and fallback are code tw
 
 ## The steps
 
+**All three done 2026-11-24** (ROADMAP 6c; step 2 compared in vvvv by the bottom layer's Opacity, 1 vs 0.999).
+
 1. **GPU raster layers for the raster layers above the first** - all of the design above. Then the
    Skia overlay (`Engine/Draped`, `GlobeNode.Overlays.cs`) is removed: no drape left. Tests offscreen:
    a raster layer over a shape layer and under another (order), an ancestor through its rectangle

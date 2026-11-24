@@ -662,7 +662,7 @@ can be set, nothing casts a shadow. Three steps, the user's choices (2026-11-24)
 
 Design and the survey: docs/DESIGN-LIGHT.md.
 
-### 6c. Raster layers on the GPU — asked by the user 2026-11-24; step 1 done 2026-11-24
+### 6c. Raster layers on the GPU — asked by the user 2026-11-24; done 2026-11-24 (all three steps)
 
 Shapes became GPU layers of their own on 2026-11-24 (Geometry, FeatureLayer, Graticule; the drape kept
 the raster layers above the first). The user: raster layers too ("应该把栅格图层也做成GPU图层"), for one
@@ -676,7 +676,17 @@ Design and the survey of MapLibre and Cesium: docs/DESIGN-RASTER-GPU.md.
 thread pool, fades both ways per wanted globe tile), the `Raster` pass in `VectorRenderer` and GlobeVector.sdsl,
 `GpuVectorTiles.Update` taking the Input's layers in order (`GpuLayer`); `GlobeNode.Overlays.cs` and
 `Engine/Draped` removed. `RasterLayerFacts` (order among shapes, opacity, an ancestor through its rectangle, the
-pole cap, multisampled). Seen in vvvv (Stack tile layers, Enabled on): "似乎问题不大". **Next: step 2.**
+pole cap, multisampled). Seen in vvvv (Stack tile layers, Enabled on): "似乎问题不大".
+
+**Step 2 done 2026-11-24**: OSM drawn both ways in vvvv (Opacity 1: the tiles' material; 0.999: a GPU layer
+over the plain tiles), the user: "我觉得没区别". No offscreen comparison: the harness draws only the GPU path,
+and a renderer for a path about to go was not worth building.
+
+**Step 3 done 2026-11-24**: the globe is a sphere in its Background colour (the user: "地球globe就是蓝色的球
+就结束"): the tiles keep shape and depth, one shared material; `SplitLayers`, the tiles' requests, textures,
+fade materials and borrowed stand-in images removed. Every raster layer, the first too, is a GPU layer;
+Tiles Loading / Requests Sent / Bytes Received count the raster layers. A transparent Background builds no
+tiles (the bare Globe node's default; GlobeWindow and the help wire blue). Seen in vvvv: "似乎没问题".
 
 ### 7. Gestures and tidying (before the release)
 

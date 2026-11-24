@@ -25,13 +25,14 @@ namespace VL.Globe;
 // The /// text is the tooltip. The reasoning lives in these comments.
 //
 // The engine the lab could not be (vl-overworld ACT-IV-LAB experiments 5-7): every frame it reads
-// the camera, asks TileSelector which tiles the view earns, draws what has arrived (DrawSet: the
-// nearest arrived ancestor stands in, never a tile over its own ancestor) and requests what has not,
-// coarse first, a few at a time. A process node because it owns GPU buffers, textures, HTTP requests
-// and a cache; a static method would rebuild all of them sixty times a second.
+// the camera, asks TileSelector which tiles the view earns and builds the sphere's surface from them,
+// a few a frame (DrawSet: the nearest built ancestor stands in, never a tile over its own ancestor).
+// The tiles are the globe's shape, depth and Background colour only; every layer of the Input - OSM's
+// tiles too - is drawn on them by the GPU, in order (ROADMAP 6c). A process node because it owns GPU
+// buffers, textures, HTTP requests and caches; a static method would rebuild all of them sixty times a second.
 //
-// Threading: requests run on the thread pool and only enqueue bytes. Every GPU resource is created
-// and every entity is added or removed in Update, on vvvv's main thread, a few per frame.
+// Threading: requests run on the thread pool; the tiles' entities are added or removed in Update, on
+// vvvv's main thread, a few per frame.
 //
 // Enabled defaults to off, as everywhere in this family: opening a document runs it, and whoever
 // opened it has not agreed to fetch anything yet. Off draws nothing and requests nothing.
@@ -53,14 +54,12 @@ public sealed partial class GlobeNode : IDisposable
     int _failedCount;
     readonly Entity _root = new("Globe");
     readonly Dictionary<TileKey, Slot> _loaded = new();
-    readonly HashSet<TileKey> _pending = new();
     readonly HashSet<TileKey> _failed = new();
     readonly HashSet<TileKey> _shown = new();
     // this frame's wanted tiles: only they fetch vector tiles; an ancestor shown while they load draws
     // what is already here (on 2026-11-21 stand-ins fetched 118 tiles, 31 MB, for one street-level
     // view: low-zoom vector tiles reach 1.3 MB)
     HashSet<TileKey> _wantedSet = new();
-    readonly ConcurrentQueue<(TileKey key, byte[]? bytes, GlobeTileSource source)> _arrived = new();
     GraphicsDevice? _device;
     bool _deviceLogged;
 
@@ -77,9 +76,7 @@ public sealed partial class GlobeNode : IDisposable
         }
         catch (Exception e) { return $"{GraphicsDevice.Platform}, flags not read: {e.Message}"; }
     }
-    GlobeTileSource? _source;
-    int _frame, _requests;
-    long _bytes;
+    int _frame;
     float _radius = 1f;
     Vector3 _lastEye;
     D3? _relativeEye;   // this frame's eye when the camera is camera-relative (GlobeCamera), else null
@@ -127,17 +124,17 @@ public sealed partial class GlobeNode : IDisposable
     /// <param name="input">What to draw on the surface: a layer from OpenStreetMap, XyzTiles, VectorTiles, FeatureLayer or Geometry, or several from Group.</param>
     /// <param name="camera">The camera entity the scene is rendered with.</param>
     /// <param name="radius">The globe's radius in scene units.</param>
-    /// <param name="background">The globe's colour where no tile has arrived, also while off. Transparent: none.</param>
+    /// <param name="background">The globe's colour under its layers, also while off. Transparent: none.</param>
     /// <param name="screenHeight">The height of the view in pixels: SceneWindow's Client Bounds. GlobeWindow wires it.</param>
     /// <param name="maxZoom">The finest zoom ever requested.</param>
     /// <param name="screenSpaceError">Refine while a tile pixel would cover more screen pixels than this. 1.41 shows tiles at 0.71-1.41x, as MapLibre and Cesium do.</param>
-    /// <param name="maxRequestsInFlight">Requests running at once.</param>
-    /// <param name="fadeDuration">Seconds a finer tile takes to fade in over the one it replaces. 0: at once.</param>
+    /// <param name="maxRequestsInFlight">Requests running at once, per tile layer.</param>
+    /// <param name="fadeDuration">Seconds a tile layer's finer tile takes to fade in over the one it replaces. 0: at once.</param>
     /// <param name="enabled">Off: nothing is drawn or requested - the globe shows its Background colour.</param>
-    /// <param name="tilesVisible">Tiles drawn this frame.</param>
-    /// <param name="tilesLoading">Requests not yet answered.</param>
-    /// <param name="requestsSent">Requests made since the source changed - cached tiles are not requests.</param>
-    /// <param name="bytesReceived">Bytes of tile data arrived, from the network or the disk cache.</param>
+    /// <param name="tilesVisible">Tiles of the globe drawn this frame.</param>
+    /// <param name="tilesLoading">The tile layers' requests not yet answered.</param>
+    /// <param name="requestsSent">The tile layers' requests made.</param>
+    /// <param name="bytesReceived">Bytes of the tile layers' images arrived, from the network or the disk cache.</param>
     /// <param name="attribution">Every layer's credit, joined by " | ". Drawn bottom right of the view while Enabled.</param>
     /// <param name="status">Why nothing is drawn, or what is happening.</param>
     [return: Pin(Name = "Entity")]
@@ -160,35 +157,18 @@ public sealed partial class GlobeNode : IDisposable
         // the frame that just ended, taken apart if it missed its vsync (ROADMAP 4g step 4)
         if (_lastUpdateAt >= 0 && _anatomy.Explain(updateStart - _lastUpdateAt, updateStart, _gcPauseAtStart, _gen0AtStart, _gen2AtStart, _gpu.LastDraw) is { } slow)
             _logger.LogInformation("Globe frame: {Frame}", slow);
-        // One Input (docs/DESIGN-NODES.md): its layers in order. The bottom tile layer gives the globe's
-        // own imagery; every layer after it - more tile layers at their opacity, vector tiles, shapes - is
-        // a GPU layer drawn over it in order (ROADMAP 6c: raster layers on the GPU too, no drape left).
-        var (tileSource, layers) = SplitLayers(input);
-        layers = ShapesOnTheGpu(layers);
+        // One Input (docs/DESIGN-NODES.md): its layers in order, each a GPU layer drawn over the ones before
+        // it - tile layers, vector tiles, shapes (ROADMAP 6c). The globe under them is its Background colour.
+        var layers = ShapesOnTheGpu(input?.Leaves().ToList() ?? new List<GlobeLayer>());
         try
         {
             var entity = UpdateCore(out tilesVisible, out tilesLoading, out requestsSent, out bytesReceived, out _, out status,
-                tileSource, camera, enabled, radius, background, maxZoom, screenSpaceError, maxRequestsInFlight, screenHeight, fadeDuration, layers);
+                camera, enabled, radius, background, maxZoom, screenSpaceError, maxRequestsInFlight, screenHeight, fadeDuration, layers);
             attribution = Attribution(input);
             _attributionLayer.Text = enabled ? attribution : "";
             return entity;
         }
         finally { Measure(updateStart); }
-    }
-
-    /// <summary>
-    /// The globe's own imagery and what is drawn over it, from the Input's layers in order: the bottom
-    /// tile layer is the imagery when it is opaque; any other layer - and that one too when its Opacity
-    /// is below 1, over plain tiles in the Background colour - is a GPU layer over it.
-    /// </summary>
-    // The bottom layer's Opacity was first left without effect ("it is the imagery"); the user: "没有必要，
-    // 因为用户知道自己再做什么" (2026-11-23). Translucent, it goes the GPU's way like the layers above it.
-    internal static (GlobeTileSource? imagery, List<GlobeLayer> over) SplitLayers(GlobeLayer? input)
-    {
-        var leaves = input?.Leaves().ToList() ?? new List<GlobeLayer>();
-        var bottom = leaves.FirstOrDefault(l => l.Raster is not null);
-        if (bottom is null || bottom.Opacity < 1) return (null, leaves);
-        return (bottom.Raster, leaves.Where(l => !ReferenceEquals(l, bottom)).ToList());
     }
 
     // Every FeatureLayer, Geometry and Graticule is a layer of its own drawn by the GPU (GeometryStyle), with
@@ -229,20 +209,17 @@ public sealed partial class GlobeNode : IDisposable
 
     Entity UpdateCore(
         out int tilesVisible, out int tilesLoading, out int requestsSent, out long bytesReceived, out string attribution, out string status,
-        GlobeTileSource? tileSource, Entity? camera, bool enabled, float radius, Color4 background,
+        Entity? camera, bool enabled, float radius, Color4 background,
         int maxZoom, float screenSpaceError, int maxRequestsInFlight, float screenHeight, float fadeDuration,
         IEnumerable<GlobeLayer>? layers)
     {
         _frame++;
-        _fadeDuration = Math.Max(0, fadeDuration);
-        if (!ReferenceEquals(tileSource, _source)) { Reset(); _source = tileSource; }
-        attribution = _source?.Attribution ?? "";
+        double fade = Math.Max(0, fadeDuration);
+        attribution = "";
         status = "";
 
         _device ??= GetDevice();
         if (_device is not null && !_deviceLogged) { _deviceLogged = true; _logger.LogInformation("Globe device: {Device}", DeviceDescription(_device)); }
-        if (_device is not null) CreateArrived(_device);
-        Stage("arrived");
 
         if (Math.Abs(radius - _radius) > 0 && radius > 0)
         {
@@ -250,10 +227,9 @@ public sealed partial class GlobeNode : IDisposable
             foreach (var s in _loaded.Values) s.Entity.Transform.Scale = new Vector3(radius);
         }
 
-        // a globe with layers and no Tile Source still has tiles: plain ones in the background colour,
-        // the layers draped on them (the user, 2026-11-21: vector tiles must not need the raster)
-        bool layersOnly = _source is null && layers is not null && layers.Any(l => l is { Enabled: true } && l.HasContent);
-        var wanted = enabled && (_source is not null || layersOnly) && camera is not null && _device is not null
+        // the tiles are wanted while there is a layer to draw on them
+        bool hasLayers = layers is not null && layers.Any(l => l is { Enabled: true } && l.HasContent);
+        var wanted = enabled && hasLayers && camera is not null && _device is not null
             ? Select(camera, Math.Clamp(maxZoom, 0, 22), screenSpaceError, screenHeight)
             : new List<TileKey>();
         _wantedSet = new HashSet<TileKey>(wanted);
@@ -261,34 +237,29 @@ public sealed partial class GlobeNode : IDisposable
         // Status says WHY the globe is empty before it says anything else: every silent failure in
         // this family looked like a working node with nothing to show.
         _status = !enabled ? "off - switch Enabled on to fetch"
-            : _source is null && !layersOnly ? "nothing to draw: connect OpenStreetMap, XyzTiles or another layer to Input"
+            : !hasLayers ? "nothing to draw: connect OpenStreetMap, XyzTiles or another layer to Input"
             : camera is null ? "no Camera"
             : _device is null ? "no Stride graphics device (is this patch rendering a Stride scene?)"
             : wanted.Count == 0 ? $"camera sees no tile (camera at {_lastEye.Length() / _radius:F3} radii)"
-            : $"{wanted.Count} wanted, zoom {wanted.Min(t => t.Zoom)}..{wanted.Max(t => t.Zoom)}; {_loaded.Count} loaded, {_pending.Count} loading, {_failedCount} failed"
-              + (_lastError.Length > 0 ? " - last error: " + _lastError : "")
-              + (layersOnly ? "; no tile layer: layers on plain tiles" : "")
+            : $"{wanted.Count} wanted, zoom {wanted.Min(t => t.Zoom)}..{wanted.Max(t => t.Zoom)}; {_loaded.Count} built"
+              + (_failedCount > 0 ? $", {_failedCount} failed - last error: " + _lastError : "")
               + (_gpu.Status.Length > 0 ? "; " + _gpu.Status : "");
         var head = _status.Split(';')[0];
         if (head != _lastLogged) { _logger.LogInformation("Globe: {Status}", _status); _lastLogged = head; }
 
+        // Transparent: no tiles - the layers alone, on the sphere's depth they compute themselves
+        bool tiles = background.A > 0;
+        if (_device is not null && tiles) Plain(_device, background);   // a new colour goes to every tile
         _created = 0;
-        if (wanted.Count > 0)
+        if (wanted.Count > 0 && tiles)
         {
-            // nearest first: a tilted view wants a hundred tiles at once, and the ground in front of the
-            // camera should sharpen before the horizon does (MapLibre sorts by distance to the centre)
-            foreach (var t in DrawSet.Requests(DrawSet.NearestFirst(wanted, _lastEye, _radius), k => _loaded.ContainsKey(k) || _pending.Contains(k) || _failed.Contains(k)))
+            // nearest first, the coarse fallback before: a tilted view wants a hundred tiles at once, and
+            // the ground in front of the camera comes first (MapLibre sorts by distance to the centre)
+            foreach (var t in DrawSet.Requests(DrawSet.NearestFirst(wanted, _lastEye, _radius), k => _loaded.ContainsKey(k) || _failed.Contains(k)))
             {
-                if (_source is null)
-                {
-                    // no imagery to wait for: the tile is built at once, a few a frame
-                    if (_created++ >= MaxCreatedPerFrame) break;
-                    try { _loaded[t] = Build(_device!, t, null, background); }
-                    catch (Exception e) { _failed.Add(t); _failedCount++; _lastError = $"{t}: {e.GetType().Name} {e.Message}"; }
-                    continue;
-                }
-                if (_pending.Count >= Math.Max(1, maxRequestsInFlight)) break;
-                Request(t, _source!);
+                if (_created++ >= MaxCreatedPerFrame) break;
+                try { _loaded[t] = Build(_device!, t, background); }
+                catch (Exception e) { _failed.Add(t); _failedCount++; _lastError = $"{t}: {e.GetType().Name} {e.Message}"; }
             }
         }
 
@@ -299,7 +270,7 @@ public sealed partial class GlobeNode : IDisposable
         _relativeEye = camera?.Get<GlobeCameraFrame>()?.Eye;
         ShowBackground(camera is not null ? _device : null, background);
         Stage("select+requests");
-        Show(DrawSet.Resolve(wanted, _loaded.ContainsKey));
+        Show(DrawSet.Resolve(tiles ? wanted : new List<TileKey>(), _loaded.ContainsKey));
         Stage("show");
         // Every frame, not on change: with a camera-relative camera each tile sits at (centre - eye),
         // and the eye moved. Subtracted in double, then cast - the whole point of item 1.
@@ -315,18 +286,16 @@ public sealed partial class GlobeNode : IDisposable
             si.Entity.Transform.Position = TileGeometry.Translation(si.Centre, _radius, _relativeEye);
         }
         foreach (var w in wanted) if (_loaded.TryGetValue(w, out var s)) s.LastUsed = _frame;
-        AdvanceFades();
-        Stage("fades");
         // The GPU's layers, in the Input's order: vector tiles and raster layers (ROADMAP 6c). They follow the
-        // wanted tiles, not the ones shown: they need no imagery of the globe's, and the wanted set covers
-        // the view at the right zoom even while the globe's own tiles load.
+        // wanted tiles, not the ones shown: the wanted set covers the view at the right zoom even while the
+        // globe's tiles are being built.
         var gpuLayers = enabled && layers is not null
             ? layers.Where(l => l is { Enabled: true } && (l.Vector is not null || l.Raster is not null))
                 .Select(l => new GpuLayer(l.Vector, l.Raster, l.Opacity)).ToList()
             : new List<GpuLayer>();
         bool gpuVectors = gpuLayers.Any(l => l.Vector is not null);
-        _gpu.RasterFade = _fadeDuration;
-        _gpu.RasterRequests = Math.Max(1, maxRequestsInFlight);
+        _gpu.RasterFade = fade;
+        _gpu.RasterMaxRequests = Math.Max(1, maxRequestsInFlight);
         // the distance to the view's centre, for the labels' perspective ratio: the eye's height above the ground
         if (_device is not null) _gpu.Update(_device, wanted, _wantedSet, gpuLayers, _radius, _relativeEye, _cameraZoom, _frame,
             Math.Max(_lastEye.Length() - _radius, 1e-9));
@@ -350,9 +319,7 @@ public sealed partial class GlobeNode : IDisposable
         Stage("evict");
 
         tilesVisible = _shown.Count;
-        tilesLoading = _pending.Count;
-        requestsSent = _requests;
-        bytesReceived = _bytes;
+        (tilesLoading, requestsSent, bytesReceived) = _gpu.RasterCounts;
         status = _status;
         return _root;
     }
@@ -408,6 +375,8 @@ public sealed partial class GlobeNode : IDisposable
         _skia.Dispose();
         _gpu.Dispose();
         Reset();
+        _plainTexture?.Dispose();
+        foreach (var r in _retiredTextures) r.texture.Dispose();
         if (_background is not null && _backgroundShown) _root.Transform.Children.Remove(_background.Transform);
         _backgroundMesh?.Dispose();
         _backgroundTexture?.Dispose();

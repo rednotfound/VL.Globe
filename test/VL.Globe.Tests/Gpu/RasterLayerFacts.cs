@@ -6,7 +6,7 @@ using VL.Globe.Tests.MapLibre;
 
 namespace VL.Globe.Tests.Gpu;
 
-// ROADMAP 6c step 1 (docs/DESIGN-RASTER-GPU.md): the raster layers above the first are GPU layers, drawn
+// ROADMAP 6c (docs/DESIGN-RASTER-GPU.md): every raster layer is a GPU layer (the globe is its Background colour), drawn
 // in the Input's order among the vector layers, each globe tile from its own image or an ancestor's
 // through a rectangle. No network: the source's disk cache holds the only images, its URL refuses
 // connections (port 9 on this machine), so every other tile fails at once and an ancestor stands in.
@@ -168,26 +168,5 @@ public class RasterLayerFacts
             Assert.True(r > 240 && b < 15, $"multisampled: {r},{g},{b}");
         }
         finally { Directory.Delete(folder, true); }
-    }
-
-    [Fact]
-    public void AnOpaqueBottomTileLayerIsTheImagery()
-    {
-        var osm = new OpenStreetMapNode().Update();
-        var topo = new XyzTilesNode().Update("https://example.invalid/{z}/{x}/{y}.png", "t", opacity: 0.5f);
-        var (imagery, over) = GlobeNode.SplitLayers(new GlobeGroupSpectralNode().Update(new[] { osm, topo }));
-        Assert.Same(osm.Raster, imagery);
-        Assert.Equal(new[] { topo }, over);
-    }
-
-    // the user, 2026-11-23: the bottom layer's Opacity too - "用户知道自己再做什么"
-    [Fact]
-    public void ATranslucentBottomTileLayerGoesOverThePlainTiles()
-    {
-        var osm = new OpenStreetMapNode().Update(opacity: 0.4f);
-        var topo = new XyzTilesNode().Update("https://example.invalid/{z}/{x}/{y}.png", "t", opacity: 0.5f);
-        var (imagery, over) = GlobeNode.SplitLayers(new GlobeGroupSpectralNode().Update(new[] { osm, topo }));
-        Assert.Null(imagery);
-        Assert.Equal(new[] { osm, topo }, over);
     }
 }

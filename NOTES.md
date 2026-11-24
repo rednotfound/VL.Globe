@@ -858,3 +858,8 @@ looked fine - "which makes one think it works". Two causes, estimated at 100 m h
   holds zoom-2 images only, the URL is `127.0.0.1:9` (refused), so every finer square draws an ancestor; a
   gradient image checks the rectangle to 3 levels. Seen by the user in vvvv: "似乎问题不大". Not yet compared
   side by side with the globe's own imagery (step 2); the fades have no test of their own.
+- **6c steps 2 and 3** (2026-11-24): compared in vvvv by the bottom layer's Opacity (1: the tiles' material;
+  0.999: the GPU layer over plain tiles) - the user saw no difference. Then the tiles lost their imagery: one
+  shared Background material, no requests, no fade materials (`GlobeNode.Tiles/Show` rewritten); every raster
+  layer a GPU layer. Seen in vvvv. **A transparent Background now builds no tiles** - a bare Globe node (its
+  default) then has no depth for the scene's entities; GlobeWindow and every help patch wire the blue.
