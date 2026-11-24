@@ -74,6 +74,7 @@ shader GlobeVector : ShaderBase
     stage stream float2 GvScreen;   // GL JS's v_pos: the vertex in pixels, interpolated along the line
     stage stream float3 GvViewPos;  // the vertex in view space, before the lift
     stage stream float GvRaise;     // fill-extrusion: the metres above the ground, per pixel (ambient occlusion)
+    stage stream float GvThin;      // a line seen edge-on: its alpha, its width held at a pixel (see VSMain)
 
     float3 ToSrgb(float3 c)
     {
@@ -169,6 +170,9 @@ shader GlobeVector : ShaderBase
         float4 v = mul(float4(position, 1), GvWorldView);
         float outset = 0;
         float2 uvShift = 0;
+        float3 lineCentre = v.xyz, lineTangent = 0;
+        float lineWant = 0;
+        streams.GvThin = 1;
         if (GvIsLine > 0.5)
         {
             float3 p, east, north;
@@ -180,6 +184,8 @@ shader GlobeVector : ShaderBase
             float depth = max(-v.z, 1e-9);
             float reach = outset * GvPixel * depth;   // view units = scene units: the extrusion's length per unit of q
             v.xyz += dirView * reach;
+            lineTangent = mul(float4(cross(p, dir), 0), GvWorldView).xyz / GvRadius * reach;
+            lineWant = outset * length(q);
             // the extruded point's place in the tile, not the line's: GL JS clips each tile's drawing to
             // its square by the stencil, so a line's edge past the square is cut there and the
             // neighbour's copy (from its buffer) draws the rest. Clipped by the line's own point, line
@@ -190,6 +196,28 @@ shader GlobeVector : ShaderBase
         streams.GvViewPos = v.xyz;
         v.xyz *= (1 - GvLift);
         streams.ShadingPosition = mul(v, GvProjection);
+        // A line seen edge-on - towards the globe's limb its width lies along the view - is narrower on the
+        // screen than a pixel, and its samples broke it into dots (the 45 N parallel at the limb, 2026-11-25).
+        // There it is held a pixel wide across its own screen direction and faded by how much narrower it
+        // is, so it covers as much as it should and stays whole. Not on the plane: the render tests draw as GL JS.
+        if (GvIsLine > 0.5 && GvFlat < 0.5 && lineWant > 0)
+        {
+            float4 c0 = mul(float4(lineCentre * (1 - GvLift), 1), GvProjection);
+            float4 c2 = mul(float4((lineCentre + lineTangent) * (1 - GvLift), 1), GvProjection);
+            float2 hv = 0.5 * GvViewport;
+            float2 s0 = c0.xy / c0.w * hv;
+            float2 d = streams.ShadingPosition.xy / streams.ShadingPosition.w * hv - s0;
+            float len = length(d), least = min(lineWant, 1);
+            float2 t = c2.xy / c2.w * hv - s0;
+            if (len < least && dot(t, t) > 1e-12)
+            {
+                float2 n = normalize(float2(-t.y, t.x));
+                if (len > 0.05 * least && dot(n, d) < 0) n = -n;   // edge-on, the two sides' tangents are already opposite
+                float2 s1 = s0 + n * least;
+                streams.ShadingPosition.xy = s1 / hv * streams.ShadingPosition.w;
+                streams.GvThin = len / least;
+            }
+        }
         // in pixels, y down as SV_Position is (GL JS's v_pos, y up as gl_FragCoord is)
         float2 ndc = streams.ShadingPosition.xy / streams.ShadingPosition.w;
         streams.GvScreen = float2(ndc.x * 0.5 + 0.5, 0.5 - ndc.y * 0.5) * GvViewport;
@@ -297,7 +325,7 @@ shader GlobeVector : ShaderBase
             // ambient occlusion (ROADMAP 6b, B): a wall darkened over its lowest 3 metres, per pixel - Mapbox's
             // fill-extrusion-ambient-occlusion-wall-radius, 3 m; computed from the height, not the screen
             if (GvExtrusion > 0.5 && GvAo > 0) tint *= 1 - GvAo * (1 - smoothstep(0, 3, streams.GvRaise));
-            if (GvIsLine > 0.5) alpha *= saturate(streams.GvOutset * (1 - abs(streams.GvEdge)));
+            if (GvIsLine > 0.5) alpha *= saturate(streams.GvOutset * (1 - abs(streams.GvEdge))) * streams.GvThin;
             if (GvGlOutline > 0.5) alpha *= 1 - smoothstep(0, 1, length(streams.GvScreen - streams.ShadingPosition.xy));
             streams.ColorTarget = GvStraight > 0.5 ? float4(tint, alpha) : float4(tint * alpha, alpha);
         }

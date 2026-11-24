@@ -840,7 +840,9 @@ looked fine - "which makes one think it works". Two causes, estimated at 100 m h
   its ddx + ddy. `OverscaledGroundFacts.AtAGrazingAngle...` draws both views multisampled: 44,000 of
   120,000 ground pixels pure without the offset, all with it.
 - **My vvvv hung on exit twice** (20:30, 20:5x; the log stops at the WM_CLOSE, the renderer window
-  stays): both the first launch after a pack, later launches closed. Stopped with the user's leave
+  stays) - **explained by the user 2026-11-25: vvvv asks whether to save the patch on close, and nobody
+  answered the dialog.** A changed document (a hot reload, a value moved) makes WM_CLOSE wait on that question.
+  Original note: both the first launch after a pack, later launches closed. Stopped with the user's leave
   (my pids only). Not yet looked into.
 - **Shapes are GPU layers, always** (the user, 2026-11-24: "有vectorTiles和没有都应该统一的画法 ... 肯定是要作为
   独立的layer存在"): Geometry, FeatureLayer and Graticule were draped into the tiles' images by Skia unless
@@ -883,3 +885,11 @@ looked fine - "which makes one think it works". Two causes, estimated at 100 m h
   1080). Removed from GlobeWindow and `HowTo Build your own globe scene` (decompiled: both cameras and the Globe
   get 0, Background still flows). Seen in vvvv: "screen height 1080 px, from the camera's window", then "800 px,
   from the view it is drawn in". A Globe drawn in two windows of different heights takes the last one drawn.
+- **The 45 N parallel dotted at the limb** (2026-11-24, explained 2026-11-25; `GraticuleProbe`, whole globe at
+  #1.2/45/-5/0/0, X4): not the far-side discard (switched off: still dotted, and the far side showed through) but
+  lines seen edge-on - towards the limb a line's width lies along the view, narrower on the screen than a pixel,
+  and the samples broke it into dots. GlobeVector's VS now holds a sphere line at least a pixel wide across its own
+  screen direction (from the line's tangent) and fades it by how much narrower it was (`GvThin`); the plane, the
+  render tests' path, is unchanged. `EdgeOnLineFacts`: a meridian 3 degrees inside the limb lights every row it
+  crosses (142 of 147 rows dark without the change). Faint there is right; also changes far, foreshortened lines
+  in a tilted street view (held whole, faded) - to be seen in vvvv.
