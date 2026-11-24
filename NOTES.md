@@ -863,3 +863,14 @@ looked fine - "which makes one think it works". Two causes, estimated at 100 m h
   shared Background material, no requests, no fade materials (`GlobeNode.Tiles/Show` rewritten); every raster
   layer a GPU layer. Seen in vvvv. **A transparent Background now builds no tiles** - a bare Globe node (its
   default) then has no depth for the scene's entities; GlobeWindow and every help patch wire the blue.
+- **`Color4?` silently cut GlobeWindow's Background link** (2026-11-25): to give a bare Globe node a blue
+  default I made its Background pin `Color4?` (VL.Mapsui's pattern). vvvvc, the help compile and the 351 tests
+  all passed; the decompiled `GlobeWindow_P.Update` passed `Color4? background = null` - the patched definition's
+  link from its own `Color4` Background pin was dropped. The window looked right only because the default was
+  the same blue. Reverted to `Color4` (transparent = no tiles, as documented). **Changing a C# pin's type that a
+  patched definition links into needs the decompile check** (ilspycmd, `--tool-path` into the scratchpad).
+- **Stack tile layers' Group (Spectral) cell** (2026-11-25, edited in place): a spread of spacings, a ForEach with
+  one Graticule each, into Group (Spectral) - instead of OSM + Graticule through Cons, which showed nothing a
+  fixed Group could not. `Compile-HelpPatches.ps1` failed it ("not constructed in __Create__"): inside a ForEach
+  the generated C# builds a process node per slice (`if (!iterator.MoveNext(out state)) { new Node() }`); the
+  check now accepts that. Intro text: tile layers, vector tiles and shapes stack alike.

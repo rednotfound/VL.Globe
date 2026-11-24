@@ -228,6 +228,12 @@ foreach ($p in $patches) {
             if ($createBody.Success -and $createBody.Groups['body'].Value -match "new\s+[\w\.]*$class\(") {
                 Write-Host "  ok    '$nodeName' is constructed in Create, not Update" -ForegroundColor DarkGray
             }
+            # Inside a ForEach a process node is built per slice by the region - only when its iterator has
+            # no state for the slice yet (`if (!iterator.MoveNext(out state)) { ... new Node() ... }`) - then
+            # updated. Read in the generated C# of Stack tile layers' Group (Spectral) cell, 2026-11-24.
+            elseif ($csharp -match "if\s*\(!iterator_\d+\.MoveNext\(out\s+state_\d+\)\)\s*\{[^{}]*new\s+[\w\.]*$class\(") {
+                Write-Host "  ok    '$nodeName' is constructed per slice of its region, not every frame" -ForegroundColor DarkGray
+            }
             else {
                 $failures.Add("$($p.Name): $class is not constructed in __Create__ - it would be rebuilt every frame")
                 Write-Host "  FAIL  '$nodeName' is not constructed in Create" -ForegroundColor Red

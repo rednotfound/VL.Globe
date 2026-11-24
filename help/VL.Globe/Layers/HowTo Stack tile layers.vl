@@ -27,7 +27,7 @@
               <p:stringtype p:Assembly="VL.Core" p:Type="VL.Core.StringType">Comment</p:stringtype>
             </p:ValueBoxSettings>
           </Pad>
-          <Pad Id="PrUhRZdsvDQuc8dWrdE03W" Bounds="60,90,640,40" ShowValueBox="true" isIOBox="true" Value="Switch Enabled on. Every tile server is a layer: the leftmost in Group is at the bottom, the ones above it are drawn over it at their Opacity. Drag the Opacity to blend the topographic map into OpenStreetMap.">
+          <Pad Id="PrUhRZdsvDQuc8dWrdE03W" Bounds="60,90,640,40" ShowValueBox="true" isIOBox="true" Value="Switch Enabled on. Every tile server is a layer: the leftmost in Group is at the bottom, each one to its right is drawn over the ones before it at its Opacity - tile layers, vector tiles and shapes alike. Drag the Opacity to blend the topographic map into OpenStreetMap.">
             <p:TypeAnnotation LastCategoryFullName="Primitive" LastDependency="VL.CoreLib.vl">
               <Choice Kind="TypeFlag" Name="String" />
             </p:TypeAnnotation>
@@ -163,7 +163,7 @@
               <p:stringtype p:Assembly="VL.Core" p:Type="VL.Core.StringType">Comment</p:stringtype>
             </p:ValueBoxSettings>
           </Pad>
-          <Pad Id="B3Ozml6YZwmcqldPylxp9n" Bounds="153,622,639,43" ShowValueBox="true" isIOBox="true" Value="Group (Spectral): the same stack from a spread of layers - for a number of layers that changes while the patch runs, as Skia's Group (Spectral)">
+          <Pad Id="B3Ozml6YZwmcqldPylxp9n" Bounds="200,575,600,43" ShowValueBox="true" isIOBox="true" Value="Group (Spectral): layers from a spread, for a number of layers that changes while the patch runs - here a Graticule per Spacing: add a value, a layer appears. As Skia's Group (Spectral).">
             <p:TypeAnnotation LastCategoryFullName="Primitive" LastDependency="VL.CoreLib.vl">
               <Choice Kind="TypeFlag" Name="String" />
             </p:TypeAnnotation>
@@ -172,17 +172,47 @@
               <p:stringtype p:Assembly="VL.Core" p:Type="VL.Core.StringType">Comment</p:stringtype>
             </p:ValueBoxSettings>
           </Pad>
-          <Node Bounds="60,630,45,19" Id="AQuv2vZ8c40WHBaP3xyqS5">
-            <p:NodeReference LastCategoryFullName="Collections.Spread" LastDependency="VL.Collections.vl">
-              <Choice Kind="NodeFlag" Name="Node" Fixed="true" />
-              <Choice Kind="OperationCallFlag" Name="Cons" />
-              <CategoryReference Kind="RecordType" Name="Spread" NeedsToBeDirectParent="true" />
+          <Pad Id="0lR8acRYSi4MDF8kWCBX1K" Comment="Spacings" Bounds="60,575,60,40" ShowValueBox="true" isIOBox="true">
+            <p:TypeAnnotation LastCategoryFullName="Collections" LastDependency="VL.Collections.vl">
+              <Choice Kind="TypeFlag" Name="Spread" />
+              <p:TypeArguments>
+                <TypeReference LastCategoryFullName="Primitive" LastDependency="CoreLibBasics.vl">
+                  <Choice Kind="TypeFlag" Name="Float64" />
+                </TypeReference>
+              </p:TypeArguments>
+            </p:TypeAnnotation>
+            <p:Value>
+              <Item>30</Item>
+              <Item>10</Item>
+            </p:Value>
+          </Pad>
+          <Node Bounds="60,630,120,50" Id="peZUaLJ4d8jOCs4bWYTI6w">
+            <p:NodeReference LastCategoryFullName="Primitive" LastDependency="CoreLibBasics.vl">
+              <Choice Kind="StatefulRegion" Name="Region (Stateful)" Fixed="true" />
+              <Choice Kind="ApplicationStatefulRegion" Name="ForEach" />
+              <CategoryReference Kind="Category" Name="Primitive" />
             </p:NodeReference>
-            <Pin Id="B59OeTzXYJ86m5y4BNLdog" Name="Input" Kind="StateInputPin" />
-            <Pin Id="Ck5tHtM3YReGXhCjkipQFd" Name="Input 2" Kind="StateInputPin" />
-            <Pin Id="LUPZbIAINPrVFuGgVkZHSo" Name="Result" Kind="OutputPin" />
+            <Pin Id="HKrmUeUKjuZSibyToBcCcR" Name="Break" Kind="OutputPin" />
+            <Patch Id="LqeeHq1PkCJVuoYqLRqrxZ" ManuallySortedPins="true">
+              <Patch Id="KiGvbtcj7bsHXDYzEzVMGP" Name="Create" ManuallySortedPins="true" />
+              <Patch Id="Bnu3mY2lhm12FPzmV4eAk5" Name="Update" ManuallySortedPins="true" />
+              <Patch Id="M7ByFgDcEW7AKW3gc3FnJx" Name="Dispose" ManuallySortedPins="true" />
+              <Node Bounds="72,647,70,19" Id="FkQjVDZRucq2zyw8GOuLfa">
+                <p:NodeReference LastCategoryFullName="Globe.Layers" LastDependency="VL.Globe.vl">
+                  <Choice Kind="NodeFlag" Name="Node" Fixed="true" />
+                  <CategoryReference Kind="Category" Name="Layers" NeedsToBeDirectParent="true">
+                    <p:OuterCategoryReference Kind="Category" Name="Globe" NeedsToBeDirectParent="true" />
+                  </CategoryReference>
+                  <Choice Kind="ProcessAppFlag" Name="Graticule" />
+                </p:NodeReference>
+                <Pin Id="fi1JrpRWBJG9encC4davDs" Name="Spacing" Kind="InputPin" />
+                <Pin Id="REymZzoU8nDX7rnx5xrbw0" Name="Output" Kind="OutputPin" />
+              </Node>
+            </Patch>
+            <ControlPoint Id="aRFvKyQQbV4iOmSpnXJzjd" Bounds="74,636" Alignment="Top" />
+            <ControlPoint Id="O9KnUcOwcOBExM3tnY4Wft" Bounds="74,674" Alignment="Bottom" />
           </Node>
-          <Node Bounds="60,680,110,19" Id="Dxwk0YfxYiGhodJTJvtwe6">
+          <Node Bounds="60,700,110,19" Id="Dxwk0YfxYiGhodJTJvtwe6">
             <p:NodeReference LastCategoryFullName="Globe.Layers" LastDependency="VL.Globe.vl">
               <Choice Kind="NodeFlag" Name="Node" Fixed="true" />
               <CategoryReference Kind="Category" Name="Layers" NeedsToBeDirectParent="true">
@@ -195,7 +225,7 @@
             <Pin Id="CvkGnXHbdTusYJwXMzRpLh" Name="Output" Kind="OutputPin" />
             <Pin Id="PSygVq4cmdNLpuFoBDU0Ae" Name="Enabled" Kind="InputPin" />
           </Node>
-          <Pad Id="Dy7tSUItaFal5Fp6z6Yske" Bounds="190,678,380,20" ShowValueBox="true" isIOBox="true" Value="&lt; its Output goes where Group's does: GlobeWindow's Input">
+          <Pad Id="Dy7tSUItaFal5Fp6z6Yske" Bounds="190,698,380,20" ShowValueBox="true" isIOBox="true" Value="&lt; its Output goes where Group's does: GlobeWindow's Input">
             <p:TypeAnnotation LastCategoryFullName="Primitive" LastDependency="VL.CoreLib.vl">
               <Choice Kind="TypeFlag" Name="String" />
             </p:TypeAnnotation>
@@ -213,26 +243,6 @@
               <p:stringtype p:Assembly="VL.Core" p:Type="VL.Core.StringType">Comment</p:stringtype>
             </p:ValueBoxSettings>
           </Pad>
-          <Node Bounds="60,575,100,19" Id="GLj9Ccoeb0EVdal51uVELT">
-            <p:NodeReference LastCategoryFullName="Globe.Layers" LastDependency="VL.Globe.vl">
-              <Choice Kind="NodeFlag" Name="Node" Fixed="true" />
-              <CategoryReference Kind="Category" Name="Layers" NeedsToBeDirectParent="true">
-                <p:OuterCategoryReference Kind="Category" Name="Globe" NeedsToBeDirectParent="true" />
-              </CategoryReference>
-              <Choice Kind="ProcessAppFlag" Name="OpenStreetMap" />
-            </p:NodeReference>
-            <Pin Id="TOeJ6BJFnPIl4QS4M4sNML" Name="Output" Kind="OutputPin" />
-          </Node>
-          <Node Bounds="80,600,70,19" Id="BlIJ2Qjse8xJDBCbUhAXRC">
-            <p:NodeReference LastCategoryFullName="Globe.Layers" LastDependency="VL.Globe.vl">
-              <Choice Kind="NodeFlag" Name="Node" Fixed="true" />
-              <CategoryReference Kind="Category" Name="Layers" NeedsToBeDirectParent="true">
-                <p:OuterCategoryReference Kind="Category" Name="Globe" NeedsToBeDirectParent="true" />
-              </CategoryReference>
-              <Choice Kind="ProcessAppFlag" Name="Graticule" />
-            </p:NodeReference>
-            <Pin Id="GYLhXtc1KwQgpoAproaUGd" Name="Output" Kind="OutputPin" />
-          </Node>
         </Canvas>
         <Patch Id="UWt6arxy1v1Dz5fKpEThAu" Name="Create" />
         <Patch Id="TDdzmgMLNh6OaFN4rBn6iu" Name="Update" />
@@ -242,14 +252,15 @@
         </ProcessDefinition>
         <Link Id="E3Vo9UctolfTclkWVagm9X" Ids="RO5k0A8Uci0qRhSBHpvkTS,HnCO3V3xkhTOa1bFFHiCv1" />
         <Link Id="CoREXncB0mtSCtjXS6vtD4" Ids="H9LvUQCAYhvHpxv6TECLLF,JtcdMoCkcXSUyQBiAXqozA" />
+        <Link Id="tIiGKrzBYXHolHYa13il3C" Ids="0lR8acRYSi4MDF8kWCBX1K,aRFvKyQQbV4iOmSpnXJzjd" />
+        <Link Id="31U0lVvwvH70052LQmspJL" Ids="aRFvKyQQbV4iOmSpnXJzjd,fi1JrpRWBJG9encC4davDs" />
+        <Link Id="c0DTFuvEVViv3FQdGLtPTT" Ids="REymZzoU8nDX7rnx5xrbw0,O9KnUcOwcOBExM3tnY4Wft" />
+        <Link Id="1VWe558UtmSOv6McDFwszX" Ids="O9KnUcOwcOBExM3tnY4Wft,HzknZSU5FWCnv8dM4fKdSm" />
         <Link Id="VfL0ZmjkrHHdsYqUZlG3CD" Ids="F7CupcomQTho030iXAHzGh,Gh5Qhy50B7P6nLsbWsXAJK" />
         <Link Id="KjQPQUms2ClFwvC1spRy9v" Ids="Gn89VZ7dFMZZ7gpokvsl7k,FroWy76lMXouvBW8J5Vcd4" />
         <Link Id="KXbC8WKMxKHO9MFO0Wjypi" Ids="UN8QdWyL6G0ei9HKoPxSql,RctTYCecJT0IxU5ypdyeu8" />
         <Link Id="CLE45BSpD0N4h22vRBmqPI" Ids="Kpm15UELhUOuZAzHx4LP4A,N5X4NDce7WBvizuOAr7y11" />
         <Link Id="HVBr1dvZXSLS4oKcZp7YYk" Ids="F5NKQ5uTufoSr2i2d2qvIb,CRAUaFnYVKwQzpLUCadT2r" />
-        <Link Id="H4ujRQzRXWiCXVPJwqHPiO" Ids="LUPZbIAINPrVFuGgVkZHSo,HzknZSU5FWCnv8dM4fKdSm" />
-        <Link Id="UsAa4VpN75BSjrd7voQLWm" Ids="TOeJ6BJFnPIl4QS4M4sNML,B59OeTzXYJ86m5y4BNLdog" />
-        <Link Id="DvXp7dIB8YVbiA0w0ZPwqI" Ids="GYLhXtc1KwQgpoAproaUGd,Ck5tHtM3YReGXhCjkipQFd" />
       </Patch>
     </Node>
   </Patch>

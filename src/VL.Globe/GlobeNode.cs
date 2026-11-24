@@ -105,6 +105,10 @@ public sealed partial class GlobeNode : IDisposable
         }.Transform);
     }
 
+    // Background stays Color4, not Color4? with a blue default: as Color4? the link from GlobeWindow's own
+    // Background pin into it was dropped in silence (2026-11-24; the decompiled GlobeWindow_P.Update passed
+    // null) - the patched definition would need its pin retyped. Transparent: no tiles, the layers alone.
+
     readonly AttributionLayer _attributionLayer = new();
     readonly VL.Stride.SkiaRenderer _skia;
     string _attribution = "";
@@ -124,7 +128,7 @@ public sealed partial class GlobeNode : IDisposable
     /// <param name="input">What to draw on the surface: a layer from OpenStreetMap, XyzTiles, VectorTiles, FeatureLayer or Geometry, or several from Group.</param>
     /// <param name="camera">The camera entity the scene is rendered with.</param>
     /// <param name="radius">The globe's radius in scene units.</param>
-    /// <param name="background">The globe's colour under its layers, also while off. Transparent: none.</param>
+    /// <param name="background">The globe's colour under its layers, also while off. Transparent (unconnected): no globe, the layers alone - GlobeWindow gives a dark blue.</param>
     /// <param name="screenHeight">The height of the view in pixels: SceneWindow's Client Bounds. GlobeWindow wires it.</param>
     /// <param name="maxZoom">The finest zoom ever requested.</param>
     /// <param name="screenSpaceError">Refine while a tile pixel would cover more screen pixels than this. 1.41 shows tiles at 0.71-1.41x, as MapLibre and Cesium do.</param>
