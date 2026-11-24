@@ -37,6 +37,7 @@ shader GlobeVector : ShaderBase
         stage float2 GvViewport;        // the target's size in pixels
         stage float2 GvFade;            // fill-extrusion fades out between these distances from the eye (y 0: never)
         stage float4 GvLight;           // xyz: towards the scene's directional light, the globe's axes; w 1: use it (else GL JS's default)
+        stage float GvAo;               // ambient occlusion at the foot of a wall, 0-1 (0: none, as GL JS)
         stage float4 GvLightColor;      // rgb: the light's sRGB colour; a: GL JS's intensity, 0-1 (default white, 0.5)
         stage float4 GvSphere;          // the globe's centre in view space, xyz; w: |eye - centre|^2 - radius^2 (from double)
     }
@@ -55,6 +56,7 @@ shader GlobeVector : ShaderBase
     stage stream float4 GvTint;
     stage stream float2 GvScreen;   // GL JS's v_pos: the vertex in pixels, interpolated along the line
     stage stream float3 GvViewPos;  // the vertex in view space, before the lift
+    stage stream float GvRaise;     // fill-extrusion: the metres above the ground, per pixel (ambient occlusion)
 
     float3 ToLinear(float3 c)
     {
@@ -139,6 +141,7 @@ shader GlobeVector : ShaderBase
         float GvTiles = dr.Misc.y, GvHalfWidth = dr.CentreHalfWidth.w, GvIsLine = dr.Misc.z;
         float2 uvIn = float2(streams.GvUvIn) / 32768.0 - 0.5;
         float3 position = Relative(dr, uvIn, GvExtrusion > 0.5 ? streams.GvEdgeIn.y : 0);
+        streams.GvRaise = GvExtrusion > 0.5 ? streams.GvEdgeIn.y : 0;
         if (streams.GvExtrude.z != 0 && GvFlat < 0.5) position = PoleCap(dr, uvIn, streams.GvExtrude.z / 63.0);
         float4 v = mul(float4(position, 1), GvWorldView);
         float outset = 0;
@@ -243,8 +246,12 @@ shader GlobeVector : ShaderBase
             streams.Depth = onSphere.z / onSphere.w;
         }
         float alpha = streams.GvTint.a;
+        float3 tint = streams.GvTint.rgb;
+        // ambient occlusion (ROADMAP 6b, B): a wall darkened over its lowest 3 metres, per pixel - Mapbox's
+        // fill-extrusion-ambient-occlusion-wall-radius, 3 m; computed from the height, not the screen
+        if (GvExtrusion > 0.5 && GvAo > 0) tint *= 1 - GvAo * (1 - smoothstep(0, 3, streams.GvRaise));
         if (GvIsLine > 0.5) alpha *= saturate(streams.GvOutset * (1 - abs(streams.GvEdge)));
         if (GvGlOutline > 0.5) alpha *= 1 - smoothstep(0, 1, length(streams.GvScreen - streams.ShadingPosition.xy));
-        streams.ColorTarget = GvStraight > 0.5 ? float4(streams.GvTint.rgb, alpha) : float4(streams.GvTint.rgb * alpha, alpha);
+        streams.ColorTarget = GvStraight > 0.5 ? float4(tint, alpha) : float4(tint * alpha, alpha);
     }
 };

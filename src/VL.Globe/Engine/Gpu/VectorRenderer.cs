@@ -95,6 +95,10 @@ internal sealed class VectorRenderer : IGraphicsRendererBase
     // visibility group's RenderLightCollection, as Stride's ForwardLightingRenderFeature reads it - so
     // SunLight [Globe.Lights] and vvvv's own DirectionalLight both light them. Null in the render tests.
     public SceneLight? Light;
+
+    /// <summary>How dark a wall is at its foot, 0-1 (ambient occlusion over its lowest 3 m); 0: none, as GL JS.</summary>
+    // On in vvvv (the user, 2026-11-24: on by default); off in MapLibre's render tests, which GL JS draws without
+    public float Ao = 0.35f;
     /// <summary>What the last draw found of the scene's lights, for the Globe node's log.</summary>
     public volatile string LightInfo = "";
 
@@ -342,6 +346,7 @@ internal sealed class VectorRenderer : IGraphicsRendererBase
         var viewport = commandList.Viewport;
         Set(parameters, "GvViewport", new Vector2(viewport.Width, viewport.Height));
         Set(parameters, "GvFade", frame.ExtrusionFade);
+        Set(parameters, "GvAo", Ao);
         Set(parameters, "GvLight", Light is { } light ? new Vector4(light.TowardsLight, 1) : Vector4.Zero);
         Set(parameters, "GvLightColor", Light is { } lit ? new Vector4(lit.Color, lit.Intensity) : new Vector4(1, 1, 1, 0.5f));
         // the sphere ground layers take their depth from (ROADMAP 4h): its centre in view space and

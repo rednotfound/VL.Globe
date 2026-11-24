@@ -24,7 +24,7 @@ internal static class GpuFixtureRenderer
         public required GraphicsContext Context;
         public required EffectInstance Effect, SymbolEffect, CircleEffect, FogEffect, DepthEffect;
         // fades off, as MapLibre's render tests run (fadeDuration 0): every label placed in its first frame
-        public readonly VectorRenderer Renderer = new() { GlOutlines = true, FadeDuration = 0 };
+        public readonly VectorRenderer Renderer = new() { GlOutlines = true, FadeDuration = 0, Ao = 0 };
     }
 
     static readonly Lazy<Gpu> Shared = new(Create);
@@ -164,15 +164,16 @@ internal static class GpuFixtureRenderer
 
     public static byte[] Render(MapStyleDocument style, int width, int height, double pixelRatio) => Render(style, width, height, pixelRatio, null);
 
-    public static byte[] Render(MapStyleDocument style, int width, int height, double pixelRatio, VectorRenderer.SceneLight? light)
+    public static byte[] Render(MapStyleDocument style, int width, int height, double pixelRatio, VectorRenderer.SceneLight? light, float ao = 0)
     {
         lock (Lock)
         {
             // the buildings' light, as vvvv's Draw reads it from the scene (ROADMAP 6b); none in MapLibre's fixtures
             var renderer = Shared.Value.Renderer;
             renderer.Light = light;
+            renderer.Ao = ao;
             try { return RenderCore(style, width, height, pixelRatio); }
-            finally { renderer.Light = null; }
+            finally { renderer.Light = null; renderer.Ao = 0; }
         }
     }
 

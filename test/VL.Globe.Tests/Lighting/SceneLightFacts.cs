@@ -11,7 +11,7 @@ public class SceneLightFacts
 {
     const int Size = 64;
 
-    static double Roof(VectorRenderer.SceneLight? light)
+    static double Roof(VectorRenderer.SceneLight? light, double height = 20, float ao = 0)
     {
         using var json = JsonDocument.Parse("""
             { "version": 8, "center": [0, 0], "zoom": 16,
@@ -19,10 +19,10 @@ public class SceneLightFacts
                 "coordinates": [[[-0.01, -0.01], [0.01, -0.01], [0.01, 0.01], [-0.01, 0.01], [-0.01, -0.01]]] } } },
               "layers": [
                 { "id": "bg", "type": "background", "paint": { "background-color": "#000000" } },
-                { "id": "b", "type": "fill-extrusion", "source": "s", "paint": { "fill-extrusion-color": "#808080", "fill-extrusion-height": 20 } } ] }
-            """);
+                { "id": "b", "type": "fill-extrusion", "source": "s", "paint": { "fill-extrusion-color": "#808080", "fill-extrusion-height": HEIGHT } } ] }
+            """.Replace("HEIGHT", height.ToString(System.Globalization.CultureInfo.InvariantCulture)));
         var doc = MapStyleDocument.Parse(json.RootElement.Clone(), lenient: true);
-        var rgba = GpuFixtureRenderer.Render(doc, Size, Size, 1, light);
+        var rgba = GpuFixtureRenderer.Render(doc, Size, Size, 1, light, ao);
         int i = (Size / 2 * Size + Size / 2) * 4;
         return rgba[i];   // red, at the centre: the roof
     }
@@ -36,5 +36,13 @@ public class SceneLightFacts
         double fallback = Roof(null);
         Assert.True(overhead > horizon + 20, $"overhead {overhead}, horizon {horizon}, default {fallback}");
         Assert.InRange(fallback, horizon, overhead + 1);
+    }
+
+    [Fact]
+    public void Ambient_occlusion_darkens_the_lowest_three_metres_only()
+    {
+        // a roof 1 m up lies in the occluded band, one 20 m up does not
+        Assert.True(Roof(null, height: 1, ao: 0.35f) < Roof(null, height: 1) - 10);
+        Assert.Equal(Roof(null, height: 20), Roof(null, height: 20, ao: 0.35f), 1.0);
     }
 }
