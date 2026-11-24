@@ -26,7 +26,7 @@ the LTS line** (user, 2026-11-20); `tools\Find-Vvvv.ps1` stays below 8.0.
 | `GlobeWindow [Globe]` | **patched** process | `VL.Globe.vl` | the front door: the whole chain below in one node, with its own window; tells Globe the window's real height |
 | `OpenStreetMap [Globe]` | process | `TileSources.cs` | an `HttpTileSource` for OSM, built once (an HttpTileSource owns an HttpClient and is not disposable) |
 | `XyzTiles [Globe]` | process | `TileSources.cs` | any `{z}/{x}/{y}` server + its required attribution; one source per URL |
-| `Globe [Globe]` | process | `GlobeNode.cs` | the engine: select → request → build → draw → fade → drape the `Layers`; outputs one Stride `Entity` |
+| `Globe [Globe]` | process | `GlobeNode.cs` (+ `.Tiles`, `.Show`, `.Overlays`, `.Background`, `.Perf`) | the engine: select → request → build → draw → fade → drape the `Layers`; outputs one Stride `Entity` |
 | `Geometry`, `FeatureLayer [Globe.Layers]` | process | `GlobeLayers.cs` | NTS geometries / features in one style → a layer for `Layers`, VL.Mapsui's shape |
 | `VectorStyle [Globe.Styles]` | static | `GlobeLayers.cs` | fill, line colour, line width in pixels; unwired colours default as Mapsui's |
 | `GlobeCamera [Globe]` | process | `GlobeCameraNodes.cs` | a geographic camera state and the Stride camera entity it drives, camera-relative |

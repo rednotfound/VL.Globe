@@ -32,8 +32,8 @@ at country scale; judge every change at the lowest height.
 **Now (2026-11-24).** An engineering pass: the engine in eight folders (ARCHITECTURE.md, "The
 engine"), the tests mirroring them, probes skipped unless `VLGLOBE_PROBE=1`, the tools reading
 `tools\Nodes.psd1`. Step 3, the user's choices: VectorTiles' drape retired (the `Rendering` pin gone), the hand-written
-IDs replaced; the family's `tools\` stay per repository, no CI. Still open: `GlobeNode.cs` (1049
-lines) split, where terrain goes.
+IDs replaced; the family's `tools\` stay per repository, no CI. `GlobeNode.cs` split into partial
+files by concern (Tiles, Show, Overlays, Background, Perf; 2026-11-24). Still open: where terrain goes.
 
 **Waiting on the user:** their judgement of the gestures and the help patches' layout
 (docs/DESIGN-NODES.md); the drag near the poles and the attribution, not yet seen by them in vvvv.
