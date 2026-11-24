@@ -30,13 +30,15 @@ public class ShadowFitFacts
         float metre = (float)(1 / GlobeCoordinates.EarthRadius);
         var ground = Vector3.TransformNormal(-up * 1500 * metre, view);          // view space, the eye at the origin
         var roof = Vector3.TransformNormal(-up * (1500 - 100) * metre, view);    // 100 m above it
-        var g = Vector3.TransformCoordinate(ground, fit!.Value.ViewToShadow);
-        var r = Vector3.TransformCoordinate(roof, fit.Value.ViewToShadow);
+        var g = Vector3.TransformCoordinate(ground, fit!.Value.Near.ViewToShadow);
+        var r = Vector3.TransformCoordinate(roof, fit.Value.Near.ViewToShadow);
         Assert.InRange(g.X, -1f, 1f); Assert.InRange(g.Y, -1f, 1f); Assert.InRange(g.Z, 0f, 1f);
         Assert.True(r.Z < g.Z, $"roof {r.Z}, ground {g.Z}");
         // the roof's shadow falls away from the sun: the ground point under the roof is shaded from a place
         // displaced from it, so the two do not share a texel unless the sun is overhead
         Assert.True(new Vector2(r.X - g.X, r.Y - g.Y).Length() > 2f / ShadowPass.Size);
+        // the near map's texels are finer than the far one's
+        Assert.True(fit.Value.Near.Offset * 2 < fit.Value.Far.Offset, $"near {fit.Value.Near.Offset}, far {fit.Value.Far.Offset}");
     }
 
     [Fact]

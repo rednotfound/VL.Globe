@@ -673,7 +673,13 @@ internal sealed class VectorRenderer : IGraphicsRendererBase
     // map's clip space as its projection, depth only (ShadowPass).
     void CastShadows(CommandList commandList, GraphicsContext graphicsContext, EffectInstance effect, Frame frame, ShadowPass.Fit fit)
     {
-        _shadow.BeginCasting(commandList);
+        CastShadows(commandList, graphicsContext, effect, frame, 0, fit.Near);
+        CastShadows(commandList, graphicsContext, effect, frame, 1, fit.Far);
+    }
+
+    void CastShadows(CommandList commandList, GraphicsContext graphicsContext, EffectInstance effect, Frame frame, int index, ShadowPass.Cascade cascade)
+    {
+        _shadow.BeginCasting(commandList, index);
         try
         {
             if (_castPipeline is null)
@@ -692,7 +698,7 @@ internal sealed class VectorRenderer : IGraphicsRendererBase
             _castPipeline.State.Output.CaptureState(commandList);
             _castPipeline.Update();
             var parameters = effect.Parameters;
-            Set(parameters, "GvProjection", fit.ViewToShadow);
+            Set(parameters, "GvProjection", cascade.ViewToShadow);
             Set(parameters, "GvStraight", 0f);
             Set(parameters, "GvGlOutline", 0f);
             Set(parameters, "GvExtrusion", 1f);

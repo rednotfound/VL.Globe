@@ -1,8 +1,9 @@
 // VL.Globe's cast shadows (ROADMAP 6b, C), the receiving half, drawn by Engine/Gpu/ShadowPass.cs: one
 // full-screen triangle after the buildings, before the labels. Each pixel's position is found from the
 // depth the buildings were drawn on (the scene's depth and the buildings' own: the ground, the user's
-// models, the buildings), carried into the sun's shadow map and compared there; a pixel in shadow is
+// models, the buildings), carried into the sun's shadow maps and compared there; a pixel in shadow is
 // darkened by multiplying what is drawn (the blend state multiplies the target by this colour).
+// Two cascades: the near map out to a split, the far one beyond, blended over the split's last tenth.
 // GlobeShadow reads a single-sampled depth, GlobeShadowMS a multisampled one (vvvv's window): only
 // DepthAt differs.
 shader GlobeShadowBase : ShaderBase
@@ -11,17 +12,20 @@ shader GlobeShadowBase : ShaderBase
     {
         stage float4 GhProjection;          // the camera's projection: M11, M22, M31, M32 (a pixel to a direction)
         stage float2 GhDepth;               // its M33, M43: depth to view-space z
-        stage float4x4 GhViewToShadow;      // view space to the shadow map's clip space
+        stage float4x4 GhViewToShadow0;     // view space to the near map's clip space
+        stage float4x4 GhViewToShadow1;     // ... and to the far map's
         stage float2 GhViewport;            // the target's size in pixels
         stage float GhTexel;                // one shadow-map texel, in its uv
-        stage float GhBias;                 // depth bias, in the shadow map's depth units
+        stage float2 GhBias;                // depth bias per map, in its depth units
+        stage float2 GhOffset;              // per map: how far a point is moved along its normal before the lookup, view units
+        stage float2 GhSplit;               // the view distances over which the near map hands over to the far one
         stage float GhStrength;             // 0: no shadow, 1: black
         stage float2 GhFade;                // the view distance where the shadow begins to fade and where it is gone
         stage float3 GhLightView;           // towards the light, in view space
-        stage float GhOffset;               // how far a point is moved along its normal before the lookup (normal offset), view units
     }
 
-    stage Texture2D<float> GhShadowMap;
+    stage Texture2D<float> GhShadowMap0;
+    stage Texture2D<float> GhShadowMap1;
 
     stage stream float2 GhPositionIn : POSITION;   // a full-screen triangle, in clip space
     stage stream float2 GhClip;
@@ -34,17 +38,24 @@ shader GlobeShadowBase : ShaderBase
         streams.GhClip = streams.GhPositionIn;
     }
 
-    float Lit(float2 uv, float depth)
+    // how much of the sun a point sees in map c: 3 x 3 texels, each compared (PCF without a comparison
+    // sampler); -1 when the point is outside that map
+    float Lit(int c, float3 view, float3 n)
     {
+        float4x4 m = c == 0 ? GhViewToShadow0 : GhViewToShadow1;
+        float4 s = mul(float4(view + n * (c == 0 ? GhOffset.x : GhOffset.y), 1), m);
+        float2 uv = float2(s.x * 0.5 + 0.5, 0.5 - s.y * 0.5);
+        if (any(uv < 0) || any(uv > 1) || s.z < 0 || s.z > 1) return -1;
+        float depth = s.z - (c == 0 ? GhBias.x : GhBias.y);
         int size = (int)round(1 / GhTexel);
         int2 texel = int2(floor(uv * size));
         float lit = 0;
-        // 3 x 3 texels, each compared (PCF without a comparison sampler)
         [unroll] for (int y = -1; y <= 1; y++)
             [unroll] for (int x = -1; x <= 1; x++)
             {
-                int2 t = clamp(texel + int2(x, y), 0, size - 1);
-                lit += depth - GhBias <= GhShadowMap.Load(int3(t, 0)) ? 1 : 0;
+                int3 t = int3(clamp(texel + int2(x, y), 0, size - 1), 0);
+                float stored = c == 0 ? GhShadowMap0.Load(t) : GhShadowMap1.Load(t);
+                lit += depth <= stored ? 1 : 0;
             }
         return lit / 9;
     }
@@ -64,13 +75,17 @@ shader GlobeShadowBase : ShaderBase
         // none of the stripes a face at a grazing angle to the light draws against its own depth (acne).
         float3 n = normalize(cross(ddy(view), ddx(view)));
         if (dot(n, view) > 0) n = -n;
-        float facing = dot(n, GhLightView);
-        if (facing < 0.05) discard;
-        view += n * GhOffset;
-        float4 s = mul(float4(view, 1), GhViewToShadow);
-        float2 uv = float2(s.x * 0.5 + 0.5, 0.5 - s.y * 0.5);
-        if (any(uv < 0) || any(uv > 1) || s.z < 0 || s.z > 1) discard;
-        float shade = (1 - Lit(uv, s.z)) * (1 - smoothstep(GhFade.x, GhFade.y, -z));
+        if (dot(n, GhLightView) < 0.05) discard;
+        float distance = -z;
+        float lit;
+        float hand = smoothstep(GhSplit.x, GhSplit.y, distance);   // 0: the near map, 1: the far one
+        float nearLit = hand < 1 ? Lit(0, view, n) : -1;
+        float farLit = hand > 0 || nearLit < 0 ? Lit(1, view, n) : -1;
+        if (nearLit < 0 && farLit < 0) discard;
+        if (nearLit < 0) lit = farLit;
+        else if (farLit < 0) lit = nearLit;
+        else lit = lerp(nearLit, farLit, hand);
+        float shade = (1 - lit) * (1 - smoothstep(GhFade.x, GhFade.y, distance));
         if (shade < 0.002) discard;
         float k = 1 - GhStrength * shade;
         streams.ColorTarget = float4(k, k, k, 1);

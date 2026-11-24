@@ -114,5 +114,10 @@ style key (Mapbox's name, default 0 there) or on by default here - to decide on 
   normal offset 1.5 texels, faces turned from the sun skipped (their light already darkens them; they drew
   acne stripes), strength 0.45, faded over the last fifth of the distance. On when the light's own Stride
   `Shadow.Enabled` is (SunLight's Cast Shadows, on by default; vvvv's DirectionalLight's shadow too).
-  Not yet: a second cascade (edges blocky at ~3 m texels from 1 km up), buildings outside the camera's
-  tiles casting, the user's models casting onto the ground and buildings.
+  Not yet: buildings outside the camera's tiles casting, the user's models casting onto the ground and
+  buildings.
+- **C, two cascades** (the same day, asked by the user): a near map out to a split (1.5 x the eye's height
+  + 200 m, 300 m up to 40 % of the distance: ~350 m at street level, ~2 km from 1.2 km up) and a far one
+  to the whole distance, blended over the split's last tenth. Seen in vvvv: from 200 m the high-rises'
+  shadows across Tokyo Station's platforms with smooth edges; from 1.2 km the near edges fine, the far
+  ones (2-6 km) still a little stepped.
