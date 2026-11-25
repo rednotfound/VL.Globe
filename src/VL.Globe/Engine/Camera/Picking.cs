@@ -17,7 +17,7 @@ internal static class Picking
     const double MetresPerDegreeLat = 110574.0, MetresPerDegreeLonAtEquator = 111319.49;
 
     /// <summary>What a pick found: the feature, the name of its layer (a style layer's id for vector tiles), and the place under the cursor.</summary>
-    internal sealed record Found(NetTopologySuite.Features.IFeature Feature, string Layer, double Longitude, double Latitude);
+    internal sealed record Found(NetTopologySuite.Features.Feature Feature, string Layer, double Longitude, double Latitude);
 
     /// <summary>
     /// The topmost feature within <paramref name="tolerancePx"/> of the screen point, in the Input's order: shapes
@@ -51,11 +51,16 @@ internal static class Picking
             }
             if (PickIn(layer, lon, lat, tolerance) is { } index)
                 return new Found(layer.Features is { } features && index < features.Count
-                    ? features[index]
+                    ? AsFeature(features[index])
                     : new NetTopologySuite.Features.Feature(layer.Geometries[index], new NetTopologySuite.Features.AttributesTable()), layer.Name, lon, lat);
         }
         return null;
     }
+
+    // FeatureLayer takes any IFeature; what was given is handed back when it is a Feature (the same
+    // instance), anything else copied into one (its geometry, attributes and bbox)
+    static NetTopologySuite.Features.Feature AsFeature(NetTopologySuite.Features.IFeature f) => f as NetTopologySuite.Features.Feature
+        ?? new NetTopologySuite.Features.Feature(f.Geometry, f.Attributes ?? new NetTopologySuite.Features.AttributesTable()) { BoundingBox = f.BoundingBox };
 
     /// <summary>The topmost geometry within <paramref name="toleranceMetres"/> of a place.</summary>
     public static (GlobeLayer layer, int index)? Pick(GlobeLayer input, double longitude, double latitude, double toleranceMetres)

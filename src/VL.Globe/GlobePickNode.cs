@@ -30,8 +30,11 @@ public sealed class GlobePickNode
     /// <param name="layer">The name of the layer it is in; for vector tiles the style layer's id.</param>
     /// <param name="longitude">Degrees east under the cursor.</param>
     /// <param name="latitude">Degrees north under the cursor.</param>
+    // Feature, not IFeature (2026-11-25): VL never downcasts, so an IFeature output did not link to
+    // VL.NetTopologySuite's GetAttribute/Split; the family outputs Feature everywhere, as VL.Mapsui's Pick
+    // (the survey: the vvvv-node-design skill, references/shared-data-types.md)
     [return: Pin(Name = "Output")]
-    public IFeature? Update(out bool hit, out string layer, out double longitude, out double latitude,
+    public Feature? Update(out bool hit, out string layer, out double longitude, out double latitude,
         GlobeView? view = null, GlobeLayer? input = null, Vector2 position = default, float tolerance = 4f)
     {
         hit = false; layer = ""; longitude = 0; latitude = 0;

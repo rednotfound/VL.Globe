@@ -208,6 +208,31 @@
             <Pin Id="UaxfvAjynQv9Aav4uZ2eVi" Name="Longitude" Kind="OutputPin" />
             <Pin Id="PjUAVBMGz3KwgMEMIWDsAP" Name="Latitude" Kind="OutputPin" />
           </Node>
+          <Pad Id="v0Vc65m8uSDebXFMuU1xh3" Comment="Name" Bounds="150,700,60,15" ShowValueBox="true" isIOBox="true" Value="class">
+            <p:TypeAnnotation LastCategoryFullName="Primitive" LastDependency="VL.CoreLib.vl">
+              <Choice Kind="TypeFlag" Name="String" />
+            </p:TypeAnnotation>
+          </Pad>
+          <Node Bounds="60,730,110,19" Id="vqkVj9X0c8T4qRCRq11xjL">
+            <p:NodeReference LastCategoryFullName="NetTopologySuite.Feature" LastDependency="VL.NetTopologySuite.vl">
+              <Choice Kind="NodeFlag" Name="Node" Fixed="true" />
+              <Choice Kind="OperationCallFlag" Name="GetAttribute" />
+            </p:NodeReference>
+            <Pin Id="6aNxI1sy35WA7AKUr9ENua" Name="Feature" Kind="InputPin" />
+            <Pin Id="TFZQKpnpSW0ZS6AcXpECeF" Name="Name" Kind="InputPin" />
+            <Pin Id="hAJvygvC1UcynK4qxabnZH" Name="Result" Kind="OutputPin" />
+            <Pin Id="38m2z17iMycfzhYBLGMfDN" Name="Success" Kind="OutputPin" />
+          </Node>
+          <Pad Id="9VzffKhRm2QBcMA8m2DPxH" Bounds="60,770,120,15" ShowValueBox="true" isIOBox="true" />
+          <Pad Id="qALBCJ7WFqVECUP38t9yAv" Bounds="200,770,330,20" ShowValueBox="true" isIOBox="true" Value="&lt; one of its properties by name; on a road, class is its kind">
+            <p:TypeAnnotation LastCategoryFullName="Primitive" LastDependency="VL.CoreLib.vl">
+              <Choice Kind="TypeFlag" Name="String" />
+            </p:TypeAnnotation>
+            <p:ValueBoxSettings>
+              <p:fontsize p:Type="Int32">9</p:fontsize>
+              <p:stringtype p:Assembly="VL.Core" p:Type="VL.Core.StringType">Comment</p:stringtype>
+            </p:ValueBoxSettings>
+          </Pad>
           <Pad Id="SeLeMhE55w5yLGdrNKBjDB" Comment="Hit" Bounds="126,620,67,65" ShowValueBox="true" isIOBox="true">
             <p:TypeAnnotation LastCategoryFullName="Primitive" LastDependency="VL.CoreLib.vl">
               <Choice Kind="TypeFlag" Name="Boolean" />
@@ -244,6 +269,9 @@
           <Fragment Id="FIZUeTN6cAW0Qw2aZy1f4D" Patch="IEJZCxd4tL9trbnMnSWupG" Enabled="true" />
           <Fragment Id="MjQMQ1CTZ3TezXJB0Cthzm" Patch="VAGxv7OSmLr44YFXew33L8" Enabled="true" />
         </ProcessDefinition>
+        <Link Id="IBMdvTRF2evWTnv2aHmULl" Ids="BGwBnMxaOSc2mlADxVxz6m,6aNxI1sy35WA7AKUr9ENua" />
+        <Link Id="kI9VtwC7Q5Lh8oCJXv28mq" Ids="v0Vc65m8uSDebXFMuU1xh3,TFZQKpnpSW0ZS6AcXpECeF" />
+        <Link Id="D9KpZou9bm1PJZ8QbVDOm8" Ids="hAJvygvC1UcynK4qxabnZH,9VzffKhRm2QBcMA8m2DPxH" />
         <Link Id="Gjv7EYEORhzOiGZJyFfQ8A" Ids="FcX1JWIWTf2eaFh0pbBQKg,P757HihFiOKunUdQZvDMzq" />
         <Link Id="DbLE6ZcugmlwnLpMTEMGoC" Ids="MVDZz00WuMQcwW2OQEsEoT,FsHl7UeioEJP2NNern66nV" />
         <Link Id="CmVrN96ZufC1Hp84U7eGBR" Ids="UsnBMfjhdkBs2Hje0WTp3Q,UtuieeCIxVc57VVTiY96vw" />

@@ -909,3 +909,10 @@ looked fine - "which makes one think it works". Two causes, estimated at 100 m h
   of the name against the values that reach a node (a local that reads something, or `style: Output_11`) - and its
   first version passed by a regex that let `\s*` give back the space before `default(`. A label-fade fact
   (`A_pan_that_leaves_the_rotation_only_view_unchanged...`) failed once in a full run and passed alone: flaky.
+- **Pick's Output was `IFeature` and did not link to GetAttribute/Split** (2026-11-25, the user: "vectortiles里面是没有property可以读取的对吧").
+  The properties were there (hover tooltip), but VL never downcasts and VL.NetTopologySuite's readers take `Feature`.
+  Surveyed 41 shipped VL assemblies (the vvvv-node-design skill, references/shared-data-types.md): a family uses one
+  type on both sides - the interface where it is interface-centred (ILayer), the class where concrete-centred
+  (Texture, Spread); IFeature has one sealed implementation, so the family outputs `Feature` (as VL.Mapsui's Pick,
+  GeoJSON's readers). Pick now outputs `Feature` (an IFeature given to FeatureLayer that is not one is copied);
+  `HowTo Pick a feature` reads `class` with GetAttribute - the generated code passes Pick's output into it.

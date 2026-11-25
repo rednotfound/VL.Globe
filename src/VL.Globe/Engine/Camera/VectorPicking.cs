@@ -168,7 +168,7 @@ internal sealed class VectorPicker
     }
 
     /// <summary>The feature as an NTS feature in degrees: its properties, and $id, $layer, $sourceLayer.</summary>
-    public static IFeature ToFeature(Hit hit)
+    public static Feature ToFeature(Hit hit)
     {
         var f = hit.Feature;
         var attributes = new AttributesTable();

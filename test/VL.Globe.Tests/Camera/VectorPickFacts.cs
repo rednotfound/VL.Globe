@@ -92,6 +92,29 @@ public class VectorPickFacts
         Assert.Equal("upper", PickCentre(View(16), input)!.Layer);
     }
 
+    // Pick's Output is a Feature, as every family node's: VL never downcasts, and an IFeature output did not
+    // link to VL.NetTopologySuite's GetAttribute/Split (2026-11-25). An IFeature that is not one is copied
+    sealed class OtherFeature : IFeature
+    {
+        public NetTopologySuite.Geometries.Geometry Geometry { get; set; } = null!;
+        public NetTopologySuite.Geometries.Envelope BoundingBox { get; set; } = null!;
+        public IAttributesTable Attributes { get; set; } = null!;
+    }
+
+    [Fact]
+    public void PickOutputsAFeatureWhateverTheLayerWasGiven()
+    {
+        Assert.Equal(typeof(Feature), typeof(GlobePickNode).GetMethod("Update")!.ReturnType);
+        var box = new NetTopologySuite.Geometries.GeometryFactory().ToGeometry(new NetTopologySuite.Geometries.Envelope(Lon - 0.001, Lon + 0.001, Lat - 0.001, Lat + 0.001));
+        var given = new OtherFeature { Geometry = box, Attributes = new AttributesTable { { "name", "x" } } };
+        var layer = new GlobeFeatureLayerNode().Update(new IFeature[] { given });
+        var hit = PickCentre(View(16), layer);
+        Assert.IsType<Feature>(hit!.Feature);
+        Assert.Equal("x", hit.Feature.Attributes["name"]);
+        var same = new Feature(box, new AttributesTable());
+        Assert.Same(same, PickCentre(View(16), new GlobeFeatureLayerNode().Update(new IFeature[] { same }))!.Feature);
+    }
+
     // Tilted at street level: a tall building between the eye and the ground point under the cursor is hit by its
     // wall, before a lower one standing on that point
     [Fact]
