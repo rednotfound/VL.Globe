@@ -27,7 +27,7 @@
               <p:stringtype p:Assembly="VL.Core" p:Type="VL.Core.StringType">Comment</p:stringtype>
             </p:ValueBoxSettings>
           </Pad>
-          <Pad Id="RCbJBuTx8QA5wWyJbtMgHy" Bounds="60,90,680,40" ShowValueBox="true" isIOBox="true" Value="Switch Enabled on and move the mouse over the squares: Pick finds the topmost shape under the cursor. It reports continuously; for clicks, put a S+H after it, gated on a button.">
+          <Pad Id="RCbJBuTx8QA5wWyJbtMgHy" Bounds="60,90,680,40" ShowValueBox="true" isIOBox="true" Value="Switch Enabled on and move the mouse over the squares or a street: Pick finds the topmost shape or vector tile feature under the cursor. It reports continuously; for clicks, put a S+H after it, gated on a button.">
             <p:TypeAnnotation LastCategoryFullName="Primitive" LastDependency="VL.CoreLib.vl">
               <Choice Kind="TypeFlag" Name="String" />
             </p:TypeAnnotation>
@@ -96,6 +96,46 @@
             <Pin Id="UffF8aQ5DoXLG3eGpKePAn" Name="Attribution" Kind="InputPin" />
             <Pin Id="UPaSuue0h0oOFAuORn4eSo" Name="Enabled" Kind="InputPin" />
           </Node>
+          <Pad Id="26auCJp8cHzlQEWht8NC1W" Comment="URL" Bounds="420,245,250,15" ShowValueBox="true" isIOBox="true" Value="https://tiles.openfreemap.org/styles/liberty">
+            <p:TypeAnnotation LastCategoryFullName="Primitive" LastDependency="VL.CoreLib.vl">
+              <Choice Kind="TypeFlag" Name="String" />
+            </p:TypeAnnotation>
+          </Pad>
+          <Node Bounds="420,270,140,19" Id="d3N52OWt3O2VcbNs6UPKlN">
+            <p:NodeReference LastCategoryFullName="Globe.Styles" LastDependency="VL.Globe.vl">
+              <Choice Kind="NodeFlag" Name="Node" Fixed="true" />
+              <CategoryReference Kind="Category" Name="Styles" NeedsToBeDirectParent="true">
+                <p:OuterCategoryReference Kind="Category" Name="Globe" NeedsToBeDirectParent="true" />
+              </CategoryReference>
+              <Choice Kind="ProcessAppFlag" Name="MapLibreStyle (URL)" />
+            </p:NodeReference>
+            <Pin Id="fprBQuXpxxSrWLYubZWWuO" Name="URL" Kind="InputPin" />
+            <Pin Id="NUCzDhTCjoACmMCdN674VP" Name="Output" Kind="OutputPin" />
+          </Node>
+          <Node Bounds="420,300,140,19" Id="mtFehhIRz5S16IlLZuKSPC">
+            <p:NodeReference LastCategoryFullName="Globe.Layers" LastDependency="VL.Globe.vl">
+              <Choice Kind="NodeFlag" Name="Node" Fixed="true" />
+              <CategoryReference Kind="Category" Name="Layers" NeedsToBeDirectParent="true">
+                <p:OuterCategoryReference Kind="Category" Name="Globe" NeedsToBeDirectParent="true" />
+              </CategoryReference>
+              <Choice Kind="ProcessAppFlag" Name="VectorTiles" />
+            </p:NodeReference>
+            <Pin Id="mDL6sbSble9uhXq2G9xrZA" Name="Style" Kind="InputPin" />
+            <Pin Id="AXepSpw6ACEWTNdd0WJhLO" Name="Name" Kind="InputPin" />
+            <Pin Id="kXToErLugaBQ6MppmduKdM" Name="Output" Kind="OutputPin" />
+            <Pin Id="cbaKEFJgcY04PX6cOtmrMw" Name="Attribution" Kind="OutputPin" />
+            <Pin Id="Kx9v0YgYcS9mDyQk2nH1Mu" Name="Status" Kind="OutputPin" />
+            <Pin Id="UAJ02RyPA2EFAV296DuKOa" Name="Enabled" Kind="InputPin" />
+          </Node>
+          <Pad Id="Y15QMhUxY44TRWhbQw8Kdz" Bounds="575,300,330,34" ShowValueBox="true" isIOBox="true" Value="&lt; what a style draws is picked too - a road, a building: its properties in Output's attributes, its style layer in Layer">
+            <p:TypeAnnotation LastCategoryFullName="Primitive" LastDependency="VL.CoreLib.vl">
+              <Choice Kind="TypeFlag" Name="String" />
+            </p:TypeAnnotation>
+            <p:ValueBoxSettings>
+              <p:fontsize p:Type="Int32">9</p:fontsize>
+              <p:stringtype p:Assembly="VL.Core" p:Type="VL.Core.StringType">Comment</p:stringtype>
+            </p:ValueBoxSettings>
+          </Pad>
           <Node Bounds="60,340,110,19" Id="UISMGTnywHtXvKVzap6e11">
             <p:NodeReference LastCategoryFullName="Globe.Layers" LastDependency="VL.Globe.vl">
               <Choice Kind="NodeFlag" Name="Node" Fixed="true" />
@@ -106,6 +146,7 @@
             </p:NodeReference>
             <Pin Id="S8726gzt0EKYBUdAaDa86Z" Name="Input" Kind="InputPin" />
             <Pin Id="BZZW6m4nyoL6uniiFw152c" Name="Input 2" Kind="InputPin" />
+            <Pin Id="KYC5JkAkJyGX1qwRKlpGGi" Name="Input 3" Kind="InputPin" />
             <Pin Id="Te8r0khCEr7n1AyOHFRuT1" Name="Output" Kind="OutputPin" />
             <Pin Id="MrjjVvRWqmkPakaiQpo5nR" Name="Enabled" Kind="InputPin" />
           </Node>
@@ -207,7 +248,7 @@
         <Link Id="DbLE6ZcugmlwnLpMTEMGoC" Ids="MVDZz00WuMQcwW2OQEsEoT,FsHl7UeioEJP2NNern66nV" />
         <Link Id="CmVrN96ZufC1Hp84U7eGBR" Ids="UsnBMfjhdkBs2Hje0WTp3Q,UtuieeCIxVc57VVTiY96vw" />
         <Link Id="J3SoY8tkKQLe5WIh3ABL5Z" Ids="OmXRrvftva9AW7hipTgadD,S8726gzt0EKYBUdAaDa86Z" />
-        <Link Id="KIMaf4UYpKskrL7mnyHMEP" Ids="M9l4NlPvYWVnnK1bu0dMl7,BZZW6m4nyoL6uniiFw152c" />
+        <Link Id="KIMaf4UYpKskrL7mnyHMEP" Ids="M9l4NlPvYWVnnK1bu0dMl7,KYC5JkAkJyGX1qwRKlpGGi" />
         <Link Id="KxdJCpitQUejF9vsMolKTC" Ids="Te8r0khCEr7n1AyOHFRuT1,Ah8pSPtYt9fpz0FvMOV4fG" />
         <Link Id="L6jmgQz1Gof5Kun5J7tpdb" Ids="DmO46ayJKP4GY08vDuPngU,TUCSeVzCnv1xGcCWl2Rnsd" />
         <Link Id="L9QVYRUeEYYMBNpq5isint" Ids="S8fFUsPPlUMeF8iIaFrthi,VRRX0khwISXVvkxpeUc8u8" />
@@ -217,6 +258,10 @@
         <Link Id="OTllmzc1DLTfgockhBAXev" Ids="LvZWqr6hVVXk07zi5v4ISx,I9pSdQqN0tPzS2jbU41lHE" />
         <Link Id="Grs2mtzfdL4IBf5zkU2J2g" Ids="UaxfvAjynQv9Aav4uZ2eVi,HsEPrJ7sQTVsbaXpLcOkAW" />
         <Link Id="SuYYpQMHbqvmvtPCgJynGv" Ids="PjUAVBMGz3KwgMEMIWDsAP,Ryd5uVzdLU8ueZ5oBUEqWp" />
+        <Link Id="FqudVROzLpF0CVYy71uCPL" Ids="26auCJp8cHzlQEWht8NC1W,fprBQuXpxxSrWLYubZWWuO" />
+        <Link Id="YV9nubuDbh4ITjNqEVQs0f" Ids="NUCzDhTCjoACmMCdN674VP,mDL6sbSble9uhXq2G9xrZA" />
+        <Link Id="zGdjaNtEU7xvOdLMfxM1Yv" Ids="kXToErLugaBQ6MppmduKdM,BZZW6m4nyoL6uniiFw152c" />
+        <Link Id="SOmqFiQmA5eJyQ90igFSNW" Ids="ASux1PQFt6LSlWs60rISxW,UAJ02RyPA2EFAV296DuKOa" />
         <Link Id="M4LgZ3cts5SP6lLzodWqFh" Ids="ASux1PQFt6LSlWs60rISxW,BvHkhr4Yht8MTIZIkShW0P" />
       </Patch>
     </Node>

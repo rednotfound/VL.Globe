@@ -900,3 +900,12 @@ looked fine - "which makes one think it works". Two causes, estimated at 100 m h
   Fixed without a stencil: the depth pass writes a little farther (`GvDepthBias`, slope-scaled + 1e-6), the colour
   pass tests Less and writes - the nearest face once per pixel, on the layer's own depth copy. MapLibre's extrusion
   fixtures still pass. The shadow cast pass takes the faces' own depth (bias 0).
+- **Pick finds what VectorTiles draw** (ROADMAP 6d, 2026-11-25, docs/DESIGN-PICK.md): `VectorPicker` - the style's layers
+  top-first, fill/line/circle at the ground point in Web Mercator world units, fill-extrusion along the cursor's ray
+  (the segment P(h)..P(base) on the ground against the footprint, the highest entry nearest), tiles from disk only
+  (never fetched), the last 8 decoded kept. `VectorPickFacts` (10 with PickFacts) passed at once, so mutated: the ray
+  replaced by the ground point fails the tall-building fact. `Compile-HelpPatches.ps1` failed Pick's help on
+  Geometry's open Style once VectorTiles' Style was linked (it matched pins by name); now it counts the linked pins
+  of the name against the values that reach a node (a local that reads something, or `style: Output_11`) - and its
+  first version passed by a regex that let `\s*` give back the space before `default(`. A label-fade fact
+  (`A_pan_that_leaves_the_rotation_only_view_unchanged...`) failed once in a full run and passed alone: flaky.

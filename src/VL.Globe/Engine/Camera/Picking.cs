@@ -16,8 +16,14 @@ internal static class Picking
 {
     const double MetresPerDegreeLat = 110574.0, MetresPerDegreeLonAtEquator = 111319.49;
 
-    /// <summary>The topmost geometry within <paramref name="tolerancePx"/> of the screen point, as its layer and index; null if none, or past the globe.</summary>
-    public static (GlobeLayer layer, int index, double longitude, double latitude)? Pick(GlobeView view, GlobeLayer? input, double px, double py, double tolerancePx)
+    /// <summary>What a pick found: the feature, the name of its layer (a style layer's id for vector tiles), and the place under the cursor.</summary>
+    internal sealed record Found(NetTopologySuite.Features.IFeature Feature, string Layer, double Longitude, double Latitude);
+
+    /// <summary>
+    /// The topmost feature within <paramref name="tolerancePx"/> of the screen point, in the Input's order: shapes
+    /// (FeatureLayer, Geometry) and what VectorTiles layers draw (ROADMAP 6d); null if none, or past the globe.
+    /// </summary>
+    public static Found? Pick(GlobeView view, GlobeLayer? input, double px, double py, double tolerancePx, VectorPicker? vectors = null)
     {
         if (input is null) return null;
         if (view.PickDir(view.CameraDirectionFromProjection(px, py)) is not { } dir) return null;
@@ -25,31 +31,57 @@ internal static class Picking
         double lon = Math.Atan2(dir.X, dir.Z) * 180 / Math.PI;
         var (eye, _, _) = view.Pose();
         double distance = (dir * view.Radius - eye).Length / view.Radius * GlobeCoordinates.EarthRadius;
-        double tolerance = Math.Max(0, tolerancePx) * distance * 2 * Math.Tan(view.FovY / 2) / Math.Max(1, view.Height_px);
-        return Pick(input, lon, lat, tolerance) is { } hit ? (hit.layer, hit.index, lon, lat) : null;
+        double metresPerPixel = distance * 2 * Math.Tan(view.FovY / 2) / Math.Max(1, view.Height_px);
+        double tolerance = Math.Max(0, tolerancePx) * metresPerPixel;
+        var leaves = input.Leaves().Where(l => l.Raster is null).ToList();
+        VectorPicker.Query? query = null;
+        for (int li = leaves.Count - 1; li >= 0; li--)
+        {
+            var layer = leaves[li];
+            if (layer.Vector is { } service)
+            {
+                if (vectors is null || service.Document is not { } style) continue;
+                // the eye straight above which point, how high; the zoom drawn at the cursor (MapLibre's, 512-px tiles)
+                query ??= new VectorPicker.Query(lon, lat,
+                    Math.Atan2(eye.X, eye.Z) * 180 / Math.PI, Math.Asin(Math.Clamp(eye.Y / eye.Length, -1, 1)) * 180 / Math.PI,
+                    (eye.Length / view.Radius - 1) * GlobeCoordinates.EarthRadius, metresPerPixel, Math.Max(0, tolerancePx),
+                    GlobeView.ZoomOf(metresPerPixel, lat) - 1);
+                if (vectors.Pick(style, query.Value) is { } hit) return new Found(VectorPicker.ToFeature(hit), hit.LayerId, lon, lat);
+                continue;
+            }
+            if (PickIn(layer, lon, lat, tolerance) is { } index)
+                return new Found(layer.Features is { } features && index < features.Count
+                    ? features[index]
+                    : new NetTopologySuite.Features.Feature(layer.Geometries[index], new NetTopologySuite.Features.AttributesTable()), layer.Name, lon, lat);
+        }
+        return null;
     }
 
     /// <summary>The topmost geometry within <paramref name="toleranceMetres"/> of a place.</summary>
     public static (GlobeLayer layer, int index)? Pick(GlobeLayer input, double longitude, double latitude, double toleranceMetres)
     {
+        var leaves = input.Leaves().Where(l => l.Raster is null && l.Vector is null).ToList();
+        for (int li = leaves.Count - 1; li >= 0; li--)
+            if (PickIn(leaves[li], longitude, latitude, toleranceMetres) is { } i) return (leaves[li], i);
+        return null;
+    }
+
+    // one shape layer: its last geometry first (drawn on top)
+    static int? PickIn(GlobeLayer layer, double longitude, double latitude, double toleranceMetres)
+    {
         double kx = MetresPerDegreeLonAtEquator * Math.Cos(latitude * Math.PI / 180), ky = MetresPerDegreeLat;
         var toLocal = AffineTransformation.TranslationInstance(-longitude, -latitude).Scale(kx, ky);
         var here = new GeometryFactory().CreatePoint(new Coordinate(0, 0));
-        var leaves = input.Leaves().Where(l => l.Raster is null && l.Vector is null).ToList();
-        for (int li = leaves.Count - 1; li >= 0; li--)
+        for (int i = layer.Geometries.Count - 1; i >= 0; i--)
         {
-            var layer = leaves[li];
-            for (int i = layer.Geometries.Count - 1; i >= 0; i--)
-            {
-                var g = layer.Geometries[i];
-                var env = g.EnvelopeInternal;
-                // a cheap reject before the copy: the envelope, widened by the tolerance in degrees
-                double dLon = toleranceMetres / Math.Max(1, kx), dLat = toleranceMetres / ky;
-                if (longitude < env.MinX - dLon || longitude > env.MaxX + dLon || latitude < env.MinY - dLat || latitude > env.MaxY + dLat) continue;
-                var local = toLocal.Transform(g);
-                if (local is IPolygonal && local.Contains(here)) return (layer, i);
-                if (local.IsWithinDistance(here, toleranceMetres)) return (layer, i);
-            }
+            var g = layer.Geometries[i];
+            var env = g.EnvelopeInternal;
+            // a cheap reject before the copy: the envelope, widened by the tolerance in degrees
+            double dLon = toleranceMetres / Math.Max(1, kx), dLat = toleranceMetres / ky;
+            if (longitude < env.MinX - dLon || longitude > env.MaxX + dLon || latitude < env.MinY - dLat || latitude > env.MaxY + dLat) continue;
+            var local = toLocal.Transform(g);
+            if (local is IPolygonal && local.Contains(here)) return i;
+            if (local.IsWithinDistance(here, toleranceMetres)) return i;
         }
         return null;
     }

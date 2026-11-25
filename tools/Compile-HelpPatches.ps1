@@ -196,6 +196,21 @@ foreach ($p in $patches) {
             Write-Host "  ok    $($d.Groups[2].Value) ($($d.Groups[1].Value)) reads default - no pin '$pinName' is linked in the patch: unconnected on purpose" -ForegroundColor DarkGray
             continue
         }
+        # Pins of one name on several nodes (2026-11-25, Pick's help: Geometry's Style left open on purpose,
+        # VectorTiles' Style linked): every linked one must reach the node with a value - a local of the name
+        # that reads something, or the argument of the name passed something else than such a local
+        # (`style: Output_11`). As many of those as pins of the name are linked: this default is an open pin.
+        $linkedCount = @($pinIds | Where-Object { $linked.ContainsKey($_) }).Count
+        $localName = $d.Groups[2].Value -replace '_\d+$', ''
+        $parts = $localName -split '_'
+        $argName = $parts[0].Substring(0, 1).ToLowerInvariant() + $parts[0].Substring(1) + (($parts | Select-Object -Skip 1) -join '')
+        $locals = [regex]::Matches($csharp, "(?m)^\s*[\w\.<>]+\s+$([regex]::Escape($localName))_\d+\s*=\s*(?=\S)(?!default\()").Count
+        $args_ = [regex]::Matches($csharp, "\b$([regex]::Escape($argName)):\s*(?!$([regex]::Escape($localName))_\d+\b)(?!default\()\w").Count
+        $reading = $locals + $args_
+        if ($reading -ge $linkedCount) {
+            Write-Host "  ok    $($d.Groups[2].Value) ($($d.Groups[1].Value)) reads default - the $linkedCount linked pin(s) '$pinName' each read a value: this one is open on purpose" -ForegroundColor DarkGray
+            continue
+        }
         $failures.Add("$($p.Name): $($d.Groups[2].Value) of type $($d.Groups[1].Value) reads default - a link to it was dropped")
         Write-Host "  FAIL  $($d.Groups[2].Value) ($($d.Groups[1].Value)) reads default(...) - a dropped link" -ForegroundColor Red
     }
