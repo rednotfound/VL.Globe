@@ -893,3 +893,10 @@ looked fine - "which makes one think it works". Two causes, estimated at 100 m h
   render tests' path, is unchanged. `EdgeOnLineFacts`: a meridian 3 degrees inside the limb lights every row it
   crosses (142 of 147 rows dark without the change). Faint there is right; also changes far, foreshortened lines
   in a tilted street view (held whole, faded) - to be seen in vvvv.
+- **Overlapping translucent buildings darker** (the user, 2026-11-24; explained 2026-11-25): two coinciding faces -
+  roofs of one height over each other, shared walls - both passed the colour pass (depth read, LessEqual after the
+  depth pass) and were blended twice: 153 alone, 204 overlapping at 50%. Patchy because exact equality of two roofs'
+  depths depends on the view's rounding (`OverlappingBuildingsFacts`: 4 of 5 views doubled before, the fifth not).
+  Fixed without a stencil: the depth pass writes a little farther (`GvDepthBias`, slope-scaled + 1e-6), the colour
+  pass tests Less and writes - the nearest face once per pixel, on the layer's own depth copy. MapLibre's extrusion
+  fixtures still pass. The shadow cast pass takes the faces' own depth (bias 0).

@@ -547,6 +547,7 @@ internal sealed class VectorRenderer : IGraphicsRendererBase
                     Set(parameters, "GvStraight", item.Pass == Pass.LineList && !GlOutlines ? 1f : 0f);
                     Set(parameters, "GvGlOutline", item.Pass == Pass.LineList && GlOutlines ? 1f : 0f);
                     Set(parameters, "GvExtrusion", extrusion ? 1f : 0f);
+                    Set(parameters, "GvDepthBias", item.Pass == Pass.ExtrusionDepth ? 1f : 0f);
                     tApplyV = System.Diagnostics.Stopwatch.GetTimestamp();
                     effect.Apply(graphicsContext);
                     vectorApplied = true; appliedPass = item.Pass;
@@ -638,7 +639,9 @@ internal sealed class VectorRenderer : IGraphicsRendererBase
         x.SetDefaults();
         x.InputElements = s.InputElements;
         x.BlendState = BlendStates.AlphaBlend;
-        x.DepthStencilState = DepthStencilStates.DepthRead;
+        // its depth written and Less: the nearest face of the layer once per pixel, coinciding faces not twice
+        // (the depth pass wrote a little farther, GvDepthBias). On the layer's own copy of the depth (UseOwnDepth).
+        x.DepthStencilState = new DepthStencilStateDescription(true, true) { DepthBufferFunction = CompareFunction.Less };
         x.RasterizerState = RasterizerStates.CullNone;
         x.PrimitiveType = PrimitiveType.TriangleList;
         // labels: over everything, no depth, as GL JS draws symbols without terrain
@@ -749,6 +752,7 @@ internal sealed class VectorRenderer : IGraphicsRendererBase
             Set(parameters, "GvStraight", 0f);
             Set(parameters, "GvGlOutline", 0f);
             Set(parameters, "GvExtrusion", 1f);
+            Set(parameters, "GvDepthBias", 0f);   // the shadow map takes the faces' own depth
             commandList.SetPipelineState(_castPipeline.CurrentState);
             effect.Apply(graphicsContext);
             Buffer? bound = null;

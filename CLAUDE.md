@@ -34,7 +34,7 @@ engine"), the tests mirroring them, probes skipped unless `VLGLOBE_PROBE=1`, the
 `tools\Nodes.psd1`. Step 3, the user's choices: VectorTiles' drape retired (the `Rendering` pin gone), the hand-written
 IDs replaced; the family's `tools\` stay per repository, no CI. `GlobeNode.cs` split into partial
 files by concern (Tiles, Show, Overlays, Background, Perf; 2026-11-24). Still open: where terrain goes.
-**ROADMAP 6c done (2026-11-24)**: every raster layer is a GPU layer (`Engine/Gpu/RasterTiles.cs`, the `Raster` pass), the globe is a sphere in its Background colour - shape and depth only (the user: "地球globe就是蓝色的球就结束"); judged in vvvv. Offered, not asked yet: a Group (Spectral) cell in `Stack tile layers`. Shapes are GPU layers since ca1f0bf. Light/shadows: ROADMAP 6b, docs/DESIGN-LIGHT.md. Open: the 45 N parallel dotted west of France; my vvvv hung on exit twice (NOTES.md); overlapping buildings doubling in colour (stencil, offered); SunLight's output `Entity` vs DirectionalLight's `Output` (asked).
+**ROADMAP 6c done (2026-11-24)**: every raster layer is a GPU layer (`Engine/Gpu/RasterTiles.cs`, the `Raster` pass), the globe is a sphere in its Background colour - shape and depth only (the user: "地球globe就是蓝色的球就结束"); judged in vvvv. Offered, not asked yet: a Group (Spectral) cell in `Stack tile layers`. Shapes are GPU layers since ca1f0bf. Light/shadows: ROADMAP 6b, docs/DESIGN-LIGHT.md. Done 2026-11-25: edge-on lines at the limb held a pixel wide (the dotted 45 N parallel), overlapping translucent buildings blended once, the view's height read at draw time (no FrameDelay); SunLight's `Entity` output kept (vvvv's lights output `Entity`, 34 of 37 uses); the exit "hang" was vvvv's save dialog.
 
 **Waiting on the user:** their judgement of the gestures and the help patches' layout
 (docs/DESIGN-NODES.md); the drag near the poles and the attribution, not yet seen by them in vvvv.
@@ -56,7 +56,7 @@ A reported view is drawn offscreen by `Probes\ViewProbe` (VLGLOBE_PROBE=1 VLGLOB
 | `VectorTiles [Globe.Layers]` | built 2026-11-21: a MapLibre style's fills/lines/background from vector tiles, with or without a Tile Source; drawn by the GPU (judged by the user moving; the drape, "不太行", removed 2026-11-24) |
 | `ToGlobe`, `ToGlobe (Coordinate)`, `FromGlobe [Globe]` | built, 4 rungs, **absolute** — right under OrbitCamera; under GlobeCamera use GlobePositionComponent |
 
-351 tests pass and 8 probes are skipped (incl. MapLibre v6.19.0's render tests — 409 fixtures, fetched by script — run offscreen on a D3D11 device of the test's own, on the GPU path: 329 pass). Branch `feature/camera-relative`, pushed to `github.com/rednotfound/VL.Globe`
+360 tests pass and 9 probes are skipped (incl. MapLibre v6.19.0's render tests — 409 fixtures, fetched by script — run offscreen on a D3D11 device of the test's own, on the GPU path: 329 pass). Branch `feature/camera-relative`, pushed to `github.com/rednotfound/VL.Globe`
 (public); not merged, not published. Verified on vvvv **7.4 (LTS)**; `Find-Vvvv.ps1` stays below 8.0.
 
 ## Facts this repo paid for (details in NOTES.md)

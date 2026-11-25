@@ -40,6 +40,7 @@ shader GlobeVector : ShaderBase
         stage float GvAo;               // ambient occlusion at the foot of a wall, 0-1 (0: none, as GL JS)
         stage float4 GvLightColor;      // rgb: the light's sRGB colour; a: GL JS's intensity, 0-1 (default white, 0.5)
         stage float4 GvSphere;          // the globe's centre in view space, xyz; w: |eye - centre|^2 - radius^2 (from double)
+        stage float GvDepthBias;        // 1: fill-extrusion's depth pass - its depth a little farther, so the colour pass passes once (see PSMain)
         stage float GvRaster;           // 1: a raster layer's square (ROADMAP 6c), its colour from the two images below
         stage float4 GvRasterOwnRect;   // the square in its own image, u0 v0 u1 v1
         stage float4 GvRasterOtherRect; // ... in the image it fades from
@@ -278,6 +279,12 @@ shader GlobeVector : ShaderBase
         // 2D layer's own depth either (a constant depth range per layer) and cuts the far side by the
         // horizon plane; we keep a depth test, for the Scene's entities, against the true sphere.
         streams.Depth = streams.ShadingPosition.z;
+        // fill-extrusion reaches each pixel once: the depth pass writes a little farther than the face, the colour
+        // pass (depth Less, written) draws the nearest face and then nothing at its depth - two coinciding faces,
+        // a roof on a roof of one height, were blended twice, darker (the user, 2026-11-24). Slope-scaled, as
+        // glPolygonOffset, so a face seen at a slant keeps its own pixels.
+        if (GvExtrusion > 0.5 && GvDepthBias > 0)
+            streams.Depth += GvDepthBias * (0.5 * (abs(ddx(streams.Depth)) + abs(ddy(streams.Depth))) + 1e-6);
         if (GvFlat < 0.5 && GvExtrusion < 0.5)
         {
             float3 p = streams.GvViewPos, centre = GvSphere.xyz;
