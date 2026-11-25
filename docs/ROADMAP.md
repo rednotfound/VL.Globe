@@ -688,6 +688,12 @@ fade materials and borrowed stand-in images removed. Every raster layer, the fir
 Tiles Loading / Requests Sent / Bytes Received count the raster layers. A transparent Background builds no
 tiles (the bare Globe node's default; GlobeWindow and the help wire blue). Seen in vvvv: "似乎没问题".
 
+### 6d. Picking vector tile features — asked by the user 2026-11-25, designed
+
+`Pick` finds what a VectorTiles layer draws, as GL JS's queryRenderedFeatures: the style's layers top-first,
+fill-extrusion by distance along the cursor's ray, the feature's properties out as the attributes. Labels and
+icons later. docs/DESIGN-PICK.md.
+
 ### 7. Gestures and tidying (before the release)
 
 **The drag near the poles — fixed 2026-11-23** (the user: "视野在南北极附近拖拽的时候还是会抖动，甚至会闪动到北极去";
