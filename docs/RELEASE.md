@@ -8,7 +8,14 @@ methods is VL.NetTopologySuite's).
 on nuget.org can be unlisted, never deleted or replaced. The id `VL.Globe` is free on nuget.org (checked
 2026-11-28): the first upload creates it.
 
-## Where it stands (2026-11-28)
+## Published
+
+**0.1.0-alpha, 2026-11-28** - uploaded in the browser by the maintainer; installed back from nuget.org alone the
+same evening (`Test-Install.ps1 -Published -Version 0.1.0-alpha`: signed, the four dependencies, all 16 help
+patches compile; the installed dll and README are byte for byte those of `b5adfe5`). Tag `v0.1.0-alpha` and the
+GitHub release: pending the maintainer's go. The tree is at the working version `0.1.1-alpha`.
+
+## Where it stood before the upload (2026-11-28)
 
 | | |
 |---|---|

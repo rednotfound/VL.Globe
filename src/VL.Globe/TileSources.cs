@@ -44,7 +44,7 @@ public sealed class GlobeTileSource
 internal static class TileSourceFactory
 {
     // OSM's tile policy requires a User-Agent naming the application.
-    internal const string UserAgent = "VL.Globe/0.1.0-alpha (vvvv gamma; VL.NetTopologySuite family)";
+    internal const string UserAgent = "VL.Globe/0.1.1-alpha (vvvv gamma; VL.NetTopologySuite family)";
 
     internal static readonly string CacheRoot = Path.Combine(
         Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "VL.Mapsui", "tiles");

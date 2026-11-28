@@ -2,10 +2,10 @@
 <package xmlns="http://schemas.microsoft.com/packaging/2013/05/nuspec.xsd">
   <metadata>
     <id>VL.Globe</id>
-    <!-- The first release (ROADMAP's 0.1): prepared 2026-11-28, NOT published yet. A prerelease, as
-         every package of the family (the maintainer's rule, 2026-09-25); after publishing, bump to the
-         working version the same day so a local repack is never mistaken for the published package. -->
-    <version>0.1.0-alpha</version>
+    <!-- The WORKING version: always one ahead of what is on nuget.org (0.1.0-alpha, 2026-11-28), so a
+         local repack can never be mistaken for the published package in a NuGet cache. Every release a
+         prerelease, as every package of the family (the maintainer's rule, 2026-09-25). -->
+    <version>0.1.1-alpha</version>
     <title>VL.Globe — map tiles on a globe for vvvv gamma</title>
     <authors>red</authors>
     <owners>red</owners>
@@ -17,7 +17,9 @@
     <description>A globe of map tiles in VL, drawn with Stride from the whole Earth down to street level: raster tile layers, vector tiles from a MapLibre style with labels and 3D buildings, your own geometry on top, and a camera that moves like a map.</description>
     <summary>A globe of map tiles in VL, drawn with Stride: raster and vector tiles, 3D buildings, your own geometry on top.</summary>
     <releaseNotes>
-      0.1.0-alpha - The first release. GlobeWindow, a globe in one node, and Globe, the entity for a
+      0.1.1-alpha - In development, not published.
+
+      0.1.0-alpha (2026-11-28) - The first release. GlobeWindow, a globe in one node, and Globe, the entity for a
       scene of your own. Layers: OpenStreetMap, XyzTiles, VectorTiles (a MapLibre style: fills, lines,
       labels, icons, 3D buildings), Geometry, FeatureLayer, Graticule, stacked with Group; TileCache
       for where tiles are kept. GlobeCamera with drag, wheel, turn and tilt, and FlyTo, CenterOn,

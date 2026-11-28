@@ -4,7 +4,7 @@ A globe of map tiles for vvvv gamma, drawn with Stride, from the whole Earth dow
 
 ![Tokyo Station in 3D: vector tiles with the buildings lit by the sun and casting shadows](https://raw.githubusercontent.com/rednotfound/VL.Globe/main/docs/images/tokyo-3d.jpg)
 
-**Early: a first release, and the nodes may still change.**
+**Early: the first release is 0.1.0-alpha, and the nodes may still change.**
 
 For use with vvvv, the visual live-programming environment for .NET: http://vvvv.org
 
