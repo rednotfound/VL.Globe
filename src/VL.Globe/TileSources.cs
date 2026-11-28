@@ -87,9 +87,9 @@ public sealed class OpenStreetMapNode
 
     /// <param name="opacity">0 to 1. Below it: the layers under it, or the globe's Background for the bottom one.</param>
     /// <param name="cache">Where its tiles are kept, from TileCache. Unconnected: the default folder.</param>
-    /// <param name="enabled">Hides the layer while off.</param>
+    /// <param name="enabled">Fetches and draws while on.</param>
     [return: Pin(Name = "Output")]
-    public GlobeLayer Update(float opacity = 1f, GlobeTileCache? cache = null, bool enabled = true)
+    public GlobeLayer Update(float opacity = 1f, GlobeTileCache? cache = null, bool enabled = false)
     {
         cache ??= GlobeTileCache.Default;
         TileCacheJanitor.Tend(cache);
@@ -115,9 +115,9 @@ public sealed class XyzTilesNode
     /// <param name="attribution">The credit the server requires.</param>
     /// <param name="opacity">0 to 1. Below it: the layers under it, or the globe's Background for the bottom one.</param>
     /// <param name="cache">Where its tiles are kept, from TileCache. Unconnected: the default folder.</param>
-    /// <param name="enabled">Hides the layer while off.</param>
+    /// <param name="enabled">Fetches and draws while on.</param>
     [return: Pin(Name = "Output")]
-    public GlobeLayer Update(string url = "", string attribution = "", float opacity = 1f, GlobeTileCache? cache = null, bool enabled = true)
+    public GlobeLayer Update(string url = "", string attribution = "", float opacity = 1f, GlobeTileCache? cache = null, bool enabled = false)
     {
         cache ??= GlobeTileCache.Default;
         TileCacheJanitor.Tend(cache);

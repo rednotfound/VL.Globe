@@ -14,7 +14,7 @@ on nuget.org can be unlisted, never deleted or replaced. The id `VL.Globe` is fr
 |---|---|
 | version in the tree | `0.1.0-alpha` (nuspec, the tile requests' User-Agent) |
 | branch | `feature/camera-relative`, 220-odd commits ahead of `master`; **not merged** |
-| nodes | 33, each with an F1 help patch; 16 help patches in six topics |
+| nodes | 33, each with an F1 help patch; 16 help patches in six topics; every layer that fetches is off until switched on |
 | tests | 381 pass, 9 probes skipped |
 | verified on | vvvv gamma 7.4 (LTS); not tried on 8.0 previews |
 | depends on | NetTopologySuite 2.6.0, NetTopologySuite.Features 2.1.0, BruTile 5.0.6, VL.NetTopologySuite 0.0.10-alpha (all on nuget.org) |
@@ -28,6 +28,22 @@ on nuget.org can be unlisted, never deleted or replaced. The id `VL.Globe` is fr
 - The widgets (ScaleBar, ZoomButtons, Click) are not in it: "小部件不是很想做。先不做了" (2026-11-28).
 - The style shipped with the examples derives from OSM Liberty (BSD 3-Clause code, CC BY 4.0 design)
   through OpenFreeMap's styles (MIT): the texts are in THIRD-PARTY-NOTICES.md, packed.
+
+## Decided 2026-11-28, after the list below was put to the maintainer
+
+They asked for a search on the Enabled default and left the rest to this side ("其他的你帮我也做选择"):
+
+- **Every layer that fetches is off by default** (3 below): `OpenStreetMap` and `XyzTiles` as `VectorTiles`;
+  windows stay on. vvvv's own network and device nodes are off by default, its windows and renderers on
+  (docs/DESIGN-NODES.md, section 6); the maintainer expected it so. Five help patches whose OpenStreetMap
+  had no toggle - and fetched when opened - got one; `Stack tile layers`' toggle drives its layers now,
+  not its window. **VL.Mapsui's tile layers are still on by default (published): to bring in line there.**
+- **`0.1.0-alpha`** (1): the family's rule stands; the string can still be changed before the upload.
+- **Released although the surface moved this week** (2): a first release has no patches to break, and it
+  says the nodes may change.
+- **The three CARTO rows are removed** (4) from the URLs and the names.
+- **The overview's `GlobeWindow` node stays** (5): with the layers off it opens a plain blue globe and
+  fetches nothing.
 
 ## Open before the upload - the maintainer's
 

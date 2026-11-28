@@ -17,6 +17,14 @@
       </p:NodeReference>
       <Patch Id="CHZdB7dLCk5SGcbV21z17y">
         <Canvas Id="SlnZKvq3thv5ZGtCAPB9oR" CanvasType="Group">
+          <Pad Id="QwUgOY2nI9El9YZaW7jKlf" Comment="Enabled" Bounds="270,365,35,35" ShowValueBox="true" isIOBox="true" Value="false">
+            <p:TypeAnnotation LastCategoryFullName="Primitive" LastDependency="VL.CoreLib.vl">
+              <Choice Kind="ImmutableTypeFlag" Name="Boolean" />
+            </p:TypeAnnotation>
+            <p:ValueBoxSettings>
+              <p:buttonmode p:Assembly="VL.UI.Forms" p:Type="VL.HDE.PatchEditor.Editors.ButtonModeEnum">Toggle</p:buttonmode>
+            </p:ValueBoxSettings>
+          </Pad>
           <Pad Id="KCPhAGUtBLOkNEXjeEihfQ" Bounds="60,40,520,41" ShowValueBox="true" isIOBox="true" Value="Set where the camera starts">
             <p:TypeAnnotation LastCategoryFullName="Primitive" LastDependency="VL.CoreLib.vl">
               <Choice Kind="TypeFlag" Name="String" />
@@ -213,6 +221,7 @@
           <Fragment Id="VBiUpdnaymnDJfEIDA68aK" Patch="RK3cQBTtKaz6rvhEHy3VNf" Enabled="true" />
           <Fragment Id="EzLobaEJzVRmiJYzXc8RFO" Patch="UeVEWwnaqO50NeQU1LGvzh" Enabled="true" />
         </ProcessDefinition>
+        <Link Id="HieYLnRpBfWXSjyZVYarnE" Ids="QwUgOY2nI9El9YZaW7jKlf,NBGqY9RWkxuHC8skbuWBZN" />
         <Link Id="NimPflqbTCWwixnLfdnRdC" Ids="FQVinKmqOFy417RRlNtt1Z,DIXDJ8sdT2hx2VzPdPFrbY" />
         <Link Id="ADAIXb0f8BvXu7hiTtDuw6" Ids="DOpbWX2tYedIV24fAooXQI,GvJrxC0V5Cr0MEjkb621uU" />
         <Link Id="FoRw9pxWf8ICXBTUQf2mLo" Ids="BTK92FED3y6pDJg7snfCe9,R3JdHExfcoATOedYcLWWe1" />

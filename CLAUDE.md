@@ -11,7 +11,7 @@ Guidance for Claude Code working in this repository.
 3. Read **[NOTES.md](NOTES.md)** — every failure so far, before touching the same code.
 4. The family's rules are the siblings': `D:\2026_Projects\vl-mapsui\docs\RULES.md` and that repo's
    CLAUDE.md (the dev loop, the four verification rungs, never leave vvvv running, close only your
-   own pid, help patches ship an `Enabled` toggle OFF (nodes default ON since 2026-11-15/23), edit a .vl in place, NOTES.md is the
+   own pid, help patches ship an `Enabled` toggle OFF (in VL.Globe since 2026-11-28 every layer that fetches is off by default too, windows on; VL.Mapsui's layers still default on), edit a .vl in place, NOTES.md is the
    failure log). They are not repeated here.
 
 The shared memory (`~\.claude\projects\D--2026-Projects-vl-globe\memory`) is a junction onto the
@@ -31,8 +31,8 @@ at country scale; judge every change at the lowest height.
 
 **Now (2026-11-28): the first release is prepared, not published.** Version `0.1.0-alpha` in the tree,
 the gate green, the steps and what is still the maintainer's to decide in [docs/RELEASE.md](docs/RELEASE.md)
-(the version string, the week rule, VectorTiles' Enabled default, three CARTO rows in a help patch, the
-overview's GlobeWindow node). The maintainer merges, pushes, uploads; then the install-back, the tag's
+(decided 2026-11-28: tile layers off by default, 0.1.0-alpha, the CARTO rows removed; still theirs: the
+merge, the push, the upload, and a look at the patches). The maintainer merges, pushes, uploads; then the install-back, the tag's
 GitHub release and the bump to the next working version are this side's.
 
 What the last sessions settled, each in its document: the node decisions since 2026-11-23 in
@@ -54,7 +54,7 @@ A reported view is drawn offscreen by `tools\Probe-View.ps1` (Probes\ViewProbe).
 |---|---|
 | `GlobeWindow [Globe]` — patched in `VL.Globe.vl` | the front door; since 2026-11-23 Input (layers) + Camera + Title + Background + Scene + Enabled, pins in vvvv's order (`ManuallySortedPins`); docs/DESIGN-NODES.md |
 | `Globe [Globe]` — the engine | camera-relative, rounded levels; the sphere in its Background colour, every Input layer on the GPU in order (raster: mipmaps, fades both ways); user-judged |
-| `OpenStreetMap`, `XyzTiles`, `Group`, `Group (Spectral)` [Globe.Layers] | layers since 2026-11-23 (one Input, as Skia's Group); every one a GPU layer in the Input's order (6c); disk cache shared with VL.Mapsui |
+| `OpenStreetMap`, `XyzTiles`, `Group`, `Group (Spectral)` [Globe.Layers] | layers since 2026-11-23 (one Input, as Skia's Group); every one a GPU layer in the Input's order (6c); disk cache shared with VL.Mapsui; OpenStreetMap and XyzTiles off by default since 2026-11-28 |
 | `GlobeCamera`, `Drag`, `ZoomByWheel`, `DragRotate [Globe]` | GlobeCamera as OrbitCamera since 2026-11-23: reads its window's mouse, Initial pins, Reset, Enabled; north stays up; a drag past the edge holds the horizon |
 | `GlobePositionComponent [Globe]` | stands an entity on the globe, placed at draw time; user-judged |
 | `ScreenToGlobe`, `GlobeToScreen`, `GlobeViewInfo [Globe]` | built; user-judged |

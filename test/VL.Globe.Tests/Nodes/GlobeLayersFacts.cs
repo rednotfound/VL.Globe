@@ -45,7 +45,7 @@ public class GlobeLayersFacts
     [Fact]
     public void AGroupIsItsLayersInOrderLeftmostFirst()
     {
-        var osm = new OpenStreetMapNode().Update();
+        var osm = new OpenStreetMapNode().Update(enabled: true);
         var shapes = new GlobeGeometryLayerNode().Update(new[] { Square(T) });
         var hidden = new GlobeGeometryLayerNode().Update(new[] { Square(T) }, enabled: false);
         var inner = new GlobeGroupSpectralNode().Update(new[] { shapes, hidden });
@@ -60,7 +60,7 @@ public class GlobeLayersFacts
     [Fact]
     public void AGroupSwitchedOffHidesAllOfIt()
     {
-        var osm = new OpenStreetMapNode().Update();
+        var osm = new OpenStreetMapNode().Update(enabled: true);
         var group = new GlobeGroupSpectralNode().Update(new[] { osm }, enabled: false);
         Assert.Empty(group.Leaves());
         Assert.Empty(new OpenStreetMapNode().Update(enabled: false).Leaves());

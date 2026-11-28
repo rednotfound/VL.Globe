@@ -9,9 +9,9 @@ public class AttributionFacts
     [Fact]
     public void EveryEnabledLayersCreditOnceInTheLayersOrder()
     {
-        var osm = new OpenStreetMapNode().Update();
-        var topo = new XyzTilesNode().Update("https://example.org/{z}/{x}/{y}.png", "© OpenTopoMap", 0.5f);
-        var again = new XyzTilesNode().Update("https://example.org/b/{z}/{x}/{y}.png", "© OpenTopoMap");
+        var osm = new OpenStreetMapNode().Update(enabled: true);
+        var topo = new XyzTilesNode().Update("https://example.org/{z}/{x}/{y}.png", "© OpenTopoMap", 0.5f, enabled: true);
+        var again = new XyzTilesNode().Update("https://example.org/b/{z}/{x}/{y}.png", "© OpenTopoMap", enabled: true);
         var off = new XyzTilesNode().Update("https://example.org/c/{z}/{x}/{y}.png", "© Hidden", enabled: false);
         var shapes = new GlobeGeometryLayerNode().Update(Array.Empty<NetTopologySuite.Geometries.Geometry>());
         var mine = new GlobeFeatureLayerNode().Update(attribution: "© My survey");

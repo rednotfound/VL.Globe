@@ -78,9 +78,6 @@
               <Item>VersaTiles Eclipse</Item>
               <Item>VersaTiles Neutrino</Item>
               <Item>VersaTiles Shadow</Item>
-              <Item>CARTO Positron</Item>
-              <Item>CARTO Dark Matter</Item>
-              <Item>CARTO Voyager</Item>
               <Item>MapLibre demo tiles (to zoom 6)</Item>
             </p:Value>
           </Pad>
@@ -104,9 +101,6 @@
               <Item>https://tiles.versatiles.org/assets/styles/eclipse/style.json</Item>
               <Item>https://tiles.versatiles.org/assets/styles/neutrino/style.json</Item>
               <Item>https://tiles.versatiles.org/assets/styles/shadow/style.json</Item>
-              <Item>https://basemaps.cartocdn.com/gl/positron-gl-style/style.json</Item>
-              <Item>https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json</Item>
-              <Item>https://basemaps.cartocdn.com/gl/voyager-gl-style/style.json</Item>
               <Item>https://demotiles.maplibre.org/style.json</Item>
             </p:Value>
           </Pad>

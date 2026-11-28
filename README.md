@@ -23,7 +23,7 @@ For use with vvvv, the visual live-programming environment for .NET: http://vvvv
 - Usage examples are included in the pack and can be found via the [Help Browser](https://thegraybook.vvvv.org/reference/hde/findinghelp.html). Start with *Explanation Overview of available nodes*, then *HowTo Open a globe window*; every node opens its own example with **F1**.
 
 ## Map tiles
-- Tiles are fetched from the internet as soon as a layer is drawn; **Enabled** switches a layer off. The help patches ship with it off: switch it on.
+- A tile layer fetches from the internet only while its **Enabled** is on, and it is off until you switch it on - in the help patches too. The window is on by itself.
 - Raster tiles are cached under `%LOCALAPPDATA%\VL.Mapsui\tiles` (shared with VL.Mapsui), vector tiles under `%LOCALAPPDATA%\VL.Globe\vector-tiles`: for 7 days and up to 4 GB, older tiles are deleted. `TileCache` sets another folder and other limits, and clears it.
 - Each tile service sets its own terms. The credit prints in the window by itself; for an `XyzTiles` layer or your own data, fill in its `Attribution` pin.
 - To edit a vector tile style, save it as a `.json` file, open it in [Maputnik](https://maplibre.org/maputnik/), read it with `MapLibreStyle (File)`, and press its `Read` after each save.

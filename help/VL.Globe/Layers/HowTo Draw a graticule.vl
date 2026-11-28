@@ -18,6 +18,14 @@
       </p:NodeReference>
       <Patch Id="FtMf7mj1oy3H6q79H0xYmi">
         <Canvas Id="DWvq2s4i6Z3Ha21QHsePtR" CanvasType="Group">
+          <Pad Id="Hr2XtjMMThO5jLSPGqGccW" Comment="Enabled" Bounds="180,165,35,35" ShowValueBox="true" isIOBox="true" Value="false">
+            <p:TypeAnnotation LastCategoryFullName="Primitive" LastDependency="VL.CoreLib.vl">
+              <Choice Kind="ImmutableTypeFlag" Name="Boolean" />
+            </p:TypeAnnotation>
+            <p:ValueBoxSettings>
+              <p:buttonmode p:Assembly="VL.UI.Forms" p:Type="VL.HDE.PatchEditor.Editors.ButtonModeEnum">Toggle</p:buttonmode>
+            </p:ValueBoxSettings>
+          </Pad>
           <Pad Id="ErQHQwjyaxErPZDS3MoJaQ" Bounds="60,40,460,41" ShowValueBox="true" isIOBox="true" Value="Draw a graticule">
             <p:TypeAnnotation LastCategoryFullName="Primitive" LastDependency="VL.CoreLib.vl">
               <Choice Kind="TypeFlag" Name="String" />
@@ -139,6 +147,7 @@
           <Fragment Id="KcV3iCsQregwV2WEtAEreQ" Patch="VXqn6oEQbqPUpCgZatIJKo" Enabled="true" />
           <Fragment Id="AF2JG2CmQ08y9NMj9PnXe8" Patch="URdU2wK7rg2IgYso43wzpa" Enabled="true" />
         </ProcessDefinition>
+        <Link Id="OTnOKpSuBCv9vcwjtQZ7hY" Ids="Hr2XtjMMThO5jLSPGqGccW,A9oOalMt1mJNMJ4y7hXnfB" />
         <Link Id="Ph0chZjeMjiY9GIklJ053w" Ids="MS7kOLEt4KvHFRlu9GzKAS,LWQi6TZXKQ7nVzFkBY0n13" />
         <Link Id="PwJLKyIEbBVoZc0G3CFSVF" Ids="B3S52FidMdUQFg2tR6iGOs,IFNNhnIMSRzLpeAwufRvjR" />
         <Link Id="Bnk9b7NwwsgNFxAwucKtI3" Ids="D5ZtSq8SjMal83JH8BVFNs,Rhsy6twkybfdj7urZXpn7i" />

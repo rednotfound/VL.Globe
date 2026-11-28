@@ -18,6 +18,14 @@
       </p:NodeReference>
       <Patch Id="CowPiLRb73EVkJyCVUikFb">
         <Canvas Id="VmKGry2jsw7gRKXGKkjb8C" CanvasType="Group">
+          <Pad Id="CC5qmIrpc0w3KIcBcmAM4f" Comment="Enabled" Bounds="180,155,35,35" ShowValueBox="true" isIOBox="true" Value="false">
+            <p:TypeAnnotation LastCategoryFullName="Primitive" LastDependency="VL.CoreLib.vl">
+              <Choice Kind="ImmutableTypeFlag" Name="Boolean" />
+            </p:TypeAnnotation>
+            <p:ValueBoxSettings>
+              <p:buttonmode p:Assembly="VL.UI.Forms" p:Type="VL.HDE.PatchEditor.Editors.ButtonModeEnum">Toggle</p:buttonmode>
+            </p:ValueBoxSettings>
+          </Pad>
           <Pad Id="GjXgnKIMfTCU3u4OLdUI0H" Bounds="60,40,460,41" ShowValueBox="true" isIOBox="true" Value="Draw shapes on the globe">
             <p:TypeAnnotation LastCategoryFullName="Primitive" LastDependency="VL.CoreLib.vl">
               <Choice Kind="TypeFlag" Name="String" />
@@ -275,6 +283,7 @@
           <Fragment Id="JEy1VvrOFKujWwV4zG8a4w" Patch="TgoYj5X70a0pHTK7HKoZch" Enabled="true" />
           <Fragment Id="HR7ZwcWQkOpWXaS3zfgQ8H" Patch="PZCFUrvlWvdUDV7nxfGQy8" Enabled="true" />
         </ProcessDefinition>
+        <Link Id="Gp3G2NZNiG07v3EtQprJvc" Ids="CC5qmIrpc0w3KIcBcmAM4f,HmlWkG8JwLoOyQYrY4KsVk" />
         <Link Id="VYIsC6xYuHkTzAkOyREeVx" Ids="CaSvhQAQ3glSvaZqALhSdh,N4cFMos0mOxkhf8a4Ruo1H" />
         <Link Id="Uar2AyirR5sV8gyc7WrTVQ" Ids="E2iXeBjFncsve0K5ABrJz8,CUjnVJZsTZS09Yl4Kznyrj" />
         <Link Id="U0pxcQm6uoKzwwPGZ09w5P" Ids="BmzwjwnEV9svAc5Ps4zwmh,NA3dkclPTEzW9NSEQ79Otl" />

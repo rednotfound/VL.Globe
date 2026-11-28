@@ -17,6 +17,14 @@
       </p:NodeReference>
       <Patch Id="AOCdmZ9PQky0OnZ1wOBuY4">
         <Canvas Id="T2SUELafNJNADgW6s9B3XQ" CanvasType="Group">
+          <Pad Id="ASAgwFAjg35EnTV0BZ0tMj" Comment="Enabled" Bounds="265,125,35,35" ShowValueBox="true" isIOBox="true" Value="false">
+            <p:TypeAnnotation LastCategoryFullName="Primitive" LastDependency="VL.CoreLib.vl">
+              <Choice Kind="ImmutableTypeFlag" Name="Boolean" />
+            </p:TypeAnnotation>
+            <p:ValueBoxSettings>
+              <p:buttonmode p:Assembly="VL.UI.Forms" p:Type="VL.HDE.PatchEditor.Editors.ButtonModeEnum">Toggle</p:buttonmode>
+            </p:ValueBoxSettings>
+          </Pad>
           <Pad Id="IFeDGAcEtIsQgciSyNLpEo" Bounds="60,40,460,41" ShowValueBox="true" isIOBox="true" Value="Read the place under the cursor">
             <p:TypeAnnotation LastCategoryFullName="Primitive" LastDependency="VL.CoreLib.vl">
               <Choice Kind="TypeFlag" Name="String" />
@@ -238,6 +246,7 @@
           <Fragment Id="TCGsrWjdPWkwCZFZreqv0u" Patch="V2riwQ4qkLQ53cPNIaVIhi" Enabled="true" />
           <Fragment Id="CyC1DkveYckvT3RWbU2hCD" Patch="KSMohDHhoyi0ljiB8QuqhU" Enabled="true" />
         </ProcessDefinition>
+        <Link Id="TVe045CBHOvgU2Vp7c6Ukz" Ids="ASAgwFAjg35EnTV0BZ0tMj,N4gZyYjl6mlOytnSoTZPNF" />
         <Link Id="NUZIoVZMkdvFg8BSbBvfsS" Ids="GUrgiRunIy2qUiMUsj8hPt,LfFWqTvFxgpNgfPoowzY0I" />
         <Link Id="IAOWBoIWl2mQdAlMRRR6nt" Ids="EnOuhLmSUhKuCO8lA527Bz,GdTkgP8TdLtqjtYC01Qwfs" />
         <Link Id="TE8JbSt8FWRw5Pn7DJVDQM" Ids="U2swPPM8pQH42zWQAPIcYG,CthaaqpmjPd3b31iFeSrJT" />

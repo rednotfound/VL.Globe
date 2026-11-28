@@ -956,3 +956,17 @@ looked fine - "which makes one think it works". Two causes, estimated at 100 m h
   to vvvv once for the look. Built the same day: `tools\Probe-View.ps1` (the halo view and its baseline, drawn
   and counted in 28 s), `..\vvvv-dev\tools\Shoot-Patch.ps1` and `Compare-Captures.ps1`; a capture of the same
   patch and switch taken twice in vvvv differed by 0 pixels (largest difference 7 of 765).
+
+## 2026-11-28 - five help patches fetched when opened; found by a script, the day of the release
+
+The rule is that browsing help fetches nothing: every help patch has an Enabled toggle, off. On 2026-11-23
+the windows and the tile layers became on by default, and the toggles were (rightly) taken off the windows -
+which left `Set where the camera starts`, `Read the place under the cursor`, `Draw a graticule`, `Draw shapes
+on the globe` and `Build your own globe scene` with an OpenStreetMap that nothing switched: on, in a window
+that is on. No check saw it; `Normalize-HelpPatches` forces toggles off and cannot know a layer has none.
+Found by listing, for every help patch, each tile layer's Enabled pin and what each toggle drives.
+- **A default that fetches turns a forgotten link into a silent request; a default that does not turns it into
+  a blue globe.** The layers that fetch are off by default since (the user's expectation, and vvvv's own
+  network nodes'): the failure is now on the screen.
+- When a default changes, list every place that relied on the old one - here every node application in the
+  help with the pin unlinked - before believing nothing else moved.
