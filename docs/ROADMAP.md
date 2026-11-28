@@ -601,6 +601,8 @@ The plan as written:
 
 ### 6. Widgets and imagery layers — imagery layers built 2026-11-23
 
+**ScaleBar, ZoomButtons, Click: not wanted for now** (the user, 2026-11-28: "小部件不是很想做。先不做了").
+
 **Several imagery layers with Opacity — built**, seen in vvvv (OpenTopoMap at 0.5-0.6 over OpenStreetMap,
 Tokyo and Mount Fuji). OpenStreetMap and XyzTiles have an `Opacity`; in Group the leftmost tile layer is
 the globe's own imagery (mipmaps, fades, stand-ins) while opaque - below Opacity 1 it goes into the

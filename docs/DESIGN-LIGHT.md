@@ -121,3 +121,24 @@ style key (Mapbox's name, default 0 there) or on by default here - to decide on 
   to the whole distance, blended over the split's last tenth. Seen in vvvv: from 200 m the high-rises'
   shadows across Tokyo Station's platforms with smooth edges; from 1.2 km the near edges fine, the far
   ones (2-6 km) still a little stepped.
+
+## Baseline, measured 2026-11-28 (before the rest of C)
+
+The pan bench (`VLGLOBE_BENCH=pan`, 2 x 10 s at 300 px/s) on scratch copies of `HowTo Light the buildings
+with the sun` with Enabled on: Tokyo Station from 500 m, tilted 60, Liberty with all its labels, a 1250 x 800
+window, RTX 3060 Ti, vsync on. GPU = the process's 3D engine use (`Get-Counter "\GPU Engine(pid_N_*engtype_3D)"`,
+every 2-3 s after loading), since at 60 fps the frame time shows nothing.
+
+| run | frames while panning | submit (mean) | draws | GPU 3D, mean (min-max) |
+|---|---|---|---|---|
+| SunLight, shadows on | 60 fps, 16.7 ms | 1.5 ms | ~2950 | 35.6 % (32.5-38.1) |
+| SunLight, Cast Shadows off | 60 fps, 16.7 ms | 1.4-1.5 ms | ~2950 | 33.9 % (32.3-35.8) |
+| no light in the scene | 60 fps, 16.7 ms | 1.4-1.5 ms | ~2950 | 34.2 % (32.7-36.0) |
+
+- The two cascades and the full-screen receive cost about 1.7 points of GPU (~0.3 ms of a 16.7 ms frame) and
+  ~0.1 ms of submit on this card - one run each, the difference is the size of the spread between samples.
+- The perf line's `draws` does not count the shadow casters' draws: it reads the same with and without.
+- Not the shadows': one frame of 163-168 ms in pan 2 with shadows on AND with no light, all of it label
+  placement (`place 162.2` / `155.7`). Not looked at yet.
+- Instrument notes: the perf line says `still` during the bench's pans, so `Summarize-Perf.py --moving` drops
+  them; GlobeWindow's unused inner camera runs the bench too (it spins, drawn by nothing).
