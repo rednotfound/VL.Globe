@@ -673,7 +673,9 @@ a custom Folder with the layers fetching (26 png under `tiles\`, 142 pbf under `
 the default folders); over Max Size (32.3 MB -> 13.4 under a limit of 16, the 77 newest files left, logged);
 Clear (168 tiles gone, three files that are not tiles left alone, logged); the cache off (nothing kept, 20
 vector tiles drawn); Max Age 7 (the 84 files dated 10 days back gone, the other 84 kept); Max Age 0 (all 168
-kept). Not run: the default folders' limit on the user's real cache - asked first.
+kept). The default folders' limit, on the user's real cache with their word ("好的。帮我测试起来吧"): `HowTo Open a
+globe window` (no TileCache, its Enabled toggle off - the janitor runs all the same) deleted the 9306 raster
+tiles older than 7 days (598.8 -> 429.6 MB), left the 9446 vector tiles (all younger) alone, and logged it.
 
 ### 6b. Light — asked by the user 2026-11-24, survey first
 
