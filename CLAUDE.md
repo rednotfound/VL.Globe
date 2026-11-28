@@ -89,8 +89,9 @@ A reported view is drawn offscreen by `Probes\ViewProbe` (VLGLOBE_PROBE=1 VLGLOB
 - **SceneWindow's defaults are wrong for a map**: `Enable Default Post Effects` (on) darkens and
   blurs; `Present Interval` has no default and runs `Immediate` (tearing). Set False / One.
 - **SceneWindow's `Client Bounds` is `2D.Rectangle`** (RectangleF). Stride's `Rectangle` Height was
-  dropped by the compiler in silence. **The help-patch compile check cannot see inside a patched
-  definition**: decompile `VL.Globe.vl.dll` (`ilspycmd`) and read `GlobeWindow_P.Update`.
+  dropped by the compiler in silence. **A link dropped inside a patched definition**
+  (GlobeWindow) is caught since 2026-11-28 by `tools\Test-PatchedDefinitions.ps1` (run by
+  `Compile-HelpPatches.ps1`; needs `ilspycmd`): `VL.Globe.vl.dll` decompiled, links counted against values passed.
 - **Stride's `BinaryOperator.Add` is `ComputeColorAdd3ds`**, alpha-weighted; an emissive
   `ComputeColor` drew black. Read the shader a material node maps to (`.sdsl` in the Stride.Rendering
   nuget) before trusting its name; colours go through 1 × 1 textures.

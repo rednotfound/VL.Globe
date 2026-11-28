@@ -688,7 +688,7 @@ fade materials and borrowed stand-in images removed. Every raster layer, the fir
 Tiles Loading / Requests Sent / Bytes Received count the raster layers. A transparent Background builds no
 tiles (the bare Globe node's default; GlobeWindow and the help wire blue). Seen in vvvv: "似乎没问题".
 
-### 6d. Picking vector tile features — asked by the user 2026-11-25, designed
+### 6d. Picking vector tile features — asked by the user 2026-11-25; built, the user judged it 2026-11-28 ("还行，问题不大")
 
 `Pick` finds what a VectorTiles layer draws, as GL JS's queryRenderedFeatures: the style's layers top-first,
 fill-extrusion by distance along the cursor's ray, the feature's properties out as the attributes. Labels and
@@ -705,8 +705,9 @@ look in vvvv still to come.
 
 - **Ask the user about the vertical drag direction.** `Position in Projection` is assumed y-up and
   nobody has asked. Then move the Drag and ZoomByWheel logs from Information to Debug.
-- **Teach `Compile-HelpPatches.ps1` to decompile `VL.Globe.vl.dll`** and run the dropped-link check
-  on patched definitions. The first GlobeWindow's height link was silently dropped.
+- ~~Teach `Compile-HelpPatches.ps1` to decompile `VL.Globe.vl.dll` and run the dropped-link check
+  on patched definitions.~~ 2026-11-28: `tools\Test-PatchedDefinitions.ps1`, run at the end of
+  `Compile-HelpPatches.ps1` - the document's links counted against the values the compiled class passes.
 - ~~`Test-VLPatch.ps1` and `HelpPatchGen.ps1` still carry VL.Mapsui's node lists: run
   `Test-VLPackage.ps1` and fix what it reports.~~ 2026-11-24: both read `tools\Nodes.psd1`;
   HelpPatchGen.ps1 (VL.Mapsui's generator) removed.
@@ -715,8 +716,8 @@ look in vvvv still to come.
   - every node has an F1 HelpFocus;
   - restyle to the family's rules (memory: help patch cells, community style, layout).
 - `README.md` in the vvvv library shape, and fresh `docs\` screenshots.
-- `Globe`'s own frustum still assumes 16:9 unless the camera sets an aspect. Read the projection
-  Stride used.
+- ~~`Globe`'s own frustum still assumes 16:9 unless the camera sets an aspect.~~ Already reads the
+  projection Stride computed (`GlobeNode.Select`); 16:9 only before the first frame's projection.
 
 **0.1 ships** once the node surface has gone a week without moving (family rule).
 

@@ -257,6 +257,28 @@ foreach ($p in $patches) {
     }
 }
 
+# Inside the package's own patched definitions (GlobeWindow): every help patch's output carries the
+# compiled VL.Globe.vl.dll, with no source - decompiled and its links counted by Test-PatchedDefinitions.ps1.
+# A check that could not run is a failure, not a skip.
+$document = Join-Path $RepoRoot 'VL.Globe.vl'
+$compiled = Get-ChildItem $OutputDirectory -Recurse -Filter 'VL.Globe.vl.dll' -ErrorAction SilentlyContinue | Select-Object -First 1
+Write-Host "`nchecking the patched definitions of VL.Globe.vl" -ForegroundColor Cyan
+if (-not $compiled) {
+    $failures.Add("VL.Globe.vl: no compiled VL.Globe.vl.dll in the output - its patched definitions were not checked")
+    Write-Host "  FAIL  no VL.Globe.vl.dll in the output" -ForegroundColor Red
+}
+else {
+    $problems = @(& (Join-Path $PSScriptRoot 'Test-PatchedDefinitions.ps1') -Dll $compiled.FullName -Document $document)
+    if ($problems.Count -eq 0) {
+        Write-Host "  ok    every link inside its definitions passes a value in the compiled code" -ForegroundColor DarkGray
+    }
+    else {
+        $failures.Add("VL.Globe.vl: $($problems[0])")
+        Write-Host "  FAIL  $($problems[0])" -ForegroundColor Red
+        $problems | Select-Object -Skip 1 | ForEach-Object { Write-Host $_ -ForegroundColor DarkGray }
+    }
+}
+
 if ($KeepOutput) {
     Write-Host "`ngenerated projects kept at $OutputDirectory" -ForegroundColor DarkGray
 }
