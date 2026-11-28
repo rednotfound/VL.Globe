@@ -1,18 +1,50 @@
 # VL.Globe
 
-A globe of map tiles for vvvv gamma, drawn with Stride, from the whole Earth down to street level:
-
-* Raster tile layers: OpenStreetMap or any XYZ tile service, stacked with an opacity, cached on disk
-* Vector tiles drawn from a MapLibre style: fills, lines, labels, icons and 3D buildings
-* Your own geometry and features on the globe, with a lat/lon graticule
-* A camera that moves like a map: drag, wheel, turn and tilt, fly to a place, frame your data
-* Picking what is under the mouse, converting between screen pixels, degrees and globe positions
-* Your own Stride entities standing on the globe, and a sun that lights the buildings
-* A globe in one node, `GlobeWindow`, that answers the mouse; or the `Globe` entity, to put in a scene of your own
+A globe of map tiles for vvvv gamma, drawn with Stride, from the whole Earth down to street level.
 
 **Early: a first release, and the nodes may still change.**
 
 For use with vvvv, the visual live-programming environment for .NET: http://vvvv.org
+
+## What it does
+
+**A globe in one node**
+* `GlobeWindow` opens a window with a globe that answers the mouse; `Globe` is the same globe as an entity, for a scene of your own
+* Precise at street level: buildings and your own objects stay steady from 20 m above the ground up to the whole planet
+
+**Map layers**, stacked in any order with `Group`
+* Raster tiles: `OpenStreetMap`, or any XYZ tile service with `XyzTiles`, each with an opacity
+* Vector tiles: `VectorTiles` draws a [MapLibre style](https://maplibre.org/maplibre-style-spec/), read from a URL or a file: fills, lines, circles, labels that avoid each other and follow roads, icons, and 3D buildings. Drawn on the GPU after MapLibre GL JS and checked against its render tests
+* Your own data: `Geometry` and `FeatureLayer` draw [NetTopologySuite](https://github.com/rednotfound/VL.NetTopologySuite) points, lines and polygons with a `VectorStyle`; `Graticule` draws meridians and parallels
+* `TileCache` chooses where tiles are kept on disk, for how long, and how much
+
+**A camera that moves like a map**
+* `GlobeCamera`: drag to pan, wheel to zoom, right-drag to turn and tilt; north stays up
+* `FlyTo`, `CenterOn`, `ZoomToBounds`, `ZoomToLevel`, `ZoomIn`, `ZoomOut`
+
+**Reading the map**
+* `Pick`: the feature under the mouse, with its attributes
+* `ScreenToGlobe`, `GlobeToScreen`, `GlobeViewInfo`: between pixels, longitude / latitude and the view
+* `ToGlobe`, `FromGlobe`: between longitude / latitude / height and positions on the globe
+
+**Your own 3D things**
+* `GlobePositionComponent` stands any Stride entity on the globe at a longitude, latitude and height
+* `SunLight`: the sun at a date and time lights the 3D buildings, and they cast shadows
+
+## What it does not do yet
+
+* No terrain: the globe is a smooth sphere at sea level (elevation is the next release)
+* No scale bar, zoom buttons or other on-screen widgets
+* Vector styles: the layer types `heatmap`, `hillshade` and `raster`, and pattern fills and lines, are not drawn; a style using them still loads, without those layers
+* Tile sources are Web Mercator XYZ; no WMS, WMTS or 3D Tiles
+* No sky or atmosphere; the ground is not darkened at night
+* Tried on vvvv gamma 7.4 only
+
+## Where it is going
+
+* **0.1, this release**: what [VL.Mapsui](https://github.com/rednotfound/VL.Mapsui) does on a flat map, on a globe, plus vector tiles
+* **0.2**: terrain, with heights above sea level, on the ground and above the ground
+* After that, GIS features come before visual polish: more ways to bring data in, to style it and to ask the map questions. The plan and its reasons are in [docs/ROADMAP.md](docs/ROADMAP.md)
 
 ## Getting started
 - Requires vvvv gamma 7.4 (.NET 8, Stride 4.2).
