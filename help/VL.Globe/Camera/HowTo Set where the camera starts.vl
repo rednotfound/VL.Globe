@@ -35,14 +35,6 @@
               <p:stringtype p:Assembly="VL.Core" p:Type="VL.Core.StringType">Comment</p:stringtype>
             </p:ValueBoxSettings>
           </Pad>
-          <Pad Id="V9oU0oOth1WllEXk0syb7h" Comment="Enabled" Bounds="450,400,35,35" ShowValueBox="true" isIOBox="true" Value="false">
-            <p:TypeAnnotation LastCategoryFullName="Primitive" LastDependency="VL.CoreLib.vl">
-              <Choice Kind="ImmutableTypeFlag" Name="Boolean" />
-            </p:TypeAnnotation>
-            <p:ValueBoxSettings>
-              <p:buttonmode p:Assembly="VL.UI.Forms" p:Type="VL.HDE.PatchEditor.Editors.ButtonModeEnum">Toggle</p:buttonmode>
-            </p:ValueBoxSettings>
-          </Pad>
           <Node Bounds="150,410,100,19" Id="TFUZTLpsXbIcBg50YhU9yq">
             <p:NodeReference LastCategoryFullName="Globe.Layers" LastDependency="VL.Globe.vl">
               <Choice Kind="NodeFlag" Name="Node" Fixed="true" />
@@ -72,6 +64,8 @@
             <Pin Id="BWUH8VX57459pEKgqbfqtt" Name="Field Of View" Kind="InputPin" />
             <Pin Id="Ph6DPBllW0VBPQxJ71xrUf" Name="Max Tilt" Kind="InputPin" />
             <Pin Id="TuwpDsEUl8499gBEApRV7g" Name="Radius" Kind="InputPin" />
+            <Pin Id="ItRUiRPHT1QLDKKBIuk4Ji" Name="Mouse" Kind="InputPin" IsHidden="true" />
+            <Pin Id="A0RHEZwRONXPfldzM3Im8S" Name="Screen Height" Kind="InputPin" IsHidden="true" />
             <Pin Id="AwKLrxvjiPvEqFVv0A03cH" Name="Reset" Kind="InputPin" />
             <Pin Id="LqaQokLIR5mJgQo4gZzOPU" Name="Enabled" Kind="InputPin" />
             <Pin Id="E2TQQ0OwoME0VT43JzCXP2" Name="Output" Kind="OutputPin" />
@@ -166,6 +160,7 @@
             <Pin Id="ILi6yej85G3a4ChWmvuNXI" Name="Camera" Kind="InputPin" />
             <Pin Id="G3uJ56NXoknNTV7XwN3BuI" Name="Title" Kind="InputPin" DefaultValue="Set where the camera starts" />
             <Pin Id="DZPqcaxGxhwGch4upUIEHl" Name="Background" Kind="InputPin" />
+            <Pin Id="CT6gAbJi5JaNHylY58sIGJ" Name="Scene" Kind="InputPin" IsHidden="true" />
             <Pin Id="M2aX7aCrzCxyqLoDQySO3S" Name="Enabled" Kind="InputPin" />
             <Pin Id="Ffi22NFdcsb4JPzsCzcqnr" Name="View" Kind="OutputPin" />
             <Pin Id="HQPkpjv96yK4x59gSOKdOL" Name="Cursor" Kind="OutputPin" />
@@ -230,7 +225,6 @@
         <Link Id="FtfEC2cPTuz0idKol2mjhu" Ids="He9qLWEAQkWikQWlO4WfFU,L4HjKyaYQ3BYRR1e9mPzK0" />
         <Link Id="CwTQ7kSjYjzvXNnfJcLmZf" Ids="Kgx2TSowWuuKOPAv6m3G6j,QnyzTGLfJiLZen4gYNZK9U" />
         <Link Id="PfeL4LQeHiTMxbwGkmaMBb" Ids="T3QMZMPi2HHiZivFE4bJgC,IxMGjOnx4Cn9gXiwXv8H9o" />
-        <Link Id="ElNLxTWWiyafxBuYIp3e1S" Ids="V9oU0oOth1WllEXk0syb7h,M2aX7aCrzCxyqLoDQySO3S" />
         <Link Id="DbtsR5joWZnnhHC2cNiDY4" Ids="PvCissGIQ0asBll3KSkvfq,Ker8K2LAZRIjLIjvLzH1Pd" />
         <Link Id="JFZi9APOmDiNfcEhf8DpIY" Ids="E2TQQ0OwoME0VT43JzCXP2,ILi6yej85G3a4ChWmvuNXI" />
         <Link Id="BxqaMtifq5Prxo629MOpjC" Ids="Ffi22NFdcsb4JPzsCzcqnr,Bx32b56F9xvWUoUaZXMkLk" />

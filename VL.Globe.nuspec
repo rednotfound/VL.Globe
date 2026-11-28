@@ -36,6 +36,7 @@
     <file src="src\VL.Globe\bin\Release\net8.0\VL.Globe.xml" target="lib\net8.0\" />
     <file src="help\VL.Globe\**\*.vl" target="help\" />
     <file src="help\VL.Globe\Help.xml" target="help\" />
+    <file src="help\VL.Globe\Assets\**" target="help\Assets\" />
     <file src="shaders\*.sdsl" target="shaders\" />
     <file src="README.md" target="docs\" />
   </files>

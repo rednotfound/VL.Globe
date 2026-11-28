@@ -35,7 +35,7 @@
               <p:stringtype p:Assembly="VL.Core" p:Type="VL.Core.StringType">Comment</p:stringtype>
             </p:ValueBoxSettings>
           </Pad>
-          <Pad Id="SwoX2dSx9tFUuiGeat2o3p" Comment="Enabled" Bounds="472,290,60,30" ShowValueBox="true" isIOBox="true" Value="false">
+          <Pad Id="SwoX2dSx9tFUuiGeat2o3p" Comment="Enabled" Bounds="282,220,60,30" ShowValueBox="true" isIOBox="true" Value="false">
             <p:TypeAnnotation LastCategoryFullName="Primitive" LastDependency="VL.CoreLib.vl">
               <Choice Kind="TypeFlag" Name="Boolean" />
             </p:TypeAnnotation>
@@ -43,7 +43,7 @@
               <p:buttonmode p:Assembly="VL.UI.Forms" p:Type="VL.HDE.PatchEditor.Editors.ButtonModeEnum">Toggle</p:buttonmode>
             </p:ValueBoxSettings>
           </Pad>
-          <Pad Id="CNLougM7bA1SqTcbRXdECT" Bounds="592,294,330,20" ShowValueBox="true" isIOBox="true" Value="&lt; off on open: nothing is fetched until you agree">
+          <Pad Id="CNLougM7bA1SqTcbRXdECT" Bounds="465,225,330,20" ShowValueBox="true" isIOBox="true" Value="&lt; off on open: nothing is fetched until you agree">
             <p:TypeAnnotation LastCategoryFullName="Primitive" LastDependency="VL.CoreLib.vl">
               <Choice Kind="TypeFlag" Name="String" />
             </p:TypeAnnotation>
@@ -63,7 +63,7 @@
             <Pin Id="BlkANngGXwnJ7btpgdzsVD" Name="URL" Kind="InputPin" />
             <Pin Id="Eq4iYDMhVVOm7sJ0cx04jn" Name="Output" Kind="OutputPin" />
           </Node>
-          <Node Bounds="145,210,140,19" Id="N5cPKD5byIEH2HATQAKvqF">
+          <Node Bounds="145,270,140,19" Id="N5cPKD5byIEH2HATQAKvqF">
             <p:NodeReference LastCategoryFullName="Globe.Layers" LastDependency="VL.Globe.vl">
               <Choice Kind="NodeFlag" Name="Node" Fixed="true" />
               <CategoryReference Kind="Category" Name="Layers" NeedsToBeDirectParent="true">
@@ -79,7 +79,7 @@
             <Pin Id="EHpXvOM5hiy9USmCNccv0B" Name="Status" Kind="OutputPin" />
             <Pin Id="U7aQrodB8TpKGV4WyvATuM" Name="Enabled" Kind="InputPin" />
           </Node>
-          <Pad Id="KMLoiEzpFaymIfxLL63NGs" Bounds="305,150,330,34" ShowValueBox="true" isIOBox="true" Value="&lt; vector tiles drawn from a MapLibre style: streets, labels, 3D buildings. OpenStreetMap is a layer too">
+          <Pad Id="KMLoiEzpFaymIfxLL63NGs" Bounds="465,161,330,34" ShowValueBox="true" isIOBox="true" Value="&lt; vector tiles drawn from a MapLibre style: streets, labels, 3D buildings. OpenStreetMap is a layer too">
             <p:TypeAnnotation LastCategoryFullName="Primitive" LastDependency="VL.CoreLib.vl">
               <Choice Kind="TypeFlag" Name="String" />
             </p:TypeAnnotation>
@@ -110,7 +110,7 @@
             <Pin Id="LFure0pM58qLV3dl0cIryL" Name="Scene" Kind="InputPin" IsHidden="true" />
             <Pin Id="EqRmEftGJHv6mUOu2NIk35" Name="Enabled" Kind="InputPin" />
           </Node>
-          <Node Bounds="188,270,225,19" Id="OTUXcMILJFbi8xIvSBwQOO">
+          <Node Bounds="188,330,225,19" Id="OTUXcMILJFbi8xIvSBwQOO">
             <p:NodeReference LastCategoryFullName="Globe" LastDependency="VL.Globe.vl">
               <Choice Kind="NodeFlag" Name="Node" Fixed="true" />
               <Choice Kind="ProcessAppFlag" Name="GlobeCamera" />
@@ -191,7 +191,7 @@
               <Choice Kind="TypeFlag" Name="String" />
             </p:TypeAnnotation>
           </Pad>
-          <Pad Id="FbmkWroyX9TOA2Vk9Vi3a6" Comment="Reset" Bounds="390,221,35,35" ShowValueBox="true" isIOBox="true" Value="false">
+          <Pad Id="FbmkWroyX9TOA2Vk9Vi3a6" Comment="Reset" Bounds="390,290,35,35" ShowValueBox="true" isIOBox="true" Value="false">
             <p:TypeAnnotation LastCategoryFullName="Primitive" LastDependency="VL.CoreLib.vl">
               <Choice Kind="ImmutableTypeFlag" Name="Boolean" />
             </p:TypeAnnotation>
@@ -207,7 +207,6 @@
           <Fragment Id="Si5Nkrf2qOf5wuaZW58jAE" Patch="LRGJRzXGWOdKcxnDHr8LVb" Enabled="true" />
         </ProcessDefinition>
         <Link Id="KGi58gp7Bg7EEoLPE3BH7U" Ids="PyDvZXlNY1BSQGxHSuXtMC,KIyc1orFsTdwRu5d2OOz1h" />
-        <Link Id="DEmgT59tIIYJOeu0t6Ll5I" Ids="SwoX2dSx9tFUuiGeat2o3p,EqRmEftGJHv6mUOu2NIk35" />
         <Link Id="DV7EPvPmjuc5ED8DKxwDLQ" Ids="Eq4iYDMhVVOm7sJ0cx04jn,DHAk78bSDpTBWknObEp9gz" />
         <Link Id="ITbigzXX6FSQ96QCsiZNvS" Ids="SwoX2dSx9tFUuiGeat2o3p,U7aQrodB8TpKGV4WyvATuM" />
         <Link Id="QX6jwiqZ0lo8HnJ4M9ZPLa" Ids="PRGd9oL1BRrTeMpNkB9nsc,F0e6Zr2jZj93PDaKgJgiMF" />

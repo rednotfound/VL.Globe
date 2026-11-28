@@ -43,18 +43,23 @@
               <p:buttonmode p:Assembly="VL.UI.Forms" p:Type="VL.HDE.PatchEditor.Editors.ButtonModeEnum">Toggle</p:buttonmode>
             </p:ValueBoxSettings>
           </Pad>
+          <Pad Id="TXvY2LpTxp80h0xEjj2glu" Comment="Path" Bounds="152,190,100,15" ShowValueBox="true" isIOBox="true" Value="..\Assets\liberty-3d.json">
+            <p:TypeAnnotation LastCategoryFullName="IO" LastSymbolSource="CoreLibBasics.vl">
+              <Choice Kind="TypeFlag" Name="Path" />
+            </p:TypeAnnotation>
+          </Pad>
           <Node Bounds="150,215,100,19" Id="HfvfkUTG0dzkEKSEukuNpX">
             <p:NodeReference LastCategoryFullName="Globe.Styles" LastDependency="VL.Globe.vl">
               <Choice Kind="NodeFlag" Name="Node" Fixed="true" />
               <CategoryReference Kind="Category" Name="Styles" NeedsToBeDirectParent="true">
                 <p:OuterCategoryReference Kind="Category" Name="Globe" NeedsToBeDirectParent="true" />
               </CategoryReference>
-              <Choice Kind="ProcessAppFlag" Name="MapLibreStyle (URL)" />
+              <Choice Kind="ProcessAppFlag" Name="MapLibreStyle (File)" />
             </p:NodeReference>
-            <Pin Id="U3xxvsIXcjoZBTdSQnmfBg" Name="URL" Kind="InputPin" />
+            <Pin Id="U3xxvsIXcjoZBTdSQnmfBg" Name="Path" Kind="InputPin" />
             <Pin Id="GUvsBQgya5Nb4GsFUqjXNJ" Name="Output" Kind="OutputPin" />
           </Node>
-          <Pad Id="TbvsM2tmdM3DRRbzlZNInf" Bounds="60,165,330,20" ShowValueBox="true" isIOBox="true" Value="&lt; OpenFreeMap's Liberty when URL is not connected">
+          <Pad Id="TbvsM2tmdM3DRRbzlZNInf" Bounds="60,165,330,20" ShowValueBox="true" isIOBox="true" Value="&lt; OpenFreeMap's Liberty with only the big labels left: a style file">
             <p:TypeAnnotation LastCategoryFullName="Primitive" LastDependency="VL.CoreLib.vl">
               <Choice Kind="TypeFlag" Name="String" />
             </p:TypeAnnotation>
@@ -94,7 +99,7 @@
             </p:ValueBoxSettings>
           </Pad>
           <Node Bounds="520,215,265,19" Id="GvLc9Uc0i1LvUAYmr1gTTK">
-            <p:NodeReference LastCategoryFullName="System.DateTime" LastSymbolSource="CoreLibBasics.vl">
+            <p:NodeReference LastCategoryFullName="System.DateTime" LastDependency="CoreLibBasics.vl">
               <Choice Kind="NodeFlag" Name="Node" Fixed="true" />
               <Choice Kind="OperationCallFlag" Name="Create (Year Month Day Hour Minute Second Kind)" />
             </p:NodeReference>
@@ -136,6 +141,15 @@
             <Pin Id="DkkGiHmCl9gPwQPFj4ciwe" Name="Initial Tilt" Kind="InputPin" DefaultValue="60" />
             <Pin Id="GFoCRW6xM41oXCK5LD8G03" Name="Output" Kind="OutputPin" />
             <Pin Id="KQrNcc2LyUUugD39UCoUSs" Name="View" Kind="OutputPin" />
+            <Pin Id="Tsd7OYdF106M9se5a6c7rq" Name="Min Height" Kind="InputPin" />
+            <Pin Id="BsgHGkTu0FJPgRiALFMkpu" Name="Max Height" Kind="InputPin" />
+            <Pin Id="Dj4OqyQedSqOo5zOvVoExT" Name="Field Of View" Kind="InputPin" />
+            <Pin Id="G9iAed4rAZ1NJAj6jL7lf6" Name="Max Tilt" Kind="InputPin" />
+            <Pin Id="Fczzp80lVKvOVEhcR5DZPL" Name="Radius" Kind="InputPin" />
+            <Pin Id="KdemUm6ldZLM4cDzZMabxC" Name="Mouse" Kind="InputPin" IsHidden="true" />
+            <Pin Id="GJ1QtVXjFVrLKpxeAQhXdE" Name="Screen Height" Kind="InputPin" IsHidden="true" />
+            <Pin Id="OYpZOWL1UPILitvNCOG8bp" Name="Reset" Kind="InputPin" />
+            <Pin Id="ERjbvtUeNI6QYJ9qZl2P1H" Name="Enabled" Kind="InputPin" />
           </Node>
           <Pad Id="TKpU9ktecmQyo8b2mkgjFn" Bounds="450,326,300,20" ShowValueBox="true" isIOBox="true" Value="&lt; starts tilted over Tokyo Station">
             <p:TypeAnnotation LastCategoryFullName="Primitive" LastDependency="VL.CoreLib.vl">
@@ -193,6 +207,7 @@
           <Fragment Id="Hz21GoAOO3yzqOcFmllSuf" Patch="OfsjScoU6avMoKlwjE3bUp" Enabled="true" />
           <Fragment Id="R2i7eRfGkA1RIu6oXfhGqK" Patch="QGkjDdCcVhlB0Uv69Sk3uX" Enabled="true" />
         </ProcessDefinition>
+        <Link Id="DMPTxCm3U4k4wEPa4HGblM" Ids="TXvY2LpTxp80h0xEjj2glu,U3xxvsIXcjoZBTdSQnmfBg" />
         <Link Id="Tudckw0XHF9jVMJgXP60wD" Ids="RD9f5HbArbmFtY0hXMESA9,DOGJwm2Ziq4lx5segLws0Q" />
         <Link Id="Qd4qMQaHUQHMPOiIhdcW1l" Ids="GUvsBQgya5Nb4GsFUqjXNJ,EQB9JLeCAXvN7BvfWi7qWt" />
         <Link Id="C4ffrk514lMJI7JCNatXzU" Ids="Lws2fRoBRDmo0IQTDKxdqR,EJeAxlNmGTw7qVU2qAyO0S" />
