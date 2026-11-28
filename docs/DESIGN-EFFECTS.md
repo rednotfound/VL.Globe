@@ -13,6 +13,22 @@ globe's sphere and the user's models, **not the buildings**. So every depth-base
 flat globe today. And `GlobeWindow` switches SceneWindow's default post effects off (they are a Hejl2 tone
 map: it darkened the map's colours).
 
+## A second fact, found when the experiment was being set up (the same day)
+
+**Stride's effects assume a scene in metres; ours is in earth radii** (`Radius` 1 by default: a building 100 m
+away is 1.6e-5 units deep). Read in `AmbientOcclusionRawAOShader.sdsl`, not run: the AO fades out with
+`saturate(linearDepth * 2 - 0.5)` - nothing nearer than 0.25 units, 1600 km, is ever occluded - and divides by
+`0.01 + distance²`, where our distances² are 1e-12. Its Radius and Bias pins can be scaled; these constants
+cannot. So writing the buildings' depth back would not be enough: Stride's AO draws nothing at our scale.
+Two ways on, the user's to choose:
+- **A. The globe in metres** (`Radius` 6378137): every Stride effect's units are right, and the user's models
+  are in metres too. Unknown whether the engine holds at that radius (camera-relative, so it may); a change of
+  default for everyone.
+- **B. An ambient occlusion pass of our own**, beside `GlobeShadow` and `GlobeFog`: full screen, on the
+  buildings' own depth, before the labels - the same sampler with our units. No write-back, the labels are
+  never darkened, it works inside `GlobeWindow`. DepthOfField and Outline stay out of reach until A or a
+  write-back.
+
 ## What there is
 
 | effect (vvvv node, `Stride.Rendering.PostFX` unless said) | reads | here today | to make it work |
