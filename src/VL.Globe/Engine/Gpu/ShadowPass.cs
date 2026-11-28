@@ -122,6 +122,13 @@ internal sealed class ShadowPass : IDisposable
         commandList.SetViewport(_viewport);
     }
 
+    // PROTOTYPE (docs/DESIGN-EFFECTS.md): screen-space ambient occlusion in this pass, for a picture to judge by.
+    // VLGLOBE_SSAO=<strength 0-1> switches it on, VLGLOBE_SSAO_RADIUS=<metres> (8). Off by default; only with shadows on.
+    static readonly float AoStrength = Env("VLGLOBE_SSAO", 0), AoRadiusMetres = Env("VLGLOBE_SSAO_RADIUS", 8);
+    static float Env(string name, float fallback) =>
+        float.TryParse(Environment.GetEnvironmentVariable(name), System.Globalization.NumberStyles.Float,
+            System.Globalization.CultureInfo.InvariantCulture, out float v) ? v : fallback;
+
     /// <summary>Darkens what is drawn where the sun is blocked, reading <paramref name="sceneDepth"/> (not bound as a target).</summary>
     public void Receive(CommandList commandList, GraphicsContext graphicsContext, EffectInstance effect, Texture sceneDepth,
         Matrix projection, Fit fit)
@@ -171,6 +178,7 @@ internal sealed class ShadowPass : IDisposable
         Set(p, "GhStrength", Strength);
         Set(p, "GhFade", fit.Fade);
         Set(p, "GhLightView", fit.LightView);
+        Set(p, "GhAo", new Vector2(AoStrength, AoRadiusMetres / 6378137f));   // PROTOTYPE: a globe of radius 1
         Set(p, "GhSamples", Math.Max(1, (int)sceneDepth.MultisampleCount));   // None = 1, X2 = 2, X4 = 4, X8 = 8
         SetTexture(p, "GhShadowMap0", _maps[0]!);
         SetTexture(p, "GhShadowMap1", _maps[1]!);

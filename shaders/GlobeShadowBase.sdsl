@@ -23,6 +23,7 @@ shader GlobeShadowBase : ShaderBase
         stage float2 GhFade;                // the view distance where the shadow begins to fade and where it is gone
         stage float3 GhLightView;           // towards the light, in view space
         stage int GhSamples;                // the scene depth's samples per pixel: 1, or 2, 4, 8 multisampled
+        stage float2 GhAo;                  // PROTOTYPE (docs/DESIGN-EFFECTS.md): screen-space ambient occlusion - strength (0: off), radius in view units
     }
 
     stage Texture2D<float> GhShadowMap0;
@@ -101,6 +102,43 @@ shader GlobeShadowBase : ShaderBase
         return (1 - lit) * (1 - smoothstep(GhFade.x, GhFade.y, distance));
     }
 
+    // PROTOTYPE, for a picture to judge by (VLGLOBE_SSAO): Stride's AmbientOcclusionRawAOShader sampler - a spiral
+    // of taps on the depth round the pixel, each occluding by how far it stands above the pixel's surface - in
+    // our units, without its blur. 0 open, 1 fully occluded.
+    float Occlusion(int2 pixel)
+    {
+        if (DepthAt(pixel, 0) >= 1) return 0;
+        float3 view = ViewAt(pixel, 0);
+        float3 right = ViewAt(pixel + int2(1, 0), 0) - view, left = view - ViewAt(pixel - int2(1, 0), 0);
+        float3 down = ViewAt(pixel + int2(0, 1), 0) - view, up = view - ViewAt(pixel - int2(0, 1), 0);
+        float3 dx = abs(right.z) < abs(left.z) ? right : left;
+        float3 dy = abs(down.z) < abs(up.z) ? down : up;
+        float3 n = normalize(cross(dy, dx));
+        if (dot(n, view) > 0) n = -n;
+        float radius = GhAo.y;
+        // the radius on the screen, in pixels, at this depth
+        float disk = min(radius * GhProjection.y / -view.z * GhViewport.y * 0.5, 96);
+        if (disk < 1.5) return 0;
+        float turn = 0;   // no rotation per pixel: without the blur it is a hatching
+        float sum = 0;
+        const int taps = 24;
+        [loop] for (int i = 0; i < taps; i++)
+        {
+            float a = (i + 0.5) / taps;
+            float angle = a * 43.9822971503 + turn;
+            int2 at = pixel + int2(round(float2(cos(angle), sin(angle)) * a * disk));
+            if (any(at < 0) || any(at >= int2(GhViewport))) continue;
+            if (DepthAt(at, 0) >= 1) continue;
+            float3 v = ViewAt(at, 0) - view;
+            float d2 = dot(v, v);
+            float f = max(radius * radius - d2, 0);
+            // (times the radius: Stride's term is 1 / length, of the order of 1 only where the radius is 1)
+            sum += f * f * f * max((dot(v, n) - 0.12 * radius) * radius / (1e-4 * radius * radius + d2), 0);
+        }
+        float r3 = radius * radius * radius;
+        return saturate(sum / (r3 * r3) * 5 / taps);
+    }
+
     stage override void PSMain()
     {
         int2 pixel = int2(streams.ShadingPosition.xy);
@@ -122,8 +160,9 @@ shader GlobeShadowBase : ShaderBase
             [loop] for (int s = 0; s < count; s++) shade += Shade(pixel, s);
             shade /= count;
         }
-        if (shade < 0.002) discard;
-        float k = 1 - GhStrength * shade;
+        float occluded = GhAo.x > 0 ? GhAo.x * Occlusion(pixel) : 0;
+        if (shade < 0.002 && occluded < 0.002) discard;
+        float k = (1 - GhStrength * shade) * (1 - occluded);
         streams.ColorTarget = float4(k, k, k, 1);
     }
 };

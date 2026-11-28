@@ -29,6 +29,21 @@ Two ways on, the user's to choose:
   never darkened, it works inside `GlobeWindow`. DepthOfField and Outline stay out of reach until A or a
   write-back.
 
+### B tried as a prototype (the same day) - for a picture to judge by, not a feature
+
+The user: "我们就先把测试做了吧，因为我不知道该如何选型，值不值得做" - and: GIS features come before visual polish.
+`GlobeShadowBase.sdsl` got an `Occlusion` term behind `VLGLOBE_SSAO=<strength>` (off by default;
+`VLGLOBE_SSAO_RADIUS` metres, 8): Stride's spiral sampler, 24 taps on the buildings' depth, in our units.
+Drawn offscreen (`tools\Probe-View.ps1`, Yanaka from 100 m, strength 0.6 against 0): 24 % of the pixels
+darker, none lighter - the gaps between houses, the alleys, the feet of the walls; the roofs and open ground
+untouched. Three rounds of 30 s: black everywhere (Stride's term is 1 / length, of the order of 1 only at
+radius 1 - multiplied by the radius), then hatched (the per-pixel rotation needs the blur it comes with -
+removed), then stripes on the ground (self-occlusion - bias 0.12 of the radius).
+**What a feature would still need**: a pass of its own (the prototype runs only with shadows on), the
+bilateral blur and the rotation back, every sample of a multisampled depth at outlines, the radius from the
+globe's `Radius`, a pin or a style key for the strength, and its cost measured (24 depth reads a pixel).
+Not seen in vvvv. Decision open; the prototype stays in the tree, switched off.
+
 ## What there is
 
 | effect (vvvv node, `Stride.Rendering.PostFX` unless said) | reads | here today | to make it work |
