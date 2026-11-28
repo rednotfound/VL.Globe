@@ -13,7 +13,7 @@ on nuget.org can be unlisted, never deleted or replaced. The id `VL.Globe` is fr
 | | |
 |---|---|
 | version in the tree | `0.1.0-alpha` (nuspec, the tile requests' User-Agent) |
-| branch | `master` - `feature/camera-relative` fast-forwarded into it and both pushed, 2026-11-28 |
+| branch | `main` (renamed from master, as the siblings') - `feature/camera-relative` fast-forwarded into it and pushed, 2026-11-28 |
 | nodes | 33, each with an F1 help patch; 16 help patches in six topics; every layer that fetches is off until switched on |
 | tests | 381 pass, 9 probes skipped |
 | verified on | vvvv gamma 7.4 (LTS); not tried on 8.0 previews |
@@ -79,7 +79,7 @@ dotnet test test\VL.Globe.Tests\VL.Globe.Tests.csproj
 .\tools\Compile-HelpPatches.ps1 -OutputDirectory <an absolute folder>
 .\tools\Test-Install.ps1 -FromNuGetOrg -OutputDirectory <an empty folder>
 
-# 2. The release commit on master, pushed (done 2026-11-28 on the maintainer's word).
+# 2. The release commit on main, pushed (done 2026-11-28 on the maintainer's word).
 
 # 3. The maintainer uploads dist\feed\VL.Globe.0.1.0-alpha.nupkg at nuget.org (Upload -> Verify:
 #    four dependencies incl. VL.NetTopologySuite 0.0.10-alpha, the README preview -> Submit).

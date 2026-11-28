@@ -6,7 +6,7 @@ camera-relative session. **Re-planned 2026-11-21 around releases**, from the res
 
 Read [ARCHITECTURE.md](ARCHITECTURE.md) for what exists and [../NOTES.md](../NOTES.md) for what
 already failed. Items are in the order they should be done; each says how it is verified. Nothing is
-published. Everything is on `master` (2026-11-28: `feature/camera-relative`, where 0.1 was built,
+published. Everything is on `main` (2026-11-28, renamed from master: `feature/camera-relative`, where 0.1 was built,
 fast-forwarded into it), `github.com/rednotfound/VL.Globe`; the user says when to merge, push and release.
 
 **2026-11-28: 0.1 is prepared for release as `0.1.0-alpha`** - the steps and the open decisions are in

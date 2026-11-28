@@ -2,6 +2,8 @@
 
 A globe of map tiles for vvvv gamma, drawn with Stride, from the whole Earth down to street level.
 
+![Tokyo Station in 3D: vector tiles with the buildings lit by the sun and casting shadows](https://raw.githubusercontent.com/rednotfound/VL.Globe/main/docs/images/tokyo-3d.jpg)
+
 **Early: a first release, and the nodes may still change.**
 
 For use with vvvv, the visual live-programming environment for .NET: http://vvvv.org
@@ -12,11 +14,15 @@ For use with vvvv, the visual live-programming environment for .NET: http://vvvv
 * `GlobeWindow` opens a window with a globe that answers the mouse; `Globe` is the same globe as an entity, for a scene of your own
 * Precise at street level: buildings and your own objects stay steady from 20 m above the ground up to the whole planet
 
+![The globe from 13,000 km, drawn from vector tiles](https://raw.githubusercontent.com/rednotfound/VL.Globe/main/docs/images/globe.png)
+
 **Map layers**, stacked in any order with `Group`
 * Raster tiles: `OpenStreetMap`, or any XYZ tile service with `XyzTiles`, each with an opacity
 * Vector tiles: `VectorTiles` draws a [MapLibre style](https://maplibre.org/maplibre-style-spec/), read from a URL or a file: fills, lines, circles, labels that avoid each other and follow roads, icons, and 3D buildings. Drawn on the GPU after MapLibre GL JS and checked against its render tests
 * Your own data: `Geometry` and `FeatureLayer` draw [NetTopologySuite](https://github.com/rednotfound/VL.NetTopologySuite) points, lines and polygons with a `VectorStyle`; `Graticule` draws meridians and parallels
 * `TileCache` chooses where tiles are kept on disk, for how long, and how much
+
+![Paris at street level: a MapLibre style's labels and icons, 3D buildings and their shadows](https://raw.githubusercontent.com/rednotfound/VL.Globe/main/docs/images/paris.jpg)
 
 **A camera that moves like a map**
 * `GlobeCamera`: drag to pan, wheel to zoom, right-drag to turn and tilt; north stays up
@@ -26,6 +32,8 @@ For use with vvvv, the visual live-programming environment for .NET: http://vvvv
 * `Pick`: the feature under the mouse, with its attributes
 * `ScreenToGlobe`, `GlobeToScreen`, `GlobeViewInfo`: between pixels, longitude / latitude and the view
 * `ToGlobe`, `FromGlobe`: between longitude / latitude / height and positions on the globe
+
+![Your own lines and polygons over OpenStreetMap](https://raw.githubusercontent.com/rednotfound/VL.Globe/main/docs/images/shapes.jpg)
 
 **Your own 3D things**
 * `GlobePositionComponent` stands any Stride entity on the globe at a longitude, latitude and height
@@ -44,7 +52,7 @@ For use with vvvv, the visual live-programming environment for .NET: http://vvvv
 
 * **0.1, this release**: what [VL.Mapsui](https://github.com/rednotfound/VL.Mapsui) does on a flat map, on a globe, plus vector tiles
 * **0.2**: terrain, with heights above sea level, on the ground and above the ground
-* After that, GIS features come before visual polish: more ways to bring data in, to style it and to ask the map questions. The plan and its reasons are in [docs/ROADMAP.md](docs/ROADMAP.md)
+* After that, GIS features come before visual polish: more ways to bring data in, to style it and to ask the map questions. The plan and its reasons are in [docs/ROADMAP.md](https://github.com/rednotfound/VL.Globe/blob/main/docs/ROADMAP.md)
 
 ## Getting started
 - Requires vvvv gamma 7.4 (.NET 8, Stride 4.2).
@@ -68,11 +76,11 @@ For use with vvvv, the visual live-programming environment for .NET: http://vvvv
 
 ## Contributing
 - Report issues on [GitHub](https://github.com/rednotfound/VL.Globe/issues)
-- What exists and why: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md); what is planned: [docs/ROADMAP.md](docs/ROADMAP.md)
+- What exists and why: [docs/ARCHITECTURE.md](https://github.com/rednotfound/VL.Globe/blob/main/docs/ARCHITECTURE.md); what is planned: [docs/ROADMAP.md](https://github.com/rednotfound/VL.Globe/blob/main/docs/ROADMAP.md)
 - When making a pull-request, please make sure to read the general [guidelines on contributing to vvvv libraries](https://thegraybook.vvvv.org/reference/extending/contributing.html)
 
 ## Credits
-Vector tiles are drawn after [MapLibre GL JS](https://github.com/maplibre/maplibre-gl-js) (BSD-3-Clause) and checked against its render tests. Uses [BruTile](https://github.com/BruTile/BruTile) (Apache-2.0) for tile schemas and [NetTopologySuite](https://github.com/NetTopologySuite/NetTopologySuite) (BSD-3-Clause) for geometry. Map data from OpenStreetMap is © OpenStreetMap contributors, available under the [ODbL](https://www.openstreetmap.org/copyright). The style shipped with the examples derives from [OSM Liberty](https://github.com/maputnik/osm-liberty) through [OpenFreeMap](https://openfreemap.org); the full notices are in [THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md).
+Vector tiles are drawn after [MapLibre GL JS](https://github.com/maplibre/maplibre-gl-js) (BSD-3-Clause) and checked against its render tests. Uses [BruTile](https://github.com/BruTile/BruTile) (Apache-2.0) for tile schemas and [NetTopologySuite](https://github.com/NetTopologySuite/NetTopologySuite) (BSD-3-Clause) for geometry. Map data from OpenStreetMap is © OpenStreetMap contributors, available under the [ODbL](https://www.openstreetmap.org/copyright). The style shipped with the examples derives from [OSM Liberty](https://github.com/maputnik/osm-liberty) through [OpenFreeMap](https://openfreemap.org); the full notices are in [THIRD-PARTY-NOTICES.md](https://github.com/rednotfound/VL.Globe/blob/main/THIRD-PARTY-NOTICES.md).
 
 ## License
-[MIT](LICENSE)
+[MIT](https://github.com/rednotfound/VL.Globe/blob/main/LICENSE)
