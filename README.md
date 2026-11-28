@@ -10,18 +10,21 @@ A globe of map tiles for vvvv gamma, drawn with Stride, from the whole Earth dow
 * Your own Stride entities standing on the globe, and a sun that lights the buildings
 * A globe in one node, `GlobeWindow`, that answers the mouse; or the `Globe` entity, to put in a scene of your own
 
-**Early: not published yet, and the nodes may still change.**
+**Early: a first release, and the nodes may still change.**
 
 For use with vvvv, the visual live-programming environment for .NET: http://vvvv.org
 
 ## Getting started
 - Requires vvvv gamma 7.4 (.NET 8, Stride 4.2).
-- Not on nuget.org yet. To try it, clone this repository, run `.\build.ps1` and `.\pack.ps1`, and add its `dist` folder to vvvv's [package repositories](https://thegraybook.vvvv.org/reference/hde/commandline-arguments.html).
-- Usage examples are included in the pack and can be found via the [Help Browser](https://thegraybook.vvvv.org/reference/hde/findinghelp.html). Start with *HowTo Open a globe window*; every node opens its own example with **F1**.
+- Install as [described here](https://thegraybook.vvvv.org/reference/hde/managing-nugets.html) via commandline:
+
+    `nuget install VL.Globe -pre`
+
+- Usage examples are included in the pack and can be found via the [Help Browser](https://thegraybook.vvvv.org/reference/hde/findinghelp.html). Start with *Explanation Overview of available nodes*, then *HowTo Open a globe window*; every node opens its own example with **F1**.
 
 ## Map tiles
 - Tiles are fetched from the internet as soon as a layer is drawn; **Enabled** switches a layer off. The help patches ship with it off: switch it on.
-- Raster tiles are cached under `%LOCALAPPDATA%\VL.Mapsui\tiles` (shared with VL.Mapsui), vector tiles under `%LOCALAPPDATA%\VL.Globe\vector-tiles`, for 7 days. `TileCache` sets another folder, a size limit, and clears it.
+- Raster tiles are cached under `%LOCALAPPDATA%\VL.Mapsui\tiles` (shared with VL.Mapsui), vector tiles under `%LOCALAPPDATA%\VL.Globe\vector-tiles`: for 7 days and up to 4 GB, older tiles are deleted. `TileCache` sets another folder and other limits, and clears it.
 - Each tile service sets its own terms. The credit prints in the window by itself; for an `XyzTiles` layer or your own data, fill in its `Attribution` pin.
 - To edit a vector tile style, save it as a `.json` file, open it in [Maputnik](https://maplibre.org/maputnik/), read it with `MapLibreStyle (File)`, and press its `Read` after each save.
 
@@ -37,7 +40,7 @@ For use with vvvv, the visual live-programming environment for .NET: http://vvvv
 - When making a pull-request, please make sure to read the general [guidelines on contributing to vvvv libraries](https://thegraybook.vvvv.org/reference/extending/contributing.html)
 
 ## Credits
-Vector tiles are drawn after [MapLibre GL JS](https://github.com/maplibre/maplibre-gl-js) (BSD-3-Clause) and checked against its render tests. Uses [BruTile](https://github.com/BruTile/BruTile) (Apache-2.0) for tile schemas and [NetTopologySuite](https://github.com/NetTopologySuite/NetTopologySuite) (BSD-3-Clause) for geometry. Map data from OpenStreetMap is © OpenStreetMap contributors, available under the [ODbL](https://www.openstreetmap.org/copyright).
+Vector tiles are drawn after [MapLibre GL JS](https://github.com/maplibre/maplibre-gl-js) (BSD-3-Clause) and checked against its render tests. Uses [BruTile](https://github.com/BruTile/BruTile) (Apache-2.0) for tile schemas and [NetTopologySuite](https://github.com/NetTopologySuite/NetTopologySuite) (BSD-3-Clause) for geometry. Map data from OpenStreetMap is © OpenStreetMap contributors, available under the [ODbL](https://www.openstreetmap.org/copyright). The style shipped with the examples derives from [OSM Liberty](https://github.com/maputnik/osm-liberty) through [OpenFreeMap](https://openfreemap.org); the full notices are in [THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md).
 
 ## License
 [MIT](LICENSE)

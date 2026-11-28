@@ -9,6 +9,10 @@ already failed. Items are in the order they should be done; each says how it is 
 published. Branch `feature/camera-relative` is on `github.com/rednotfound/VL.Globe`; the user merges,
 pushes and releases.
 
+**2026-11-28: 0.1 is prepared for release as `0.1.0-alpha`** - the steps and the open decisions are in
+[RELEASE.md](RELEASE.md). Not in it, by the user's word: the widgets (item 6). After it: GIS features before
+visual polish (the user, the same day); terrain is 0.2.
+
 **The user's standard (2026-11-09): street level.** "我们肯定还是要做到很细才行". Judge every item
 at the lowest height, not the comfortable one. The verification host is **vvvv 7.4 (LTS)**.
 
@@ -761,7 +765,8 @@ look in vvvv still to come.
 - ~~`Globe`'s own frustum still assumes 16:9 unless the camera sets an aspect.~~ Already reads the
   projection Stride computed (`GlobeNode.Select`); 16:9 only before the first frame's projection.
 
-**0.1 ships** once the node surface has gone a week without moving (family rule).
+**0.1 ships** once the node surface has gone a week without moving (family rule) - not met on 2026-11-28,
+when the user asked for the release to be prepared (TileCache is of that day); put to them in RELEASE.md.
 
 ---
 

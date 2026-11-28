@@ -112,3 +112,29 @@ layers and the start of the view as its own pins — the family would follow lat
   Scene*, Enabled | View, Cursor, Attribution, Status. The help patches got a GlobeCamera where their
   window had Initial values, and GlobeViewInfo where they read the height. The feel of the gestures:
   the user's to judge.
+
+## 6. Since then - decisions that shaped nodes (2026-11-24 to 28)
+
+| decision | whose, when | what it means for a node |
+|---|---|---|
+| A layer kind has one draw path | the user, 11-24 ("one way, with or without VectorTiles") | Geometry, FeatureLayer and every raster layer are GPU layers of their own, in the Input's order; no special case kept beside the general one |
+| The globe draws no imagery of its own | the user, 11-24 ("地球globe就是蓝色的球就结束") | `Background` is a colour; imagery is always a layer |
+| No value wired back from downstream | the user, 11-25 | the view's size is read at draw time; `Screen Height` is optional, 0 = from the view |
+| An NTS feature goes out as `Feature` | survey of 41 VL assemblies, 11-25 | `Pick` outputs the concrete type, so it links to GetAttribute without CastAs |
+| `SunLight` outputs `Entity` | 34 of 37 uses of vvvv's lights, 11-25 | a light is a scene thing, wired into `Scene`; the buildings read the scene's first directional light |
+| `TileCache` is a node, a value on a `Cache` pin | the user, 11-28 ("这也是重要的节点") | Folder, Max Size, Max Age, Clear, Enabled -> one cache into OpenStreetMap, XyzTiles, VectorTiles; a path is a node's pin, never a default |
+| Five inputs are fine when each is wanted | the user, 11-28 ("输入不超过四个的规则也不用那么死板") | `Max Age` is a pin; the count is a guide, the user cuts |
+| The default has a limit too | the user, 11-28 ("默认缓存也带一个上限吧") | with no TileCache connected the default folders are held to 4096 MB and 7 days |
+| A node that deletes files | 11-28 | only files of its own kind (*.png, *.pbf), under its own folders, off the main thread, each deletion logged; an unusable folder switches it off, never back to the default |
+| A window that is on by default is not switched by a help patch's toggle | the user, 11-28 ("GlobeWindow的enable是默认on的，所以不应该连线") | the help's Enabled toggle drives the layers that fetch; the window opens as it would in a patch of the user's |
+| Vector tiles lead the help | the user, 11-28 | Overview: an Explanation of every node, the first window draws VectorTiles, an Example |
+| Widgets wait | the user, 11-28 ("小部件不是很想做") | ScaleBar, ZoomButtons, Click are not in 0.1 |
+| Effects of Stride's are not taken over wholesale | survey + prototype, 11-28 (docs/DESIGN-EFFECTS.md) | they assume metres and the scene's depth; the wall's ambient occlusion and the ground halo are computed from the geometry; a screen-space pass is a prototype behind a switch |
+
+The surface on 2026-11-28, 33 nodes: `GlobeWindow`, `Globe`, `GlobeCamera`, `Drag`, `ZoomByWheel`, `DragRotate`,
+`GlobeViewInfo`, `ScreenToGlobe`, `GlobeToScreen`, `ToGlobe`, `ToGlobe (Coordinate)`, `FromGlobe`,
+`GlobePositionComponent` [Globe]; `OpenStreetMap`, `XyzTiles`, `VectorTiles`, `Geometry`, `FeatureLayer`,
+`Graticule`, `Group`, `Group (Spectral)`, `TileCache`, `Pick` [Globe.Layers]; `MapLibreStyle (URL)`,
+`MapLibreStyle (File)`, `VectorStyle` [Globe.Styles]; `FlyTo`, `CenterOn`, `ZoomToBounds`, `ZoomToLevel`,
+`ZoomIn`, `ZoomOut` [Globe.Navigate]; `SunLight` [Globe.Lights]. The table that the tools check is
+`tools\Nodes.psd1`.

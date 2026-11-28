@@ -2,23 +2,33 @@
 <package xmlns="http://schemas.microsoft.com/packaging/2013/05/nuspec.xsd">
   <metadata>
     <id>VL.Globe</id>
-    <!-- Never published. The working version; bump before any release. -->
-    <version>0.0.1-alpha</version>
+    <!-- The first release (ROADMAP's 0.1): prepared 2026-11-28, NOT published yet. A prerelease, as
+         every package of the family (the maintainer's rule, 2026-09-25); after publishing, bump to the
+         working version the same day so a local repack is never mistaken for the published package. -->
+    <version>0.1.0-alpha</version>
     <title>VL.Globe — map tiles on a globe for vvvv gamma</title>
-    <authors>VL.Globe Contributors</authors>
-    <owners>VL.Globe Contributors</owners>
+    <authors>red</authors>
+    <owners>red</owners>
     <requireLicenseAcceptance>false</requireLicenseAcceptance>
     <license type="expression">MIT</license>
-    <description>
-      EARLY - not ready for real work yet.
-
-      Web Mercator raster tiles drawn on a sphere in vvvv gamma's Stride, requesting only the tiles
-      the camera can see, and conversion between longitude/latitude and positions on that sphere.
-      Requires vvvv gamma 7.4 or newer (.NET 8).
-    </description>
-    <summary>Map tiles on a globe for vvvv gamma.</summary>
+    <projectUrl>https://github.com/rednotfound/VL.Globe</projectUrl>
+    <!-- The path INSIDE the package (README.md is packed to docs\ below); nuget.org shows it. -->
+    <readme>docs\README.md</readme>
+    <description>A globe of map tiles in VL, drawn with Stride from the whole Earth down to street level: raster tile layers, vector tiles from a MapLibre style with labels and 3D buildings, your own geometry on top, and a camera that moves like a map.</description>
+    <summary>A globe of map tiles in VL, drawn with Stride: raster and vector tiles, 3D buildings, your own geometry on top.</summary>
+    <releaseNotes>
+      0.1.0-alpha - The first release. GlobeWindow, a globe in one node, and Globe, the entity for a
+      scene of your own. Layers: OpenStreetMap, XyzTiles, VectorTiles (a MapLibre style: fills, lines,
+      labels, icons, 3D buildings), Geometry, FeatureLayer, Graticule, stacked with Group; TileCache
+      for where tiles are kept. GlobeCamera with drag, wheel, turn and tilt, and FlyTo, CenterOn,
+      ZoomToBounds, ZoomToLevel, ZoomIn, ZoomOut. Pick, ScreenToGlobe, GlobeToScreen, GlobeViewInfo.
+      GlobePositionComponent to stand your own entities on the globe; SunLight to light the buildings
+      and cast their shadows. Requires vvvv gamma 7.4 (.NET 8, Stride 4.2).
+    </releaseNotes>
     <copyright>Copyright 2026 VL.Globe Contributors</copyright>
-    <tags>VL vvvv gamma globe map gis openstreetmap tiles stride 3d</tags>
+    <!-- The "VL" tag is what makes the pack discoverable at https://vvvv.org/packs -->
+    <tags>VL vvvv gamma globe map gis openstreetmap maplibre vector tiles stride 3d</tags>
+    <repository type="git" url="https://github.com/rednotfound/VL.Globe" />
     <!-- Must match the NugetDependency lines in VL.Globe.vl. VL.Core, VL.CoreLib and VL.Stride
          ship inside vvvv and are deliberately absent. -->
     <dependencies>
@@ -27,6 +37,10 @@
         <dependency id="NetTopologySuite.Features" version="2.1.0" />
         <!-- VL.Mapsui's version: one BruTile per vvvv process. -->
         <dependency id="BruTile" version="5.0.6" />
+        <!-- The package that MAKES geometry, which this one only draws: seven help patches use its
+             FromWKT, and vvvv does not fetch a missing document dependency by itself. The oldest
+             PUBLISHED version the help works with, never its working version (as VL.Mapsui declares). -->
+        <dependency id="VL.NetTopologySuite" version="0.0.10-alpha" />
       </group>
     </dependencies>
   </metadata>
@@ -38,6 +52,9 @@
     <file src="help\VL.Globe\Help.xml" target="help\" />
     <file src="help\VL.Globe\Assets\**" target="help\Assets\" />
     <file src="shaders\*.sdsl" target="shaders\" />
+    <file src="LICENSE" target="docs\LICENSE" />
+    <file src="THIRD-PARTY-NOTICES.md" target="docs\" />
     <file src="README.md" target="docs\" />
+    <file src="docs\ARCHITECTURE.md" target="docs\" />
   </files>
 </package>

@@ -69,3 +69,22 @@ time into the log below. Current state and next steps: CLAUDE.md and docs/ROADMA
    Then (2026-11-23) the node surface made vvvv's (docs/DESIGN-NODES.md): navigation nodes [Globe.Navigate], pins in vvvv's
    order, one Input + Group, GlobeCamera as OrbitCamera. Next: the user's judgement of the gestures and the help patches' layout.**
    Research: [docs/RESEARCH-0.1.md](docs/RESEARCH-0.1.md), [docs/RESEARCH-VECTOR.md](docs/RESEARCH-VECTOR.md).
+
+## 2026-11-24 to 28 - towards the first release
+
+- **11-24, an engineering pass**: the engine in eight folders, the tests mirroring them, probes skipped
+  unless `VLGLOBE_PROBE=1`, the tools reading `tools\Nodes.psd1`; VectorTiles' drape retired; every raster
+  layer a GPU layer (ROADMAP 6c), the globe a sphere in its Background colour. Light: `SunLight`, the wall's
+  ambient occlusion, cast shadows in two cascades (docs/DESIGN-LIGHT.md).
+- **11-25**: lines at the limb held a pixel wide, overlapping translucent buildings blended once, the view's
+  size read at draw time; `Pick` (ROADMAP 6d).
+- **11-28, the last session before the release**: Pick and the vertical drag judged by the user; a check
+  for links dropped inside patched definitions (`tools\Test-PatchedDefinitions.ps1`); the help reorganised
+  around vector tiles (an Explanation, `Example Tokyo in 3D` with a quieter Liberty, `Camera\HowTo Set where
+  the camera starts`); README in the vvvv library shape; the shadows' baseline measured; a 160 ms frame in
+  a pan removed (label opacities allocating); `TileCache` with Max Size, Max Age, Clear, and the default
+  folders limited too - every feature run in vvvv from scratch variants of its help patch; the buildings'
+  ground halo; the tools for iterating offscreen (`tools\Probe-View.ps1`, `..\vvvv-dev\tools`); a survey of
+  Stride's effects and a prototype of screen-space ambient occlusion, left switched off (docs/DESIGN-EFFECTS.md):
+  the user put GIS features before visual polish. Then the documents brought together and the release
+  prepared: docs/RELEASE.md.

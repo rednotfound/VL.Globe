@@ -29,20 +29,24 @@ how it came to exist: `vl-overworld\docs\GLOBE-RESEARCH.md` and ACT-IV-LAB exper
 The user's standard for this package (2026-11-09): **street level, not country level.** Errors hide
 at country scale; judge every change at the lowest height.
 
-**Now (2026-11-24).** An engineering pass: the engine in eight folders (ARCHITECTURE.md, "The
-engine"), the tests mirroring them, probes skipped unless `VLGLOBE_PROBE=1`, the tools reading
-`tools\Nodes.psd1`. Step 3, the user's choices: VectorTiles' drape retired (the `Rendering` pin gone), the hand-written
-IDs replaced; the family's `tools\` stay per repository, no CI. `GlobeNode.cs` split into partial
-files by concern (Tiles, Show, Overlays, Background, Perf; 2026-11-24). Still open: where terrain goes.
-**ROADMAP 6c done (2026-11-24)**: every raster layer is a GPU layer (`Engine/Gpu/RasterTiles.cs`, the `Raster` pass), the globe is a sphere in its Background colour - shape and depth only (the user: "地球globe就是蓝色的球就结束"); judged in vvvv. Offered, not asked yet: a Group (Spectral) cell in `Stack tile layers`. Shapes are GPU layers since ca1f0bf. Light/shadows: ROADMAP 6b, docs/DESIGN-LIGHT.md. Done 2026-11-25: edge-on lines at the limb held a pixel wide (the dotted 45 N parallel), overlapping translucent buildings blended once, the view's height read at draw time (no FrameDelay); SunLight's `Entity` output kept (vvvv's lights output `Entity`, 34 of 37 uses); the exit "hang" was vvvv's save dialog.
+**Now (2026-11-28): the first release is prepared, not published.** Version `0.1.0-alpha` in the tree,
+the gate green, the steps and what is still the maintainer's to decide in [docs/RELEASE.md](docs/RELEASE.md)
+(the version string, the week rule, VectorTiles' Enabled default, three CARTO rows in a help patch, the
+overview's GlobeWindow node). The maintainer merges, pushes, uploads; then the install-back, the tag's
+GitHub release and the bump to the next working version are this side's.
 
-**Help reorganised 2026-11-28** (vector tiles first: Overview has an Explanation Overview, the first patch draws VectorTiles, `Example Tokyo in 3D`; `Camera\HowTo Set where the camera starts`; ROADMAP 7) - the three new patches wait for the user's arranging; once opened by them, edit in place.
+What the last sessions settled, each in its document: the node decisions since 2026-11-23 in
+docs/DESIGN-NODES.md section 6; light, the ground halo and the shadows' cost in docs/DESIGN-LIGHT.md;
+Stride's effects and why they are not taken over (metres, the scene's depth) in docs/DESIGN-EFFECTS.md, with
+a prototype of screen-space ambient occlusion behind `VLGLOBE_SSAO`, off; the session-by-session account in
+docs/HISTORY.md. The user's direction after the release: **GIS features before visual polish**
+("GIS这边还有大量的功能值得做，没有必要直接把视觉效果拉满"); widgets (ScaleBar, ZoomButtons, Click) not wanted
+for now; terrain is 0.2. Left of light step C, unasked: the user's models casting, off-view buildings casting.
 
-**Waiting on the user:** their judgement of the gestures and the help patches' layout
-(docs/DESIGN-NODES.md); the drag near the poles and the attribution, not yet seen by them in vvvv.
-**When asked:** ScaleBar, ZoomButtons, Click (ROADMAP 6); VectorTiles' Enabled default is still to
-decide. Node design rules: the `vvvv-node-design` skill (~/.claude/skills).
-A reported view is drawn offscreen by `Probes\ViewProbe` (VLGLOBE_PROBE=1 VLGLOBE_VIEW=#...).
+**Waiting on the user:** the decisions in docs/RELEASE.md; their look in vvvv at the drag near the poles,
+the attribution, the ground halo and the three help patches of 2026-11-28.
+Node design rules: the `vvvv-node-design` skill; releasing: the `vvvv-package-release` skill (~/.claude/skills).
+A reported view is drawn offscreen by `tools\Probe-View.ps1` (Probes\ViewProbe).
 
 ## Where it stands — the nodes (table from 2026-11-20, rows updated since)
 
@@ -60,7 +64,7 @@ A reported view is drawn offscreen by `Probes\ViewProbe` (VLGLOBE_PROBE=1 VLGLOB
 | `ToGlobe`, `ToGlobe (Coordinate)`, `FromGlobe [Globe]` | built, 4 rungs, **absolute** — right under OrbitCamera; under GlobeCamera use GlobePositionComponent |
 
 381 tests pass and 9 probes are skipped (incl. MapLibre v6.19.0's render tests — 409 fixtures, fetched by script — run offscreen on a D3D11 device of the test's own, on the GPU path: 329 pass). Branch `feature/camera-relative`, pushed to `github.com/rednotfound/VL.Globe`
-(public); not merged, not published. Verified on vvvv **7.4 (LTS)**; `Find-Vvvv.ps1` stays below 8.0.
+(public); not merged, not published - prepared as 0.1.0-alpha (docs/RELEASE.md). Verified on vvvv **7.4 (LTS)**; `Find-Vvvv.ps1` stays below 8.0.
 
 ## Facts this repo paid for (details in NOTES.md)
 
