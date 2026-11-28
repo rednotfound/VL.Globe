@@ -21,4 +21,7 @@
 	<Topic title="Objects">
 		<VLDocument link="Objects\HowTo Place objects on the globe.vl" tags="globePositionComponent,toGlobe,fromGlobe,place,point,model,entity,sphere,stand,metres,longitude,latitude,height,position,vector3,coordinate,camera-relative,scene" />
 	</Topic>
+	<Topic title="Lights">
+		<VLDocument link="Lights\HowTo Light the buildings with the sun.vl" tags="sunLight,sun,light,shadow,shadows,buildings,3d,date,time,hour,day,night,vectorTiles,cast" />
+	</Topic>
 </Pack>
