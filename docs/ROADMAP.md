@@ -679,6 +679,10 @@ tiles older than 7 days (598.8 -> 429.6 MB), left the 9446 vector tiles (all you
 
 ### 6b. Light — asked by the user 2026-11-24, survey first
 
+**2026-11-28: the ground halo built** (B's second half; docs/DESIGN-LIGHT.md, "Built") and seen in vvvv by
+me against a baseline of the same build; the user's look is open. Left of C: the user's models casting,
+off-view buildings casting (measure first).
+
 Asked: "支持光影，尤其是在显示了vectortiles的建筑的时候". Today the buildings carry GL JS's default light
 only (`GlobeVector.sdsl`: viewport-anchored, intensity 0.5, the walls' vertical gradient); no direction
 can be set, nothing casts a shadow. Three steps, the user's choices (2026-11-24):

@@ -933,3 +933,24 @@ looked fine - "which makes one think it works". Two causes, estimated at 100 m h
   with backslashes are files written by the Write tool, never heredocs (the family's memory already said so).
   And the host-test script's own check was wrong once: `Tiles` returned `, $array`, so piping it sorted one
   object and "the oldest is gone" failed while the product was right - the survivors were compared by name instead.
+
+## 2026-11-28 — the ground halo: three builds that were wrong before one that was right
+
+- **Drawn before the buildings, it showed through them.** Liberty's buildings are translucent, so the halos
+  of every building part lay under the roofs as dark outlines inside the buildings - what the user rejected
+  on 2026-11-21 ("所有的建筑都看到了其内部"). Anything on the ground that belongs to the buildings is drawn
+  AFTER their colour, on their own depth (`Item.Halo` keeps `UseOwnDepth` bound).
+- **A flag reused for two things drew nothing.** Making the halo count as `extrusion` for the depth binding
+  also set `GvExtrusion` for its draws: lit as a wall, alpha 0, a picture identical to the baseline. Two
+  names now (`extrusion`, `ownDepth`). Found by counting differing pixels, not by looking.
+- **Vertices of its own cost a third of a street-level tile** (152 MB against 110 for 36 tiles): three per
+  ring vertex beside the walls' four. The walls' vertices already hold everything a strip needs - foot,
+  top, outward normal - so the shader lays the wall down instead. Read the log's MB line before keeping a
+  new range.
+- **The instrument**: two captures of one view, `VLGLOBE_HALO=3` and `=0`, compared pixel by pixel
+  (scratchpad `imgdiff.ps1`: count of darker/lighter pixels, a 3x crop side by side). Without the count the
+  second wrong build looked "subtle". In PowerShell `$A` and `$a` are one variable: a parameter named A was
+  overwritten by a bitmap named a.
+- **Time**: about 35 minutes, 8 rounds of build + pack + open in vvvv (~2 min each) and 5 full test runs
+  (57 s each). Next time: iterate on the offscreen probe (`Probes\ViewProbe`) and one test class
+  (`--filter`), and go to vvvv once for the look.

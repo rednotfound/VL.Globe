@@ -106,7 +106,16 @@ style key (Mapbox's name, default 0 there) or on by default here - to decide on 
   visibility group; `GlobeVector.sdsl` lights fill-extrusion with it in GL JS's formula. No light in the
   scene: GL JS's default, unchanged. Seen in vvvv against a baseline of the same build.
 - **B.** Ambient occlusion: a wall darkened by 0.35 at its foot, gone at 3 m, per pixel. Barely visible
-  from 1 km up; the ground halo not built.
+  from 1 km up.
+- **B, the ground halo** (2026-11-28): the ground darkened by the same 0.35 at a wall's foot, gone 3 m out
+  (squared falloff), for buildings standing on the ground (base 0). No geometry of its own: the layer's
+  extrusion range is drawn once more with `Misc.w` = the radius, and `GlobeVector.sdsl` lays each wall down -
+  its foot stays, its top goes out along the wall's normal - and drops the roofs; the wedges at outward
+  corners are one triangle each over the walls' vertices (`RangeKind.Halo`, `Builder.HaloCorners`). Drawn
+  after the layer's colour on the buildings' own depth, before the shadows are received. Follows `Ao`
+  (off in the render tests) and the buildings' fade. Seen in vvvv against `VLGLOBE_HALO=0` of the same build
+  (Yanaka from 120 m and 40 m): 5 % of the pixels darker, none lighter; the tiles' memory the same (112 MB
+  for 36 tiles), +91 draws of 1289; the pan bench 34.1 % GPU against 32.9 % (one run each, inside the spread).
 - **C, first cut.** `ShadowPass`: the buildings' depth items drawn again into a 2048² map along the sun
   (orthographic, fitted round the view out to 4 x the eye's height + 1 km, 1-6 km, texels snapped to the
   ground, 1.5 km of margin towards the sun); received by a full-screen pass (`GlobeShadow`/`GlobeShadowMS`

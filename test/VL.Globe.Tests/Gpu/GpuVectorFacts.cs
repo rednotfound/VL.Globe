@@ -157,8 +157,9 @@ public class GpuVectorFacts
         Assert.Equal(0.8, color.A, 6);
         Assert.False(layer.Uniforms(new StyleContext { Zoom = 13 }, out _, out _, out _));   // its minzoom
         var b = VectorBucketBuilder.Build(doc, (VectorSource)doc.Sources["berlin"], Layers(doc), false, new TileKey(14, 8802, 5374), true, null, out _)!;
-        var range = Assert.Single(b.Ranges);
-        Assert.Equal(RangeKind.Extrusion, range.Kind);
+        var range = Assert.Single(b.Ranges, r => r.Kind == RangeKind.Extrusion);
+        var halo = Assert.Single(b.Ranges, r => r.Kind == RangeKind.Halo);
+        Assert.Equal(2, b.Ranges.Count);
 
         double up = 30 / 6378137.0;
         int roofs = 0, walls = 0;
@@ -177,6 +178,23 @@ public class GpuVectorFacts
         }
         Assert.True(roofs > 1000, $"{roofs} roof triangles");
         Assert.True(walls > 1000, $"{walls} wall triangles");
+
+        // the ground halo's corners (ROADMAP 6b, B): a wall's foot and two walls' tops at the same place - the
+        // shader lays the walls down, and these close the wedge between two of them
+        int strips = 0;
+        for (int t = halo.Start; t < halo.Start + halo.Count; t += 3)
+        {
+            var foot = b.VertexAt(halo, t); var top = b.VertexAt(halo, t + 1); var nextTop = b.VertexAt(halo, t + 2);
+            Assert.Equal(0f, foot.Width);
+            Assert.Equal(30f, top.Width);
+            Assert.Equal(30f, nextTop.Width);
+            Assert.Equal(foot.Uv, top.Uv);
+            Assert.Equal(foot.Uv, nextTop.Uv);
+            Assert.Equal(foot.Extrude, top.Extrude);          // one wall's foot and top
+            Assert.NotEqual(top.Extrude, nextTop.Extrude);    // the next wall's normal
+            strips++;
+        }
+        Assert.True(strips > 1000, $"{strips} halo corners");
     }
 
     [Fact]

@@ -129,7 +129,7 @@ internal static class VectorDrawList
     // world: Where a tile is drawn: scale and translation, camera-relative.
     // linearize: The colours go linear in the shader (vvvv); false keeps them sRGB, as GL JS blends.
     public static void AddLayer(List<VectorRenderer.Item> items, GpuStyleLayer layer, StyleColor color, double width, StyleColor outline,
-        IReadOnlyList<(GpuTile tile, Vector4 clip)> tiles, Func<GpuTile, Matrix> world, bool linearize)
+        IReadOnlyList<(GpuTile tile, Vector4 clip)> tiles, Func<GpuTile, Matrix> world, bool linearize, float halo = 0, float haloRadius = 0)
     {
         int rangeLayer = layer.Type == "background" ? -1 : layer.Index;
         // a fill-extrusion layer: every tile's depth first, then every tile's colour
@@ -142,7 +142,7 @@ internal static class VectorDrawList
                 var centre = tile.Bucket.Centre.ToVector3();
                 foreach (var r in ranges)
                 {
-                    if (r.Kind is RangeKind.Text or RangeKind.Icon or RangeKind.Circle) continue;   // drawn by AddSymbolLayer, AddCircleLayer
+                    if (r.Kind is RangeKind.Text or RangeKind.Icon or RangeKind.Circle or RangeKind.Halo) continue;   // drawn by AddSymbolLayer, AddCircleLayer, below
                     var (c, half, line) = r.Kind switch
                     {
                         RangeKind.Line => (color, width / 2, true),
@@ -161,6 +161,21 @@ internal static class VectorDrawList
                     items.Add(new VectorRenderer.Item(tile.Vertices, tile.Indices!, r.Start, r.Count, w, centre,
                         tint, (float)half, line, Widen(clip), kind, 1 << tile.Bucket.Key.Zoom, Geo: tile.Bucket.Geo, BaseVertex: r.BaseVertex));
                 }
+            }
+        // The buildings' ground halo (ROADMAP 6b, B): black over the ground at each wall's foot - the layer's walls
+        // once more, laid down by the shader, and the corners between them (RangeKind.Halo). After the layer's
+        // colour and on the buildings' own depth (VectorRenderer keeps it bound for a Halo item), so a building
+        // hides the halo behind it: drawn first, the halos showed through the translucent buildings as outlines
+        // inside them (seen in vvvv, 2026-11-28).
+        if (layer.IsExtrusion && halo > 0 && haloRadius > 0 && color.A > 0)
+            foreach (var (tile, clip) in tiles)
+            {
+                if (tile.Vertices is null || !tile.ByLayer.TryGetValue(layer.Index, out var haloRanges)) continue;
+                foreach (var r in haloRanges)
+                    if (r.Kind is RangeKind.Extrusion or RangeKind.Halo)
+                        items.Add(new VectorRenderer.Item(tile.Vertices, tile.Indices!, r.Start, r.Count, world(tile), tile.Bucket.Centre.ToVector3(),
+                            new Vector4(0, 0, 0, halo * (float)Math.Min(1, color.A)), 0, false, Widen(clip), VectorRenderer.Pass.Triangles,
+                            1 << tile.Bucket.Key.Zoom, Geo: tile.Bucket.Geo, BaseVertex: r.BaseVertex, Halo: haloRadius));
             }
     }
 

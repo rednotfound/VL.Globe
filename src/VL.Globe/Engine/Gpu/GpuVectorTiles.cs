@@ -395,7 +395,7 @@ internal sealed class GpuVectorTiles : IDisposable
                 if (!visible) return;
                 List<(Built built, Vector4 clip)>? list = backgroundDraws;
                 if (layer.Type != "background" && (layer.Layer.Source is not { } source || !draws.TryGetValue(source, out list))) return;
-                VectorDrawList.AddLayer(result.Items, layer, color, width, outline, list, World, linearize: true);
+                VectorDrawList.AddLayer(result.Items, layer, color, width, outline, list, World, linearize: true, halo: _renderer.Ao, haloRadius: _renderer.HaloRadius);
             }
         }
         foreach (var gone in _rasters.Where(kv => _frame - kv.Value.LastUsedFrame > KeepRasterFrames).Select(kv => kv.Key).ToList())

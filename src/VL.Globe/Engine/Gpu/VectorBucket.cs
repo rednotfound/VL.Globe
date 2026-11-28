@@ -79,7 +79,8 @@ internal struct VectorVertex
 // Outline is a line list (GL JS's gl.LINES, one device pixel); the rest are triangle lists. Extrusion
 // is fill-extrusion: roofs and walls in 3D, drawn in two passes (depth, then colour). Text is a
 // symbol layer's glyph quads, in the bucket's symbol arrays (VectorBucket.Symbols.cs)
-internal enum RangeKind { Fill, Outline, Line, Background, Extrusion, Text, Icon, Circle }
+// Halo is the corners of a fill-extrusion layer's ground halo: triangles over the walls' own vertices (Builder.HaloCorners).
+internal enum RangeKind { Fill, Outline, Line, Background, Extrusion, Text, Icon, Circle, Halo }
 
 /// <summary>A layer's part of a bucket: <see cref="Count"/> indices from <see cref="Start"/>, each <see cref="BaseVertex"/> plus the 16-bit index.</summary>
 internal readonly record struct VectorRange(int Layer, RangeKind Kind, int Start, int Count, int BaseVertex = 0);
@@ -295,6 +296,10 @@ internal static partial class VectorBucketBuilder
         double _raise;
         float _fillN;
         bool _extruding;   // Width carries _raise (VectorVertex)
+        // the ground halo's corners of the layer being built (HaloCorners), appended after its roofs and walls
+        [ThreadStatic] static List<uint>? t_haloIndices;
+        readonly List<uint> _haloIndices = t_haloIndices ??= new();
+        readonly List<uint> _wallStarts = new();
         readonly Dictionary<ExtrudedVertex, uint> _seen = new();
 
         readonly bool _flat, _grid;
@@ -484,6 +489,7 @@ internal static partial class VectorBucketBuilder
             // range: one bucket serves every zoom the tile is overscaled to (z14 data at z19), so
             // minzoom/maxzoom are checked per frame (GpuStyleLayer.Uniforms).
             int fillStart = _indices.Count;
+            _haloIndices.Clear();
             // a feature seen in the loop is a reused cursor: kept by its index (FeatureTable)
             var outlines = new List<(int feature, uint color)>();
             foreach (var f in features)
@@ -527,6 +533,12 @@ internal static partial class VectorBucketBuilder
             if (layer.IsExtrusion)
             {
                 if (_indices.Count > fillStart) _ranges.Add(new VectorRange(layer.Index, RangeKind.Extrusion, fillStart, _indices.Count - fillStart));
+                if (_haloIndices.Count > 0)
+                {
+                    int haloStart = _indices.Count;
+                    _indices.AddRange(_haloIndices);
+                    _ranges.Add(new VectorRange(layer.Index, RangeKind.Halo, haloStart, _indices.Count - haloStart));
+                }
             }
             else if (layer.Type == "fill")
             {
@@ -617,11 +629,13 @@ internal static partial class VectorBucketBuilder
                     // outward: right of the edge for a ring wound counter-clockwise (area > 0), left
                     // otherwise; a hole's walls face into the hole, away from the building
                     double side = (area > 0 ? 1 : -1) * (r == 0 ? 1 : -1);
+                    _wallStarts.Clear();
                     for (int i = 0; i < pts.Count; i++)
                     {
                         var a = pts[i]; var b = pts[(i + 1) % pts.Count];
                         double dx = b.X - a.X, dy = b.Y - a.Y, len = Math.Sqrt(dx * dx + dy * dy);
                         if (len == 0) continue;
+                        _wallStarts.Add((uint)_vertices.Count);
                         float nx = (float)(side * dy / len), ny = (float)(side * -dx / len);
                         uint i0 = (uint)_vertices.Count;
                         _raise = floor;
@@ -634,7 +648,31 @@ internal static partial class VectorBucketBuilder
                         _indices.Add(i0 + 1); _indices.Add(i0 + 3); _indices.Add(i0 + 2);
                     }
                     _raise = 0;
+                    if (floor <= 0 && _wallStarts.Count == pts.Count) HaloCorners(pts, side);
                 }
+        }
+
+        // The ground halo (ROADMAP 6b, B; Mapbox's ground effect) has no vertices of its own: GlobeVector.sdsl
+        // lays each wall down on the ground - its foot stays, its top goes out along the wall's normal by the
+        // halo's radius - so a layer's halo is its extrusion range drawn once more (the roofs dropped there).
+        // What that leaves open is the wedge between two walls where the outline turns outwards: one triangle
+        // here, of the corner's foot and the two walls' tops at it. Where the outline turns inwards the strips
+        // overlap and the corner is darker, as a corner is. (Built with vertices of its own at first: a street-
+        // level tile grew by a third, 110 to 152 MB for 36 tiles - 2026-11-28.)
+        void HaloCorners(List<(double X, double Y)> pts, double side)
+        {
+            int n = pts.Count;
+            for (int i = 0; i < n; i++)
+            {
+                int j = (i + 1) % n, k = (j + 1) % n;
+                var a = pts[i]; var b = pts[j]; var c = pts[k];
+                // this wall's outward normal against the next wall's direction: negative, it turns away
+                double turn = side * ((b.Y - a.Y) * (c.X - b.X) - (b.X - a.X) * (c.Y - b.Y));
+                if (turn >= 0) continue;
+                // a wall's four vertices: its foot at a and b, its top at a and b
+                uint wall = _wallStarts[i], next = _wallStarts[j];
+                _haloIndices.Add(wall + 1); _haloIndices.Add(wall + 3); _haloIndices.Add(next + 2);
+            }
         }
 
         void Fill(StyleFeature f, uint color)

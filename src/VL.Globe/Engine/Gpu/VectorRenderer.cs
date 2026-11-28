@@ -42,7 +42,7 @@ internal sealed class VectorRenderer : IGraphicsRendererBase
 
     internal readonly record struct Item(Buffer Vertices, Buffer Indices, int Start, int Count, Matrix World, Vector3 Centre,
         Vector4 Color, float HalfWidth, bool IsLine, Vector4 Clip, Pass Pass = Pass.Triangles, float Tiles = 1, TextDraw? Text = null,
-        CircleDraw? Circle = null, TileProjection.Geo Geo = default, int BaseVertex = 0, RasterDraw? Raster = null);
+        CircleDraw? Circle = null, TileProjection.Geo Geo = default, int BaseVertex = 0, RasterDraw? Raster = null, float Halo = 0);
 
     internal sealed class Frame
     {
@@ -105,6 +105,11 @@ internal sealed class VectorRenderer : IGraphicsRendererBase
     /// <summary>How dark a wall is at its foot, 0-1 (ambient occlusion over its lowest 3 m); 0: none, as GL JS.</summary>
     // On in vvvv (the user, 2026-11-24: on by default); off in MapLibre's render tests, which GL JS draws without
     public float Ao = 0.35f;
+    /// <summary>How far the buildings' ground halo reaches from their walls, metres; 0: none.</summary>
+    // Mapbox's fill-extrusion-ambient-occlusion-ground-radius, 3 m. VLGLOBE_HALO=<metres> for a look with another,
+    // 0 for a baseline of the same build.
+    public float HaloRadius = float.TryParse(Environment.GetEnvironmentVariable("VLGLOBE_HALO"), System.Globalization.NumberStyles.Float,
+        System.Globalization.CultureInfo.InvariantCulture, out float metres) && metres >= 0 ? metres : 3;
     /// <summary>What the last draw found of the scene's lights, for the Globe node's log.</summary>
     public volatile string LightInfo = "";
 
@@ -166,7 +171,7 @@ internal sealed class VectorRenderer : IGraphicsRendererBase
     internal struct DrawData
     {
         public Matrix WorldView;
-        public Vector4 Color, Clip, TileTrig, CentreHalfWidth, Misc;   // Misc: Mercator y, tiles a side, is a line, -
+        public Vector4 Color, Clip, TileTrig, CentreHalfWidth, Misc;   // Misc: Mercator y, tiles a side, is a line, a ground halo's radius in metres
         public const int Size = 64 + 5 * 16;
     }
     DrawData[] _drawData = new DrawData[256];
@@ -400,7 +405,7 @@ internal sealed class VectorRenderer : IGraphicsRendererBase
             {
                 WorldView = Matrix.Transpose(it.World * view), Color = it.Color, Clip = it.Clip, TileTrig = it.Geo.Trig,
                 CentreHalfWidth = new Vector4(it.Centre, it.HalfWidth),
-                Misc = new Vector4(it.Geo.MercatorY, it.Tiles, it.IsLine ? 1f : 0f, 0),
+                Misc = new Vector4(it.Geo.MercatorY, it.Tiles, it.IsLine ? 1f : 0f, it.Halo),
             };
         }
         if (itemCount > 0) _draws!.SetData(commandList, new ReadOnlySpan<DrawData>(_drawData, 0, itemCount));
@@ -418,6 +423,7 @@ internal sealed class VectorRenderer : IGraphicsRendererBase
             Set(parameters, "GvProjection", projection);
         }
         bool shadowsReceived = false;
+        bool layerColoured = false;   // the last item was an extrusion layer's colour or halo: a depth item starts another layer
         void ReceiveShadows()
         {
             if (shadowsReceived || shadowFit is not { } fit || _ownDepth is null) return;
@@ -434,10 +440,13 @@ internal sealed class VectorRenderer : IGraphicsRendererBase
             {
                 var item = frame.Items[itemIndex];
                 long tItem = System.Diagnostics.Stopwatch.GetTimestamp();
+                // a layer's ground halo is drawn on the buildings' depth too, after their colour
                 bool extrusion = item.Pass is Pass.ExtrusionDepth or Pass.ExtrusionColor;
-                if (extrusion && sceneDepth is null) sceneDepth = UseOwnDepth(commandList);
-                else if (item.Pass == Pass.ExtrusionDepth && pass == Pass.ExtrusionColor) { RestoreDepth(commandList, sceneDepth!); sceneDepth = UseOwnDepth(commandList); }
-                else if (!extrusion && sceneDepth is not null) { RestoreDepth(commandList, sceneDepth); sceneDepth = null; ReceiveShadows(); }
+                bool ownDepth = extrusion || item.Halo > 0;
+                if (ownDepth && sceneDepth is null) sceneDepth = UseOwnDepth(commandList);
+                else if (item.Pass == Pass.ExtrusionDepth && layerColoured) { RestoreDepth(commandList, sceneDepth!); sceneDepth = UseOwnDepth(commandList); }
+                else if (!ownDepth && sceneDepth is not null) { RestoreDepth(commandList, sceneDepth); sceneDepth = null; ReceiveShadows(); }
+                layerColoured = ownDepth && item.Pass != Pass.ExtrusionDepth;
                 if (!ReferenceEquals(item.Vertices, boundVertices))
                 {
                     commandList.SetVertexBuffer(0, item.Vertices, 0, item.Pass switch { Pass.Text => SymbolVertex.Size, Pass.Circle => CircleVertex.Size, _ => VectorVertex.Size });
