@@ -177,15 +177,15 @@ public sealed class GlobeDragNode
         // - so a log that shows neither says this node never ran, one that shows a zero ray says the
         // Mouse never heard the window.
         _frames++;
-        if (!_sawRay && position != Vector2.Zero) { _sawRay = true; _logger.LogInformation("Globe Drag: first cursor {P} at frame {F}", position, _frames); }
-        if (_frames == 300) _logger.LogInformation("Globe Drag: alive, 300 frames, cursor {P}, dragging {D}, height {H:F0} m", position, dragging, view.Height);
+        if (!_sawRay && position != Vector2.Zero) { _sawRay = true; _logger.LogDebug("Globe Drag: first cursor {P} at frame {F}", position, _frames); }
+        if (_frames == 300) _logger.LogDebug("Globe Drag: alive, 300 frames, cursor {P}, dragging {D}, height {H:F0} m", position, dragging, view.Height);
         var camDir = view.CameraDirectionFromProjection(position.X, position.Y);
         // Logged on the press and release edges only: the first rung 4 of this node showed a drag
         // doing nothing, and the log is where a patch nobody is watching can say why.
         if (dragging != _was)
         {
             _was = dragging;
-            _logger.LogInformation("Globe Drag: {State}, cursor {P}, grabbed {Hit}", dragging ? "press" : "release", position,
+            _logger.LogDebug("Globe Drag: {State}, cursor {P}, grabbed {Hit}", dragging ? "press" : "release", position,
                 dragging ? view.PickDir(camDir)?.ToString() ?? "space" : "-");
             if (!dragging) GlobeViewLog.Write(_logger, view);
         }
@@ -224,7 +224,7 @@ public sealed class GlobeDragRotateNode
         {
             if (_last is not null)
             {
-                _logger.LogInformation("Globe DragRotate: release, heading {H:F1}, tilt {T:F1}", view.Heading, view.Tilt);
+                _logger.LogDebug("Globe DragRotate: release, heading {H:F1}, tilt {T:F1}", view.Heading, view.Tilt);
                 GlobeViewLog.Write(_logger, view);
             }
             _last = null;
@@ -232,7 +232,7 @@ public sealed class GlobeDragRotateNode
         }
         if (_last is not { } last)
         {
-            _logger.LogInformation("Globe DragRotate: press, cursor {P}", position);
+            _logger.LogDebug("Globe DragRotate: press, cursor {P}", position);
             _last = position;
             return view;
         }
@@ -286,7 +286,7 @@ public sealed class GlobeZoomByWheelNode
         if (wheelDelta != 0)
         {
             _smoother.Add(levelsPerNotch * wheelDelta / notchSize);
-            _logger.LogInformation("Globe ZoomByWheel: delta {Delta}, pending {Pending:F2} levels, cursor {P}, height {H:F0} m", wheelDelta, _smoother.Pending, position, view.Height);
+            _logger.LogDebug("Globe ZoomByWheel: delta {Delta}, pending {Pending:F2} levels, cursor {P}, height {H:F0} m", wheelDelta, _smoother.Pending, position, view.Height);
         }
         var levels = _smoother.Step(dt, smoothing);
         // the wheel's zoom played out: where it ended

@@ -1,0 +1,208 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Document xmlns:p="property" xmlns:r="reflection" Id="UveYSB8utODfvfiyUZJ0Bl" LanguageVersion="2025.7.4" Version="0.128">
+  <NugetDependency Id="S26hsFO0sXOjdi4bsNLMbJ" Location="VL.CoreLib" Version="2025.7.4" />
+  <NugetDependency Id="Qp6s3ZWZ6g9x3wY193yyKA" Location="VL.Stride" Version="2025.7.4" />
+  <NugetDependency Id="HF6EEKF1qdgcq2eu2dcV8P" Location="VL.Globe" Version="0.0.0" />
+  <Patch Id="PXgNaZ2bq4AU0WujASJmSq">
+    <Canvas Id="FLMYPWVvFrVLyx5U7Wr0SO" DefaultCategory="Main" CanvasType="FullCategory" />
+    <!--
+
+    ************************ Application ************************
+
+-->
+    <Node Name="Application" Bounds="100,100" Id="DBDW3ZefN030wr4AGLBaIk">
+      <p:NodeReference>
+        <Choice Kind="ContainerDefinition" Name="Process" />
+        <FullNameCategoryReference ID="Primitive" />
+      </p:NodeReference>
+      <Patch Id="EqIMZuj1AtUroDKDhfbTT9">
+        <Canvas Id="ARJ05Xw2hPvBteqREi8JxJ" CanvasType="Group">
+          <Pad Id="RCQzYB70hiLJtyUfdvE1pq" Bounds="60,40,460,41" ShowValueBox="true" isIOBox="true" Value="Tokyo in 3D">
+            <p:TypeAnnotation LastCategoryFullName="Primitive" LastDependency="VL.CoreLib.vl">
+              <Choice Kind="TypeFlag" Name="String" />
+            </p:TypeAnnotation>
+            <p:ValueBoxSettings>
+              <p:fontsize p:Type="Int32">20</p:fontsize>
+              <p:stringtype p:Assembly="VL.Core" p:Type="VL.Core.StringType">Comment</p:stringtype>
+            </p:ValueBoxSettings>
+          </Pad>
+          <Pad Id="LTZJ3f1pkOR0sfsSc8jYmJ" Bounds="60,90,640,40" ShowValueBox="true" isIOBox="true" Value="Switch Enabled on. Vector tiles drawn from a MapLibre style: streets, labels and 3D buildings, lit by the sun. Drag, wheel, right-drag to turn and tilt.">
+            <p:TypeAnnotation LastCategoryFullName="Primitive" LastDependency="VL.CoreLib.vl">
+              <Choice Kind="TypeFlag" Name="String" />
+            </p:TypeAnnotation>
+            <p:ValueBoxSettings>
+              <p:fontsize p:Type="Int32">9</p:fontsize>
+              <p:stringtype p:Assembly="VL.Core" p:Type="VL.Core.StringType">Comment</p:stringtype>
+            </p:ValueBoxSettings>
+          </Pad>
+          <Pad Id="RD9f5HbArbmFtY0hXMESA9" Comment="Enabled" Bounds="290,195,35,35" ShowValueBox="true" isIOBox="true" Value="false">
+            <p:TypeAnnotation LastCategoryFullName="Primitive" LastDependency="VL.CoreLib.vl">
+              <Choice Kind="ImmutableTypeFlag" Name="Boolean" />
+            </p:TypeAnnotation>
+            <p:ValueBoxSettings>
+              <p:buttonmode p:Assembly="VL.UI.Forms" p:Type="VL.HDE.PatchEditor.Editors.ButtonModeEnum">Toggle</p:buttonmode>
+            </p:ValueBoxSettings>
+          </Pad>
+          <Node Bounds="150,215,100,19" Id="HfvfkUTG0dzkEKSEukuNpX">
+            <p:NodeReference LastCategoryFullName="Globe.Styles" LastDependency="VL.Globe.vl">
+              <Choice Kind="NodeFlag" Name="Node" Fixed="true" />
+              <CategoryReference Kind="Category" Name="Styles" NeedsToBeDirectParent="true">
+                <p:OuterCategoryReference Kind="Category" Name="Globe" NeedsToBeDirectParent="true" />
+              </CategoryReference>
+              <Choice Kind="ProcessAppFlag" Name="MapLibreStyle (URL)" />
+            </p:NodeReference>
+            <Pin Id="U3xxvsIXcjoZBTdSQnmfBg" Name="URL" Kind="InputPin" />
+            <Pin Id="GUvsBQgya5Nb4GsFUqjXNJ" Name="Output" Kind="OutputPin" />
+          </Node>
+          <Pad Id="TbvsM2tmdM3DRRbzlZNInf" Bounds="60,165,330,20" ShowValueBox="true" isIOBox="true" Value="&lt; OpenFreeMap's Liberty when URL is not connected">
+            <p:TypeAnnotation LastCategoryFullName="Primitive" LastDependency="VL.CoreLib.vl">
+              <Choice Kind="TypeFlag" Name="String" />
+            </p:TypeAnnotation>
+            <p:ValueBoxSettings>
+              <p:fontsize p:Type="Int32">9</p:fontsize>
+              <p:stringtype p:Assembly="VL.Core" p:Type="VL.Core.StringType">Comment</p:stringtype>
+            </p:ValueBoxSettings>
+          </Pad>
+          <Node Bounds="150,265,140,19" Id="AjaBaSkdFjFn57v23Eb31w">
+            <p:NodeReference LastCategoryFullName="Globe.Layers" LastDependency="VL.Globe.vl">
+              <Choice Kind="NodeFlag" Name="Node" Fixed="true" />
+              <CategoryReference Kind="Category" Name="Layers" NeedsToBeDirectParent="true">
+                <p:OuterCategoryReference Kind="Category" Name="Globe" NeedsToBeDirectParent="true" />
+              </CategoryReference>
+              <Choice Kind="ProcessAppFlag" Name="VectorTiles" />
+            </p:NodeReference>
+            <p:HelpFocus p:Assembly="VL.Lang" p:Type="VL.Model.HelpPriority">Low</p:HelpFocus>
+            <Pin Id="EQB9JLeCAXvN7BvfWi7qWt" Name="Style" Kind="InputPin" />
+            <Pin Id="K7OcPKFD7IGT3UsuOztFfY" Name="Name" Kind="InputPin" />
+            <Pin Id="DOGJwm2Ziq4lx5segLws0Q" Name="Enabled" Kind="InputPin" />
+            <Pin Id="Lws2fRoBRDmo0IQTDKxdqR" Name="Output" Kind="OutputPin" />
+            <Pin Id="ReKFqa5VXT6lQnedcMOrem" Name="Attribution" Kind="OutputPin" />
+            <Pin Id="B9O3xdj106H5KjaXYkeb9E" Name="Status" Kind="OutputPin" />
+          </Node>
+          <Pad Id="GdHki84SUbQEhlRLXaqLA1" Comment="Hour" Bounds="642,175,33,15" ShowValueBox="true" isIOBox="true" Value="1">
+            <p:TypeAnnotation LastCategoryFullName="Primitive" LastDependency="VL.CoreLib.vl">
+              <Choice Kind="TypeFlag" Name="Integer32" />
+            </p:TypeAnnotation>
+          </Pad>
+          <Pad Id="JSf4PqHHvVuBqkhRu6hjFv" Bounds="740,171,330,34" ShowValueBox="true" isIOBox="true" Value="&lt; the hour in UTC: 1 is 10:00 in Tokyo. Change it: the shadows turn">
+            <p:TypeAnnotation LastCategoryFullName="Primitive" LastDependency="VL.CoreLib.vl">
+              <Choice Kind="TypeFlag" Name="String" />
+            </p:TypeAnnotation>
+            <p:ValueBoxSettings>
+              <p:fontsize p:Type="Int32">9</p:fontsize>
+              <p:stringtype p:Assembly="VL.Core" p:Type="VL.Core.StringType">Comment</p:stringtype>
+            </p:ValueBoxSettings>
+          </Pad>
+          <Node Bounds="520,215,265,19" Id="GvLc9Uc0i1LvUAYmr1gTTK">
+            <p:NodeReference LastCategoryFullName="System.DateTime" LastSymbolSource="CoreLibBasics.vl">
+              <Choice Kind="NodeFlag" Name="Node" Fixed="true" />
+              <Choice Kind="OperationCallFlag" Name="Create (Year Month Day Hour Minute Second Kind)" />
+            </p:NodeReference>
+            <Pin Id="Q9m5YdFgRNmdMIK54XaQwG" Name="Year" Kind="InputPin" DefaultValue="2026" />
+            <Pin Id="TArakjALQEgxA9h5YM9cXD" Name="Month" Kind="InputPin" DefaultValue="11" />
+            <Pin Id="O5whKdfJIAevL3FFT2Z1f5" Name="Day" Kind="InputPin" DefaultValue="24" />
+            <Pin Id="G7af4jBY38KDL8hrqgmAED" Name="Hour" Kind="InputPin" />
+            <Pin Id="IIYg1Qtr36n7Q363UH8y2P" Name="Minute" Kind="InputPin" />
+            <Pin Id="B6i39bL4LVXHRZK0pC7m9v" Name="Second" Kind="InputPin" />
+            <Pin Id="HVEFBdA0oWNYiC2cUVlr2h" Name="Kind" Kind="InputPin" DefaultValue="Utc" />
+            <Pin Id="VMlIKm8VD5lc0vO97SNM27" Name="Output" Kind="StateOutputPin" />
+          </Node>
+          <Node Bounds="520,265,215,19" Id="Ga7pr3LzHJibFmJTUiSDI3">
+            <p:NodeReference LastCategoryFullName="Globe.Lights" LastDependency="VL.Globe.vl">
+              <Choice Kind="NodeFlag" Name="Node" Fixed="true" />
+              <CategoryReference Kind="Category" Name="Lights" NeedsToBeDirectParent="true">
+                <p:OuterCategoryReference Kind="Category" Name="Globe" NeedsToBeDirectParent="true" />
+              </CategoryReference>
+              <Choice Kind="ProcessAppFlag" Name="SunLight" />
+            </p:NodeReference>
+            <p:HelpFocus p:Assembly="VL.Lang" p:Type="VL.Model.HelpPriority">Low</p:HelpFocus>
+            <Pin Id="Jw8YWHCIaC5P4q7h8BP5uu" Name="Date Time" Kind="InputPin" />
+            <Pin Id="H8tTbPB1xIhb5rRMwPPiAf" Name="Color" Kind="InputPin" />
+            <Pin Id="EtAeb7gSCNOkA8bQ7fX7JP" Name="Intensity" Kind="InputPin" />
+            <Pin Id="OiLKeZVwxxkt7Ky6jWCnW4" Name="Cast Shadows" Kind="InputPin" DefaultValue="True" />
+            <Pin Id="SwbCIseVgAMB9ntBGdNr7G" Name="Enabled" Kind="InputPin" />
+            <Pin Id="BJdzk4aIS9axQiVHJebBeF" Name="Entity" Kind="OutputPin" />
+          </Node>
+          <Node Bounds="200,330,225,19" Id="CdWJinTXsGiaf9NcFFFFJZ">
+            <p:NodeReference LastCategoryFullName="Globe" LastDependency="VL.Globe.vl">
+              <Choice Kind="NodeFlag" Name="Node" Fixed="true" />
+              <Choice Kind="ProcessAppFlag" Name="GlobeCamera" />
+            </p:NodeReference>
+            <Pin Id="LlKoEmInguYy6tH9rEIk24" Name="Node Context" Kind="InputPin" IsHidden="true" />
+            <Pin Id="UgK15pOXb2p17zFjUmhvbP" Name="Initial Longitude" Kind="InputPin" DefaultValue="139.7671" />
+            <Pin Id="J96OPi6T2mhXod9hRVf1s3" Name="Initial Latitude" Kind="InputPin" DefaultValue="35.6812" />
+            <Pin Id="D0y2KBBy1O2QrLM9yPziCH" Name="Initial Height" Kind="InputPin" DefaultValue="600" />
+            <Pin Id="DTYUD6vzvWFr4Lco9zyuAM" Name="Initial Heading" Kind="InputPin" DefaultValue="20" />
+            <Pin Id="DkkGiHmCl9gPwQPFj4ciwe" Name="Initial Tilt" Kind="InputPin" DefaultValue="60" />
+            <Pin Id="GFoCRW6xM41oXCK5LD8G03" Name="Output" Kind="OutputPin" />
+            <Pin Id="KQrNcc2LyUUugD39UCoUSs" Name="View" Kind="OutputPin" />
+          </Node>
+          <Pad Id="TKpU9ktecmQyo8b2mkgjFn" Bounds="450,326,300,20" ShowValueBox="true" isIOBox="true" Value="&lt; starts tilted over Tokyo Station">
+            <p:TypeAnnotation LastCategoryFullName="Primitive" LastDependency="VL.CoreLib.vl">
+              <Choice Kind="TypeFlag" Name="String" />
+            </p:TypeAnnotation>
+            <p:ValueBoxSettings>
+              <p:fontsize p:Type="Int32">9</p:fontsize>
+              <p:stringtype p:Assembly="VL.Core" p:Type="VL.Core.StringType">Comment</p:stringtype>
+            </p:ValueBoxSettings>
+          </Pad>
+          <Node Bounds="60,400,520,19" Id="SmAs3kDyISDop7TmznAK7k">
+            <p:NodeReference LastCategoryFullName="Globe" LastDependency="VL.Globe.vl">
+              <Choice Kind="NodeFlag" Name="Node" Fixed="true" />
+              <Choice Kind="ProcessAppFlag" Name="GlobeWindow" />
+              <PinReference Kind="InputPin" Name="Bounds" />
+              <PinReference Kind="InputPin" Name="Bound to Document" />
+            </p:NodeReference>
+            <Pin Id="GJQ8b6NdmLPon7bvtmaxZD" Name="Node Context" Kind="InputPin" IsHidden="true" />
+            <Pin Id="P691ab91tzHlEbbXR25FtL" Name="Bounds" Kind="InputPin" DefaultValue="592, 114, 1250, 800" />
+            <Pin Id="AFtHlMmfgjojUgO6ZcpahG" Name="Bound to Document" Kind="InputPin" DefaultValue="True" />
+            <Pin Id="EJeAxlNmGTw7qVU2qAyO0S" Name="Input" Kind="InputPin" />
+            <Pin Id="EwtL0J1TsDTR9oZFGJODgi" Name="Camera" Kind="InputPin" />
+            <Pin Id="AkKDfjS7O7qNyDEYPhBkOA" Name="Title" Kind="InputPin" DefaultValue="Tokyo in 3D" />
+            <Pin Id="EKV7A6gjqTr67TI8rss4Js" Name="Background" Kind="InputPin" />
+            <Pin Id="IIlGjr7ChAD07ZYPtdIxZq" Name="Scene" Kind="InputPin" />
+            <Pin Id="H1vH5HhFbhpc14YCROi5R5" Name="Enabled" Kind="InputPin" DefaultValue="True" />
+            <Pin Id="PgzmCTkozZskvfRFTkw0Q1" Name="View" Kind="OutputPin" />
+            <Pin Id="OfdROnKXDb3FfNkfp0zCVY" Name="Cursor" Kind="OutputPin" />
+            <Pin Id="GIcdKV2wc0568W5mzK1CcU" Name="Attribution" Kind="OutputPin" />
+            <Pin Id="Mk3KK9l6K6SRNkxGUzU8bX" Name="Status" Kind="OutputPin" />
+          </Node>
+          <Pad Id="HCURUWMCqrtcocbM3jzaua" Comment="Status" Bounds="577,450,260,15" ShowValueBox="true" isIOBox="true">
+            <p:TypeAnnotation LastCategoryFullName="Primitive" LastDependency="VL.CoreLib.vl">
+              <Choice Kind="TypeFlag" Name="String" />
+            </p:TypeAnnotation>
+          </Pad>
+          <Pad Id="Fk2Xh5gxDuUblF6T7JBmQY" Comment="Attribution" Bounds="404,490,300,15" ShowValueBox="true" isIOBox="true">
+            <p:TypeAnnotation LastCategoryFullName="Primitive" LastDependency="VL.CoreLib.vl">
+              <Choice Kind="TypeFlag" Name="String" />
+            </p:TypeAnnotation>
+          </Pad>
+          <Pad Id="AbnWQJiParco7nmLspGv8w" Bounds="800,486,300,20" ShowValueBox="true" isIOBox="true" Value="&lt; show the credit wherever the tiles are shown">
+            <p:TypeAnnotation LastCategoryFullName="Primitive" LastDependency="VL.CoreLib.vl">
+              <Choice Kind="TypeFlag" Name="String" />
+            </p:TypeAnnotation>
+            <p:ValueBoxSettings>
+              <p:fontsize p:Type="Int32">9</p:fontsize>
+              <p:stringtype p:Assembly="VL.Core" p:Type="VL.Core.StringType">Comment</p:stringtype>
+            </p:ValueBoxSettings>
+          </Pad>
+        </Canvas>
+        <Patch Id="OfsjScoU6avMoKlwjE3bUp" Name="Create" />
+        <Patch Id="QGkjDdCcVhlB0Uv69Sk3uX" Name="Update" />
+        <ProcessDefinition Id="Q1TRUSsBfDxBI387Ftr1FC">
+          <Fragment Id="Hz21GoAOO3yzqOcFmllSuf" Patch="OfsjScoU6avMoKlwjE3bUp" Enabled="true" />
+          <Fragment Id="R2i7eRfGkA1RIu6oXfhGqK" Patch="QGkjDdCcVhlB0Uv69Sk3uX" Enabled="true" />
+        </ProcessDefinition>
+        <Link Id="Tudckw0XHF9jVMJgXP60wD" Ids="RD9f5HbArbmFtY0hXMESA9,DOGJwm2Ziq4lx5segLws0Q" />
+        <Link Id="Qd4qMQaHUQHMPOiIhdcW1l" Ids="GUvsBQgya5Nb4GsFUqjXNJ,EQB9JLeCAXvN7BvfWi7qWt" />
+        <Link Id="C4ffrk514lMJI7JCNatXzU" Ids="Lws2fRoBRDmo0IQTDKxdqR,EJeAxlNmGTw7qVU2qAyO0S" />
+        <Link Id="Spuu0n5E9ja3HC9gdkgpIw" Ids="GdHki84SUbQEhlRLXaqLA1,G7af4jBY38KDL8hrqgmAED" />
+        <Link Id="VoVyzmbDmWhOmK3zpQn3B8" Ids="VMlIKm8VD5lc0vO97SNM27,Jw8YWHCIaC5P4q7h8BP5uu" />
+        <Link Id="OldFeTxUBbNi3GXGDQvtxH" Ids="BJdzk4aIS9axQiVHJebBeF,IIlGjr7ChAD07ZYPtdIxZq" />
+        <Link Id="DlH0QwURlkJUrDTrGPyjGZ" Ids="GFoCRW6xM41oXCK5LD8G03,EwtL0J1TsDTR9oZFGJODgi" />
+        <Link Id="UojkVQHNI1331WCp8V8Xsb" Ids="Mk3KK9l6K6SRNkxGUzU8bX,HCURUWMCqrtcocbM3jzaua" />
+        <Link Id="FASsJR1asbDYINXl0A2MSD" Ids="GIcdKV2wc0568W5mzK1CcU,Fk2Xh5gxDuUblF6T7JBmQY" />
+      </Patch>
+    </Node>
+  </Patch>
+</Document>

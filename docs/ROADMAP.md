@@ -703,14 +703,21 @@ out), above it the exact grab; chosen at the press (`GlobeView.DragSession`). Th
 answer past the pole and took the far side's - 125-180° in one frame (`PoleDragFacts`). Packed; the user's
 look in vvvv still to come.
 
-- **Ask the user about the vertical drag direction.** `Position in Projection` is assumed y-up and
-  nobody has asked. Then move the Drag and ZoomByWheel logs from Information to Debug.
+- ~~Ask the user about the vertical drag direction.~~ 2026-11-28, the user: "好像问题不大". Drag, DragRotate
+  and ZoomByWheel log at Debug since; the `Globe view:` line stays at Information.
 - ~~Teach `Compile-HelpPatches.ps1` to decompile `VL.Globe.vl.dll` and run the dropped-link check
   on patched definitions.~~ 2026-11-28: `tools\Test-PatchedDefinitions.ps1`, run at the end of
   `Compile-HelpPatches.ps1` - the document's links counted against the values the compiled class passes.
 - ~~`Test-VLPatch.ps1` and `HelpPatchGen.ps1` still carry VL.Mapsui's node lists: run
   `Test-VLPackage.ps1` and fix what it reports.~~ 2026-11-24: both read `tools\Nodes.psd1`;
   HelpPatchGen.ps1 (VL.Mapsui's generator) removed.
+- **The help reorganised around vector tiles (2026-11-28, the user: "我们的vector tiles现在可是明星功能...
+  难道不值得放在overview里面么")**: Overview = `Explanation Overview of available nodes` (new, 32 nodes in 8
+  groups), `HowTo Open a globe window` (its layer now VectorTiles, edited in place), `Example Tokyo in 3D`
+  (new), `HowTo Build your own globe scene`; Layers lists vector tiles first; `Camera\HowTo Set where the
+  camera starts` (new; GlobeCamera's F1); Lights was missing from Help.xml. All 15 compile; the four seen
+  running in vvvv by me (Enabled on in scratch copies), not yet by the user, who arranges the new three.
+  Open: the overview's GlobeWindow node opens an empty globe window.
 - Help patches:
   - XyzTiles has one;
   - every node has an F1 HelpFocus;

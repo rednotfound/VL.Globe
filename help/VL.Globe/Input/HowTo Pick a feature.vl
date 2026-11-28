@@ -96,12 +96,12 @@
             <Pin Id="UffF8aQ5DoXLG3eGpKePAn" Name="Attribution" Kind="InputPin" />
             <Pin Id="UPaSuue0h0oOFAuORn4eSo" Name="Enabled" Kind="InputPin" />
           </Node>
-          <Pad Id="26auCJp8cHzlQEWht8NC1W" Comment="URL" Bounds="420,245,250,15" ShowValueBox="true" isIOBox="true" Value="https://tiles.openfreemap.org/styles/liberty">
+          <Pad Id="P4y0PujhjGdeDEQo38LVRg" Comment="URL" Bounds="420,245,250,15" ShowValueBox="true" isIOBox="true" Value="https://tiles.openfreemap.org/styles/liberty">
             <p:TypeAnnotation LastCategoryFullName="Primitive" LastDependency="VL.CoreLib.vl">
               <Choice Kind="TypeFlag" Name="String" />
             </p:TypeAnnotation>
           </Pad>
-          <Node Bounds="420,270,140,19" Id="d3N52OWt3O2VcbNs6UPKlN">
+          <Node Bounds="420,270,140,19" Id="EyRiKxFUqUKHeMmODEtROA">
             <p:NodeReference LastCategoryFullName="Globe.Styles" LastDependency="VL.Globe.vl">
               <Choice Kind="NodeFlag" Name="Node" Fixed="true" />
               <CategoryReference Kind="Category" Name="Styles" NeedsToBeDirectParent="true">
@@ -109,10 +109,10 @@
               </CategoryReference>
               <Choice Kind="ProcessAppFlag" Name="MapLibreStyle (URL)" />
             </p:NodeReference>
-            <Pin Id="fprBQuXpxxSrWLYubZWWuO" Name="URL" Kind="InputPin" />
+            <Pin Id="KrODHR9rwQFlb2ojQOlrak" Name="URL" Kind="InputPin" />
             <Pin Id="NUCzDhTCjoACmMCdN674VP" Name="Output" Kind="OutputPin" />
           </Node>
-          <Node Bounds="420,300,140,19" Id="mtFehhIRz5S16IlLZuKSPC">
+          <Node Bounds="420,300,140,19" Id="Pjr2Cdn31PhUJZXiYJcAM2">
             <p:NodeReference LastCategoryFullName="Globe.Layers" LastDependency="VL.Globe.vl">
               <Choice Kind="NodeFlag" Name="Node" Fixed="true" />
               <CategoryReference Kind="Category" Name="Layers" NeedsToBeDirectParent="true">
@@ -120,14 +120,14 @@
               </CategoryReference>
               <Choice Kind="ProcessAppFlag" Name="VectorTiles" />
             </p:NodeReference>
-            <Pin Id="mDL6sbSble9uhXq2G9xrZA" Name="Style" Kind="InputPin" />
+            <Pin Id="LU5kWWB7S5WBzeq6cBC8bz" Name="Style" Kind="InputPin" />
             <Pin Id="AXepSpw6ACEWTNdd0WJhLO" Name="Name" Kind="InputPin" />
-            <Pin Id="kXToErLugaBQ6MppmduKdM" Name="Output" Kind="OutputPin" />
-            <Pin Id="cbaKEFJgcY04PX6cOtmrMw" Name="Attribution" Kind="OutputPin" />
+            <Pin Id="MPHBAqPNZ54beOO7Wm7ByU" Name="Output" Kind="OutputPin" />
+            <Pin Id="KjbiznwSQv85rUB8xMUPmk" Name="Attribution" Kind="OutputPin" />
             <Pin Id="Kx9v0YgYcS9mDyQk2nH1Mu" Name="Status" Kind="OutputPin" />
             <Pin Id="UAJ02RyPA2EFAV296DuKOa" Name="Enabled" Kind="InputPin" />
           </Node>
-          <Pad Id="Y15QMhUxY44TRWhbQw8Kdz" Bounds="575,300,330,34" ShowValueBox="true" isIOBox="true" Value="&lt; what a style draws is picked too - a road, a building: its properties in Output's attributes, its style layer in Layer">
+          <Pad Id="BH9kZOq4d3BB1WBnf94eV5" Bounds="575,300,330,34" ShowValueBox="true" isIOBox="true" Value="&lt; what a style draws is picked too - a road, a building: its properties in Output's attributes, its style layer in Layer">
             <p:TypeAnnotation LastCategoryFullName="Primitive" LastDependency="VL.CoreLib.vl">
               <Choice Kind="TypeFlag" Name="String" />
             </p:TypeAnnotation>
@@ -208,23 +208,23 @@
             <Pin Id="UaxfvAjynQv9Aav4uZ2eVi" Name="Longitude" Kind="OutputPin" />
             <Pin Id="PjUAVBMGz3KwgMEMIWDsAP" Name="Latitude" Kind="OutputPin" />
           </Node>
-          <Pad Id="v0Vc65m8uSDebXFMuU1xh3" Comment="Name" Bounds="150,700,60,15" ShowValueBox="true" isIOBox="true" Value="class">
+          <Pad Id="DElejHpZSIzV3zV3OsMx9B" Comment="Name" Bounds="150,700,60,15" ShowValueBox="true" isIOBox="true" Value="class">
             <p:TypeAnnotation LastCategoryFullName="Primitive" LastDependency="VL.CoreLib.vl">
               <Choice Kind="TypeFlag" Name="String" />
             </p:TypeAnnotation>
           </Pad>
-          <Node Bounds="60,730,110,19" Id="vqkVj9X0c8T4qRCRq11xjL">
+          <Node Bounds="60,730,110,19" Id="QwCFYASyV7WqfA6NZePdsy">
             <p:NodeReference LastCategoryFullName="NetTopologySuite.Feature" LastDependency="VL.NetTopologySuite.vl">
               <Choice Kind="NodeFlag" Name="Node" Fixed="true" />
               <Choice Kind="OperationCallFlag" Name="GetAttribute" />
             </p:NodeReference>
-            <Pin Id="6aNxI1sy35WA7AKUr9ENua" Name="Feature" Kind="InputPin" />
+            <Pin Id="OVFrZnxUD6gL4gRMFSUYiu" Name="Feature" Kind="InputPin" />
             <Pin Id="TFZQKpnpSW0ZS6AcXpECeF" Name="Name" Kind="InputPin" />
-            <Pin Id="hAJvygvC1UcynK4qxabnZH" Name="Result" Kind="OutputPin" />
-            <Pin Id="38m2z17iMycfzhYBLGMfDN" Name="Success" Kind="OutputPin" />
+            <Pin Id="OQT4teTV1ohr6rqDcN6B32" Name="Result" Kind="OutputPin" />
+            <Pin Id="PfUpewWfo8rQhoBtTDMtVj" Name="Success" Kind="OutputPin" />
           </Node>
-          <Pad Id="9VzffKhRm2QBcMA8m2DPxH" Bounds="60,770,120,15" ShowValueBox="true" isIOBox="true" />
-          <Pad Id="qALBCJ7WFqVECUP38t9yAv" Bounds="200,770,330,20" ShowValueBox="true" isIOBox="true" Value="&lt; one of its properties by name; on a road, class is its kind">
+          <Pad Id="IdLTcoBEyM5UqWiDOAa9AC" Bounds="60,770,120,15" ShowValueBox="true" isIOBox="true" />
+          <Pad Id="LNDIjbGvKG9TWEPUPbQ0Ni" Bounds="200,770,330,20" ShowValueBox="true" isIOBox="true" Value="&lt; one of its properties by name; on a road, class is its kind">
             <p:TypeAnnotation LastCategoryFullName="Primitive" LastDependency="VL.CoreLib.vl">
               <Choice Kind="TypeFlag" Name="String" />
             </p:TypeAnnotation>
@@ -269,9 +269,9 @@
           <Fragment Id="FIZUeTN6cAW0Qw2aZy1f4D" Patch="IEJZCxd4tL9trbnMnSWupG" Enabled="true" />
           <Fragment Id="MjQMQ1CTZ3TezXJB0Cthzm" Patch="VAGxv7OSmLr44YFXew33L8" Enabled="true" />
         </ProcessDefinition>
-        <Link Id="IBMdvTRF2evWTnv2aHmULl" Ids="BGwBnMxaOSc2mlADxVxz6m,6aNxI1sy35WA7AKUr9ENua" />
-        <Link Id="kI9VtwC7Q5Lh8oCJXv28mq" Ids="v0Vc65m8uSDebXFMuU1xh3,TFZQKpnpSW0ZS6AcXpECeF" />
-        <Link Id="D9KpZou9bm1PJZ8QbVDOm8" Ids="hAJvygvC1UcynK4qxabnZH,9VzffKhRm2QBcMA8m2DPxH" />
+        <Link Id="IBMdvTRF2evWTnv2aHmULl" Ids="BGwBnMxaOSc2mlADxVxz6m,OVFrZnxUD6gL4gRMFSUYiu" />
+        <Link Id="QElwSKclbThFQpvfhaNrKN" Ids="DElejHpZSIzV3zV3OsMx9B,TFZQKpnpSW0ZS6AcXpECeF" />
+        <Link Id="D9KpZou9bm1PJZ8QbVDOm8" Ids="OQT4teTV1ohr6rqDcN6B32,IdLTcoBEyM5UqWiDOAa9AC" />
         <Link Id="Gjv7EYEORhzOiGZJyFfQ8A" Ids="FcX1JWIWTf2eaFh0pbBQKg,P757HihFiOKunUdQZvDMzq" />
         <Link Id="DbLE6ZcugmlwnLpMTEMGoC" Ids="MVDZz00WuMQcwW2OQEsEoT,FsHl7UeioEJP2NNern66nV" />
         <Link Id="CmVrN96ZufC1Hp84U7eGBR" Ids="UsnBMfjhdkBs2Hje0WTp3Q,UtuieeCIxVc57VVTiY96vw" />
@@ -286,9 +286,9 @@
         <Link Id="OTllmzc1DLTfgockhBAXev" Ids="LvZWqr6hVVXk07zi5v4ISx,I9pSdQqN0tPzS2jbU41lHE" />
         <Link Id="Grs2mtzfdL4IBf5zkU2J2g" Ids="UaxfvAjynQv9Aav4uZ2eVi,HsEPrJ7sQTVsbaXpLcOkAW" />
         <Link Id="SuYYpQMHbqvmvtPCgJynGv" Ids="PjUAVBMGz3KwgMEMIWDsAP,Ryd5uVzdLU8ueZ5oBUEqWp" />
-        <Link Id="FqudVROzLpF0CVYy71uCPL" Ids="26auCJp8cHzlQEWht8NC1W,fprBQuXpxxSrWLYubZWWuO" />
-        <Link Id="YV9nubuDbh4ITjNqEVQs0f" Ids="NUCzDhTCjoACmMCdN674VP,mDL6sbSble9uhXq2G9xrZA" />
-        <Link Id="zGdjaNtEU7xvOdLMfxM1Yv" Ids="kXToErLugaBQ6MppmduKdM,BZZW6m4nyoL6uniiFw152c" />
+        <Link Id="FqudVROzLpF0CVYy71uCPL" Ids="P4y0PujhjGdeDEQo38LVRg,KrODHR9rwQFlb2ojQOlrak" />
+        <Link Id="D3S4FX76rG1dyKgRNIinhL" Ids="NUCzDhTCjoACmMCdN674VP,LU5kWWB7S5WBzeq6cBC8bz" />
+        <Link Id="AHGtQzilSLLIQy2ivG4RfY" Ids="MPHBAqPNZ54beOO7Wm7ByU,BZZW6m4nyoL6uniiFw152c" />
         <Link Id="SOmqFiQmA5eJyQ90igFSNW" Ids="ASux1PQFt6LSlWs60rISxW,UAJ02RyPA2EFAV296DuKOa" />
         <Link Id="M4LgZ3cts5SP6lLzodWqFh" Ids="ASux1PQFt6LSlWs60rISxW,BvHkhr4Yht8MTIZIkShW0P" />
       </Patch>

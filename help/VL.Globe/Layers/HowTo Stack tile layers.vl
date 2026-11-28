@@ -49,7 +49,7 @@
               <Choice Kind="NodeFlag" Name="Node" Fixed="true" />
               <Choice Kind="ProcessAppFlag" Name="OpenStreetMap" />
             </p:NodeReference>
-            <p:HelpFocus p:Assembly="VL.Lang" p:Type="VL.Model.HelpPriority">Low</p:HelpFocus>
+            <p:HelpFocus p:Assembly="VL.Lang" p:Type="VL.Model.HelpPriority">High</p:HelpFocus>
             <Pin Id="RO5k0A8Uci0qRhSBHpvkTS" Name="Output" Kind="OutputPin" />
             <Pin Id="SiZ56vwNq9oMTKEluAIOrk" Name="Opacity" Kind="InputPin" />
             <Pin Id="ApSdsP3YYO5OHWam4ZHyuz" Name="Enabled" Kind="InputPin" />
@@ -172,7 +172,7 @@
               <p:stringtype p:Assembly="VL.Core" p:Type="VL.Core.StringType">Comment</p:stringtype>
             </p:ValueBoxSettings>
           </Pad>
-          <Pad Id="0lR8acRYSi4MDF8kWCBX1K" Comment="Spacings" Bounds="60,575,60,40" ShowValueBox="true" isIOBox="true">
+          <Pad Id="LuEMzp3bqTw4qYFDzBqFyb" Comment="Spacings" Bounds="60,575,60,40" ShowValueBox="true" isIOBox="true">
             <p:TypeAnnotation LastCategoryFullName="Collections" LastDependency="VL.Collections.vl">
               <Choice Kind="TypeFlag" Name="Spread" />
               <p:TypeArguments>
@@ -186,7 +186,7 @@
               <Item>10</Item>
             </p:Value>
           </Pad>
-          <Node Bounds="60,630,120,50" Id="peZUaLJ4d8jOCs4bWYTI6w">
+          <Node Bounds="60,630,120,50" Id="VWzjusudKnvqa575sb5aZ6">
             <p:NodeReference LastCategoryFullName="Primitive" LastDependency="CoreLibBasics.vl">
               <Choice Kind="StatefulRegion" Name="Region (Stateful)" Fixed="true" />
               <Choice Kind="ApplicationStatefulRegion" Name="ForEach" />
@@ -205,11 +205,11 @@
                   </CategoryReference>
                   <Choice Kind="ProcessAppFlag" Name="Graticule" />
                 </p:NodeReference>
-                <Pin Id="fi1JrpRWBJG9encC4davDs" Name="Spacing" Kind="InputPin" />
+                <Pin Id="M9hMMx4yNgmlbyFepgrgzd" Name="Spacing" Kind="InputPin" />
                 <Pin Id="REymZzoU8nDX7rnx5xrbw0" Name="Output" Kind="OutputPin" />
               </Node>
             </Patch>
-            <ControlPoint Id="aRFvKyQQbV4iOmSpnXJzjd" Bounds="74,636" Alignment="Top" />
+            <ControlPoint Id="PdEnswmlpBflP9HHJhO3Tr" Bounds="74,636" Alignment="Top" />
             <ControlPoint Id="O9KnUcOwcOBExM3tnY4Wft" Bounds="74,674" Alignment="Bottom" />
           </Node>
           <Node Bounds="60,700,110,19" Id="Dxwk0YfxYiGhodJTJvtwe6">
@@ -252,10 +252,10 @@
         </ProcessDefinition>
         <Link Id="E3Vo9UctolfTclkWVagm9X" Ids="RO5k0A8Uci0qRhSBHpvkTS,HnCO3V3xkhTOa1bFFHiCv1" />
         <Link Id="CoREXncB0mtSCtjXS6vtD4" Ids="H9LvUQCAYhvHpxv6TECLLF,JtcdMoCkcXSUyQBiAXqozA" />
-        <Link Id="tIiGKrzBYXHolHYa13il3C" Ids="0lR8acRYSi4MDF8kWCBX1K,aRFvKyQQbV4iOmSpnXJzjd" />
-        <Link Id="31U0lVvwvH70052LQmspJL" Ids="aRFvKyQQbV4iOmSpnXJzjd,fi1JrpRWBJG9encC4davDs" />
-        <Link Id="c0DTFuvEVViv3FQdGLtPTT" Ids="REymZzoU8nDX7rnx5xrbw0,O9KnUcOwcOBExM3tnY4Wft" />
-        <Link Id="1VWe558UtmSOv6McDFwszX" Ids="O9KnUcOwcOBExM3tnY4Wft,HzknZSU5FWCnv8dM4fKdSm" />
+        <Link Id="K7RkfADa9R2q8rDYZD9ciO" Ids="LuEMzp3bqTw4qYFDzBqFyb,PdEnswmlpBflP9HHJhO3Tr" />
+        <Link Id="DgUayL3tfR9M4PruCC0wvX" Ids="PdEnswmlpBflP9HHJhO3Tr,M9hMMx4yNgmlbyFepgrgzd" />
+        <Link Id="R2GIYyMfbEMVEDRiRkqeVK" Ids="REymZzoU8nDX7rnx5xrbw0,O9KnUcOwcOBExM3tnY4Wft" />
+        <Link Id="CCfqGb8bVZV1n35sowqJBj" Ids="O9KnUcOwcOBExM3tnY4Wft,HzknZSU5FWCnv8dM4fKdSm" />
         <Link Id="VfL0ZmjkrHHdsYqUZlG3CD" Ids="F7CupcomQTho030iXAHzGh,Gh5Qhy50B7P6nLsbWsXAJK" />
         <Link Id="KjQPQUms2ClFwvC1spRy9v" Ids="Gn89VZ7dFMZZ7gpokvsl7k,FroWy76lMXouvBW8J5Vcd4" />
         <Link Id="KXbC8WKMxKHO9MFO0Wjypi" Ids="UN8QdWyL6G0ei9HKoPxSql,RctTYCecJT0IxU5ypdyeu8" />

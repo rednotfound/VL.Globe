@@ -7,14 +7,16 @@ import re, sys, os
 help_dir = sys.argv[1]
 H, L = 'High', 'Low'
 plan = {
-    r'Overview\HowTo Open a globe window.vl': {'GlobeWindow': H, 'OpenStreetMap': H, 'GlobeCamera': L, 'GlobeViewInfo': L},
-    r'Overview\HowTo Build your own globe scene.vl': {'Globe': H, 'GlobeCamera': H, 'Drag': H, 'ZoomByWheel': H, 'DragRotate': H, 'OpenStreetMap': L, 'GlobeViewInfo': L},
-    r'Layers\HowTo Stack tile layers.vl': {'XyzTiles': H, 'Group': H, 'Group (Spectral)': H, 'OpenStreetMap': L, 'GlobeWindow': L},
+    r'Overview\HowTo Open a globe window.vl': {'GlobeWindow': H, 'VectorTiles': L, 'GlobeCamera': L, 'GlobeViewInfo': L},
+    r'Overview\Example Tokyo in 3D.vl': {'VectorTiles': L, 'SunLight': L},
+    r'Overview\HowTo Build your own globe scene.vl': {'Globe': H, 'GlobeCamera': L, 'Drag': H, 'ZoomByWheel': H, 'DragRotate': H, 'OpenStreetMap': L, 'GlobeViewInfo': L},
+    r'Layers\HowTo Stack tile layers.vl': {'XyzTiles': H, 'Group': H, 'Group (Spectral)': H, 'OpenStreetMap': H, 'GlobeWindow': L},
     r'Layers\HowTo Draw vector tiles.vl': {'VectorTiles': H, 'MapLibreStyle (URL)': H, 'MapLibreStyle (File)': H},
     r'Layers\HowTo Choose a vector tile style.vl': {'VectorTiles': L, 'MapLibreStyle (URL)': L, 'Geometry': L, 'VectorStyle': L, 'Group': L},
     r'Layers\HowTo Draw shapes on the globe.vl': {'Geometry': H, 'VectorStyle': H, 'FeatureLayer': H, 'Group': L},
     r'Layers\HowTo Draw a graticule.vl': {'Graticule': H},
     r'Lights\HowTo Light the buildings with the sun.vl': {'SunLight': H, 'VectorTiles': L},
+    r'Camera\HowTo Set where the camera starts.vl': {'GlobeCamera': H, 'GlobeViewInfo': L},
     r'Camera\HowTo Fly to a place.vl': {'FlyTo': H, 'CenterOn': H, 'ZoomToLevel': H, 'ZoomIn': H, 'ZoomOut': H, 'ZoomToBounds': H},
     r'Input\HowTo Read the place under the cursor.vl': {'ScreenToGlobe': H, 'GlobeViewInfo': H, 'GlobeToScreen': H},
     r'Input\HowTo Pick a feature.vl': {'Pick': H, 'Geometry': L},

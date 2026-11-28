@@ -36,6 +36,8 @@ IDs replaced; the family's `tools\` stay per repository, no CI. `GlobeNode.cs` s
 files by concern (Tiles, Show, Overlays, Background, Perf; 2026-11-24). Still open: where terrain goes.
 **ROADMAP 6c done (2026-11-24)**: every raster layer is a GPU layer (`Engine/Gpu/RasterTiles.cs`, the `Raster` pass), the globe is a sphere in its Background colour - shape and depth only (the user: "地球globe就是蓝色的球就结束"); judged in vvvv. Offered, not asked yet: a Group (Spectral) cell in `Stack tile layers`. Shapes are GPU layers since ca1f0bf. Light/shadows: ROADMAP 6b, docs/DESIGN-LIGHT.md. Done 2026-11-25: edge-on lines at the limb held a pixel wide (the dotted 45 N parallel), overlapping translucent buildings blended once, the view's height read at draw time (no FrameDelay); SunLight's `Entity` output kept (vvvv's lights output `Entity`, 34 of 37 uses); the exit "hang" was vvvv's save dialog.
 
+**Help reorganised 2026-11-28** (vector tiles first: Overview has an Explanation Overview, the first patch draws VectorTiles, `Example Tokyo in 3D`; `Camera\HowTo Set where the camera starts`; ROADMAP 7) - the three new patches wait for the user's arranging; once opened by them, edit in place.
+
 **Waiting on the user:** their judgement of the gestures and the help patches' layout
 (docs/DESIGN-NODES.md); the drag near the poles and the attribution, not yet seen by them in vvvv.
 **When asked:** ScaleBar, ZoomButtons, Click (ROADMAP 6); VectorTiles' Enabled default is still to

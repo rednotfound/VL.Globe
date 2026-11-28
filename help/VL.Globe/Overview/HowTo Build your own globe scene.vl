@@ -126,7 +126,7 @@
               <Choice Kind="NodeFlag" Name="Node" Fixed="true" />
               <Choice Kind="ProcessAppFlag" Name="GlobeCamera" />
             </p:NodeReference>
-            <p:HelpFocus p:Assembly="VL.Lang" p:Type="VL.Model.HelpPriority">High</p:HelpFocus>
+            <p:HelpFocus p:Assembly="VL.Lang" p:Type="VL.Model.HelpPriority">Low</p:HelpFocus>
             <Pin Id="OcxDp3kqhcsP0Ty278Y9Jo" Name="Node Context" Kind="InputPin" IsHidden="true" />
             <Pin Id="DNjxtWVjb6GlLrB30E0AXA" Name="Initial Longitude" Kind="InputPin" DefaultValue="10.6" />
             <Pin Id="FX70o2XBrLvcbvCSsXROsp" Name="Initial Latitude" Kind="InputPin" DefaultValue="-1.6" />

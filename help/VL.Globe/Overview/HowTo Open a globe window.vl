@@ -52,16 +52,42 @@
               <p:stringtype p:Assembly="VL.Core" p:Type="VL.Core.StringType">Comment</p:stringtype>
             </p:ValueBoxSettings>
           </Pad>
-          <Node Bounds="145,200,100,19" Id="Shp8ldnMYgHVmevxwWP6zH">
+          <Node Bounds="145,160,140,19" Id="SPjNU5cAMSE2ZKmU9PoTYc">
+            <p:NodeReference LastCategoryFullName="Globe.Styles" LastDependency="VL.Globe.vl">
+              <Choice Kind="NodeFlag" Name="Node" Fixed="true" />
+              <CategoryReference Kind="Category" Name="Styles" NeedsToBeDirectParent="true">
+                <p:OuterCategoryReference Kind="Category" Name="Globe" NeedsToBeDirectParent="true" />
+              </CategoryReference>
+              <Choice Kind="ProcessAppFlag" Name="MapLibreStyle (URL)" />
+            </p:NodeReference>
+            <Pin Id="BlkANngGXwnJ7btpgdzsVD" Name="URL" Kind="InputPin" />
+            <Pin Id="Eq4iYDMhVVOm7sJ0cx04jn" Name="Output" Kind="OutputPin" />
+          </Node>
+          <Node Bounds="145,210,140,19" Id="N5cPKD5byIEH2HATQAKvqF">
             <p:NodeReference LastCategoryFullName="Globe.Layers" LastDependency="VL.Globe.vl">
               <Choice Kind="NodeFlag" Name="Node" Fixed="true" />
-              <Choice Kind="ProcessAppFlag" Name="OpenStreetMap" />
+              <CategoryReference Kind="Category" Name="Layers" NeedsToBeDirectParent="true">
+                <p:OuterCategoryReference Kind="Category" Name="Globe" NeedsToBeDirectParent="true" />
+              </CategoryReference>
+              <Choice Kind="ProcessAppFlag" Name="VectorTiles" />
             </p:NodeReference>
-            <p:HelpFocus p:Assembly="VL.Lang" p:Type="VL.Model.HelpPriority">High</p:HelpFocus>
+            <p:HelpFocus p:Assembly="VL.Lang" p:Type="VL.Model.HelpPriority">Low</p:HelpFocus>
+            <Pin Id="DHAk78bSDpTBWknObEp9gz" Name="Style" Kind="InputPin" />
+            <Pin Id="OLoDkwV4yG0t3QO9PUGpbN" Name="Name" Kind="InputPin" />
             <Pin Id="PyDvZXlNY1BSQGxHSuXtMC" Name="Output" Kind="OutputPin" />
-            <Pin Id="KnqFkDy6OnyOuOkJ4XXMAZ" Name="Opacity" Kind="InputPin" />
-            <Pin Id="OgsCRD5A1xgNcfPnt3tIm4" Name="Enabled" Kind="InputPin" />
+            <Pin Id="NTf7eVkB7iIADi0rQJBouT" Name="Attribution" Kind="OutputPin" />
+            <Pin Id="EHpXvOM5hiy9USmCNccv0B" Name="Status" Kind="OutputPin" />
+            <Pin Id="U7aQrodB8TpKGV4WyvATuM" Name="Enabled" Kind="InputPin" />
           </Node>
+          <Pad Id="KMLoiEzpFaymIfxLL63NGs" Bounds="305,150,330,34" ShowValueBox="true" isIOBox="true" Value="&lt; vector tiles drawn from a MapLibre style: streets, labels, 3D buildings. OpenStreetMap is a layer too">
+            <p:TypeAnnotation LastCategoryFullName="Primitive" LastDependency="VL.CoreLib.vl">
+              <Choice Kind="TypeFlag" Name="String" />
+            </p:TypeAnnotation>
+            <p:ValueBoxSettings>
+              <p:fontsize p:Type="Int32">9</p:fontsize>
+              <p:stringtype p:Assembly="VL.Core" p:Type="VL.Core.StringType">Comment</p:stringtype>
+            </p:ValueBoxSettings>
+          </Pad>
           <Node Bounds="60,380,260,19" Id="NuPByqQL3KICydCVEZA5RU">
             <p:NodeReference LastCategoryFullName="Globe" LastDependency="VL.Globe.vl">
               <Choice Kind="NodeFlag" Name="Node" Fixed="true" />
@@ -182,6 +208,8 @@
         </ProcessDefinition>
         <Link Id="KGi58gp7Bg7EEoLPE3BH7U" Ids="PyDvZXlNY1BSQGxHSuXtMC,KIyc1orFsTdwRu5d2OOz1h" />
         <Link Id="DEmgT59tIIYJOeu0t6Ll5I" Ids="SwoX2dSx9tFUuiGeat2o3p,EqRmEftGJHv6mUOu2NIk35" />
+        <Link Id="DV7EPvPmjuc5ED8DKxwDLQ" Ids="Eq4iYDMhVVOm7sJ0cx04jn,DHAk78bSDpTBWknObEp9gz" />
+        <Link Id="ITbigzXX6FSQ96QCsiZNvS" Ids="SwoX2dSx9tFUuiGeat2o3p,U7aQrodB8TpKGV4WyvATuM" />
         <Link Id="QX6jwiqZ0lo8HnJ4M9ZPLa" Ids="PRGd9oL1BRrTeMpNkB9nsc,F0e6Zr2jZj93PDaKgJgiMF" />
         <Link Id="H0N6i9BNvlws9GaUKly9Xs" Ids="A1tNWPIOJ84reFj6EI8zf3,GdgDhiI7En2smyMw1GUDej" />
         <Link Id="TFx7ZEvUjA6ChO9jXxcXaw" Ids="MytfgT3q6LPQdKV84VjHI7,VeMdG7dJEwlMbRQ4m1H0ih" />

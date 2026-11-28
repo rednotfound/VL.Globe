@@ -1,0 +1,655 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Document xmlns:p="property" xmlns:r="reflection" Id="S4IRUb6ev6qnBKwiVeIYaX" LanguageVersion="2025.7.4" Version="0.128">
+  <NugetDependency Id="SN0VyWe5MjV6fDQkgQSJi5" Location="VL.CoreLib" Version="2025.7.4" />
+  <NugetDependency Id="A32fZocm3aCLuOqLHYfMhw" Location="VL.Stride" Version="2025.7.4" />
+  <NugetDependency Id="ITVXJrBOJ0sRxvFd59tq7E" Location="VL.Globe" Version="0.0.0" />
+  <Patch Id="Ol8LODtV2moTMo2295sP9Y">
+    <Canvas Id="PsfIoVnF51iH0adlxG3cm9" DefaultCategory="Main" CanvasType="FullCategory" />
+    <!--
+
+    ************************ Application ************************
+
+-->
+    <Node Name="Application" Bounds="100,100" Id="D9suaG1ENGGouj4Vq2jOyH">
+      <p:NodeReference>
+        <Choice Kind="ContainerDefinition" Name="Process" />
+        <FullNameCategoryReference ID="Primitive" />
+      </p:NodeReference>
+      <Patch Id="VRj0eo8lkIrs9wD05sGGpD">
+        <Canvas Id="TuQ92KARtisBsPVphuKFtO" CanvasType="Group">
+          <Pad Id="U7repIFtdGcah4j4kjcZcZ" Bounds="60,40,165,41" ShowValueBox="true" isIOBox="true" Value="VL.Globe">
+            <p:TypeAnnotation LastCategoryFullName="Primitive" LastDependency="VL.CoreLib.vl">
+              <Choice Kind="TypeFlag" Name="String" />
+            </p:TypeAnnotation>
+            <p:ValueBoxSettings>
+              <p:fontsize p:Type="Int32">20</p:fontsize>
+              <p:stringtype p:Assembly="VL.Core" p:Type="VL.Core.StringType">Comment</p:stringtype>
+            </p:ValueBoxSettings>
+          </Pad>
+          <Pad Id="IhoYuuK31jqGSYRSd0yeGO" Bounds="60,90,640,64" ShowValueBox="true" isIOBox="true" Value="Map tiles on a globe, from the whole Earth down to street level. Layers go into GlobeWindow's Input; a GlobeCamera moves like a map. Press F1 on a node for its example.">
+            <p:TypeAnnotation LastCategoryFullName="Primitive" LastDependency="VL.CoreLib.vl">
+              <Choice Kind="TypeFlag" Name="String" />
+            </p:TypeAnnotation>
+            <p:ValueBoxSettings>
+              <p:fontsize p:Type="Int32">9</p:fontsize>
+              <p:stringtype p:Assembly="VL.Core" p:Type="VL.Core.StringType">Comment</p:stringtype>
+            </p:ValueBoxSettings>
+          </Pad>
+          <Pad Id="HKuoVOBPjaeJornxhl6kie" Bounds="60,190,430,26" ShowValueBox="true" isIOBox="true" Value="Globe - the globe itself">
+            <p:TypeAnnotation LastCategoryFullName="Primitive" LastDependency="VL.CoreLib.vl">
+              <Choice Kind="TypeFlag" Name="String" />
+            </p:TypeAnnotation>
+            <p:ValueBoxSettings>
+              <p:fontsize p:Type="Int32">12</p:fontsize>
+              <p:stringtype p:Assembly="VL.Core" p:Type="VL.Core.StringType">Comment</p:stringtype>
+            </p:ValueBoxSettings>
+          </Pad>
+          <Node Bounds="60,234,120,19" Id="GxsxKHfdipN8kOdnbka9lO">
+            <p:NodeReference LastCategoryFullName="Globe" LastDependency="VL.Globe.vl">
+              <Choice Kind="NodeFlag" Name="Node" Fixed="true" />
+              <Choice Kind="ProcessAppFlag" Name="GlobeWindow" />
+            </p:NodeReference>
+          </Node>
+          <Pad Id="PZufMhQifZIICF7UhJFbSe" Bounds="305,227,300,40" ShowValueBox="true" isIOBox="true" Value="&lt; A globe in a window of its own; the mouse moves it. Start here.">
+            <p:TypeAnnotation LastCategoryFullName="Primitive" LastDependency="VL.CoreLib.vl">
+              <Choice Kind="TypeFlag" Name="String" />
+            </p:TypeAnnotation>
+            <p:ValueBoxSettings>
+              <p:fontsize p:Type="Int32">9</p:fontsize>
+              <p:stringtype p:Assembly="VL.Core" p:Type="VL.Core.StringType">Comment</p:stringtype>
+            </p:ValueBoxSettings>
+          </Pad>
+          <Node Bounds="60,278,120,19" Id="UG5Ot6sxtaU38Vc5fwMng5">
+            <p:NodeReference LastCategoryFullName="Globe" LastDependency="VL.Globe.vl">
+              <Choice Kind="NodeFlag" Name="Node" Fixed="true" />
+              <Choice Kind="ProcessAppFlag" Name="Globe" />
+            </p:NodeReference>
+          </Node>
+          <Pad Id="CU9fr1Mgnpy6EuDfIRu7ji" Bounds="305,271,300,40" ShowValueBox="true" isIOBox="true" Value="&lt; The globe as an entity, for a Stride scene of your own.">
+            <p:TypeAnnotation LastCategoryFullName="Primitive" LastDependency="VL.CoreLib.vl">
+              <Choice Kind="TypeFlag" Name="String" />
+            </p:TypeAnnotation>
+            <p:ValueBoxSettings>
+              <p:fontsize p:Type="Int32">9</p:fontsize>
+              <p:stringtype p:Assembly="VL.Core" p:Type="VL.Core.StringType">Comment</p:stringtype>
+            </p:ValueBoxSettings>
+          </Pad>
+          <Pad Id="PRfVO3JoZxZ4iKAJDKN5Tu" Bounds="60,340,430,26" ShowValueBox="true" isIOBox="true" Value="Globe.Layers - what is drawn on it">
+            <p:TypeAnnotation LastCategoryFullName="Primitive" LastDependency="VL.CoreLib.vl">
+              <Choice Kind="TypeFlag" Name="String" />
+            </p:TypeAnnotation>
+            <p:ValueBoxSettings>
+              <p:fontsize p:Type="Int32">12</p:fontsize>
+              <p:stringtype p:Assembly="VL.Core" p:Type="VL.Core.StringType">Comment</p:stringtype>
+            </p:ValueBoxSettings>
+          </Pad>
+          <Node Bounds="60,384,120,19" Id="RXW0TdwnDkZ5jbrPuRIBl1">
+            <p:NodeReference LastCategoryFullName="Globe.Layers" LastDependency="VL.Globe.vl">
+              <Choice Kind="NodeFlag" Name="Node" Fixed="true" />
+              <CategoryReference Kind="Category" Name="Layers" NeedsToBeDirectParent="true">
+                <p:OuterCategoryReference Kind="Category" Name="Globe" NeedsToBeDirectParent="true" />
+              </CategoryReference>
+              <Choice Kind="ProcessAppFlag" Name="VectorTiles" />
+            </p:NodeReference>
+          </Node>
+          <Pad Id="JhU96Xit8CKsRTt6M5azl7" Bounds="305,377,300,40" ShowValueBox="true" isIOBox="true" Value="&lt; A MapLibre style's vector tiles: streets, labels, icons, 3D buildings.">
+            <p:TypeAnnotation LastCategoryFullName="Primitive" LastDependency="VL.CoreLib.vl">
+              <Choice Kind="TypeFlag" Name="String" />
+            </p:TypeAnnotation>
+            <p:ValueBoxSettings>
+              <p:fontsize p:Type="Int32">9</p:fontsize>
+              <p:stringtype p:Assembly="VL.Core" p:Type="VL.Core.StringType">Comment</p:stringtype>
+            </p:ValueBoxSettings>
+          </Pad>
+          <Node Bounds="60,428,120,19" Id="UVAVypYQMO6ixzCXXDJMwm">
+            <p:NodeReference LastCategoryFullName="Globe.Layers" LastDependency="VL.Globe.vl">
+              <Choice Kind="NodeFlag" Name="Node" Fixed="true" />
+              <CategoryReference Kind="Category" Name="Layers" NeedsToBeDirectParent="true">
+                <p:OuterCategoryReference Kind="Category" Name="Globe" NeedsToBeDirectParent="true" />
+              </CategoryReference>
+              <Choice Kind="ProcessAppFlag" Name="OpenStreetMap" />
+            </p:NodeReference>
+          </Node>
+          <Pad Id="EZEguboUmSg2MnOind5OaR" Bounds="305,421,300,40" ShowValueBox="true" isIOBox="true" Value="&lt; OpenStreetMap's raster tiles. Fetches while Enabled.">
+            <p:TypeAnnotation LastCategoryFullName="Primitive" LastDependency="VL.CoreLib.vl">
+              <Choice Kind="TypeFlag" Name="String" />
+            </p:TypeAnnotation>
+            <p:ValueBoxSettings>
+              <p:fontsize p:Type="Int32">9</p:fontsize>
+              <p:stringtype p:Assembly="VL.Core" p:Type="VL.Core.StringType">Comment</p:stringtype>
+            </p:ValueBoxSettings>
+          </Pad>
+          <Node Bounds="60,472,120,19" Id="NTohz4r3VlCN5xECDkEreT">
+            <p:NodeReference LastCategoryFullName="Globe.Layers" LastDependency="VL.Globe.vl">
+              <Choice Kind="NodeFlag" Name="Node" Fixed="true" />
+              <CategoryReference Kind="Category" Name="Layers" NeedsToBeDirectParent="true">
+                <p:OuterCategoryReference Kind="Category" Name="Globe" NeedsToBeDirectParent="true" />
+              </CategoryReference>
+              <Choice Kind="ProcessAppFlag" Name="XyzTiles" />
+            </p:NodeReference>
+          </Node>
+          <Pad Id="JO21PIAeqS7k4E6lC1UJyG" Bounds="305,465,300,40" ShowValueBox="true" isIOBox="true" Value="&lt; Raster tiles from any XYZ address. Attribution is the credit shown.">
+            <p:TypeAnnotation LastCategoryFullName="Primitive" LastDependency="VL.CoreLib.vl">
+              <Choice Kind="TypeFlag" Name="String" />
+            </p:TypeAnnotation>
+            <p:ValueBoxSettings>
+              <p:fontsize p:Type="Int32">9</p:fontsize>
+              <p:stringtype p:Assembly="VL.Core" p:Type="VL.Core.StringType">Comment</p:stringtype>
+            </p:ValueBoxSettings>
+          </Pad>
+          <Node Bounds="60,516,120,19" Id="Ag9unMeFK6d7Hvtv739AGc">
+            <p:NodeReference LastCategoryFullName="Globe.Layers" LastDependency="VL.Globe.vl">
+              <Choice Kind="NodeFlag" Name="Node" Fixed="true" />
+              <CategoryReference Kind="Category" Name="Layers" NeedsToBeDirectParent="true">
+                <p:OuterCategoryReference Kind="Category" Name="Globe" NeedsToBeDirectParent="true" />
+              </CategoryReference>
+              <Choice Kind="ProcessAppFlag" Name="Geometry" />
+            </p:NodeReference>
+          </Node>
+          <Pad Id="TzLupijEsVa5jBOBcSEX8k" Bounds="305,509,300,40" ShowValueBox="true" isIOBox="true" Value="&lt; One geometry as a layer. The shortest way to see a shape.">
+            <p:TypeAnnotation LastCategoryFullName="Primitive" LastDependency="VL.CoreLib.vl">
+              <Choice Kind="TypeFlag" Name="String" />
+            </p:TypeAnnotation>
+            <p:ValueBoxSettings>
+              <p:fontsize p:Type="Int32">9</p:fontsize>
+              <p:stringtype p:Assembly="VL.Core" p:Type="VL.Core.StringType">Comment</p:stringtype>
+            </p:ValueBoxSettings>
+          </Pad>
+          <Node Bounds="60,560,120,19" Id="QFQ5RJY8W6xkwhm2tGkLka">
+            <p:NodeReference LastCategoryFullName="Globe.Layers" LastDependency="VL.Globe.vl">
+              <Choice Kind="NodeFlag" Name="Node" Fixed="true" />
+              <CategoryReference Kind="Category" Name="Layers" NeedsToBeDirectParent="true">
+                <p:OuterCategoryReference Kind="Category" Name="Globe" NeedsToBeDirectParent="true" />
+              </CategoryReference>
+              <Choice Kind="ProcessAppFlag" Name="FeatureLayer" />
+            </p:NodeReference>
+          </Node>
+          <Pad Id="BjieachDgTUarrPIBI2iXL" Bounds="305,553,300,40" ShowValueBox="true" isIOBox="true" Value="&lt; Features (geometry + attributes) in one style.">
+            <p:TypeAnnotation LastCategoryFullName="Primitive" LastDependency="VL.CoreLib.vl">
+              <Choice Kind="TypeFlag" Name="String" />
+            </p:TypeAnnotation>
+            <p:ValueBoxSettings>
+              <p:fontsize p:Type="Int32">9</p:fontsize>
+              <p:stringtype p:Assembly="VL.Core" p:Type="VL.Core.StringType">Comment</p:stringtype>
+            </p:ValueBoxSettings>
+          </Pad>
+          <Node Bounds="60,604,120,19" Id="IbOlUrivHbP65O0fUH0ELK">
+            <p:NodeReference LastCategoryFullName="Globe.Layers" LastDependency="VL.Globe.vl">
+              <Choice Kind="NodeFlag" Name="Node" Fixed="true" />
+              <CategoryReference Kind="Category" Name="Layers" NeedsToBeDirectParent="true">
+                <p:OuterCategoryReference Kind="Category" Name="Globe" NeedsToBeDirectParent="true" />
+              </CategoryReference>
+              <Choice Kind="ProcessAppFlag" Name="Graticule" />
+            </p:NodeReference>
+          </Node>
+          <Pad Id="Pd6PGCyjrKhAZfMkx906ru" Bounds="305,597,300,40" ShowValueBox="true" isIOBox="true" Value="&lt; Meridians and parallels.">
+            <p:TypeAnnotation LastCategoryFullName="Primitive" LastDependency="VL.CoreLib.vl">
+              <Choice Kind="TypeFlag" Name="String" />
+            </p:TypeAnnotation>
+            <p:ValueBoxSettings>
+              <p:fontsize p:Type="Int32">9</p:fontsize>
+              <p:stringtype p:Assembly="VL.Core" p:Type="VL.Core.StringType">Comment</p:stringtype>
+            </p:ValueBoxSettings>
+          </Pad>
+          <Node Bounds="60,648,120,19" Id="QflozuZE3cbOb6ZTAr9ugt">
+            <p:NodeReference LastCategoryFullName="Globe.Layers" LastDependency="VL.Globe.vl">
+              <Choice Kind="NodeFlag" Name="Node" Fixed="true" />
+              <CategoryReference Kind="Category" Name="Layers" NeedsToBeDirectParent="true">
+                <p:OuterCategoryReference Kind="Category" Name="Globe" NeedsToBeDirectParent="true" />
+              </CategoryReference>
+              <Choice Kind="ProcessAppFlag" Name="Group" />
+            </p:NodeReference>
+          </Node>
+          <Pad Id="HmXFnZsCijdEysNkSl0Qpy" Bounds="305,641,300,40" ShowValueBox="true" isIOBox="true" Value="&lt; Layers drawn as one, leftmost at the bottom.">
+            <p:TypeAnnotation LastCategoryFullName="Primitive" LastDependency="VL.CoreLib.vl">
+              <Choice Kind="TypeFlag" Name="String" />
+            </p:TypeAnnotation>
+            <p:ValueBoxSettings>
+              <p:fontsize p:Type="Int32">9</p:fontsize>
+              <p:stringtype p:Assembly="VL.Core" p:Type="VL.Core.StringType">Comment</p:stringtype>
+            </p:ValueBoxSettings>
+          </Pad>
+          <Node Bounds="60,692,120,19" Id="Rq00H1klUSJiciQ3KAUybs">
+            <p:NodeReference LastCategoryFullName="Globe.Layers" LastDependency="VL.Globe.vl">
+              <Choice Kind="NodeFlag" Name="Node" Fixed="true" />
+              <CategoryReference Kind="Category" Name="Layers" NeedsToBeDirectParent="true">
+                <p:OuterCategoryReference Kind="Category" Name="Globe" NeedsToBeDirectParent="true" />
+              </CategoryReference>
+              <Choice Kind="ProcessAppFlag" Name="Group (Spectral)" />
+            </p:NodeReference>
+          </Node>
+          <Pad Id="J1kAEB5AS6xnGAJVWrXs1T" Bounds="305,685,300,40" ShowValueBox="true" isIOBox="true" Value="&lt; A spread of layers drawn as one.">
+            <p:TypeAnnotation LastCategoryFullName="Primitive" LastDependency="VL.CoreLib.vl">
+              <Choice Kind="TypeFlag" Name="String" />
+            </p:TypeAnnotation>
+            <p:ValueBoxSettings>
+              <p:fontsize p:Type="Int32">9</p:fontsize>
+              <p:stringtype p:Assembly="VL.Core" p:Type="VL.Core.StringType">Comment</p:stringtype>
+            </p:ValueBoxSettings>
+          </Pad>
+          <Pad Id="SMn1RaCBmyImnWp6p2qBVd" Bounds="60,754,430,26" ShowValueBox="true" isIOBox="true" Value="Globe.Styles - how it looks">
+            <p:TypeAnnotation LastCategoryFullName="Primitive" LastDependency="VL.CoreLib.vl">
+              <Choice Kind="TypeFlag" Name="String" />
+            </p:TypeAnnotation>
+            <p:ValueBoxSettings>
+              <p:fontsize p:Type="Int32">12</p:fontsize>
+              <p:stringtype p:Assembly="VL.Core" p:Type="VL.Core.StringType">Comment</p:stringtype>
+            </p:ValueBoxSettings>
+          </Pad>
+          <Node Bounds="60,798,120,19" Id="KDA3RTmKhgQyvlxbGJteg6">
+            <p:NodeReference LastCategoryFullName="Globe.Styles" LastDependency="VL.Globe.vl">
+              <Choice Kind="NodeFlag" Name="Node" Fixed="true" />
+              <CategoryReference Kind="Category" Name="Styles" NeedsToBeDirectParent="true">
+                <p:OuterCategoryReference Kind="Category" Name="Globe" NeedsToBeDirectParent="true" />
+              </CategoryReference>
+              <Choice Kind="ProcessAppFlag" Name="MapLibreStyle (URL)" />
+            </p:NodeReference>
+          </Node>
+          <Pad Id="TlOiRHmi6yFPVBmfwfRk2V" Bounds="305,791,300,40" ShowValueBox="true" isIOBox="true" Value="&lt; A style from an address, for VectorTiles.">
+            <p:TypeAnnotation LastCategoryFullName="Primitive" LastDependency="VL.CoreLib.vl">
+              <Choice Kind="TypeFlag" Name="String" />
+            </p:TypeAnnotation>
+            <p:ValueBoxSettings>
+              <p:fontsize p:Type="Int32">9</p:fontsize>
+              <p:stringtype p:Assembly="VL.Core" p:Type="VL.Core.StringType">Comment</p:stringtype>
+            </p:ValueBoxSettings>
+          </Pad>
+          <Node Bounds="60,842,120,19" Id="SoEvmcNXoPMXeSSMBgt9bh">
+            <p:NodeReference LastCategoryFullName="Globe.Styles" LastDependency="VL.Globe.vl">
+              <Choice Kind="NodeFlag" Name="Node" Fixed="true" />
+              <CategoryReference Kind="Category" Name="Styles" NeedsToBeDirectParent="true">
+                <p:OuterCategoryReference Kind="Category" Name="Globe" NeedsToBeDirectParent="true" />
+              </CategoryReference>
+              <Choice Kind="ProcessAppFlag" Name="MapLibreStyle (File)" />
+            </p:NodeReference>
+          </Node>
+          <Pad Id="TP2wvMTHvvHYNJyRH7VTfH" Bounds="305,835,300,40" ShowValueBox="true" isIOBox="true" Value="&lt; A style from a .json file; edit it in Maputnik.">
+            <p:TypeAnnotation LastCategoryFullName="Primitive" LastDependency="VL.CoreLib.vl">
+              <Choice Kind="TypeFlag" Name="String" />
+            </p:TypeAnnotation>
+            <p:ValueBoxSettings>
+              <p:fontsize p:Type="Int32">9</p:fontsize>
+              <p:stringtype p:Assembly="VL.Core" p:Type="VL.Core.StringType">Comment</p:stringtype>
+            </p:ValueBoxSettings>
+          </Pad>
+          <Node Bounds="60,886,120,19" Id="FUXw8H9NhLL1I72c8ZcHw3">
+            <p:NodeReference LastCategoryFullName="Globe.Styles" LastDependency="VL.Globe.vl">
+              <Choice Kind="NodeFlag" Name="Node" Fixed="true" />
+              <CategoryReference Kind="Category" Name="Styles" NeedsToBeDirectParent="true">
+                <p:OuterCategoryReference Kind="Category" Name="Globe" NeedsToBeDirectParent="true" />
+              </CategoryReference>
+              <Choice Kind="OperationCallFlag" Name="VectorStyle" />
+            </p:NodeReference>
+          </Node>
+          <Pad Id="OaGrcvWa2FaN2inSjF8wZi" Bounds="305,879,300,40" ShowValueBox="true" isIOBox="true" Value="&lt; Fill, line colour and width for Geometry and FeatureLayer.">
+            <p:TypeAnnotation LastCategoryFullName="Primitive" LastDependency="VL.CoreLib.vl">
+              <Choice Kind="TypeFlag" Name="String" />
+            </p:TypeAnnotation>
+            <p:ValueBoxSettings>
+              <p:fontsize p:Type="Int32">9</p:fontsize>
+              <p:stringtype p:Assembly="VL.Core" p:Type="VL.Core.StringType">Comment</p:stringtype>
+            </p:ValueBoxSettings>
+          </Pad>
+          <Pad Id="IC4tm5DMTi4Oa4hesqfjxO" Bounds="60,948,430,26" ShowValueBox="true" isIOBox="true" Value="Globe.Lights">
+            <p:TypeAnnotation LastCategoryFullName="Primitive" LastDependency="VL.CoreLib.vl">
+              <Choice Kind="TypeFlag" Name="String" />
+            </p:TypeAnnotation>
+            <p:ValueBoxSettings>
+              <p:fontsize p:Type="Int32">12</p:fontsize>
+              <p:stringtype p:Assembly="VL.Core" p:Type="VL.Core.StringType">Comment</p:stringtype>
+            </p:ValueBoxSettings>
+          </Pad>
+          <Node Bounds="60,992,120,19" Id="SnvXqIBlPrHhzs1OV09Brn">
+            <p:NodeReference LastCategoryFullName="Globe.Lights" LastDependency="VL.Globe.vl">
+              <Choice Kind="NodeFlag" Name="Node" Fixed="true" />
+              <CategoryReference Kind="Category" Name="Lights" NeedsToBeDirectParent="true">
+                <p:OuterCategoryReference Kind="Category" Name="Globe" NeedsToBeDirectParent="true" />
+              </CategoryReference>
+              <Choice Kind="ProcessAppFlag" Name="SunLight" />
+            </p:NodeReference>
+          </Node>
+          <Pad Id="D58XRXGvlwmqNbKrg1o0wM" Bounds="305,985,300,40" ShowValueBox="true" isIOBox="true" Value="&lt; The sun at a date and time: lights the buildings, casts shadows.">
+            <p:TypeAnnotation LastCategoryFullName="Primitive" LastDependency="VL.CoreLib.vl">
+              <Choice Kind="TypeFlag" Name="String" />
+            </p:TypeAnnotation>
+            <p:ValueBoxSettings>
+              <p:fontsize p:Type="Int32">9</p:fontsize>
+              <p:stringtype p:Assembly="VL.Core" p:Type="VL.Core.StringType">Comment</p:stringtype>
+            </p:ValueBoxSettings>
+          </Pad>
+          <Pad Id="S4vsxE8KHwHaMCj39XrAGp" Bounds="680,190,430,26" ShowValueBox="true" isIOBox="true" Value="Globe - the camera">
+            <p:TypeAnnotation LastCategoryFullName="Primitive" LastDependency="VL.CoreLib.vl">
+              <Choice Kind="TypeFlag" Name="String" />
+            </p:TypeAnnotation>
+            <p:ValueBoxSettings>
+              <p:fontsize p:Type="Int32">12</p:fontsize>
+              <p:stringtype p:Assembly="VL.Core" p:Type="VL.Core.StringType">Comment</p:stringtype>
+            </p:ValueBoxSettings>
+          </Pad>
+          <Node Bounds="680,234,120,19" Id="PRlC7R7fiYKTCh3EXzo9zX">
+            <p:NodeReference LastCategoryFullName="Globe" LastDependency="VL.Globe.vl">
+              <Choice Kind="NodeFlag" Name="Node" Fixed="true" />
+              <Choice Kind="ProcessAppFlag" Name="GlobeCamera" />
+            </p:NodeReference>
+          </Node>
+          <Pad Id="HcNOd5FRnlAuyj9CKBH9XG" Bounds="925,227,300,40" ShowValueBox="true" isIOBox="true" Value="&lt; A camera that moves like a map. GlobeWindow has one; wire yours to set where it starts.">
+            <p:TypeAnnotation LastCategoryFullName="Primitive" LastDependency="VL.CoreLib.vl">
+              <Choice Kind="TypeFlag" Name="String" />
+            </p:TypeAnnotation>
+            <p:ValueBoxSettings>
+              <p:fontsize p:Type="Int32">9</p:fontsize>
+              <p:stringtype p:Assembly="VL.Core" p:Type="VL.Core.StringType">Comment</p:stringtype>
+            </p:ValueBoxSettings>
+          </Pad>
+          <Node Bounds="680,278,120,19" Id="LTEftZ3GFbL47PG3suDM95">
+            <p:NodeReference LastCategoryFullName="Globe" LastDependency="VL.Globe.vl">
+              <Choice Kind="NodeFlag" Name="Node" Fixed="true" />
+              <Choice Kind="ProcessAppFlag" Name="Drag" />
+            </p:NodeReference>
+          </Node>
+          <Pad Id="FcAuntHbCEHgFcdKau7U7U" Bounds="925,271,300,40" ShowValueBox="true" isIOBox="true" Value="&lt; Moves the view while Dragging. For a mouse of your own.">
+            <p:TypeAnnotation LastCategoryFullName="Primitive" LastDependency="VL.CoreLib.vl">
+              <Choice Kind="TypeFlag" Name="String" />
+            </p:TypeAnnotation>
+            <p:ValueBoxSettings>
+              <p:fontsize p:Type="Int32">9</p:fontsize>
+              <p:stringtype p:Assembly="VL.Core" p:Type="VL.Core.StringType">Comment</p:stringtype>
+            </p:ValueBoxSettings>
+          </Pad>
+          <Node Bounds="680,322,120,19" Id="FXh4ZZfPpdOJWewAIu6YRX">
+            <p:NodeReference LastCategoryFullName="Globe" LastDependency="VL.Globe.vl">
+              <Choice Kind="NodeFlag" Name="Node" Fixed="true" />
+              <Choice Kind="ProcessAppFlag" Name="ZoomByWheel" />
+            </p:NodeReference>
+          </Node>
+          <Pad Id="PB0SUidE1wMB3HllJtPGOB" Bounds="925,315,300,40" ShowValueBox="true" isIOBox="true" Value="&lt; Zooms toward the cursor.">
+            <p:TypeAnnotation LastCategoryFullName="Primitive" LastDependency="VL.CoreLib.vl">
+              <Choice Kind="TypeFlag" Name="String" />
+            </p:TypeAnnotation>
+            <p:ValueBoxSettings>
+              <p:fontsize p:Type="Int32">9</p:fontsize>
+              <p:stringtype p:Assembly="VL.Core" p:Type="VL.Core.StringType">Comment</p:stringtype>
+            </p:ValueBoxSettings>
+          </Pad>
+          <Node Bounds="680,366,120,19" Id="FFXK1l6euRXTg0uNgOZ0iy">
+            <p:NodeReference LastCategoryFullName="Globe" LastDependency="VL.Globe.vl">
+              <Choice Kind="NodeFlag" Name="Node" Fixed="true" />
+              <Choice Kind="ProcessAppFlag" Name="DragRotate" />
+            </p:NodeReference>
+          </Node>
+          <Pad Id="HxgZavfsfQg4VufCN2O7xg" Bounds="925,359,300,40" ShowValueBox="true" isIOBox="true" Value="&lt; Turns and tilts the view.">
+            <p:TypeAnnotation LastCategoryFullName="Primitive" LastDependency="VL.CoreLib.vl">
+              <Choice Kind="TypeFlag" Name="String" />
+            </p:TypeAnnotation>
+            <p:ValueBoxSettings>
+              <p:fontsize p:Type="Int32">9</p:fontsize>
+              <p:stringtype p:Assembly="VL.Core" p:Type="VL.Core.StringType">Comment</p:stringtype>
+            </p:ValueBoxSettings>
+          </Pad>
+          <Pad Id="SIOWXjiGnQKg3D4IxgGQbi" Bounds="680,428,430,26" ShowValueBox="true" isIOBox="true" Value="Globe.Navigate - where the camera looks">
+            <p:TypeAnnotation LastCategoryFullName="Primitive" LastDependency="VL.CoreLib.vl">
+              <Choice Kind="TypeFlag" Name="String" />
+            </p:TypeAnnotation>
+            <p:ValueBoxSettings>
+              <p:fontsize p:Type="Int32">12</p:fontsize>
+              <p:stringtype p:Assembly="VL.Core" p:Type="VL.Core.StringType">Comment</p:stringtype>
+            </p:ValueBoxSettings>
+          </Pad>
+          <Node Bounds="680,472,120,19" Id="IDBZP5Ruj3A6Snb37Vp6un">
+            <p:NodeReference LastCategoryFullName="Globe.Navigate" LastDependency="VL.Globe.vl">
+              <Choice Kind="NodeFlag" Name="Node" Fixed="true" />
+              <CategoryReference Kind="Category" Name="Navigate" NeedsToBeDirectParent="true">
+                <p:OuterCategoryReference Kind="Category" Name="Globe" NeedsToBeDirectParent="true" />
+              </CategoryReference>
+              <Choice Kind="ProcessAppFlag" Name="FlyTo" />
+            </p:NodeReference>
+          </Node>
+          <Pad Id="TbRlcavOgXrCp35qnfKfkP" Bounds="925,465,300,40" ShowValueBox="true" isIOBox="true" Value="&lt; Flies to a longitude and latitude, on a trigger.">
+            <p:TypeAnnotation LastCategoryFullName="Primitive" LastDependency="VL.CoreLib.vl">
+              <Choice Kind="TypeFlag" Name="String" />
+            </p:TypeAnnotation>
+            <p:ValueBoxSettings>
+              <p:fontsize p:Type="Int32">9</p:fontsize>
+              <p:stringtype p:Assembly="VL.Core" p:Type="VL.Core.StringType">Comment</p:stringtype>
+            </p:ValueBoxSettings>
+          </Pad>
+          <Node Bounds="680,516,120,19" Id="UNuVwJfs7V5KGJBjlozfkf">
+            <p:NodeReference LastCategoryFullName="Globe.Navigate" LastDependency="VL.Globe.vl">
+              <Choice Kind="NodeFlag" Name="Node" Fixed="true" />
+              <CategoryReference Kind="Category" Name="Navigate" NeedsToBeDirectParent="true">
+                <p:OuterCategoryReference Kind="Category" Name="Globe" NeedsToBeDirectParent="true" />
+              </CategoryReference>
+              <Choice Kind="ProcessAppFlag" Name="CenterOn" />
+            </p:NodeReference>
+          </Node>
+          <Pad Id="SzROSg9aSbe4fERQptyndM" Bounds="925,509,300,40" ShowValueBox="true" isIOBox="true" Value="&lt; Puts a longitude and latitude at the centre.">
+            <p:TypeAnnotation LastCategoryFullName="Primitive" LastDependency="VL.CoreLib.vl">
+              <Choice Kind="TypeFlag" Name="String" />
+            </p:TypeAnnotation>
+            <p:ValueBoxSettings>
+              <p:fontsize p:Type="Int32">9</p:fontsize>
+              <p:stringtype p:Assembly="VL.Core" p:Type="VL.Core.StringType">Comment</p:stringtype>
+            </p:ValueBoxSettings>
+          </Pad>
+          <Node Bounds="680,560,120,19" Id="PjKUSuP2M81oz5hkvc8kTW">
+            <p:NodeReference LastCategoryFullName="Globe.Navigate" LastDependency="VL.Globe.vl">
+              <Choice Kind="NodeFlag" Name="Node" Fixed="true" />
+              <CategoryReference Kind="Category" Name="Navigate" NeedsToBeDirectParent="true">
+                <p:OuterCategoryReference Kind="Category" Name="Globe" NeedsToBeDirectParent="true" />
+              </CategoryReference>
+              <Choice Kind="ProcessAppFlag" Name="ZoomToBounds" />
+            </p:NodeReference>
+          </Node>
+          <Pad Id="HbdDj1VSLNFQupbIfZQPcp" Bounds="925,553,300,40" ShowValueBox="true" isIOBox="true" Value="&lt; Frames a geometry.">
+            <p:TypeAnnotation LastCategoryFullName="Primitive" LastDependency="VL.CoreLib.vl">
+              <Choice Kind="TypeFlag" Name="String" />
+            </p:TypeAnnotation>
+            <p:ValueBoxSettings>
+              <p:fontsize p:Type="Int32">9</p:fontsize>
+              <p:stringtype p:Assembly="VL.Core" p:Type="VL.Core.StringType">Comment</p:stringtype>
+            </p:ValueBoxSettings>
+          </Pad>
+          <Node Bounds="680,604,120,19" Id="TZBjGfQxWJeujZQ5sSJLyd">
+            <p:NodeReference LastCategoryFullName="Globe.Navigate" LastDependency="VL.Globe.vl">
+              <Choice Kind="NodeFlag" Name="Node" Fixed="true" />
+              <CategoryReference Kind="Category" Name="Navigate" NeedsToBeDirectParent="true">
+                <p:OuterCategoryReference Kind="Category" Name="Globe" NeedsToBeDirectParent="true" />
+              </CategoryReference>
+              <Choice Kind="ProcessAppFlag" Name="ZoomToLevel" />
+            </p:NodeReference>
+          </Node>
+          <Pad Id="Hh85xGoPcHcVWvjovIqJPt" Bounds="925,597,300,40" ShowValueBox="true" isIOBox="true" Value="&lt; 0 is the world, 19 a building.">
+            <p:TypeAnnotation LastCategoryFullName="Primitive" LastDependency="VL.CoreLib.vl">
+              <Choice Kind="TypeFlag" Name="String" />
+            </p:TypeAnnotation>
+            <p:ValueBoxSettings>
+              <p:fontsize p:Type="Int32">9</p:fontsize>
+              <p:stringtype p:Assembly="VL.Core" p:Type="VL.Core.StringType">Comment</p:stringtype>
+            </p:ValueBoxSettings>
+          </Pad>
+          <Node Bounds="680,648,120,19" Id="CrMbQHu8z1zyJ6jkOBUNQK">
+            <p:NodeReference LastCategoryFullName="Globe.Navigate" LastDependency="VL.Globe.vl">
+              <Choice Kind="NodeFlag" Name="Node" Fixed="true" />
+              <CategoryReference Kind="Category" Name="Navigate" NeedsToBeDirectParent="true">
+                <p:OuterCategoryReference Kind="Category" Name="Globe" NeedsToBeDirectParent="true" />
+              </CategoryReference>
+              <Choice Kind="ProcessAppFlag" Name="ZoomIn" />
+            </p:NodeReference>
+          </Node>
+          <Pad Id="EIG9gU1bQ9mdr9rt0Ayxnl" Bounds="925,641,300,40" ShowValueBox="true" isIOBox="true" Value="&lt; One level in, on a trigger.">
+            <p:TypeAnnotation LastCategoryFullName="Primitive" LastDependency="VL.CoreLib.vl">
+              <Choice Kind="TypeFlag" Name="String" />
+            </p:TypeAnnotation>
+            <p:ValueBoxSettings>
+              <p:fontsize p:Type="Int32">9</p:fontsize>
+              <p:stringtype p:Assembly="VL.Core" p:Type="VL.Core.StringType">Comment</p:stringtype>
+            </p:ValueBoxSettings>
+          </Pad>
+          <Node Bounds="680,692,120,19" Id="P8id3u2FluaxIqdsg8WAUZ">
+            <p:NodeReference LastCategoryFullName="Globe.Navigate" LastDependency="VL.Globe.vl">
+              <Choice Kind="NodeFlag" Name="Node" Fixed="true" />
+              <CategoryReference Kind="Category" Name="Navigate" NeedsToBeDirectParent="true">
+                <p:OuterCategoryReference Kind="Category" Name="Globe" NeedsToBeDirectParent="true" />
+              </CategoryReference>
+              <Choice Kind="ProcessAppFlag" Name="ZoomOut" />
+            </p:NodeReference>
+          </Node>
+          <Pad Id="CstxdFTeCz1mOGTXHgrAAk" Bounds="925,685,300,40" ShowValueBox="true" isIOBox="true" Value="&lt; One level out, on a trigger.">
+            <p:TypeAnnotation LastCategoryFullName="Primitive" LastDependency="VL.CoreLib.vl">
+              <Choice Kind="TypeFlag" Name="String" />
+            </p:TypeAnnotation>
+            <p:ValueBoxSettings>
+              <p:fontsize p:Type="Int32">9</p:fontsize>
+              <p:stringtype p:Assembly="VL.Core" p:Type="VL.Core.StringType">Comment</p:stringtype>
+            </p:ValueBoxSettings>
+          </Pad>
+          <Pad Id="JBPuiizPDTZf4rfaV2ty8L" Bounds="680,754,430,26" ShowValueBox="true" isIOBox="true" Value="Globe - reading the view">
+            <p:TypeAnnotation LastCategoryFullName="Primitive" LastDependency="VL.CoreLib.vl">
+              <Choice Kind="TypeFlag" Name="String" />
+            </p:TypeAnnotation>
+            <p:ValueBoxSettings>
+              <p:fontsize p:Type="Int32">12</p:fontsize>
+              <p:stringtype p:Assembly="VL.Core" p:Type="VL.Core.StringType">Comment</p:stringtype>
+            </p:ValueBoxSettings>
+          </Pad>
+          <Node Bounds="680,798,120,19" Id="FH3cggGCnordvGBc11r0Dt">
+            <p:NodeReference LastCategoryFullName="Globe" LastDependency="VL.Globe.vl">
+              <Choice Kind="NodeFlag" Name="Node" Fixed="true" />
+              <Choice Kind="ProcessAppFlag" Name="Pick" />
+            </p:NodeReference>
+          </Node>
+          <Pad Id="MYpCh6DEgiIM1S9lGY8yh0" Bounds="925,791,300,40" ShowValueBox="true" isIOBox="true" Value="&lt; The feature under the cursor, with its attributes - your own or a vector tile's.">
+            <p:TypeAnnotation LastCategoryFullName="Primitive" LastDependency="VL.CoreLib.vl">
+              <Choice Kind="TypeFlag" Name="String" />
+            </p:TypeAnnotation>
+            <p:ValueBoxSettings>
+              <p:fontsize p:Type="Int32">9</p:fontsize>
+              <p:stringtype p:Assembly="VL.Core" p:Type="VL.Core.StringType">Comment</p:stringtype>
+            </p:ValueBoxSettings>
+          </Pad>
+          <Node Bounds="680,842,120,19" Id="Eul6B0tK7GHQT062FFV9T9">
+            <p:NodeReference LastCategoryFullName="Globe" LastDependency="VL.Globe.vl">
+              <Choice Kind="NodeFlag" Name="Node" Fixed="true" />
+              <Choice Kind="OperationCallFlag" Name="ScreenToGlobe" />
+            </p:NodeReference>
+          </Node>
+          <Pad Id="RTJBR78ZU5FK7EK7Wdk5xk" Bounds="925,835,300,40" ShowValueBox="true" isIOBox="true" Value="&lt; The longitude and latitude under a point of the view.">
+            <p:TypeAnnotation LastCategoryFullName="Primitive" LastDependency="VL.CoreLib.vl">
+              <Choice Kind="TypeFlag" Name="String" />
+            </p:TypeAnnotation>
+            <p:ValueBoxSettings>
+              <p:fontsize p:Type="Int32">9</p:fontsize>
+              <p:stringtype p:Assembly="VL.Core" p:Type="VL.Core.StringType">Comment</p:stringtype>
+            </p:ValueBoxSettings>
+          </Pad>
+          <Node Bounds="680,886,120,19" Id="VkfXMw1OckZNRV6aTbFrlL">
+            <p:NodeReference LastCategoryFullName="Globe" LastDependency="VL.Globe.vl">
+              <Choice Kind="NodeFlag" Name="Node" Fixed="true" />
+              <Choice Kind="OperationCallFlag" Name="GlobeToScreen" />
+            </p:NodeReference>
+          </Node>
+          <Pad Id="ORYEbrpqfKQUSV04wrucl0" Bounds="925,879,300,40" ShowValueBox="true" isIOBox="true" Value="&lt; Where a longitude and latitude is in the view.">
+            <p:TypeAnnotation LastCategoryFullName="Primitive" LastDependency="VL.CoreLib.vl">
+              <Choice Kind="TypeFlag" Name="String" />
+            </p:TypeAnnotation>
+            <p:ValueBoxSettings>
+              <p:fontsize p:Type="Int32">9</p:fontsize>
+              <p:stringtype p:Assembly="VL.Core" p:Type="VL.Core.StringType">Comment</p:stringtype>
+            </p:ValueBoxSettings>
+          </Pad>
+          <Node Bounds="680,930,120,19" Id="NkUoIw18v8xRDGfypIdaUQ">
+            <p:NodeReference LastCategoryFullName="Globe" LastDependency="VL.Globe.vl">
+              <Choice Kind="NodeFlag" Name="Node" Fixed="true" />
+              <Choice Kind="OperationCallFlag" Name="GlobeViewInfo" />
+            </p:NodeReference>
+          </Node>
+          <Pad Id="IxvfGihm6jVJ41huEzKIjb" Bounds="925,923,300,40" ShowValueBox="true" isIOBox="true" Value="&lt; The view's centre, height, heading, tilt and zoom.">
+            <p:TypeAnnotation LastCategoryFullName="Primitive" LastDependency="VL.CoreLib.vl">
+              <Choice Kind="TypeFlag" Name="String" />
+            </p:TypeAnnotation>
+            <p:ValueBoxSettings>
+              <p:fontsize p:Type="Int32">9</p:fontsize>
+              <p:stringtype p:Assembly="VL.Core" p:Type="VL.Core.StringType">Comment</p:stringtype>
+            </p:ValueBoxSettings>
+          </Pad>
+          <Pad Id="Hflxhsfh7WwpnV7dwvMntc" Bounds="680,992,430,26" ShowValueBox="true" isIOBox="true" Value="Globe - your own objects">
+            <p:TypeAnnotation LastCategoryFullName="Primitive" LastDependency="VL.CoreLib.vl">
+              <Choice Kind="TypeFlag" Name="String" />
+            </p:TypeAnnotation>
+            <p:ValueBoxSettings>
+              <p:fontsize p:Type="Int32">12</p:fontsize>
+              <p:stringtype p:Assembly="VL.Core" p:Type="VL.Core.StringType">Comment</p:stringtype>
+            </p:ValueBoxSettings>
+          </Pad>
+          <Node Bounds="680,1036,120,19" Id="N3XXt07TIlLsp1XNy1RWKp">
+            <p:NodeReference LastCategoryFullName="Globe" LastDependency="VL.Globe.vl">
+              <Choice Kind="NodeFlag" Name="Node" Fixed="true" />
+              <Choice Kind="ProcessAppFlag" Name="GlobePositionComponent" />
+            </p:NodeReference>
+          </Node>
+          <Pad Id="UVM9a3cRGvgRoqvExln01c" Bounds="925,1029,300,40" ShowValueBox="true" isIOBox="true" Value="&lt; Stands an entity at a longitude, latitude and height.">
+            <p:TypeAnnotation LastCategoryFullName="Primitive" LastDependency="VL.CoreLib.vl">
+              <Choice Kind="TypeFlag" Name="String" />
+            </p:TypeAnnotation>
+            <p:ValueBoxSettings>
+              <p:fontsize p:Type="Int32">9</p:fontsize>
+              <p:stringtype p:Assembly="VL.Core" p:Type="VL.Core.StringType">Comment</p:stringtype>
+            </p:ValueBoxSettings>
+          </Pad>
+          <Node Bounds="680,1080,120,19" Id="KbThjGdUXIJFk7guWabdU1">
+            <p:NodeReference LastCategoryFullName="Globe" LastDependency="VL.Globe.vl">
+              <Choice Kind="NodeFlag" Name="Node" Fixed="true" />
+              <Choice Kind="OperationCallFlag" Name="ToGlobe" />
+            </p:NodeReference>
+          </Node>
+          <Pad Id="TMssi8kJpYHb6j9rYwuQQa" Bounds="925,1073,300,40" ShowValueBox="true" isIOBox="true" Value="&lt; Longitude, latitude, height to a position on the sphere.">
+            <p:TypeAnnotation LastCategoryFullName="Primitive" LastDependency="VL.CoreLib.vl">
+              <Choice Kind="TypeFlag" Name="String" />
+            </p:TypeAnnotation>
+            <p:ValueBoxSettings>
+              <p:fontsize p:Type="Int32">9</p:fontsize>
+              <p:stringtype p:Assembly="VL.Core" p:Type="VL.Core.StringType">Comment</p:stringtype>
+            </p:ValueBoxSettings>
+          </Pad>
+          <Node Bounds="680,1124,120,19" Id="IouBqhnmOT7zcH3KnqhWJb">
+            <p:NodeReference LastCategoryFullName="Globe" LastDependency="VL.Globe.vl">
+              <Choice Kind="NodeFlag" Name="Node" Fixed="true" />
+              <Choice Kind="OperationCallFlag" Name="ToGlobe (Coordinate)" />
+            </p:NodeReference>
+          </Node>
+          <Pad Id="H6UccnvsFYhdNwa9dAO7YX" Bounds="925,1117,300,40" ShowValueBox="true" isIOBox="true" Value="&lt; The same from NetTopologySuite's Coordinate.">
+            <p:TypeAnnotation LastCategoryFullName="Primitive" LastDependency="VL.CoreLib.vl">
+              <Choice Kind="TypeFlag" Name="String" />
+            </p:TypeAnnotation>
+            <p:ValueBoxSettings>
+              <p:fontsize p:Type="Int32">9</p:fontsize>
+              <p:stringtype p:Assembly="VL.Core" p:Type="VL.Core.StringType">Comment</p:stringtype>
+            </p:ValueBoxSettings>
+          </Pad>
+          <Node Bounds="680,1168,120,19" Id="CW9ZD2Cdc3UuBjJoMClcS9">
+            <p:NodeReference LastCategoryFullName="Globe" LastDependency="VL.Globe.vl">
+              <Choice Kind="NodeFlag" Name="Node" Fixed="true" />
+              <Choice Kind="OperationCallFlag" Name="FromGlobe" />
+            </p:NodeReference>
+          </Node>
+          <Pad Id="OWcZ9idJ3h1Zv2xC3q17oF" Bounds="925,1161,300,40" ShowValueBox="true" isIOBox="true" Value="&lt; A position on the sphere back to longitude, latitude, height.">
+            <p:TypeAnnotation LastCategoryFullName="Primitive" LastDependency="VL.CoreLib.vl">
+              <Choice Kind="TypeFlag" Name="String" />
+            </p:TypeAnnotation>
+            <p:ValueBoxSettings>
+              <p:fontsize p:Type="Int32">9</p:fontsize>
+              <p:stringtype p:Assembly="VL.Core" p:Type="VL.Core.StringType">Comment</p:stringtype>
+            </p:ValueBoxSettings>
+          </Pad>
+        </Canvas>
+        <Patch Id="Oy8z4gd0H3yWi46maAzVqN" Name="Create" />
+        <Patch Id="PmDaETCnZ1DrNMiQbqZH6y" Name="Update" />
+        <ProcessDefinition Id="E5t74Mj0SO9G3UaLwJ0c62">
+          <Fragment Id="VyHWm3x6h8sBmzwnCEREgC" Patch="Oy8z4gd0H3yWi46maAzVqN" Enabled="true" />
+          <Fragment Id="OM2gty88ZI0ndcPtqIdAyp" Patch="PmDaETCnZ1DrNMiQbqZH6y" Enabled="true" />
+        </ProcessDefinition>
+
+      </Patch>
+    </Node>
+  </Patch>
+</Document>
