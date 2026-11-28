@@ -36,7 +36,6 @@ internal sealed class VectorTileService : IDisposable
     // the disk cache: %LOCALAPPDATA%\VL.Globe\vector-tiles\<host>-<hash of the template>\<hash of the url>.pbf
     internal static readonly string DefaultCacheRoot = Path.Combine(
         Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "VL.Globe", "vector-tiles");
-    static readonly TimeSpan CacheAge = TimeSpan.FromDays(7);
     const int MaxInFlight = 6;
 
     readonly CancellationTokenSource _cancel = new();
@@ -53,12 +52,16 @@ internal sealed class VectorTileService : IDisposable
 
     // null: nothing is kept on disk (a TileCache switched off)
     readonly string? _cacheRoot = DefaultCacheRoot;
+    readonly TimeSpan CacheAge = GlobeTileCache.Default.MaxAge;
 
     public VectorTileService(string styleUrl) => StyleUrl = styleUrl;
 
     /// <summary>A style whose tiles are kept in <paramref name="cache"/>'s folder, or not at all when it is off.</summary>
     public VectorTileService(string styleUrl, GlobeTileCache? cache) : this(styleUrl)
-        => _cacheRoot = cache is null ? DefaultCacheRoot : cache.IsOn ? cache.VectorFolder : null;
+    {
+        _cacheRoot = cache is null ? DefaultCacheRoot : cache.IsOn ? cache.VectorFolder : null;
+        CacheAge = (cache ?? GlobeTileCache.Default).MaxAge;
+    }
 
     /// <summary>A style given as its JSON, not fetched (GeometryStyle: shapes drawn by the GPU).</summary>
     internal VectorTileService(string name, byte[] styleJson) { StyleUrl = name; _inline = styleJson; }

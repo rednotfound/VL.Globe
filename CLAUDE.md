@@ -55,11 +55,11 @@ A reported view is drawn offscreen by `Probes\ViewProbe` (VLGLOBE_PROBE=1 VLGLOB
 | `GlobePositionComponent [Globe]` | stands an entity on the globe, placed at draw time; user-judged |
 | `ScreenToGlobe`, `GlobeToScreen`, `GlobeViewInfo [Globe]` | built; user-judged |
 | `Geometry`, `FeatureLayer [Globe.Layers]`, `VectorStyle [Globe.Styles]` | built; GPU layers of their own since 2026-11-24 (the user: one way, with or without VectorTiles), over every raster layer; seen in vvvv |
-| `TileCache [Globe.Layers]` | built 2026-11-28 (ROADMAP 6e): Folder, Max Size, Clear, Enabled -> a `GlobeTileCache` for the `Cache` pin of OpenStreetMap, XyzTiles, VectorTiles; deletes only its own *.png / *.pbf, off the main thread; seen in vvvv by me |
+| `TileCache [Globe.Layers]` | built 2026-11-28 (ROADMAP 6e): Folder, Max Size, Max Age, Clear, Enabled -> a `GlobeTileCache` for the `Cache` pin of OpenStreetMap, XyzTiles, VectorTiles; deletes only its own *.png / *.pbf, off the main thread; with none connected the default folders are held to 4096 MB / 7 days; each feature run in vvvv by me |
 | `VectorTiles [Globe.Layers]` | built 2026-11-21: a MapLibre style's fills/lines/background from vector tiles, with or without a Tile Source; drawn by the GPU (judged by the user moving; the drape, "不太行", removed 2026-11-24) |
 | `ToGlobe`, `ToGlobe (Coordinate)`, `FromGlobe [Globe]` | built, 4 rungs, **absolute** — right under OrbitCamera; under GlobeCamera use GlobePositionComponent |
 
-379 tests pass and 9 probes are skipped (incl. MapLibre v6.19.0's render tests — 409 fixtures, fetched by script — run offscreen on a D3D11 device of the test's own, on the GPU path: 329 pass). Branch `feature/camera-relative`, pushed to `github.com/rednotfound/VL.Globe`
+381 tests pass and 9 probes are skipped (incl. MapLibre v6.19.0's render tests — 409 fixtures, fetched by script — run offscreen on a D3D11 device of the test's own, on the GPU path: 329 pass). Branch `feature/camera-relative`, pushed to `github.com/rednotfound/VL.Globe`
 (public); not merged, not published. Verified on vvvv **7.4 (LTS)**; `Find-Vvvv.ps1` stays below 8.0.
 
 ## Facts this repo paid for (details in NOTES.md)

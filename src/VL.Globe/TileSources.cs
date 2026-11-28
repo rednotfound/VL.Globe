@@ -64,7 +64,7 @@ internal static class TileSourceFactory
         var folder = Path.Combine(cache.RasterFolder, Slug(cacheKey));
         // off: BruTile keeps nothing on disk
         var http = new HttpTileSource(new GlobalSphericalMercator(), url,
-            name: attribution, persistentCache: cache.IsOn ? new FileCache(folder, "png", TimeSpan.FromDays(7)) : null,
+            name: attribution, persistentCache: cache.IsOn ? new FileCache(folder, "png", cache.MaxAge) : null,
             attribution: new BruTile.Attribution(attribution), userAgent: UserAgent);
         return new GlobeTileSource(http, attribution, folder);
     }
@@ -92,6 +92,7 @@ public sealed class OpenStreetMapNode
     public GlobeLayer Update(float opacity = 1f, GlobeTileCache? cache = null, bool enabled = true)
     {
         cache ??= GlobeTileCache.Default;
+        TileCacheJanitor.Tend(cache);
         if (!_sources.TryGetValue(cache.Key, out var source))
             _sources[cache.Key] = source = TileSourceFactory.Create("https://tile.openstreetmap.org/{z}/{x}/{y}.png",
                 "© OpenStreetMap contributors", "https://tile.openstreetmap.org/standard", cache);
@@ -119,6 +120,7 @@ public sealed class XyzTilesNode
     public GlobeLayer Update(string url = "", string attribution = "", float opacity = 1f, GlobeTileCache? cache = null, bool enabled = true)
     {
         cache ??= GlobeTileCache.Default;
+        TileCacheJanitor.Tend(cache);
         _layer.Opacity = Math.Clamp(opacity, 0f, 1f);
         _layer.Enabled = enabled;
         if (string.IsNullOrWhiteSpace(url) || !url.Contains("{z}") || !url.Contains("{x}") || !url.Contains("{y}")) { _layer.Raster = null; return _layer; }

@@ -7,6 +7,10 @@ namespace VL.Globe.Tests.Nodes;
 // It deletes files, so the first facts are about what it may never touch.
 public class TileCacheFacts : IDisposable
 {
+    // every test of this assembly: layer nodes run here, the janitor of the DEFAULT folders must not
+    [System.Runtime.CompilerServices.ModuleInitializer]
+    internal static void KeepOffTheRealCache() => TileCacheJanitor.Off = true;
+
     readonly string _root = Path.Combine(Path.GetTempPath(), "vl-globe-cache-" + Guid.NewGuid().ToString("N"));
 
     public void Dispose() { try { Directory.Delete(_root, true); } catch (IOException) { } }
@@ -57,7 +61,7 @@ public class TileCacheFacts : IDisposable
         var notes = Write(@"tiles\notes.txt", 10);
         var beside = Write(@"holiday.png", 10);
         var cache = GlobeTileCache.In(_root, true);
-        Assert.Equal((0, 0L), TileCacheFiles.Clear(TileCacheFiles.Files(cache)));
+        Assert.Equal((0, 0L, 2), TileCacheFiles.Clear(TileCacheFiles.Files(cache)));
         Assert.False(File.Exists(tile));
         Assert.False(File.Exists(vector));
         Assert.True(File.Exists(notes));
@@ -75,8 +79,7 @@ public class TileCacheFacts : IDisposable
         var cache = GlobeTileCache.In(_root, true);
 
         // 1600 bytes over a limit of 1000: down to nine tenths, 900 - two files stay
-        var (tiles, bytes) = TileCacheFiles.Prune(TileCacheFiles.Files(cache), 1000);
-        Assert.Equal((2, 800L), (tiles, bytes));
+        Assert.Equal((2, 800L, 2), TileCacheFiles.Prune(TileCacheFiles.Files(cache), 1000));
         Assert.False(File.Exists(oldest));
         Assert.False(File.Exists(old));
         Assert.True(File.Exists(recent));
@@ -89,9 +92,46 @@ public class TileCacheFacts : IDisposable
         Write(@"tiles\osm\1\0\0.png", 400);
         Write(@"vector-tiles\host\a.pbf", 400);
         var cache = GlobeTileCache.In(_root, true);
-        Assert.Equal((2, 800L), TileCacheFiles.Prune(TileCacheFiles.Files(cache), 800));
-        Assert.Equal((2, 800L), TileCacheFiles.Prune(TileCacheFiles.Files(cache), 0));
+        Assert.Equal((2, 800L, 0), TileCacheFiles.Prune(TileCacheFiles.Files(cache), 800));
+        Assert.Equal((2, 800L, 0), TileCacheFiles.Prune(TileCacheFiles.Files(cache), 0));
         Assert.Equal(2, TileCacheFiles.Files(cache).Count);
+    }
+
+    [Fact]
+    public void Tiles_older_than_Max_Age_are_deleted_and_with_0_kept_for_ever()
+    {
+        var now = DateTime.UtcNow;
+        var stale = Write(@"tiles\osm\1\0\0.png", 100, now.AddDays(-10));
+        var fresh = Write(@"vector-tiles\host\a.pbf", 100, now.AddDays(-2));
+        var forEver = GlobeTileCache.In(_root, true, null, 0);
+        Assert.Equal((2, 200L, 0), TileCacheFiles.Prune(TileCacheFiles.Files(forEver), 0, default));
+        Assert.True(forEver.MaxAge > TimeSpan.FromDays(3650));
+        var week = GlobeTileCache.In(_root, true, null, 7);
+        Assert.Equal((1, 100L, 1), TileCacheFiles.Prune(TileCacheFiles.Files(week), 0, week.MaxAge));
+        Assert.False(File.Exists(stale));
+        Assert.True(File.Exists(fresh));
+    }
+
+    [Fact]
+    public void With_no_TileCache_connected_the_default_limits_hold_4096_MB_and_7_days()
+    {
+        Assert.Equal(7, GlobeTileCache.Default.MaxAgeDays);
+        Assert.Equal(4096, GlobeTileCache.DefaultMaxSizeMB);
+        // the janitor's own pruning, on a cache of the test's (never the machine's default folders)
+        var now = DateTime.UtcNow;
+        var stale = Write(@"tiles\osm\1\0\0.png", 100, now.AddDays(-8));
+        var fresh = Write(@"tiles\osm\1\0\1.png", 100, now.AddDays(-6));
+        var cache = GlobeTileCache.In(_root, true);
+        Assert.Equal((1, 100L, 1), TileCacheJanitor.PruneDefault(cache));
+        Assert.False(File.Exists(stale));
+        Assert.True(File.Exists(fresh));
+        // and it only ever tends the default cache itself: a node's cache is the node's
+        TileCacheJanitor.Off = false;
+        try { TileCacheJanitor.Tend(cache); Assert.True(File.Exists(fresh)); }
+        finally { TileCacheJanitor.Off = true; }
+        TileCacheJanitor.Report(cache, (1, 100, 1), "test");
+        // the queue is shared with the tests running beside this one
+        Assert.Contains(TileCacheJanitor.Reports, r => r.Contains("1 tiles deleted (test)"));
     }
 
     [Fact]
@@ -107,6 +147,9 @@ public class TileCacheFacts : IDisposable
         Assert.True(Directory.Exists(first.RasterFolder) && Directory.Exists(first.VectorFolder));
 
         var off = node.Update(out _, out _, out var status, folder, 0, enabled: false);
+        var aged = node.Update(out _, out _, out _, folder, 0, maxAge: 30);
+        Assert.Equal(30, aged.MaxAgeDays);
+        Assert.NotEqual(first.Key, aged.Key);   // a layer rebuilds its source for another age
         Assert.NotSame(first, off);
         Assert.False(off.IsOn);
         Assert.StartsWith("off", status);
@@ -179,6 +222,6 @@ public class TileCacheFacts : IDisposable
         Assert.Equal(new[] { "opacity", "cache", "enabled" }, Pins(typeof(OpenStreetMapNode)));
         Assert.Equal(new[] { "url", "attribution", "opacity", "cache", "enabled" }, Pins(typeof(XyzTilesNode)));
         Assert.Equal(new[] { "attribution", "status", "style", "name", "cache", "enabled" }, Pins(typeof(GlobeVectorTilesNode)));
-        Assert.Equal(new[] { "tiles", "sizeMB", "status", "folder", "maxSize", "clear", "enabled" }, Pins(typeof(GlobeTileCacheNode)));
+        Assert.Equal(new[] { "tiles", "sizeMB", "status", "folder", "maxSize", "maxAge", "clear", "enabled" }, Pins(typeof(GlobeTileCacheNode)));
     }
 }

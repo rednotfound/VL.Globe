@@ -267,6 +267,9 @@ public sealed partial class GlobeNode : IDisposable
               + (_gpu.Status.Length > 0 ? "; " + _gpu.Status : "");
         var head = _status.Split(';')[0];
         if (head != _lastLogged) { _logger.LogInformation("Globe: {Status}", _status); _lastLogged = head; }
+        // what a cache scan deleted (TileCache's limits, or the default folders'): said once, here, since
+        // the scans run on the thread pool and the layers have no logger
+        while (TileCacheJanitor.Reports.TryDequeue(out var report)) _logger.LogInformation("Globe cache: {Report}", report);
 
         // Transparent: no tiles - the layers alone, on the sphere's depth they compute themselves
         bool tiles = background.A > 0;

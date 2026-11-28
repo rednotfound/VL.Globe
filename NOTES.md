@@ -924,3 +924,12 @@ looked fine - "which makes one think it works". Two causes, estimated at 100 m h
   3 runs, 3 gen2 collections during the pans, worst frame 17-19 ms. Read as: an allocation there waited on
   the background gen2 - an inference from 6 runs, the collections' sizes were not measured. A stall that
   `GetTotalPauseDuration` does not show is still the collector's: look at gen2 +1 in the same perf line.
+- **TileCache (2026-11-28), three things on the way.** (1) BruTile's `HttpTileSource` puts its own `NullCache`
+  where `persistentCache` is null: a test asserting null failed; assert the type. (2) A static method the layer
+  nodes call every frame to prune the DEFAULT cache would have run in `dotnet test` too (the tests update layer
+  nodes) and deleted from the machine's real cache: `TileCacheJanitor.Off`, set by a module initializer in the
+  test assembly. (3) Git Bash turns `\` into `\` inside a quoted heredoc before Python sees it: `"tiles\osm\1\0"`
+  arrived as `\1\0` and became control characters in a .cs file, and `"\t"` in a README path a tab. Edit scripts
+  with backslashes are files written by the Write tool, never heredocs (the family's memory already said so).
+  And the host-test script's own check was wrong once: `Tiles` returned `, $array`, so piping it sorted one
+  object and "the oldest is gone" failed while the product was right - the survivors were compared by name instead.

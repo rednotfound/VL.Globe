@@ -235,6 +235,7 @@ public sealed class GlobeVectorTilesNode : IDisposable
         MapLibreStyle? style = null, string name = "VectorTiles", GlobeTileCache? cache = null, bool enabled = false)
     {
         cache ??= GlobeTileCache.Default;
+        TileCacheJanitor.Tend(cache);
         // a new style value - another one, or the same file read again - starts over; its tiles come
         // from the disk cache
         if (!ReferenceEquals(style, _style) || cache.Key != _cacheKey)

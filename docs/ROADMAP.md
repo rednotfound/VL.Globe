@@ -659,8 +659,21 @@ Output (`GlobeTileCache`), Tiles, Size MB, Status. OpenStreetMap, XyzTiles and V
 pin; unconnected is the default folders, as before. One Folder holds `tiles\` (raster) and `vector-tiles\`.
 Counting, pruning and clearing run on the thread pool every 30 s and touch only `*.png` under the raster
 folder and `*.pbf` under the vector one. `TileCacheFacts` (12); help `Layers\HowTo Keep tiles on disk`, seen in
-vvvv by me (34,638 tiles, 1,699 MB counted), not yet by the user. Left out on purpose: Max Age (7 days stays
-inside), and pruning for layers with no TileCache connected - both to ask.
+vvvv by me (34,638 tiles, 1,699 MB counted), not yet by the user.
+
+**The same day, the user's two decisions**: `Max Age` is a pin (days, 7; 0 = for ever - "输入不超过四个的规则也
+不用那么死板"), and layers with NO TileCache connected are limited too - the default folders are held to 4096 MB
+and 7 days by `TileCacheJanitor`, every 5 minutes while such a layer runs (the raster folder is shared with
+VL.Mapsui: its tiles go with ours). What a scan deleted is logged by the Globe node (`Globe cache: ...`).
+`TileCacheFacts` (14; the janitor is switched off for the test assembly, which runs layer nodes).
+
+**Run in vvvv, feature by feature** (the user: "应该帮我想办法都测试一遍才行"): scratch variants of the help patch
+with the IOBox values rewritten, then the disk and the log read (scratchpad `cache_host.ps1`):
+a custom Folder with the layers fetching (26 png under `tiles\`, 142 pbf under `vector-tiles\`, nothing new in
+the default folders); over Max Size (32.3 MB -> 13.4 under a limit of 16, the 77 newest files left, logged);
+Clear (168 tiles gone, three files that are not tiles left alone, logged); the cache off (nothing kept, 20
+vector tiles drawn); Max Age 7 (the 84 files dated 10 days back gone, the other 84 kept); Max Age 0 (all 168
+kept). Not run: the default folders' limit on the user's real cache - asked first.
 
 ### 6b. Light — asked by the user 2026-11-24, survey first
 

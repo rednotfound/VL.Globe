@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -20,28 +21,36 @@ namespace VL.Globe;
 // One Folder holds both kinds: <Folder>\tiles (raster, BruTile's layout, as VL.Mapsui's) and
 // <Folder>\vector-tiles. Unconnected: the two default folders, the raster one shared with VL.Mapsui.
 //
-// Max Size and Clear delete files, so they only ever touch *.png under the raster folder and *.pbf under
-// the vector folder - a Folder pointed at Documents loses nothing of the user's. The scan runs on the
-// thread pool every 30 s (a cache of 1 GB is tens of thousands of files), never on vvvv's main thread.
-// Layers with no TileCache connected use the default folders and are not pruned.
+// Max Size, Max Age and Clear delete files, so they only ever touch *.png under the raster folder and
+// *.pbf under the vector folder - a Folder pointed at Documents loses nothing of the user's. The scan runs
+// on the thread pool every 30 s (a cache of 1 GB is tens of thousands of files), never on vvvv's main thread.
+//
+// The same day, the user's two decisions: layers with NO TileCache connected are limited too (the default
+// folders: 4096 MB, 7 days - TileCacheJanitor, every 5 minutes while such a layer runs; the raster folder
+// is shared with VL.Mapsui and its tiles go with ours), and Max Age is a pin ("输入不超过四个的规则也不用
+// 那么死板"): five inputs here.
 
 /// <summary>Where tile layers keep their tiles on disk: from TileCache, for a tile layer's Cache pin.</summary>
 public sealed class GlobeTileCache
 {
-    internal static readonly GlobeTileCache Default = new(TileSourceFactory.CacheRoot, Engine.VectorTiles.VectorTileService.DefaultCacheRoot, true, null);
+    internal const int DefaultMaxSizeMB = 4096;
+    internal const int DefaultMaxAgeDays = 7;
 
-    internal GlobeTileCache(string rasterFolder, string vectorFolder, bool on, string? problem)
+    internal static readonly GlobeTileCache Default = new(TileSourceFactory.CacheRoot, Engine.VectorTiles.VectorTileService.DefaultCacheRoot, true, null, DefaultMaxAgeDays);
+
+    internal GlobeTileCache(string rasterFolder, string vectorFolder, bool on, string? problem, int maxAgeDays)
     {
         RasterFolder = rasterFolder;
         VectorFolder = vectorFolder;
         IsOn = on;
         Problem = problem;
+        MaxAgeDays = Math.Max(0, maxAgeDays);
     }
 
-    internal static GlobeTileCache In(string? folder, bool on, string? problem = null)
+    internal static GlobeTileCache In(string? folder, bool on, string? problem = null, int maxAgeDays = DefaultMaxAgeDays)
         => string.IsNullOrWhiteSpace(folder)
-            ? new GlobeTileCache(Default.RasterFolder, Default.VectorFolder, on, problem)
-            : new GlobeTileCache(Path.Combine(folder, "tiles"), Path.Combine(folder, "vector-tiles"), on, problem);
+            ? new GlobeTileCache(Default.RasterFolder, Default.VectorFolder, on, problem, maxAgeDays)
+            : new GlobeTileCache(Path.Combine(folder, "tiles"), Path.Combine(folder, "vector-tiles"), on, problem, maxAgeDays);
 
     /// <summary>The folder raster tiles are kept in.</summary>
     public string RasterFolder { get; }
@@ -55,12 +64,20 @@ public sealed class GlobeTileCache
     /// <summary>Why the cache is off, when its folder could not be used.</summary>
     public string? Problem { get; }
 
+    /// <summary>Days a tile is used before it is fetched again; 0: for ever.</summary>
+    public int MaxAgeDays { get; }
+
+    // 0 is "never": a century, so nobody has to know what a library does with TimeSpan.Zero
+    internal TimeSpan MaxAge => MaxAgeDays > 0 ? TimeSpan.FromDays(MaxAgeDays) : TimeSpan.FromDays(36500);
+
     // what a layer rebuilds its source for
-    internal string Key => IsOn ? RasterFolder + "|" + VectorFolder : "off";
+    internal string Key => IsOn ? $"{RasterFolder}|{VectorFolder}|{MaxAgeDays}" : "off";
+
+    internal bool IsDefaultFolders => RasterFolder == Default.RasterFolder && VectorFolder == Default.VectorFolder;
 
     // short enough for a Status IOBox: the folder the two are in, or that they are the default ones
     public override string ToString() => !IsOn ? Problem ?? "off"
-        : RasterFolder == Default.RasterFolder && VectorFolder == Default.VectorFolder ? "the default folders"
+        : IsDefaultFolders ? "the default folders"
         : Path.GetDirectoryName(RasterFolder) ?? RasterFolder;
 }
 
@@ -94,36 +111,93 @@ internal static class TileCacheFiles
         return (files.Count, bytes);
     }
 
-    /// <summary>Over <paramref name="maxBytes"/>: the files written longest ago are deleted until nine tenths of it are left. Returns what stays.</summary>
-    internal static (int Tiles, long Bytes) Prune(List<FileInfo> files, long maxBytes)
+    /// <summary>
+    /// Files older than <paramref name="maxAge"/> are deleted (they would be fetched again anyway); then, over
+    /// <paramref name="maxBytes"/>, the files written longest ago until nine tenths of it are left. Returns what stays.
+    /// </summary>
+    internal static (int Tiles, long Bytes, int Deleted) Prune(List<FileInfo> files, long maxBytes, TimeSpan maxAge = default)
     {
-        var (count, bytes) = Stats(files);
-        if (maxBytes <= 0 || bytes <= maxBytes) return (count, bytes);
-        long target = maxBytes / 10 * 9;
-        foreach (var f in files.OrderBy(f => SafeTime(f)))
-        {
-            if (bytes <= target) break;
-            try { long length = f.Length; f.Delete(); bytes -= length; count--; }
-            catch (Exception e) when (e is IOException or UnauthorizedAccessException) { }
-        }
-        return (count, bytes);
-
-        static DateTime SafeTime(FileInfo f) { try { return f.LastWriteTimeUtc; } catch (IOException) { return DateTime.MaxValue; } }
-    }
-
-    internal static (int Tiles, long Bytes) Clear(List<FileInfo> files)
-    {
-        int left = 0; long bytes = 0;
+        int count = 0, deleted = 0; long bytes = 0;
+        var kept = new List<(FileInfo File, DateTime Written, long Length)>(files.Count);
+        var expired = maxAge > TimeSpan.Zero ? DateTime.UtcNow - maxAge : DateTime.MinValue;
         foreach (var f in files)
         {
-            try { f.Delete(); }
-            catch (Exception e) when (e is IOException or UnauthorizedAccessException) { try { bytes += f.Length; left++; } catch (IOException) { } }
+            DateTime written; long length;
+            try { written = f.LastWriteTimeUtc; length = f.Length; } catch (IOException) { continue; }
+            if (written < expired && Delete(f)) { deleted++; continue; }
+            kept.Add((f, written, length)); count++; bytes += length;
         }
-        return (left, bytes);
+        if (maxBytes > 0 && bytes > maxBytes)
+        {
+            long target = maxBytes / 10 * 9;
+            foreach (var (f, _, length) in kept.OrderBy(k => k.Written))
+            {
+                if (bytes <= target) break;
+                if (Delete(f)) { bytes -= length; count--; deleted++; }
+            }
+        }
+        return (count, bytes, deleted);
+    }
+
+    internal static (int Tiles, long Bytes, int Deleted) Clear(List<FileInfo> files)
+    {
+        int left = 0, deleted = 0; long bytes = 0;
+        foreach (var f in files)
+        {
+            if (Delete(f)) deleted++;
+            else { try { bytes += f.Length; left++; } catch (IOException) { } }
+        }
+        return (left, bytes, deleted);
+    }
+
+    static bool Delete(FileInfo f)
+    {
+        try { f.Delete(); return true; }
+        catch (Exception e) when (e is IOException or UnauthorizedAccessException) { return false; }
     }
 }
 
-/// <summary>Chooses where tile layers keep their tiles on disk, and how much.</summary>
+/// <summary>
+/// Keeps the DEFAULT folders within their limits for layers with no TileCache connected, and carries
+/// what any cache scan deleted to the log (the Globe node writes it).
+/// </summary>
+internal static class TileCacheJanitor
+{
+    const long EveryMs = 5 * 60_000;
+    static long _next;
+    static int _running;
+
+    /// <summary>Off in the unit tests: they run layer nodes, and must not delete from the machine's real cache.</summary>
+    internal static bool Off;
+
+    /// <summary>What scans deleted, for the log: taken by the Globe node.</summary>
+    internal static readonly ConcurrentQueue<string> Reports = new();
+
+    /// <summary>Called by a tile layer every frame: prunes the default folders now and then, on the thread pool.</summary>
+    internal static void Tend(GlobeTileCache cache)
+    {
+        if (Off || !ReferenceEquals(cache, GlobeTileCache.Default)) return;   // a TileCache node looks after its own
+        long now = Environment.TickCount64;
+        if (now < Volatile.Read(ref _next) || Interlocked.Exchange(ref _running, 1) == 1) return;
+        Volatile.Write(ref _next, now + EveryMs);
+        Task.Run(() =>
+        {
+            try { Report(cache, PruneDefault(cache), "no TileCache connected"); }
+            finally { Volatile.Write(ref _running, 0); }
+        });
+    }
+
+    internal static (int Tiles, long Bytes, int Deleted) PruneDefault(GlobeTileCache cache)
+        => TileCacheFiles.Prune(TileCacheFiles.Files(cache), GlobeTileCache.DefaultMaxSizeMB * 1048576L, cache.MaxAge);
+
+    internal static void Report(GlobeTileCache cache, (int Tiles, long Bytes, int Deleted) result, string why)
+    {
+        if (result.Deleted > 0)
+            Reports.Enqueue($"{cache}: {result.Deleted} tiles deleted ({why}), {result.Tiles} left, {result.Bytes / 1048576.0:F0} MB");
+    }
+}
+
+/// <summary>Chooses where tile layers keep their tiles on disk, how much and for how long.</summary>
 /// <remarks>Hand the output to the Cache pin of OpenStreetMap, XyzTiles and VectorTiles. Reads and deletes on disk only, never fetches.</remarks>
 [ProcessNode(Name = "TileCache", Category = "Globe.Layers")]
 public sealed class GlobeTileCacheNode
@@ -132,6 +206,7 @@ public sealed class GlobeTileCacheNode
 
     GlobeTileCache? _cache;
     string _folder = "";
+    int _maxAge;
     bool _enabled, _lastClear;
     int _clearAsked;
     Task? _scan;
@@ -145,21 +220,25 @@ public sealed class GlobeTileCacheNode
 
     /// <param name="tiles">How many files are in the cache.</param>
     /// <param name="sizeMB">How much disk they take, in megabytes.</param>
-    /// <param name="status">The folders in use, or why the cache is off.</param>
+    /// <param name="status">The folder in use, or why the cache is off.</param>
     /// <param name="folder">Where tiles go. Unconnected: the default folders under %LOCALAPPDATA%. An empty Path IOBox is the patch's own folder.</param>
     /// <param name="maxSize">Megabytes to keep; over it the oldest tiles are deleted. 0: no limit.</param>
+    /// <param name="maxAge">Days a tile is used before it is fetched again, and deleted. 0: for ever.</param>
     /// <param name="clear">Deletes every tile in the cache.</param>
     /// <param name="enabled">Keeps fetched tiles on disk. Off: every start fetches again.</param>
     [return: Pin(Name = "Output")]
     public GlobeTileCache Update(out int tiles, out float sizeMB, out string status,
-        VLPath? folder = null, int maxSize = 4096, bool clear = false, bool enabled = true)
+        VLPath? folder = null, int maxSize = GlobeTileCache.DefaultMaxSizeMB, int maxAge = GlobeTileCache.DefaultMaxAgeDays,
+        bool clear = false, bool enabled = true)
     {
         var wanted = folder?.Value ?? "";
-        if (_cache is null || enabled != _enabled || !string.Equals(wanted, _folder, StringComparison.OrdinalIgnoreCase))
+        maxAge = Math.Max(0, maxAge);
+        if (_cache is null || enabled != _enabled || maxAge != _maxAge || !string.Equals(wanted, _folder, StringComparison.OrdinalIgnoreCase))
         {
-            _cache = Build(wanted, enabled);
+            _cache = Build(wanted, enabled, maxAge);
             _folder = wanted;
             _enabled = enabled;
+            _maxAge = maxAge;
             _scanned = false;
             _nextScan = 0;
             CachesBuilt++;
@@ -176,12 +255,13 @@ public sealed class GlobeTileCacheNode
             _scan = Task.Run(() =>
             {
                 var files = TileCacheFiles.Files(cache);
-                var (count, bytes) = Interlocked.Exchange(ref _clearAsked, 0) == 1 ? TileCacheFiles.Clear(files)
-                    : cache.IsOn ? TileCacheFiles.Prune(files, maxBytes)
-                    : TileCacheFiles.Stats(files);
+                (int Tiles, long Bytes, int Deleted) result;
+                if (Interlocked.Exchange(ref _clearAsked, 0) == 1) { result = TileCacheFiles.Clear(files); TileCacheJanitor.Report(cache, result, "Clear"); }
+                else if (cache.IsOn) { result = TileCacheFiles.Prune(files, maxBytes, cache.MaxAgeDays > 0 ? cache.MaxAge : default); TileCacheJanitor.Report(cache, result, "over Max Size or Max Age"); }
+                else { var (count, bytes) = TileCacheFiles.Stats(files); result = (count, bytes, 0); }
                 if (!ReferenceEquals(cache, _cache)) return;
-                Interlocked.Exchange(ref _bytes, bytes);
-                _tiles = count;
+                Interlocked.Exchange(ref _bytes, result.Bytes);
+                _tiles = result.Tiles;
                 _scanned = true;
             });
         }
@@ -196,10 +276,10 @@ public sealed class GlobeTileCacheNode
         return _cache;
     }
 
-    static GlobeTileCache Build(string folder, bool enabled)
+    static GlobeTileCache Build(string folder, bool enabled, int maxAge)
     {
-        if (!enabled) return GlobeTileCache.In(folder, false);
-        var cache = GlobeTileCache.In(folder, true);
+        if (!enabled) return GlobeTileCache.In(folder, false, null, maxAge);
+        var cache = GlobeTileCache.In(folder, true, null, maxAge);
         try
         {
             Directory.CreateDirectory(cache.RasterFolder);
@@ -210,7 +290,7 @@ public sealed class GlobeTileCacheNode
         // where nobody asked for them
         catch (Exception e) when (e is IOException or UnauthorizedAccessException or ArgumentException or NotSupportedException)
         {
-            return GlobeTileCache.In(folder, false, $"off - {folder} cannot be used: {e.Message}");
+            return GlobeTileCache.In(folder, false, $"off - {folder} cannot be used: {e.Message}", maxAge);
         }
     }
 }

@@ -26,7 +26,7 @@
               <p:stringtype p:Assembly="VL.Core" p:Type="VL.Core.StringType">Comment</p:stringtype>
             </p:ValueBoxSettings>
           </Pad>
-          <Pad Id="SKpJp5jFpUJhubwFAdlJ02" Bounds="60,90,640,40" ShowValueBox="true" isIOBox="true" Value="Fetched tiles are kept on disk for 7 days. TileCache says where and how much; it reads and deletes on disk only, so it shows the numbers before anything is switched on.">
+          <Pad Id="SKpJp5jFpUJhubwFAdlJ02" Bounds="60,90,640,40" ShowValueBox="true" isIOBox="true" Value="Fetched tiles are kept on disk. TileCache says where, how much and how long; it reads and deletes on disk only, so it shows the numbers before anything is switched on.">
             <p:TypeAnnotation LastCategoryFullName="Primitive" LastDependency="VL.CoreLib.vl">
               <Choice Kind="TypeFlag" Name="String" />
             </p:TypeAnnotation>
@@ -35,7 +35,12 @@
               <p:stringtype p:Assembly="VL.Core" p:Type="VL.Core.StringType">Comment</p:stringtype>
             </p:ValueBoxSettings>
           </Pad>
-          <Pad Id="BClZbNkfTKPnm99Ml2HnJh" Comment="Max Size" Bounds="130,180,60,15" ShowValueBox="true" isIOBox="true" Value="4096">
+          <Pad Id="MB2KBhdSOVkRy50iHJRD3E" Comment="Max Age" Bounds="130,205,60,15" ShowValueBox="true" isIOBox="true" Value="7">
+            <p:TypeAnnotation LastCategoryFullName="Primitive" LastDependency="VL.CoreLib.vl">
+              <Choice Kind="TypeFlag" Name="Integer32" />
+            </p:TypeAnnotation>
+          </Pad>
+          <Pad Id="BClZbNkfTKPnm99Ml2HnJh" Comment="Max Size" Bounds="60,180,60,15" ShowValueBox="true" isIOBox="true" Value="4096">
             <p:TypeAnnotation LastCategoryFullName="Primitive" LastDependency="VL.CoreLib.vl">
               <Choice Kind="TypeFlag" Name="Integer32" />
             </p:TypeAnnotation>
@@ -59,6 +64,7 @@
             <p:HelpFocus p:Assembly="VL.Lang" p:Type="VL.Model.HelpPriority">High</p:HelpFocus>
             <Pin Id="LzEpB0HdN598ovlEuet3C8" Name="Folder" Kind="InputPin" />
             <Pin Id="C0KbnsGenlVBE1RC8oY6Hg" Name="Max Size" Kind="InputPin" />
+            <Pin Id="DbUrLktsrPcbUTtpn26qxd" Name="Max Age" Kind="InputPin" />
             <Pin Id="NS5QV44YCvBuTuseUqGgrn" Name="Clear" Kind="InputPin" />
             <Pin Id="TABI9R0BxKHKj4wTIJyqKQ" Name="Enabled" Kind="InputPin" />
             <Pin Id="AMMdEubPDPU5v6XwOQCcVz" Name="Output" Kind="OutputPin" />
@@ -66,7 +72,7 @@
             <Pin Id="VwGdrJP66lT0PtXt7vUOIF" Name="Size MB" Kind="OutputPin" />
             <Pin Id="ItSbmVOL04SlnmnUkX7uN8" Name="Status" Kind="OutputPin" />
           </Node>
-          <Pad Id="HjFHvlT3PriskO5VP0Kiri" Bounds="330,160,330,62" ShowValueBox="true" isIOBox="true" Value="&lt; megabytes: over it the oldest tiles are deleted. Folder not connected: the default folders under %LOCALAPPDATA%">
+          <Pad Id="HjFHvlT3PriskO5VP0Kiri" Bounds="330,160,330,62" ShowValueBox="true" isIOBox="true" Value="&lt; megabytes, and days: over either the oldest tiles are deleted; 0 is no limit. Folder not connected: the default folders under %LOCALAPPDATA%">
             <p:TypeAnnotation LastCategoryFullName="Primitive" LastDependency="VL.CoreLib.vl">
               <Choice Kind="TypeFlag" Name="String" />
             </p:TypeAnnotation>
@@ -206,6 +212,7 @@
           <Fragment Id="NMBh1rwb8Y0jCIAIXcl3Y4" Patch="DYBKkw7lUrNH5ysSqMtYQ2" Enabled="true" />
           <Fragment Id="AhQQGfUu5Rlm66f6dQnk4A" Patch="UCAuoASv9Eln1mthhUZRjT" Enabled="true" />
         </ProcessDefinition>
+        <Link Id="BByn9QthwLpfu5htH6UOBM" Ids="MB2KBhdSOVkRy50iHJRD3E,DbUrLktsrPcbUTtpn26qxd" />
         <Link Id="TuMuQFnKUOiRus1wWv21gg" Ids="BClZbNkfTKPnm99Ml2HnJh,C0KbnsGenlVBE1RC8oY6Hg" />
         <Link Id="HOYORog4WgSe6794vZSHYq" Ids="M6RRZsaQkv8sxiPGRmnKNl,NS5QV44YCvBuTuseUqGgrn" />
         <Link Id="Kqu9UMV8ymVW3oXT0Siwwo" Ids="Sgfwitl4UCjmWSHU0bXmmw,Q9I0026LQ9UHvQibkJE2Ap" />
