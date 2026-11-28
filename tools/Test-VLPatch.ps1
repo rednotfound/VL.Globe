@@ -198,6 +198,16 @@ foreach ($file in $targets) {
         $isAnnotation = ($attributes -match '\sValue="') -and ($attributes -notmatch '\sComment="')
         if ($isAnnotation) { continue }
 
+        # A LEGEND: a collection box that carries its own items and feeds nothing - names set beside a
+        # list of URLs, to read by (Choose a vector tile style, 2026-11-28). Its items are the content.
+        if ($attributes -notmatch '/$') {
+            $end = $raw.IndexOf('</Pad>', $m.Index)
+            if ($end -gt 0 -and $raw.Substring($m.Index, $end - $m.Index) -match '<p:Value>\s*<Item>') {
+                Write-Host "  ok    Pad $pad is a legend: a list of its own, wired to nothing" -ForegroundColor DarkGray
+                continue
+            }
+        }
+
         $problems.Add("dangling Pad $pad - an IOBox wired to nothing")
     }
 

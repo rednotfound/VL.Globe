@@ -52,7 +52,7 @@
             <Pin Id="Q7C15vTEzPEV1cvGOrOHAf" Name="URL" Kind="InputPin" />
             <Pin Id="ADWOLf0lZ4tp4ld93EXtj1" Name="Output" Kind="OutputPin" />
           </Node>
-          <Pad Id="A51kKPfWYRD0UMzxBBGDsB" Comment="Path" Bounds="643,185,180,15" ShowValueBox="true" isIOBox="true" Value="">
+          <Pad Id="A51kKPfWYRD0UMzxBBGDsB" Comment="Path" Bounds="643,185,180,15" ShowValueBox="true" isIOBox="true" Value="..\Assets\liberty-3d.json">
             <p:TypeAnnotation LastCategoryFullName="IO" LastDependency="VL.CoreLib.vl">
               <Choice Kind="TypeFlag" Name="Path" />
             </p:TypeAnnotation>
