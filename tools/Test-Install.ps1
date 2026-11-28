@@ -163,7 +163,7 @@ if ($FromNuGetOrg) {
 
 # ---- 2. compile the help patches that shipped inside the package -----------------------------
 $installed = Get-ChildItem $OutputDirectory -Directory | Where-Object { $_.Name -like "$packageId.*" } | Select-Object -First 1
-$helpPatches = @(Get-ChildItem (Join-Path $installed.FullName 'help') -Filter *.vl -ErrorAction SilentlyContinue)
+$helpPatches = @(Get-ChildItem (Join-Path $installed.FullName 'help') -Filter *.vl -Recurse -ErrorAction SilentlyContinue)   # in topic subfolders (Overview, Layers, ...), as VL.Stride's
 
 if ($helpPatches.Count -eq 0) {
     Write-Host "FAIL - the installed package contains no help patches." -ForegroundColor Red
