@@ -139,6 +139,7 @@ every 2-3 s after loading), since at 60 fps the frame time shows nothing.
   ~0.1 ms of submit on this card - one run each, the difference is the size of the spread between samples.
 - The perf line's `draws` does not count the shadow casters' draws: it reads the same with and without.
 - Not the shadows': one frame of 163-168 ms in pan 2 with shadows on AND with no light, all of it label
-  placement (`place 162.2` / `155.7`). Not looked at yet.
+  placement (`place 162.2` / `155.7`). Gone in 3 runs after `LabelFades.UpdateOpacities` stopped allocating its
+  collections at every call (NOTES.md, 2026-11-28).
 - Instrument notes: the perf line says `still` during the bench's pans, so `Summarize-Perf.py --moving` drops
   them; GlobeWindow's unused inner camera runs the bench too (it spins, drawn by nothing).

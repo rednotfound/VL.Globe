@@ -916,3 +916,11 @@ looked fine - "which makes one think it works". Two causes, estimated at 100 m h
   (Texture, Spread); IFeature has one sealed implementation, so the family outputs `Feature` (as VL.Mapsui's Pick,
   GeoJSON's readers). Pick now outputs `Feature` (an IFeature given to FeatureLayer that is not one is copied);
   `HowTo Pick a feature` reads `class` with GetAttribute - the generated code passes Pick's output into it.
+- **A 160 ms frame in a pan, in the label opacities step (2026-11-28, found measuring the shadows' baseline).**
+  The pan bench over Tokyo Station (500 m, tilted): one frame of 163-168 ms in 2 of 3 runs, all of it
+  `LabelFades.UpdateOpacities` (0.2 ms otherwise), each in the second of the pan's one gen2 collection, with
+  only 3-4 ms of `GC.GetTotalPauseDuration` - so not a pause. The third run had its gen2 and no long frame.
+  UpdateOpacities made a Dictionary, a HashSet and a List anew at every call; kept as fields since. After:
+  3 runs, 3 gen2 collections during the pans, worst frame 17-19 ms. Read as: an allocation there waited on
+  the background gen2 - an inference from 6 runs, the collections' sizes were not measured. A stall that
+  `GetTotalPauseDuration` does not show is still the collector's: look at gen2 +1 in the same perf line.

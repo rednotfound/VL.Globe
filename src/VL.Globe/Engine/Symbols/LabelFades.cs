@@ -169,14 +169,18 @@ internal sealed class LabelFades
         => state > 0.5f ? Math.Clamp(state - 1 + fadeChange, 0, 1) : Math.Clamp(-state - fadeChange, 0, 1);
 
     static readonly JointOpacity Duplicate = default;
+    readonly Dictionary<int, GpuTile> _seen = new();
+    readonly HashSet<GpuTile> _doneTiles = new(ReferenceEqualityComparer.Instance);
+    readonly List<GpuTile> _tileList = new();
 
     // GL JS updateLayerOpacities / updateBucketOpacities: every symbol vertex gets its ID's state; a
     // symbol whose ID a finer tile of the layer holds too is a duplicate, hidden
     void UpdateOpacities(IReadOnlyList<LabelPlacement.Layer> layers)
     {
-        var seen = new Dictionary<int, GpuTile>();
-        var done = new HashSet<GpuTile>(ReferenceEqualityComparer.Instance);
-        var tiles = new List<GpuTile>();
+        // kept between calls: grown anew each time, a layer's thousands of IDs made large-object arrays
+        // on the main thread - which waits when a background gen2 collection is running (2026-11-28:
+        // one frame of 163-168 ms in a pan, all of it here, in the second of the pan's one gen2)
+        var (seen, done, tiles) = (_seen, _doneTiles, _tileList);
         foreach (var layer in layers)
         {
             seen.Clear(); done.Clear(); tiles.Clear();
@@ -204,6 +208,7 @@ internal sealed class LabelFades
                     }
             }
         }
+        seen.Clear(); done.Clear(); tiles.Clear();
 
         JointOpacity StateOf(int id, GpuTile tile, bool alwaysText, bool alwaysIcon)
         {
