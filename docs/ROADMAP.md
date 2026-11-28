@@ -715,7 +715,8 @@ look in vvvv still to come.
   - XyzTiles has one;
   - every node has an F1 HelpFocus;
   - restyle to the family's rules (memory: help patch cells, community style, layout).
-- `README.md` in the vvvv library shape, and fresh `docs\` screenshots.
+- ~~`README.md` in the vvvv library shape~~ (2026-11-28, as VL.Mapsui's; not yet read by the user);
+  fresh `docs\` screenshots still to do.
 - ~~`Globe`'s own frustum still assumes 16:9 unless the camera sets an aspect.~~ Already reads the
   projection Stride computed (`GlobeNode.Select`); 16:9 only before the first frame's projection.
 
