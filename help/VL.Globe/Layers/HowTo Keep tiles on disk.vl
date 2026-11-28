@@ -1,0 +1,225 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Document xmlns:p="property" xmlns:r="reflection" Id="NIehzTLKGEq1zYBHh7RnHL" LanguageVersion="2025.7.4" Version="0.128">
+  <NugetDependency Id="V2YthqLBL3MjPD7cz0Nfdv" Location="VL.CoreLib" Version="2025.7.4" />
+  <NugetDependency Id="OhSOlYWGEEVKnKyGAYwpZ5" Location="VL.Stride" Version="2025.7.4" />
+  <NugetDependency Id="PW6BMmrMMnF5jci8Z2EuOT" Location="VL.Globe" Version="0.0.0" />
+  <Patch Id="BNu3IjXc5be39tAvyV0yrq">
+    <Canvas Id="Ac7gZ6ISmSNomLi0tZ0ERZ" DefaultCategory="Main" CanvasType="FullCategory" />
+    <!--
+
+    ************************ Application ************************
+
+-->
+    <Node Name="Application" Bounds="100,100" Id="C8nMCaf8Ac3SKw4HfRUMGn">
+      <p:NodeReference>
+        <Choice Kind="ContainerDefinition" Name="Process" />
+        <FullNameCategoryReference ID="Primitive" />
+      </p:NodeReference>
+      <Patch Id="PeAAFazMq8bdWEtW4bqBON">
+        <Canvas Id="QmdEAQ9UcttwU39bQZJZcb" CanvasType="Group">
+          <Pad Id="UsERdMGq7gPjkofGvlkOK6" Bounds="60,40,520,41" ShowValueBox="true" isIOBox="true" Value="Keep tiles on disk">
+            <p:TypeAnnotation LastCategoryFullName="Primitive" LastDependency="VL.CoreLib.vl">
+              <Choice Kind="TypeFlag" Name="String" />
+            </p:TypeAnnotation>
+            <p:ValueBoxSettings>
+              <p:fontsize p:Type="Int32">20</p:fontsize>
+              <p:stringtype p:Assembly="VL.Core" p:Type="VL.Core.StringType">Comment</p:stringtype>
+            </p:ValueBoxSettings>
+          </Pad>
+          <Pad Id="SKpJp5jFpUJhubwFAdlJ02" Bounds="60,90,640,40" ShowValueBox="true" isIOBox="true" Value="Fetched tiles are kept on disk for 7 days. TileCache says where and how much; it reads and deletes on disk only, so it shows the numbers before anything is switched on.">
+            <p:TypeAnnotation LastCategoryFullName="Primitive" LastDependency="VL.CoreLib.vl">
+              <Choice Kind="TypeFlag" Name="String" />
+            </p:TypeAnnotation>
+            <p:ValueBoxSettings>
+              <p:fontsize p:Type="Int32">9</p:fontsize>
+              <p:stringtype p:Assembly="VL.Core" p:Type="VL.Core.StringType">Comment</p:stringtype>
+            </p:ValueBoxSettings>
+          </Pad>
+          <Pad Id="BClZbNkfTKPnm99Ml2HnJh" Comment="Max Size" Bounds="130,180,60,15" ShowValueBox="true" isIOBox="true" Value="4096">
+            <p:TypeAnnotation LastCategoryFullName="Primitive" LastDependency="VL.CoreLib.vl">
+              <Choice Kind="TypeFlag" Name="Integer32" />
+            </p:TypeAnnotation>
+          </Pad>
+          <Pad Id="M6RRZsaQkv8sxiPGRmnKNl" Comment="Clear" Bounds="262,170,35,35" ShowValueBox="true" isIOBox="true" Value="false">
+            <p:TypeAnnotation LastCategoryFullName="Primitive" LastDependency="VL.CoreLib.vl">
+              <Choice Kind="ImmutableTypeFlag" Name="Boolean" />
+            </p:TypeAnnotation>
+            <p:ValueBoxSettings>
+              <p:buttonmode p:Assembly="VL.UI.Forms" p:Type="VL.HDE.PatchEditor.Editors.ButtonModeEnum">Bang</p:buttonmode>
+            </p:ValueBoxSettings>
+          </Pad>
+          <Node Bounds="60,230,230,19" Id="VFhwQk6N9hZJhZ4S3IJ832">
+            <p:NodeReference LastCategoryFullName="Globe.Layers" LastDependency="VL.Globe.vl">
+              <Choice Kind="NodeFlag" Name="Node" Fixed="true" />
+              <CategoryReference Kind="Category" Name="Layers" NeedsToBeDirectParent="true">
+                <p:OuterCategoryReference Kind="Category" Name="Globe" NeedsToBeDirectParent="true" />
+              </CategoryReference>
+              <Choice Kind="ProcessAppFlag" Name="TileCache" />
+            </p:NodeReference>
+            <p:HelpFocus p:Assembly="VL.Lang" p:Type="VL.Model.HelpPriority">High</p:HelpFocus>
+            <Pin Id="LzEpB0HdN598ovlEuet3C8" Name="Folder" Kind="InputPin" />
+            <Pin Id="C0KbnsGenlVBE1RC8oY6Hg" Name="Max Size" Kind="InputPin" />
+            <Pin Id="NS5QV44YCvBuTuseUqGgrn" Name="Clear" Kind="InputPin" />
+            <Pin Id="TABI9R0BxKHKj4wTIJyqKQ" Name="Enabled" Kind="InputPin" />
+            <Pin Id="AMMdEubPDPU5v6XwOQCcVz" Name="Output" Kind="OutputPin" />
+            <Pin Id="Sgfwitl4UCjmWSHU0bXmmw" Name="Tiles" Kind="OutputPin" />
+            <Pin Id="VwGdrJP66lT0PtXt7vUOIF" Name="Size MB" Kind="OutputPin" />
+            <Pin Id="ItSbmVOL04SlnmnUkX7uN8" Name="Status" Kind="OutputPin" />
+          </Node>
+          <Pad Id="HjFHvlT3PriskO5VP0Kiri" Bounds="330,160,330,62" ShowValueBox="true" isIOBox="true" Value="&lt; megabytes: over it the oldest tiles are deleted. Folder not connected: the default folders under %LOCALAPPDATA%">
+            <p:TypeAnnotation LastCategoryFullName="Primitive" LastDependency="VL.CoreLib.vl">
+              <Choice Kind="TypeFlag" Name="String" />
+            </p:TypeAnnotation>
+            <p:ValueBoxSettings>
+              <p:fontsize p:Type="Int32">9</p:fontsize>
+              <p:stringtype p:Assembly="VL.Core" p:Type="VL.Core.StringType">Comment</p:stringtype>
+            </p:ValueBoxSettings>
+          </Pad>
+          <Pad Id="B9hUXyt7FxxufGx9RZipk9" Bounds="330,226,330,34" ShowValueBox="true" isIOBox="true" Value="&lt; Clear deletes every tile: the next view fetches again">
+            <p:TypeAnnotation LastCategoryFullName="Primitive" LastDependency="VL.CoreLib.vl">
+              <Choice Kind="TypeFlag" Name="String" />
+            </p:TypeAnnotation>
+            <p:ValueBoxSettings>
+              <p:fontsize p:Type="Int32">9</p:fontsize>
+              <p:stringtype p:Assembly="VL.Core" p:Type="VL.Core.StringType">Comment</p:stringtype>
+            </p:ValueBoxSettings>
+          </Pad>
+          <Pad Id="Q9I0026LQ9UHvQibkJE2Ap" Comment="Tiles" Bounds="140,280,60,15" ShowValueBox="true" isIOBox="true">
+            <p:TypeAnnotation LastCategoryFullName="Primitive" LastDependency="VL.CoreLib.vl">
+              <Choice Kind="TypeFlag" Name="Integer32" />
+            </p:TypeAnnotation>
+          </Pad>
+          <Pad Id="UPmEv4UGvT5cWulssOjRIQ" Comment="Size MB" Bounds="250,280,60,15" ShowValueBox="true" isIOBox="true">
+            <p:TypeAnnotation LastCategoryFullName="Primitive" LastDependency="VL.CoreLib.vl">
+              <Choice Kind="TypeFlag" Name="Float32" />
+            </p:TypeAnnotation>
+          </Pad>
+          <Pad Id="QrnJIMjoABHpp4Tz5sdpQg" Comment="Status" Bounds="400,280,420,15" ShowValueBox="true" isIOBox="true">
+            <p:TypeAnnotation LastCategoryFullName="Primitive" LastDependency="VL.CoreLib.vl">
+              <Choice Kind="TypeFlag" Name="String" />
+            </p:TypeAnnotation>
+          </Pad>
+          <Pad Id="T6o2O2jVxq43bgl60h2kis" Comment="Enabled" Bounds="620,330,35,35" ShowValueBox="true" isIOBox="true" Value="false">
+            <p:TypeAnnotation LastCategoryFullName="Primitive" LastDependency="VL.CoreLib.vl">
+              <Choice Kind="ImmutableTypeFlag" Name="Boolean" />
+            </p:TypeAnnotation>
+            <p:ValueBoxSettings>
+              <p:buttonmode p:Assembly="VL.UI.Forms" p:Type="VL.HDE.PatchEditor.Editors.ButtonModeEnum">Toggle</p:buttonmode>
+            </p:ValueBoxSettings>
+          </Pad>
+          <Pad Id="VEKl59ZjywyY1Ndz54JVug" Bounds="720,334,300,20" ShowValueBox="true" isIOBox="true" Value="&lt; the layers fetch while on; the cache works either way">
+            <p:TypeAnnotation LastCategoryFullName="Primitive" LastDependency="VL.CoreLib.vl">
+              <Choice Kind="TypeFlag" Name="String" />
+            </p:TypeAnnotation>
+            <p:ValueBoxSettings>
+              <p:fontsize p:Type="Int32">9</p:fontsize>
+              <p:stringtype p:Assembly="VL.Core" p:Type="VL.Core.StringType">Comment</p:stringtype>
+            </p:ValueBoxSettings>
+          </Pad>
+          <Node Bounds="60,360,130,19" Id="O8aVMRQUAeIkCGf7dY5S6F">
+            <p:NodeReference LastCategoryFullName="Globe.Layers" LastDependency="VL.Globe.vl">
+              <Choice Kind="NodeFlag" Name="Node" Fixed="true" />
+              <CategoryReference Kind="Category" Name="Layers" NeedsToBeDirectParent="true">
+                <p:OuterCategoryReference Kind="Category" Name="Globe" NeedsToBeDirectParent="true" />
+              </CategoryReference>
+              <Choice Kind="ProcessAppFlag" Name="OpenStreetMap" />
+            </p:NodeReference>
+            <p:HelpFocus p:Assembly="VL.Lang" p:Type="VL.Model.HelpPriority">Low</p:HelpFocus>
+            <Pin Id="A7bxyLNTwoGGgfltTq5jQe" Name="Opacity" Kind="InputPin" />
+            <Pin Id="FhMJP7gdSK27jlLIAEhboi" Name="Cache" Kind="InputPin" />
+            <Pin Id="ScigBGKcnZs5l9Q4Cdxro6" Name="Enabled" Kind="InputPin" />
+            <Pin Id="I57hkJLlCPghxniBXFqhDg" Name="Output" Kind="OutputPin" />
+          </Node>
+          <Node Bounds="330,330,100,19" Id="BZEqotkpDZWiDsNVsuIUdQ">
+            <p:NodeReference LastCategoryFullName="Globe.Styles" LastDependency="VL.Globe.vl">
+              <Choice Kind="NodeFlag" Name="Node" Fixed="true" />
+              <CategoryReference Kind="Category" Name="Styles" NeedsToBeDirectParent="true">
+                <p:OuterCategoryReference Kind="Category" Name="Globe" NeedsToBeDirectParent="true" />
+              </CategoryReference>
+              <Choice Kind="ProcessAppFlag" Name="MapLibreStyle (URL)" />
+            </p:NodeReference>
+            <Pin Id="MHZ5B3T3t1Vg4jkddci8dY" Name="URL" Kind="InputPin" />
+            <Pin Id="L4DGvSTxL9QE3JP4iXoL8q" Name="Output" Kind="OutputPin" />
+          </Node>
+          <Node Bounds="330,380,230,19" Id="Dpc9EVyibdZoXY6STQ2VcK">
+            <p:NodeReference LastCategoryFullName="Globe.Layers" LastDependency="VL.Globe.vl">
+              <Choice Kind="NodeFlag" Name="Node" Fixed="true" />
+              <CategoryReference Kind="Category" Name="Layers" NeedsToBeDirectParent="true">
+                <p:OuterCategoryReference Kind="Category" Name="Globe" NeedsToBeDirectParent="true" />
+              </CategoryReference>
+              <Choice Kind="ProcessAppFlag" Name="VectorTiles" />
+            </p:NodeReference>
+            <p:HelpFocus p:Assembly="VL.Lang" p:Type="VL.Model.HelpPriority">Low</p:HelpFocus>
+            <Pin Id="DUJ0RyDlupBy5DMtXbO1qD" Name="Style" Kind="InputPin" />
+            <Pin Id="A6ZUDhlp0JqIhKMpgI0xw3" Name="Name" Kind="InputPin" />
+            <Pin Id="DKCn7vBWkCtaqGkce0Iy7v" Name="Cache" Kind="InputPin" />
+            <Pin Id="FQN8SNP3tzoXmeYGToWzIP" Name="Enabled" Kind="InputPin" />
+            <Pin Id="QvIKZlehLEr8VYC23cDFSm" Name="Output" Kind="OutputPin" />
+            <Pin Id="AW8yO5vMOA5t0FJ5UhvZfn" Name="Attribution" Kind="OutputPin" />
+            <Pin Id="HEKYAn4DnbruRYl38Vgj7P" Name="Status" Kind="OutputPin" />
+          </Node>
+          <Pad Id="FAIQpZBjSicphqIexp5Du2" Bounds="600,376,330,34" ShowValueBox="true" isIOBox="true" Value="&lt; the same cache into every tile layer: raster and vector tiles side by side in its folder">
+            <p:TypeAnnotation LastCategoryFullName="Primitive" LastDependency="VL.CoreLib.vl">
+              <Choice Kind="TypeFlag" Name="String" />
+            </p:TypeAnnotation>
+            <p:ValueBoxSettings>
+              <p:fontsize p:Type="Int32">9</p:fontsize>
+              <p:stringtype p:Assembly="VL.Core" p:Type="VL.Core.StringType">Comment</p:stringtype>
+            </p:ValueBoxSettings>
+          </Pad>
+          <Node Bounds="60,450,290,19" Id="UdHUfGqYRS6Ov2Vw65EAit">
+            <p:NodeReference LastCategoryFullName="Globe.Layers" LastDependency="VL.Globe.vl">
+              <Choice Kind="NodeFlag" Name="Node" Fixed="true" />
+              <CategoryReference Kind="Category" Name="Layers" NeedsToBeDirectParent="true">
+                <p:OuterCategoryReference Kind="Category" Name="Globe" NeedsToBeDirectParent="true" />
+              </CategoryReference>
+              <Choice Kind="ProcessAppFlag" Name="Group" />
+            </p:NodeReference>
+            <Pin Id="BprRJlXs7h74YU2EWEl0fm" Name="Input" Kind="InputPin" />
+            <Pin Id="Dzx5JqO21sqIhyKaZB99UX" Name="Input 2" Kind="InputPin" />
+            <Pin Id="JxXquoHNPXVTk6ElawVlvA" Name="Output" Kind="OutputPin" />
+          </Node>
+          <Node Bounds="60,510,400,19" Id="VWJIFnUqXI3ujyYX88yNg5">
+            <p:NodeReference LastCategoryFullName="Globe" LastDependency="VL.Globe.vl">
+              <Choice Kind="NodeFlag" Name="Node" Fixed="true" />
+              <Choice Kind="ProcessAppFlag" Name="GlobeWindow" />
+              <PinReference Kind="InputPin" Name="Bounds" />
+              <PinReference Kind="InputPin" Name="Bound to Document" />
+            </p:NodeReference>
+            <Pin Id="LcTWAaTxwm4upmfKn6ePjw" Name="Node Context" Kind="InputPin" IsHidden="true" />
+            <Pin Id="UaIhxuOg911nSfZ464Dmp1" Name="Bounds" Kind="InputPin" DefaultValue="926, 114, 800, 800" />
+            <Pin Id="NO7Qc4Fa20Rx8qpYmYIBw3" Name="Bound to Document" Kind="InputPin" DefaultValue="True" />
+            <Pin Id="Ovfq60TyKHjK4WMCicoKHm" Name="Input" Kind="InputPin" />
+            <Pin Id="LWbAvzgHm1NzWCJDgaDVIf" Name="Camera" Kind="InputPin" />
+            <Pin Id="CgeqfDA25fSTfxBrondyrC" Name="Title" Kind="InputPin" DefaultValue="Keep tiles on disk" />
+            <Pin Id="SG0CYLqDRurZWBKboyJPBW" Name="Background" Kind="InputPin" />
+            <Pin Id="UBQvKYPcGdgMDP5u65nMvo" Name="Enabled" Kind="InputPin" />
+            <Pin Id="Vc6MfXCF31JE43tYxDvwdg" Name="View" Kind="OutputPin" />
+            <Pin Id="UUPsS9VICU8zTyy7E4QX4d" Name="Cursor" Kind="OutputPin" />
+            <Pin Id="NcUfdqsXDmscztr299swCZ" Name="Attribution" Kind="OutputPin" />
+            <Pin Id="RjBzwAGtj6fDACCAJ8myfX" Name="Status" Kind="OutputPin" />
+          </Node>
+        </Canvas>
+        <Patch Id="DYBKkw7lUrNH5ysSqMtYQ2" Name="Create" />
+        <Patch Id="UCAuoASv9Eln1mthhUZRjT" Name="Update" />
+        <ProcessDefinition Id="ETCO5F4XLS0FS4rRkkNMyG">
+          <Fragment Id="NMBh1rwb8Y0jCIAIXcl3Y4" Patch="DYBKkw7lUrNH5ysSqMtYQ2" Enabled="true" />
+          <Fragment Id="AhQQGfUu5Rlm66f6dQnk4A" Patch="UCAuoASv9Eln1mthhUZRjT" Enabled="true" />
+        </ProcessDefinition>
+        <Link Id="TuMuQFnKUOiRus1wWv21gg" Ids="BClZbNkfTKPnm99Ml2HnJh,C0KbnsGenlVBE1RC8oY6Hg" />
+        <Link Id="HOYORog4WgSe6794vZSHYq" Ids="M6RRZsaQkv8sxiPGRmnKNl,NS5QV44YCvBuTuseUqGgrn" />
+        <Link Id="Kqu9UMV8ymVW3oXT0Siwwo" Ids="Sgfwitl4UCjmWSHU0bXmmw,Q9I0026LQ9UHvQibkJE2Ap" />
+        <Link Id="PlphuD3C6L3WS137UZ4ZTa" Ids="VwGdrJP66lT0PtXt7vUOIF,UPmEv4UGvT5cWulssOjRIQ" />
+        <Link Id="JWvtYQ4b0d2VOTC4rBIvqE" Ids="ItSbmVOL04SlnmnUkX7uN8,QrnJIMjoABHpp4Tz5sdpQg" />
+        <Link Id="BgBLO9HqFPCAUfLPoRbzbN" Ids="AMMdEubPDPU5v6XwOQCcVz,FhMJP7gdSK27jlLIAEhboi" />
+        <Link Id="Vm9LTPazy0Z1tlKuESey01" Ids="AMMdEubPDPU5v6XwOQCcVz,DKCn7vBWkCtaqGkce0Iy7v" />
+        <Link Id="TA6a17xGjaYSOqus7TRtwY" Ids="L4DGvSTxL9QE3JP4iXoL8q,DUJ0RyDlupBy5DMtXbO1qD" />
+        <Link Id="TQ3zNQ7IumEXKUgoiJLDos" Ids="T6o2O2jVxq43bgl60h2kis,FQN8SNP3tzoXmeYGToWzIP" />
+        <Link Id="VOgL1vzPxq66t8CJN8Fm89" Ids="T6o2O2jVxq43bgl60h2kis,UBQvKYPcGdgMDP5u65nMvo" />
+        <Link Id="TMxOP3XiuP1OkJgq0yyXhW" Ids="I57hkJLlCPghxniBXFqhDg,BprRJlXs7h74YU2EWEl0fm" />
+        <Link Id="NFedbzQbha8ZYHLwPo93GL" Ids="QvIKZlehLEr8VYC23cDFSm,Dzx5JqO21sqIhyKaZB99UX" />
+        <Link Id="F8AjS7v2byXola55xw3jVb" Ids="JxXquoHNPXVTk6ElawVlvA,Ovfq60TyKHjK4WMCicoKHm" />
+      </Patch>
+    </Node>
+  </Patch>
+</Document>

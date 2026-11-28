@@ -28,6 +28,7 @@
         'Group'                  = 'new\s+[\w\.]*GlobeGroupNode\('
         'Group (Spectral)'       = 'new\s+[\w\.]*GlobeGroupSpectralNode\('
         'Graticule'              = 'new\s+[\w\.]*GlobeGraticuleNode\('
+        'TileCache'              = 'new\s+[\w\.]*GlobeTileCacheNode\('
         # Globe.Styles
         'VectorStyle'            = 'GlobeStyleNodes\.VectorStyle\('
         'MapLibreStyle (URL)'    = 'new\s+[\w\.]*MapLibreStyleUrlNode\('

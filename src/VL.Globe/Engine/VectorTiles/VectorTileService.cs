@@ -34,7 +34,7 @@ internal sealed class VectorTileService : IDisposable
     }
 
     // the disk cache: %LOCALAPPDATA%\VL.Globe\vector-tiles\<host>-<hash of the template>\<hash of the url>.pbf
-    internal static readonly string CacheRoot = Path.Combine(
+    internal static readonly string DefaultCacheRoot = Path.Combine(
         Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "VL.Globe", "vector-tiles");
     static readonly TimeSpan CacheAge = TimeSpan.FromDays(7);
     const int MaxInFlight = 6;
@@ -51,7 +51,14 @@ internal sealed class VectorTileService : IDisposable
     volatile string _styleStatus = "off - switch Enabled on to fetch";
     volatile string _lastError = "";
 
+    // null: nothing is kept on disk (a TileCache switched off)
+    readonly string? _cacheRoot = DefaultCacheRoot;
+
     public VectorTileService(string styleUrl) => StyleUrl = styleUrl;
+
+    /// <summary>A style whose tiles are kept in <paramref name="cache"/>'s folder, or not at all when it is off.</summary>
+    public VectorTileService(string styleUrl, GlobeTileCache? cache) : this(styleUrl)
+        => _cacheRoot = cache is null ? DefaultCacheRoot : cache.IsOn ? cache.VectorFolder : null;
 
     /// <summary>A style given as its JSON, not fetched (GeometryStyle: shapes drawn by the GPU).</summary>
     internal VectorTileService(string name, byte[] styleJson) { StyleUrl = name; _inline = styleJson; }
@@ -131,7 +138,7 @@ internal sealed class VectorTileService : IDisposable
         if (_failed.ContainsKey(url)) return null;
         if (!IsWeb(url)) return File.Exists(url) ? File.ReadAllBytes(url) : null;
         var file = CacheFile(url);
-        if (File.Exists(file) && DateTime.UtcNow - File.GetLastWriteTimeUtc(file) < CacheAge)
+        if (file is not null && File.Exists(file) && DateTime.UtcNow - File.GetLastWriteTimeUtc(file) < CacheAge)
         {
             try { var cached = File.ReadAllBytes(file); Interlocked.Increment(ref _fromDisk); return cached; } catch (IOException) { }
         }
@@ -150,7 +157,7 @@ internal sealed class VectorTileService : IDisposable
         if (_arrived.TryRemove(url, out var bytes)) return bytes;
         if (!IsWeb(url)) return File.Exists(url) ? File.ReadAllBytes(url) : null;
         var file = CacheFile(url);
-        if (!File.Exists(file) || DateTime.UtcNow - File.GetLastWriteTimeUtc(file) >= CacheAge) return null;
+        if (file is null || !File.Exists(file) || DateTime.UtcNow - File.GetLastWriteTimeUtc(file) >= CacheAge) return null;
         try { var cached = File.ReadAllBytes(file); Interlocked.Increment(ref _fromDisk); return cached; } catch (IOException) { return null; }
     }
 
@@ -177,9 +184,11 @@ internal sealed class VectorTileService : IDisposable
                         // the disk first: a second Load that misses _arrived then finds the file
                         try
                         {
-                            var file = CacheFile(url);
-                            Directory.CreateDirectory(Path.GetDirectoryName(file)!);
-                            await File.WriteAllBytesAsync(file, bytes).ConfigureAwait(false);
+                            if (CacheFile(url) is { } file)
+                            {
+                                Directory.CreateDirectory(Path.GetDirectoryName(file)!);
+                                await File.WriteAllBytesAsync(file, bytes).ConfigureAwait(false);
+                            }
                         }
                         catch (IOException) { }
                         _arrived[url] = bytes;
@@ -224,12 +233,13 @@ internal sealed class VectorTileService : IDisposable
 
     static bool IsWeb(string url) => url.StartsWith("http://", StringComparison.OrdinalIgnoreCase) || url.StartsWith("https://", StringComparison.OrdinalIgnoreCase);
 
-    static string CacheFile(string url)
+    string? CacheFile(string url)
     {
+        if (_cacheRoot is null) return null;
         var uri = new Uri(url);
         var template = uri.GetLeftPart(UriPartial.Authority);
         var hash = Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(System.Text.Encoding.UTF8.GetBytes(url)))[..16].ToLowerInvariant();
-        return Path.Combine(CacheRoot, TileSourceFactory.Slug(template), hash + ".pbf");
+        return Path.Combine(_cacheRoot, TileSourceFactory.Slug(template), hash + ".pbf");
     }
 
     // "<a href=...>&copy; OpenMapTiles</a>" -> "© OpenMapTiles"

@@ -641,6 +641,33 @@
               <p:stringtype p:Assembly="VL.Core" p:Type="VL.Core.StringType">Comment</p:stringtype>
             </p:ValueBoxSettings>
           </Pad>
+          <Pad Id="AZ4lnyios3drMIj69L5bkQ" Bounds="60,1060,430,26" ShowValueBox="true" isIOBox="true" Value="Globe.Layers - on disk">
+            <p:TypeAnnotation LastCategoryFullName="Primitive" LastDependency="VL.CoreLib.vl">
+              <Choice Kind="TypeFlag" Name="String" />
+            </p:TypeAnnotation>
+            <p:ValueBoxSettings>
+              <p:fontsize p:Type="Int32">12</p:fontsize>
+              <p:stringtype p:Assembly="VL.Core" p:Type="VL.Core.StringType">Comment</p:stringtype>
+            </p:ValueBoxSettings>
+          </Pad>
+          <Node Bounds="60,1104,120,19" Id="CiloBq9Ggt5zwZj98xPHYF">
+            <p:NodeReference LastCategoryFullName="Globe.Layers" LastDependency="VL.Globe.vl">
+              <Choice Kind="NodeFlag" Name="Node" Fixed="true" />
+              <CategoryReference Kind="Category" Name="Layers" NeedsToBeDirectParent="true">
+                <p:OuterCategoryReference Kind="Category" Name="Globe" NeedsToBeDirectParent="true" />
+              </CategoryReference>
+              <Choice Kind="ProcessAppFlag" Name="TileCache" />
+            </p:NodeReference>
+          </Node>
+          <Pad Id="S6931v0Y99QlsfdvN8wNht" Bounds="305,1097,300,40" ShowValueBox="true" isIOBox="true" Value="&lt; Where tile layers keep their tiles, and how much.">
+            <p:TypeAnnotation LastCategoryFullName="Primitive" LastDependency="VL.CoreLib.vl">
+              <Choice Kind="TypeFlag" Name="String" />
+            </p:TypeAnnotation>
+            <p:ValueBoxSettings>
+              <p:fontsize p:Type="Int32">9</p:fontsize>
+              <p:stringtype p:Assembly="VL.Core" p:Type="VL.Core.StringType">Comment</p:stringtype>
+            </p:ValueBoxSettings>
+          </Pad>
         </Canvas>
         <Patch Id="Oy8z4gd0H3yWi46maAzVqN" Name="Create" />
         <Patch Id="PmDaETCnZ1DrNMiQbqZH6y" Name="Update" />

@@ -15,6 +15,7 @@ plan = {
     r'Layers\HowTo Choose a vector tile style.vl': {'VectorTiles': L, 'MapLibreStyle (URL)': L, 'Geometry': L, 'VectorStyle': L, 'Group': L},
     r'Layers\HowTo Draw shapes on the globe.vl': {'Geometry': H, 'VectorStyle': H, 'FeatureLayer': H, 'Group': L},
     r'Layers\HowTo Draw a graticule.vl': {'Graticule': H},
+    r'Layers\HowTo Keep tiles on disk.vl': {'TileCache': H, 'OpenStreetMap': L, 'VectorTiles': L},
     r'Lights\HowTo Light the buildings with the sun.vl': {'SunLight': H, 'VectorTiles': L},
     r'Camera\HowTo Set where the camera starts.vl': {'GlobeCamera': H, 'GlobeViewInfo': L},
     r'Camera\HowTo Fly to a place.vl': {'FlyTo': H, 'CenterOn': H, 'ZoomToLevel': H, 'ZoomIn': H, 'ZoomOut': H, 'ZoomToBounds': H},

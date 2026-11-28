@@ -58,11 +58,13 @@ internal static class TileSourceFactory
         return $"{host}-{Convert.ToHexString(digest)[..8].ToLowerInvariant()}";
     }
 
-    internal static GlobeTileSource Create(string url, string attribution, string cacheKey)
+    internal static GlobeTileSource Create(string url, string attribution, string cacheKey, GlobeTileCache? cache = null)
     {
-        var folder = Path.Combine(CacheRoot, Slug(cacheKey));
+        cache ??= GlobeTileCache.Default;
+        var folder = Path.Combine(cache.RasterFolder, Slug(cacheKey));
+        // off: BruTile keeps nothing on disk
         var http = new HttpTileSource(new GlobalSphericalMercator(), url,
-            name: attribution, persistentCache: new FileCache(folder, "png", TimeSpan.FromDays(7)),
+            name: attribution, persistentCache: cache.IsOn ? new FileCache(folder, "png", TimeSpan.FromDays(7)) : null,
             attribution: new BruTile.Attribution(attribution), userAgent: UserAgent);
         return new GlobeTileSource(http, attribution, folder);
     }
@@ -79,18 +81,21 @@ internal static class TileSourceFactory
 [ProcessNode(Name = "OpenStreetMap", Category = "Globe.Layers")]
 public sealed class OpenStreetMapNode
 {
-    readonly GlobeLayer _layer = new()
-    {
-        Name = "OpenStreetMap",
-        Raster = TileSourceFactory.Create("https://tile.openstreetmap.org/{z}/{x}/{y}.png", "© OpenStreetMap contributors",
-            "https://tile.openstreetmap.org/standard"),
-    };
+    // one source per cache it was asked for, kept: an HttpTileSource's HttpClient cannot be released
+    readonly Dictionary<string, GlobeTileSource> _sources = new(StringComparer.OrdinalIgnoreCase);
+    readonly GlobeLayer _layer = new() { Name = "OpenStreetMap" };
 
     /// <param name="opacity">0 to 1. Below it: the layers under it, or the globe's Background for the bottom one.</param>
+    /// <param name="cache">Where its tiles are kept, from TileCache. Unconnected: the default folder.</param>
     /// <param name="enabled">Hides the layer while off.</param>
     [return: Pin(Name = "Output")]
-    public GlobeLayer Update(float opacity = 1f, bool enabled = true)
+    public GlobeLayer Update(float opacity = 1f, GlobeTileCache? cache = null, bool enabled = true)
     {
+        cache ??= GlobeTileCache.Default;
+        if (!_sources.TryGetValue(cache.Key, out var source))
+            _sources[cache.Key] = source = TileSourceFactory.Create("https://tile.openstreetmap.org/{z}/{x}/{y}.png",
+                "© OpenStreetMap contributors", "https://tile.openstreetmap.org/standard", cache);
+        _layer.Raster = source;
         _layer.Opacity = Math.Clamp(opacity, 0f, 1f);
         _layer.Enabled = enabled;
         return _layer;
@@ -108,16 +113,18 @@ public sealed class XyzTilesNode
     /// <param name="url">A tile URL template with {z}, {x} and {y}.</param>
     /// <param name="attribution">The credit the server requires.</param>
     /// <param name="opacity">0 to 1. Below it: the layers under it, or the globe's Background for the bottom one.</param>
+    /// <param name="cache">Where its tiles are kept, from TileCache. Unconnected: the default folder.</param>
     /// <param name="enabled">Hides the layer while off.</param>
     [return: Pin(Name = "Output")]
-    public GlobeLayer Update(string url = "", string attribution = "", float opacity = 1f, bool enabled = true)
+    public GlobeLayer Update(string url = "", string attribution = "", float opacity = 1f, GlobeTileCache? cache = null, bool enabled = true)
     {
+        cache ??= GlobeTileCache.Default;
         _layer.Opacity = Math.Clamp(opacity, 0f, 1f);
         _layer.Enabled = enabled;
         if (string.IsNullOrWhiteSpace(url) || !url.Contains("{z}") || !url.Contains("{x}") || !url.Contains("{y}")) { _layer.Raster = null; return _layer; }
-        var key = url + "\n" + attribution;
+        var key = url + "\n" + attribution + "\n" + cache.Key;
         if (!_sources.TryGetValue(key, out var s))
-            _sources[key] = s = TileSourceFactory.Create(url, attribution, url);
+            _sources[key] = s = TileSourceFactory.Create(url, attribution, url, cache);
         _layer.Raster = s;
         return _layer;
     }

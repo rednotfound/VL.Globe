@@ -649,6 +649,19 @@ The plan as written:
 - `ZoomButtons`, `Click`, the attribution shown in the window.
 - **Several imagery layers with `Opacity`**, if item 3's draped path did not already deliver them.
 
+### 6e. TileCache — asked by the user 2026-11-28, built
+
+The user: "我们有类似于tilesCache的节点来设置vectortiles缓存的目录什么的么" - there was none, the folders were
+constants and the vector cache only grew (1.1 GB on their machine, 1.7 GB with the raster one).
+`TileCache [Globe.Layers]` (`src/VL.Globe/TileCache.cs`), shaped as VL.Mapsui's: Folder, Max Size (MB, 4096;
+over it the files written longest ago are deleted down to nine tenths; 0 = no limit), Clear, Enabled ->
+Output (`GlobeTileCache`), Tiles, Size MB, Status. OpenStreetMap, XyzTiles and VectorTiles take it on a `Cache`
+pin; unconnected is the default folders, as before. One Folder holds `tiles\` (raster) and `vector-tiles\`.
+Counting, pruning and clearing run on the thread pool every 30 s and touch only `*.png` under the raster
+folder and `*.pbf` under the vector one. `TileCacheFacts` (12); help `Layers\HowTo Keep tiles on disk`, seen in
+vvvv by me (34,638 tiles, 1,699 MB counted), not yet by the user. Left out on purpose: Max Age (7 days stays
+inside), and pruning for layers with no TileCache connected - both to ask.
+
 ### 6b. Light — asked by the user 2026-11-24, survey first
 
 Asked: "支持光影，尤其是在显示了vectortiles的建筑的时候". Today the buildings carry GL JS's default light

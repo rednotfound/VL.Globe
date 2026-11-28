@@ -26,6 +26,7 @@ the LTS line** (user, 2026-11-20); `tools\Find-Vvvv.ps1` stays below 8.0.
 | `GlobeWindow [Globe]` | **patched** process | `VL.Globe.vl` | the front door: the whole chain below in one node, with its own window; tells Globe the window's real height |
 | `OpenStreetMap [Globe]` | process | `TileSources.cs` | an `HttpTileSource` for OSM, built once (an HttpTileSource owns an HttpClient and is not disposable) |
 | `XyzTiles [Globe]` | process | `TileSources.cs` | any `{z}/{x}/{y}` server + its required attribution; one source per URL |
+| `TileCache [Globe.Layers]` | process | `TileCache.cs` | where tile layers keep their tiles (`GlobeTileCache`, for their `Cache` pin), a size limit, Clear; scans and deletes on the thread pool, only its own `*.png` / `*.pbf` |
 | `Globe [Globe]` | process | `GlobeNode.cs` (+ `.Tiles`, `.Show`, `.Background`, `.Perf`) | the engine: select → build the sphere's tiles (shape, depth, Background) → every `Input` layer on the GPU, in order; outputs one Stride `Entity` |
 | `Geometry`, `FeatureLayer [Globe.Layers]` | process | `GlobeLayers.cs` | NTS geometries / features in one style → a layer for `Layers`, VL.Mapsui's shape |
 | `VectorStyle [Globe.Styles]` | static | `GlobeLayers.cs` | fill, line colour, line width in pixels; unwired colours default as Mapsui's |

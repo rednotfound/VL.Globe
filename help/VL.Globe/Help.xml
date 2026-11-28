@@ -11,6 +11,7 @@
 		<VLDocument link="Layers\HowTo Choose a vector tile style.vl" tags="vectorTiles,mapLibreStyle,style,openfreemap,versatiles,carto,positron,dark,voyager,liberty,bright,geometry,shapes,over,group,url" />
 		<VLDocument link="Layers\HowTo Stack tile layers.vl" tags="xyzTiles,openStreetMap,group,layers,opacity,tiles,stack,blend,xyz,url,opentopomap,raster,imagery,basemap,attribution" />
 		<VLDocument link="Layers\HowTo Draw shapes on the globe.vl" tags="geometry,featureLayer,vectorStyle,layers,line,polygon,wkt,netTopologySuite,nts,draw,vector,drape,attribution" />
+		<VLDocument link="Layers\HowTo Keep tiles on disk.vl" tags="tileCache,cache,disk,folder,size,limit,clear,offline,tiles,vectorTiles,openStreetMap,xyzTiles,storage" />
 		<VLDocument link="Layers\HowTo Draw a graticule.vl" tags="graticule,grid,meridian,parallel,latitude,longitude,lines,layer" />
 	</Topic>
 	<Topic title="Camera">

@@ -222,23 +222,27 @@ public sealed class GlobeVectorTilesNode : IDisposable
     readonly GlobeLayer _layer = new();
     Engine.VectorTiles.VectorTileService? _service;
     MapLibreStyle? _style;
+    string _cacheKey = "";
 
     /// <param name="attribution">The credit the style's tile sources require.</param>
     /// <param name="status">What is drawn, what is skipped, and the tiles loading.</param>
     /// <param name="style">A MapLibre style, from MapLibreStyle (URL) or MapLibreStyle (File).</param>
     /// <param name="name">The layer's name.</param>
+    /// <param name="cache">Where its tiles are kept, from TileCache. Unconnected: the default folder.</param>
     /// <param name="enabled">Fetches and draws while on.</param>
     [return: Pin(Name = "Output")]
     public GlobeLayer Update(out string attribution, out string status,
-        MapLibreStyle? style = null, string name = "VectorTiles", bool enabled = false)
+        MapLibreStyle? style = null, string name = "VectorTiles", GlobeTileCache? cache = null, bool enabled = false)
     {
+        cache ??= GlobeTileCache.Default;
         // a new style value - another one, or the same file read again - starts over; its tiles come
         // from the disk cache
-        if (!ReferenceEquals(style, _style))
+        if (!ReferenceEquals(style, _style) || cache.Key != _cacheKey)
         {
             _style = style;
+            _cacheKey = cache.Key;
             _service?.Dispose();
-            _service = style is null ? null : new Engine.VectorTiles.VectorTileService(style.Source);
+            _service = style is null ? null : new Engine.VectorTiles.VectorTileService(style.Source, cache);
         }
         if (enabled) _service?.Start();
         _layer.Set(null, null, enabled && _service != null, name);
