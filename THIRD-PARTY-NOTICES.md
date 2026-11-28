@@ -130,6 +130,61 @@ ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ```
 
+## polylabel
+
+`src\VL.Globe\Engine\Symbols\PoleOfInaccessibility.cs` (where a polygon's label goes) follows GL JS's
+`find_pole_of_inaccessibility.ts`, which is mapbox/polylabel - https://github.com/mapbox/polylabel:
+
+```
+ISC License
+Copyright (c) 2026 Mapbox
+
+Permission to use, copy, modify, and/or distribute this software for any purpose
+with or without fee is hereby granted, provided that the above copyright notice
+and this permission notice appear in all copies.
+
+THE SOFTWARE IS PROVIDED "AS IS" AND ISC DISCLAIMS ALL WARRANTIES WITH REGARD TO
+THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS.
+IN NO EVENT SHALL ISC BE LIABLE FOR ANY SPECIAL, DIRECT, INDIRECT, OR
+CONSEQUENTIAL DAMAGES OR ANY DAMAGES WHATSOEVER RESULTING FROM LOSS OF USE, DATA
+OR PROFITS, WHETHER IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS
+ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS
+SOFTWARE.
+```
+
+## Stride
+
+The prototype of screen-space ambient occlusion in `shaders\GlobeShadowBase.sdsl` (off unless `VLGLOBE_SSAO`
+is set) follows the sampler of Stride's `AmbientOcclusionRawAOShader.sdsl` - https://github.com/stride3d/stride:
+
+```
+﻿The MIT License (MIT)
+
+Copyright (c) 2021 .NET Foundation and Contributors (https://dotnetfoundation.org/)
+Copyright (c) 2018-2021 Stride contributors (https://stride3d.net)  
+Copyright (c) 2011-2018 Silicon Studio Corp. (https://www.siliconstudio.co.jp)
+
+All rights reserved.
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+```
+
 ## OSM Liberty, through OpenFreeMap's styles
 
 `help\Assets\liberty-3d.json` is OpenFreeMap's Liberty style - https://github.com/hyperknot/openfreemap-styles
@@ -181,3 +236,14 @@ No map data is part of this package. The help patches fetch tiles from OpenStree
 (© OpenStreetMap contributors, ODbL - https://www.openstreetmap.org/copyright) and from OpenFreeMap
 (https://openfreemap.org, OpenMapTiles schema, © OpenMapTiles, data © OpenStreetMap contributors); each
 service has its own terms, and the credit is printed in the window.
+
+## In this repository, not in the package
+
+- The pictures under `docs\` show map tiles of OpenStreetMap: © OpenStreetMap contributors; the map data
+  under the ODbL, the tiles' cartography under CC BY-SA 2.0 (https://www.openstreetmap.org/copyright).
+- `test\VL.Globe.Tests\MapLibre\` holds fixtures of MapLibre GL JS and of pixelmatch with their own
+  licence files beside them; MapLibre's render tests are fetched by a script and not committed.
+
+The ideas taken from Mapbox GL JS v2 and later (fill-extrusion's ambient occlusion and ground radius,
+its cutoff fade, two shadow cascades) come from its published style specification and documentation; none of
+its code, which is not under an open licence, is in this repository.
