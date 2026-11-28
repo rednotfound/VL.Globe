@@ -128,6 +128,10 @@ dotnet test test\VL.Globe.Tests\VL.Globe.Tests.csproj     # close vvvv first
 Open-HelpPatch.cmd                                           # the user's GUI launcher; always passes -Log
 .\tools\Drive-Renderer.ps1 -Title <window> -Action wheel|drag ...   # real mouse input; user away only
 D:\2026_Projects\vl-overworld\tools\Capture-Renderer.ps1 -Title <window> -Out x.png
+dotnet test test\VL.Globe.Tests\VL.Globe.Tests.csproj --filter "FullyQualifiedName~GpuVectorFacts"   # one class while iterating; all of them before a commit
+.\tools\Probe-View.ps1 -View '#z/lat/lng/b/p' -Set @{VLGLOBE_HALO='3'} -Baseline @{VLGLOBE_HALO='0'} -Out <dir>   # the view offscreen, twice, pixels counted: ~30 s, no vvvv
+..\vvvv-dev\tools\Shoot-Patch.ps1 -Repo . -Path <scratch .vl> -Out <dir> -Wait 40 [-Set @{...}]         # open, capture, log, close MY vvvv - one call
+..\vvvv-dev\tools\Compare-Captures.ps1 -A base.png -B changed.png -Out crop.png                        # darker / lighter pixels counted, a 3x crop side by side
 ```
 
 vvvv's log: `%USERPROFILE%\Documents\vvvv\gamma\vvvv_<time>.log`. The Globe node writes its Status
@@ -136,6 +140,13 @@ there; Drag and ZoomByWheel write every press, release and wheel event.
 wheel zoom the camera nodes log `Globe view: #zoom/lat/lng/bearing/pitch - eye N m up` (MapLibre's
 URL hash, its zoom one below ours). Ask for the time; load the hash in a test with
 `GlobeView.TryApplyHash`, or paste it into a MapLibre page to see GL JS's picture of the same view.
+
+**Iterate offscreen, look in vvvv once** (2026-11-28, after a 35-minute halo): a drawing change goes round
+`Probe-View.ps1` (28 s for a view and its baseline) and one test class; vvvv is for the final look, through
+`Shoot-Patch.ps1`, and every "it shows" is a count from `Compare-Captures.ps1` against a baseline of the same
+build. The tools' `ok` lines are Write-Host: filter them with `*>&1 | Select-String 'FAIL|^PASS'`, not `2>&1`.
+The two generic tools live in `D:\2026_Projects\vvvv-dev\tools` (the family's shared place, any repository's
+launcher via `-Repo`).
 
 `tools\` was copied from vl-mapsui on 2026-11-09 with the package name replaced; the node table in
 `Compile-HelpPatches.ps1` and `Test-VLPatch.ps1` read VL.Globe's own `tools\Nodes.psd1`.

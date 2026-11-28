@@ -948,9 +948,11 @@ looked fine - "which makes one think it works". Two causes, estimated at 100 m h
   top, outward normal - so the shader lays the wall down instead. Read the log's MB line before keeping a
   new range.
 - **The instrument**: two captures of one view, `VLGLOBE_HALO=3` and `=0`, compared pixel by pixel
-  (scratchpad `imgdiff.ps1`: count of darker/lighter pixels, a 3x crop side by side). Without the count the
+  (now `..\vvvv-dev\tools\Compare-Captures.ps1`: count of darker/lighter pixels, a 3x crop side by side). Without the count the
   second wrong build looked "subtle". In PowerShell `$A` and `$a` are one variable: a parameter named A was
   overwritten by a bitmap named a.
 - **Time**: about 35 minutes, 8 rounds of build + pack + open in vvvv (~2 min each) and 5 full test runs
-  (57 s each). Next time: iterate on the offscreen probe (`Probes\ViewProbe`) and one test class
-  (`--filter`), and go to vvvv once for the look.
+  (57 s each). Next time: iterate on the offscreen probe and one test class (`--filter`), and go
+  to vvvv once for the look. Built the same day: `tools\Probe-View.ps1` (the halo view and its baseline, drawn
+  and counted in 28 s), `..\vvvv-dev\tools\Shoot-Patch.ps1` and `Compare-Captures.ps1`; a capture of the same
+  patch and switch taken twice in vvvv differed by 0 pixels (largest difference 7 of 765).
