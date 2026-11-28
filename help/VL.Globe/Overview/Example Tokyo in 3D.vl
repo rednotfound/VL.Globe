@@ -44,7 +44,7 @@
             </p:ValueBoxSettings>
           </Pad>
           <Pad Id="TXvY2LpTxp80h0xEjj2glu" Comment="Path" Bounds="152,190,100,15" ShowValueBox="true" isIOBox="true" Value="..\Assets\liberty-3d.json">
-            <p:TypeAnnotation LastCategoryFullName="IO" LastSymbolSource="CoreLibBasics.vl">
+            <p:TypeAnnotation LastCategoryFullName="IO" LastDependency="CoreLibBasics.vl">
               <Choice Kind="TypeFlag" Name="Path" />
             </p:TypeAnnotation>
           </Pad>
@@ -58,6 +58,7 @@
             </p:NodeReference>
             <Pin Id="U3xxvsIXcjoZBTdSQnmfBg" Name="Path" Kind="InputPin" />
             <Pin Id="GUvsBQgya5Nb4GsFUqjXNJ" Name="Output" Kind="OutputPin" />
+            <Pin Id="GkwgG82qNAKQJ1BLKZ88SD" Name="Read" Kind="InputPin" />
           </Node>
           <Pad Id="TbvsM2tmdM3DRRbzlZNInf" Bounds="60,165,330,20" ShowValueBox="true" isIOBox="true" Value="&lt; OpenFreeMap's Liberty with only the big labels left: a style file">
             <p:TypeAnnotation LastCategoryFullName="Primitive" LastDependency="VL.CoreLib.vl">
@@ -98,7 +99,7 @@
               <p:stringtype p:Assembly="VL.Core" p:Type="VL.Core.StringType">Comment</p:stringtype>
             </p:ValueBoxSettings>
           </Pad>
-          <Node Bounds="520,215,265,19" Id="GvLc9Uc0i1LvUAYmr1gTTK">
+          <Node Bounds="520,215,265,26" Id="GvLc9Uc0i1LvUAYmr1gTTK">
             <p:NodeReference LastCategoryFullName="System.DateTime" LastDependency="CoreLibBasics.vl">
               <Choice Kind="NodeFlag" Name="Node" Fixed="true" />
               <Choice Kind="OperationCallFlag" Name="Create (Year Month Day Hour Minute Second Kind)" />
@@ -123,7 +124,7 @@
             <p:HelpFocus p:Assembly="VL.Lang" p:Type="VL.Model.HelpPriority">Low</p:HelpFocus>
             <Pin Id="Jw8YWHCIaC5P4q7h8BP5uu" Name="Date Time" Kind="InputPin" />
             <Pin Id="H8tTbPB1xIhb5rRMwPPiAf" Name="Color" Kind="InputPin" />
-            <Pin Id="EtAeb7gSCNOkA8bQ7fX7JP" Name="Intensity" Kind="InputPin" />
+            <Pin Id="EtAeb7gSCNOkA8bQ7fX7JP" Name="Intensity" Kind="InputPin" DefaultValue="2.5" />
             <Pin Id="OiLKeZVwxxkt7Ky6jWCnW4" Name="Cast Shadows" Kind="InputPin" DefaultValue="True" />
             <Pin Id="SwbCIseVgAMB9ntBGdNr7G" Name="Enabled" Kind="InputPin" />
             <Pin Id="BJdzk4aIS9axQiVHJebBeF" Name="Entity" Kind="OutputPin" />
@@ -136,8 +137,8 @@
             <Pin Id="LlKoEmInguYy6tH9rEIk24" Name="Node Context" Kind="InputPin" IsHidden="true" />
             <Pin Id="UgK15pOXb2p17zFjUmhvbP" Name="Initial Longitude" Kind="InputPin" DefaultValue="139.7671" />
             <Pin Id="J96OPi6T2mhXod9hRVf1s3" Name="Initial Latitude" Kind="InputPin" DefaultValue="35.6812" />
-            <Pin Id="D0y2KBBy1O2QrLM9yPziCH" Name="Initial Height" Kind="InputPin" DefaultValue="600" />
-            <Pin Id="DTYUD6vzvWFr4Lco9zyuAM" Name="Initial Heading" Kind="InputPin" DefaultValue="20" />
+            <Pin Id="D0y2KBBy1O2QrLM9yPziCH" Name="Initial Height" Kind="InputPin" DefaultValue="1200" />
+            <Pin Id="DTYUD6vzvWFr4Lco9zyuAM" Name="Initial Heading" Kind="InputPin" DefaultValue="40" />
             <Pin Id="DkkGiHmCl9gPwQPFj4ciwe" Name="Initial Tilt" Kind="InputPin" DefaultValue="60" />
             <Pin Id="GFoCRW6xM41oXCK5LD8G03" Name="Output" Kind="OutputPin" />
             <Pin Id="KQrNcc2LyUUugD39UCoUSs" Name="View" Kind="OutputPin" />
